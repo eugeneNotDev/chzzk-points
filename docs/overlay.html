@@ -3,15 +3,66 @@
 <head>
 <meta charset="utf-8">
 <title>overlay · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  /* OBS 브라우저 소스용 — 배경 완전 투명, 공통 style.css는 안 씀 (다크 배경이라 방송화면에 안 맞음) */
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  #overlay-root {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding: 24px;
+    font-family: system-ui, "Noto Sans KR", sans-serif;
+    pointer-events: none;
+  }
+  .toast {
+    background: rgba(20, 24, 28, 0.85);
+    color: #fff;
+    border-radius: 10px;
+    padding: 10px 16px;
+    margin-top: 8px;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: toast-in 0.25s ease-out, toast-out 0.4s ease-in 4.6s forwards;
+  }
+  .toast .who { color: #7fd1ff; font-weight: 700; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toast-out { to { opacity: 0; transform: translateY(-8px); } }
+</style>
 </head>
 <body>
-  <!-- OBS 브라우저 소스로 이 페이지를 추가한다. 배경 투명 처리 필요. -->
+  <!-- OBS 브라우저 소스로 이 페이지를 추가한다. 배경 투명 처리 이미 돼있음. -->
   <div id="overlay-root"></div>
-  <script type="module" src="assets/js/supabase-client.js"></script>
+
   <script type="module">
-    // TODO: Supabase Realtime으로 spend_events 테이블 구독
-    // TODO: 이벤트 들어올 때마다 연출 재생
+    import { supabase } from "./assets/js/supabase-client.js";
+
+    const root = document.getElementById("overlay-root");
+
+    // 소모처별 연출 문구 — item_id에 맞춰 나중에 늘리면 됨 (지금은 공통 문구).
+    function renderToast(event) {
+      const el = document.createElement("div");
+      el.className = "toast";
+      el.innerHTML = `<span class="who">${escapeHtml(event.channel_name || event.channel_id)}</span>님이 <b>${escapeHtml(event.item_id)}</b> 사용!`;
+      root.appendChild(el);
+      // 애니메이션 끝나면 DOM에서 제거 (누적 방지)
+      setTimeout(() => el.remove(), 5200);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    supabase
+      .channel("spend_events_overlay")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "spend_events" },
+        (payload) => renderToast(payload.new),
+      )
+      .subscribe();
   </script>
 </body>
 </html>

@@ -9,10 +9,57 @@
 <body>
   <main>
     <h1>포인트 랭킹</h1>
-    <!-- TODO: points_ledger 기준 상위 N명 조회 -->
-    <!-- TODO: 본인 순위 하이라이트 (로그인 상태일 때) -->
-    <ol id="ranking-list"></ol>
+    <nav class="site-nav">
+      <a href="index.html">홈</a>
+      <a href="mypage.html">마이페이지</a>
+      <a href="shop.html">소모처</a>
+    </nav>
+
+    <div class="card">
+      <ol class="ranking-list" id="ranking-list"></ol>
+      <p id="empty-msg" class="empty-state" hidden>공개 설정한 유저가 아직 없어요. 마이페이지에서 공개로 바꾸면 여기 표시돼요.</p>
+    </div>
   </main>
-  <script type="module" src="assets/js/supabase-client.js"></script>
+
+  <script src="assets/js/chzzk-auth.js"></script>
+  <script type="module">
+    import { supabase } from "./assets/js/supabase-client.js";
+
+    const RANKING_LIMIT = 50;
+
+    const { data, error } = await supabase
+      .from("ranking")
+      .select("channel_id, channel_name, total_points")
+      .order("total_points", { ascending: false })
+      .limit(RANKING_LIMIT);
+
+    const listEl = document.getElementById("ranking-list");
+    const emptyEl = document.getElementById("empty-msg");
+
+    if (error) {
+      console.error("[ranking] 조회 실패", error);
+      emptyEl.textContent = "랭킹을 불러오지 못했어요.";
+      emptyEl.hidden = false;
+    } else if (!data || data.length === 0) {
+      emptyEl.hidden = false;
+    } else {
+      const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
+      listEl.innerHTML = data
+        .map((row, i) => {
+          const isMe = row.channel_id === myChannelId;
+          return `
+            <li class="${isMe ? "me" : ""}">
+              <span class="rank">${i + 1}</span>
+              <span class="name">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+              <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
+            </li>`;
+        })
+        .join("");
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+  </script>
 </body>
 </html>

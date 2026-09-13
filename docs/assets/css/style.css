@@ -1,13 +1,161 @@
-/* TODO: 공통 스타일. 지금은 최소한의 리셋만. */
+/* 공통 스타일. 다크 배경 기준, 페이지마다 최소한의 컴포넌트만 재사용. */
 * { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: system-ui, "Noto Sans KR", sans-serif;
   background: #14181c;
   color: #edf0f2;
 }
+
 main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 24px 16px 64px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0 0 20px;
+}
+
+a {
+  color: #7fd1ff;
+}
+
+/* 상단 네비게이션 (로그인 후 여러 페이지에서 재사용) */
+nav.site-nav {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 12px 0 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2a2f35;
+}
+nav.site-nav a {
+  color: #cfd6dc;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+nav.site-nav a:hover { color: #7fd1ff; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #2f81f7;
+  color: #fff;
+}
+button:hover { background: #4c93ff; }
+button:disabled {
+  background: #33383e;
+  color: #74797f;
+  cursor: not-allowed;
+}
+button.secondary {
+  background: transparent;
+  border: 1px solid #3a3f45;
+  color: #cfd6dc;
+}
+button.secondary:hover { border-color: #7fd1ff; color: #7fd1ff; }
+
+.card {
+  background: #1b2025;
+  border: 1px solid #2a2f35;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.muted { color: #8b939b; font-size: 0.88rem; }
+
+.balance {
+  font-size: 2rem;
+  font-weight: 700;
+}
+.balance .unit { font-size: 1rem; font-weight: 400; color: #8b939b; margin-left: 4px; }
+
+/* 토글 스위치 (공개 설정용) */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch .slider {
+  position: absolute;
+  inset: 0;
+  background: #3a3f45;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+.switch .slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.15s;
+}
+.switch input:checked + .slider { background: #2f81f7; }
+.switch input:checked + .slider::before { transform: translateX(20px); }
+
+/* 랭킹 리스트 */
+ol.ranking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+ol.ranking-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2a2f35;
+}
+ol.ranking-list li:last-child { border-bottom: none; }
+ol.ranking-list .rank {
+  width: 28px;
+  text-align: center;
+  color: #8b939b;
+  font-weight: 600;
+}
+ol.ranking-list .name { flex: 1; }
+ol.ranking-list .points { font-weight: 600; }
+ol.ranking-list li.me {
+  background: rgba(47, 129, 247, 0.12);
+  border-radius: 8px;
+}
+
+/* 소모처 목록 */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.shop-item h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.shop-item .cost { color: #ffd479; font-weight: 600; margin-bottom: 10px; }
+.shop-item p.desc { color: #a7aeb5; font-size: 0.88rem; min-height: 2.4em; }
+
+.status-msg { margin-top: 10px; font-size: 0.88rem; }
+.status-msg.error { color: #ff8a8a; }
+.status-msg.ok { color: #7fe0a8; }
+
+.empty-state {
+  color: #8b939b;
+  padding: 24px 0;
+  text-align: center;
 }

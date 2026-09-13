@@ -9,10 +9,90 @@
 <body>
   <main>
     <h1>마이페이지</h1>
-    <!-- TODO: 로그인 상태 확인, 비로그인 시 index.html로 리다이렉트 -->
-    <!-- TODO: 닉네임 / 정보 공개 설정 -->
-    <!-- TODO: 현재 포인트 표시 -->
+    <nav class="site-nav">
+      <a href="index.html">홈</a>
+      <a href="ranking.html">랭킹</a>
+      <a href="shop.html">소모처</a>
+    </nav>
+
+    <div id="logged-out" class="card" hidden>
+      <p>로그인이 필요해요.</p>
+      <button onclick="location.href='index.html'">홈으로 가서 로그인</button>
+    </div>
+
+    <div id="logged-in" hidden>
+      <div class="card">
+        <p class="muted">현재 포인트</p>
+        <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
+      </div>
+
+      <div class="card">
+        <div class="toggle-row">
+          <div>
+            <strong id="channel-name-label">채널명</strong>
+            <p class="muted">공개 설정을 켜면 랭킹 페이지에 내 순위가 노출돼요.</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="public-toggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <p id="toggle-status" class="status-msg"></p>
+      </div>
+
+      <button class="secondary" onclick="logout(); location.reload();">로그아웃</button>
+    </div>
   </main>
+
+  <script src="assets/js/chzzk-auth.js"></script>
   <script type="module" src="assets/js/supabase-client.js"></script>
+  <script>
+    async function loadProfile() {
+      const res = await authFetch(ME_URL);
+      if (!res.ok) {
+        // 401(세션 만료) 등 — 로그아웃 처리는 authFetch가 이미 했으니 로그인 화면으로
+        document.getElementById("logged-out").hidden = false;
+        document.getElementById("logged-in").hidden = true;
+        return;
+      }
+      const profile = await res.json();
+      document.getElementById("logged-in").hidden = false;
+      document.getElementById("logged-out").hidden = true;
+      document.getElementById("balance-value").textContent = profile.balance.toLocaleString("ko-KR");
+      document.getElementById("channel-name-label").textContent = profile.channelName || "(이름 없음)";
+      document.getElementById("public-toggle").checked = profile.isPublic;
+    }
+
+    document.getElementById("public-toggle").addEventListener("change", async (e) => {
+      const statusEl = document.getElementById("toggle-status");
+      const next = e.target.checked;
+      e.target.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "status-msg";
+      try {
+        const res = await authFetch(ME_URL, {
+          method: "POST",
+          body: JSON.stringify({ isPublic: next }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        statusEl.textContent = next ? "공개로 설정됐어요." : "비공개로 설정됐어요.";
+        statusEl.classList.add("ok");
+      } catch (err) {
+        e.target.checked = !next; // 실패 시 원상복구
+        statusEl.textContent = "저장에 실패했어요. 다시 시도해주세요.";
+        statusEl.classList.add("error");
+      } finally {
+        e.target.disabled = false;
+      }
+    });
+
+    (async () => {
+      if (!isLoggedIn()) {
+        document.getElementById("logged-out").hidden = false;
+        return;
+      }
+      await loadProfile();
+    })();
+  </script>
 </body>
 </html>

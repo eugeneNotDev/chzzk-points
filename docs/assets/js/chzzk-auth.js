@@ -10,8 +10,13 @@
 
 const CHZZK_CLIENT_ID = "30d0a593-bc56-4239-ac79-3db1e0bf1202";
 const CHZZK_REDIRECT_URI = "https://eugeneNotDev.github.io/chzzk-points/";
-const OAUTH_CALLBACK_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/oauth-callback";
+const FUNCTIONS_BASE_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1";
+const OAUTH_CALLBACK_URL = `${FUNCTIONS_BASE_URL}/oauth-callback`;
+const ME_URL = `${FUNCTIONS_BASE_URL}/me`;
+const SPEND_POINTS_URL = `${FUNCTIONS_BASE_URL}/spend-points`;
+const ATTENDANCE_CHECK_URL = `${FUNCTIONS_BASE_URL}/attendance-check`;
 const TOKEN_STORAGE_KEY = "chzzk_points_token";
+const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 
@@ -61,6 +66,7 @@ async function handleOAuthCallbackIfPresent() {
     }
     const data = await res.json();
     localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+    localStorage.setItem(CHANNEL_ID_STORAGE_KEY, data.channelId ?? "");
     localStorage.setItem(CHANNEL_NAME_STORAGE_KEY, data.channelName ?? "");
   } catch (err) {
     console.error("[chzzk-auth] 로그인 처리 중 오류", err);
@@ -77,6 +83,11 @@ function getChannelName() {
   return localStorage.getItem(CHANNEL_NAME_STORAGE_KEY);
 }
 
+// 로그인된 채널 ID (랭킹에서 본인 하이라이트 등에 사용). 없으면 null.
+function getChannelId() {
+  return localStorage.getItem(CHANNEL_ID_STORAGE_KEY);
+}
+
 // 로그인 상태인지 (토큰 존재 여부만 체크 — 실제 유효성은 서버가 401로 판단)
 function isLoggedIn() {
   return getToken() !== null;
@@ -85,6 +96,7 @@ function isLoggedIn() {
 // 로그아웃 — 로컬 토큰만 지운다 (서버에 별도 revoke는 두지 않음, MVP 범위 밖)
 function logout() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(CHANNEL_ID_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_NAME_STORAGE_KEY);
 }
 

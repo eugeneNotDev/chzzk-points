@@ -9,10 +9,107 @@
 <body>
   <main>
     <h1>포인트 소모처</h1>
-    <!-- TODO: 소모처 후보 확정되면 목록 렌더링 (항목/가격/설명) -->
-    <!-- TODO: "사용" 버튼 -> supabase/functions/spend-points 호출 -->
-    <div id="shop-list"></div>
+    <nav class="site-nav">
+      <a href="index.html">홈</a>
+      <a href="mypage.html">마이페이지</a>
+      <a href="ranking.html">랭킹</a>
+    </nav>
+
+    <div id="logged-out" class="card" hidden>
+      <p>로그인하면 소모처를 이용할 수 있어요.</p>
+      <button onclick="location.href='index.html'">홈으로 가서 로그인</button>
+    </div>
+
+    <div id="logged-in" hidden>
+      <div class="card">
+        <p class="muted">현재 포인트</p>
+        <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
+      </div>
+      <div class="shop-grid" id="shop-list"></div>
+      <p id="global-status" class="status-msg"></p>
+    </div>
   </main>
+
+  <script src="assets/js/chzzk-auth.js"></script>
   <script type="module" src="assets/js/supabase-client.js"></script>
+  <script>
+    // 플레이스홀더 아이템 — 실제 소모처가 정해지면 이 배열만 바꾸면 됨.
+    // id는 spend-points 함수 구현될 때 서버 쪽 가격 검증에도 그대로 쓸 값.
+    const SHOP_ITEMS = [
+      { id: "item-a", name: "아이템 A", cost: 100, desc: "설명 자리 (플레이스홀더)" },
+      { id: "item-b", name: "아이템 B", cost: 300, desc: "설명 자리 (플레이스홀더)" },
+      { id: "item-c", name: "아이템 C", cost: 1000, desc: "설명 자리 (플레이스홀더)" },
+    ];
+
+    let currentBalance = 0;
+
+    function renderShop() {
+      const listEl = document.getElementById("shop-list");
+      listEl.innerHTML = SHOP_ITEMS.map((item) => {
+        const affordable = currentBalance >= item.cost;
+        return `
+          <div class="card shop-item">
+            <h3>${item.name}</h3>
+            <p class="desc">${item.desc}</p>
+            <p class="cost">${item.cost.toLocaleString("ko-KR")}P</p>
+            <button data-item-id="${item.id}" ${affordable ? "" : "disabled"}>
+              ${affordable ? "사용" : "잔액 부족"}
+            </button>
+          </div>`;
+      }).join("");
+
+      listEl.querySelectorAll("button[data-item-id]").forEach((btn) => {
+        btn.addEventListener("click", () => useItem(btn.dataset.itemId, btn));
+      });
+    }
+
+    async function useItem(itemId, btn) {
+      const statusEl = document.getElementById("global-status");
+      btn.disabled = true;
+      statusEl.textContent = "";
+      statusEl.className = "status-msg";
+      try {
+        const res = await authFetch(SPEND_POINTS_URL, {
+          method: "POST",
+          body: JSON.stringify({ itemId }),
+        });
+        if (res.status === 501) {
+          // 아직 구현 전인 백엔드 — UI 동작 자체는 정상이라는 걸 알려줌
+          statusEl.textContent = "소모처 기능은 아직 준비 중이에요 (백엔드 구현 예정).";
+          statusEl.classList.add("error");
+          return;
+        }
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        currentBalance = data.balance ?? currentBalance;
+        document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
+        statusEl.textContent = "사용했어요!";
+        statusEl.classList.add("ok");
+        renderShop();
+      } catch (err) {
+        statusEl.textContent = "사용에 실패했어요.";
+        statusEl.classList.add("error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    (async () => {
+      if (!isLoggedIn()) {
+        document.getElementById("logged-out").hidden = false;
+        return;
+      }
+      const res = await authFetch(ME_URL);
+      if (!res.ok) {
+        document.getElementById("logged-out").hidden = false;
+        return;
+      }
+      const profile = await res.json();
+      currentBalance = profile.balance;
+      document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
+      document.getElementById("logged-in").hidden = false;
+      renderShop();
+    })();
+  </script>
 </body>
 </html>
