@@ -7,14 +7,39 @@
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-brand"><a href="index.html">chzzk-points</a></div>
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <span class="mark">C</span>
+          <span class="label">chzzk-points</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
       <nav class="sidebar-nav">
-        <a href="index.html" class="active">홈</a>
-        <a href="mypage.html">마이페이지</a>
-        <a href="ranking.html">랭킹</a>
-        <a href="shop.html">소모처</a>
+        <a href="index.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <a href="shop.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+          <span class="label">소모처</span>
+        </a>
       </nav>
       <div class="sidebar-user" id="sidebar-user"></div>
     </aside>
@@ -57,8 +82,14 @@
   </div>
 
   <script src="assets/js/chzzk-auth.js"></script>
-  <script type="module">
-    import { supabase } from "./assets/js/supabase-client.js";
+  <script src="assets/js/spa-router.js"></script>
+  <script>
+  // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하기 때문에,
+  // 최상위에 const/let을 두면 두 번째 실행에서 "이미 선언됨" 에러가 난다 — 그래서 전체를
+  // 즉시실행함수(IIFE)로 감싼다. supabase는 type=module 정적 import 대신 동적 import()로
+  // 가져온다 (동적 import는 매번 새로 실행해도 안전하고, 이미 로드된 모듈은 캐시해서 씀).
+  (function () {
+    let supabase;
 
     const RANKING_PREVIEW_LIMIT = 5;
     const NOTICE_LIMIT = 10;
@@ -202,11 +233,14 @@
     }
 
     (async () => {
+      ({ supabase } = await import("./assets/js/supabase-client.js"));
       await handleOAuthCallbackIfPresent();
       renderSidebarUser();
+      initSidebarToggle();
       setupNoticeForm();
       await Promise.all([loadBroadcastStatus(), loadNotices(), loadRankingPreview()]);
     })();
+  })();
   </script>
 </body>
 </html>

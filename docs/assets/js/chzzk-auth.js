@@ -25,6 +25,7 @@ const TOKEN_STORAGE_KEY = "chzzk_points_token";
 const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
+const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
 
 // 로그인 버튼 onclick에 연결. 랜덤 state를 만들어 sessionStorage에 저장해두고
 // 치지직 인증 페이지(account-interlock)로 이동한다. 콜백에서 이 state와 대조해서
@@ -137,18 +138,47 @@ function renderSidebarUser() {
     const name = getChannelName() || "(이름 없음)";
     el.innerHTML = `
       <p class="sidebar-user-name">${escapeHtmlForAuth(name)}님</p>
-      <button class="secondary" id="sidebar-logout-btn">로그아웃</button>
+      <button class="secondary sidebar-icon-btn" id="sidebar-logout-btn" title="로그아웃" aria-label="로그아웃">
+        <span class="icon">${SIDEBAR_ICON_LOGOUT}</span>
+        <span class="label">로그아웃</span>
+      </button>
     `;
     document.getElementById("sidebar-logout-btn").addEventListener("click", () => {
       logout();
       location.href = "index.html";
     });
   } else {
-    el.innerHTML = `<button id="sidebar-login-btn">치지직으로 로그인</button>`;
+    el.innerHTML = `
+      <button class="sidebar-icon-btn" id="sidebar-login-btn" title="치지직으로 로그인" aria-label="치지직으로 로그인">
+        <span class="icon">${SIDEBAR_ICON_LOGIN}</span>
+        <span class="label">치지직으로 로그인</span>
+      </button>
+    `;
     document.getElementById("sidebar-login-btn").addEventListener("click", startLogin);
   }
 }
 
+const SIDEBAR_ICON_LOGOUT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>`;
+const SIDEBAR_ICON_LOGIN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg>`;
+
 function escapeHtmlForAuth(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// 사이드바 접기/펴기 토글 버튼 연결. localStorage에 상태를 저장해서 다른 페이지로 이동해도 유지된다.
+// (각 페이지 <body> 맨 앞의 인라인 스크립트가 렌더링 시작 전에 미리 같은 클래스를 적용해두기 때문에,
+//  페이지를 열자마자 "펼쳐졌다가 순간적으로 접히는" 깜빡임이 없다.)
+function initSidebarToggle() {
+  const toggleBtn = document.getElementById("sidebar-toggle");
+  if (!toggleBtn) return;
+  // 라우터(spa-router.js)로 페이지를 넘길 때마다 페이지 스크립트가 다시 실행되면서 이 함수도
+  // 다시 호출되는데, 사이드바 자체는 페이지 전환 때 다시 그려지지 않고 계속 같은 엘리먼트라서
+  // 매번 리스너를 새로 붙이면 클릭 이벤트가 중복으로 쌓인다 — 그래서 한 번 붙였으면 건너뜀.
+  if (toggleBtn.dataset.bound === "1") return;
+  toggleBtn.dataset.bound = "1";
+  toggleBtn.addEventListener("click", () => {
+    const next = !document.body.classList.contains("sidebar-collapsed");
+    document.body.classList.toggle("sidebar-collapsed", next);
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+  });
 }

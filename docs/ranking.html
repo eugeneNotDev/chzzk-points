@@ -7,14 +7,39 @@
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="sidebar-brand"><a href="index.html">chzzk-points</a></div>
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <span class="mark">C</span>
+          <span class="label">chzzk-points</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
       <nav class="sidebar-nav">
-        <a href="index.html">홈</a>
-        <a href="mypage.html">마이페이지</a>
-        <a href="ranking.html" class="active">랭킹</a>
-        <a href="shop.html">소모처</a>
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="ranking.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <a href="shop.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+          <span class="label">소모처</span>
+        </a>
       </nav>
       <div class="sidebar-user" id="sidebar-user"></div>
     </aside>
@@ -30,46 +55,52 @@
   </div>
 
   <script src="assets/js/chzzk-auth.js"></script>
-  <script type="module">
-    import { supabase } from "./assets/js/supabase-client.js";
-
-    renderSidebarUser();
-
-    const RANKING_LIMIT = 50;
-
-    const { data, error } = await supabase
-      .from("ranking")
-      .select("channel_id, channel_name, total_points")
-      .order("total_points", { ascending: false })
-      .limit(RANKING_LIMIT);
-
-    const listEl = document.getElementById("ranking-list");
-    const emptyEl = document.getElementById("empty-msg");
-
-    if (error) {
-      console.error("[ranking] 조회 실패", error);
-      emptyEl.textContent = "랭킹을 불러오지 못했어요.";
-      emptyEl.hidden = false;
-    } else if (!data || data.length === 0) {
-      emptyEl.hidden = false;
-    } else {
-      const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
-      listEl.innerHTML = data
-        .map((row, i) => {
-          const isMe = row.channel_id === myChannelId;
-          return `
-            <li class="${isMe ? "me" : ""}">
-              <span class="rank">${i + 1}</span>
-              <span class="name">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
-              <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
-            </li>`;
-        })
-        .join("");
-    }
-
+  <script src="assets/js/spa-router.js"></script>
+  <script>
+  // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
+  // 이 스크립트를 다시 실행하므로, 최상위 const/let은 두 번째 실행에서 에러가 남).
+  (function () {
     function escapeHtml(str) {
       return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
+
+    (async () => {
+      renderSidebarUser();
+      initSidebarToggle();
+
+      const RANKING_LIMIT = 50;
+      const { supabase } = await import("./assets/js/supabase-client.js");
+      const { data, error } = await supabase
+        .from("ranking")
+        .select("channel_id, channel_name, total_points")
+        .order("total_points", { ascending: false })
+        .limit(RANKING_LIMIT);
+
+      const listEl = document.getElementById("ranking-list");
+      const emptyEl = document.getElementById("empty-msg");
+
+      if (error) {
+        console.error("[ranking] 조회 실패", error);
+        emptyEl.textContent = "랭킹을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+      } else if (!data || data.length === 0) {
+        emptyEl.hidden = false;
+      } else {
+        const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
+        listEl.innerHTML = data
+          .map((row, i) => {
+            const isMe = row.channel_id === myChannelId;
+            return `
+              <li class="${isMe ? "me" : ""}">
+                <span class="rank">${i + 1}</span>
+                <span class="name">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+                <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
+              </li>`;
+          })
+          .join("");
+      }
+    })();
+  })();
   </script>
 </body>
 </html>

@@ -36,14 +36,64 @@ a {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-x: hidden;
   overflow-y: auto;
+  transition: width 0.2s ease;
 }
 
-.sidebar-brand a {
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: #edf0f2;
-  font-size: 1.1rem;
-  font-weight: 700;
   text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+}
+.sidebar-brand .mark {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #2f81f7;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.sidebar-brand .label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sidebar-toggle-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #3a3f45;
+  border-radius: 8px;
+  color: #cfd6dc;
+}
+.sidebar-toggle-btn:hover { border-color: #7fd1ff; color: #7fd1ff; background: transparent; }
+.sidebar-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
 }
 
 .sidebar-nav {
@@ -52,27 +102,67 @@ a {
   gap: 4px;
 }
 .sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   color: #cfd6dc;
   text-decoration: none;
   font-size: 0.95rem;
   padding: 10px 12px;
   border-radius: 8px;
+  white-space: nowrap;
 }
 .sidebar-nav a:hover { background: #22272d; color: #7fd1ff; }
 .sidebar-nav a.active { background: #22272d; color: #7fd1ff; font-weight: 600; }
+.sidebar-nav .icon,
+.sidebar-icon-btn .icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-nav .icon svg { width: 20px; height: 20px; }
+.sidebar-icon-btn .icon svg { width: 18px; height: 18px; }
 
 .sidebar-user {
   margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #2a2f35;
+  overflow: hidden;
 }
 .sidebar-user-name {
   margin: 0 0 10px;
   font-size: 0.88rem;
   color: #cfd6dc;
   word-break: break-all;
+  white-space: nowrap;
 }
 .sidebar-user button { width: 100%; }
+.sidebar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 접힌 상태 (데스크톱 폭에서만 — 모바일은 아래 가로 바 레이아웃으로 이미 컴팩트함) */
+@media (min-width: 721px) {
+  body.sidebar-collapsed .sidebar { width: 64px; }
+  body.sidebar-collapsed .sidebar-top { flex-direction: column; gap: 10px; }
+  body.sidebar-collapsed .sidebar-brand { justify-content: center; }
+  body.sidebar-collapsed .sidebar-brand .label,
+  body.sidebar-collapsed .sidebar-nav .label,
+  body.sidebar-collapsed .sidebar-icon-btn .label,
+  body.sidebar-collapsed .sidebar-user-name {
+    display: none;
+  }
+  body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; }
+  body.sidebar-collapsed .sidebar-toggle-btn svg { transform: rotate(180deg); }
+}
 
 .main-content {
   flex: 1;
@@ -102,6 +192,7 @@ a {
     border-top: none;
   }
   .sidebar-user button { width: auto; }
+  .sidebar-toggle-btn { display: none; }
 }
 
 button {
