@@ -9,10 +9,30 @@
 <body>
   <main>
     <h1>chzzk-points</h1>
-    <!-- TODO: 치지직 로그인 버튼 -->
-    <!-- TODO: OAuth 콜백(?code=...)으로 돌아왔을 때 supabase/functions/oauth-callback 호출해서 세션 발급 -->
-    <button id="login-btn">치지직으로 로그인</button>
+    <button id="login-btn" onclick="startLogin()">치지직으로 로그인</button>
+    <div id="welcome" hidden>
+      <p>환영합니다, <strong id="welcome-name"></strong>님</p>
+      <nav>
+        <a href="mypage.html">마이페이지</a>
+        <a href="ranking.html">랭킹</a>
+        <a href="shop.html">소모처</a>
+      </nav>
+      <button onclick="logout(); location.reload();">로그아웃</button>
+    </div>
   </main>
+  <script src="assets/js/chzzk-auth.js"></script>
   <script type="module" src="assets/js/supabase-client.js"></script>
+  <script>
+    // 페이지 열릴 때 로그인 콜백(?code=&state=)이 붙어 있는지 확인하고,
+    // 처리가 끝난 뒤(로그인 성공/기존 로그인 여부와 무관하게) 화면 상태를 갱신한다.
+    (async () => {
+      await handleOAuthCallbackIfPresent();
+      if (isLoggedIn()) {
+        document.getElementById("login-btn").hidden = true;
+        document.getElementById("welcome").hidden = false;
+        document.getElementById("welcome-name").textContent = getChannelName() || "(이름 없음)";
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -17,14 +17,16 @@ chzzk-points/
 │   └── assets/
 │       ├── css/style.css
 │       └── js/
-│           └── supabase-client.js   # Supabase 클라이언트 초기화 (URL/anon key만, 시크릿 없음)
+│           ├── supabase-client.js  # Supabase 클라이언트 초기화 (URL/anon key만, 시크릿 없음)
+│           └── chzzk-auth.js       # 치지직 로그인 흐름 + 세션 토큰(localStorage) 관리
 │
 ├── supabase/
-│   ├── functions/            # Edge Functions (Deno/TypeScript) — 시크릿을 다루는 서버 로직
-│   │   ├── oauth-callback/   # 치지직 OAuth code → 토큰 교환 (clientSecret 사용)
+│   ├── functions/
+│   │   ├── _shared/          # 모든 함수가 공통으로 쓰는 CORS·세션 토큰 발급/검증 로직
+│   │   ├── oauth-callback/   # 치지직 OAuth code → 토큰 교환 (clientSecret 사용), 세션 토큰 발급
 │   │   ├── spend-points/     # 포인트 사용: 잔액 확인 → 차감 → 이벤트 기록
 │   │   └── attendance-check/ # 방송 중 최초 접속 출석 체크 보너스 지급
-│   └── migrations/           # DB 스키마 (SQL)
+│   └── migrations/           # DB 스키마 (SQL, RLS 포함)
 │
 └── .env.example               # 로컬 개발용 환경변수 예시 (실제 시크릿은 절대 커밋하지 않음)
 ```
@@ -35,7 +37,8 @@ chzzk-points/
 - `clientSecret`, Supabase `service_role` 키 등 시크릿은 절대 `docs/` 아래 어떤 파일에도 들어가지 않는다. 전부 `supabase/functions/`(Edge Functions) 쪽에서만, Supabase 프로젝트의 환경변수로 관리한다.
 - DB · 실시간 통신(Realtime) · Edge Functions는 전부 Supabase 프로젝트 하나에 모여 있다.
 - 로컬 상시 채팅/후원 리스너 프로그램(방송 중에만 실행)은 기존에 만들어둔 것을 그대로 확장해서 쓴다 — 이 저장소로 옮길지는 나중에 결정.
+- 로그인 세션은 쿠키가 아니라 **토큰 방식**이다. 프론트(GitHub Pages)와 API(Supabase Edge Functions)가 서로 다른 도메인이라, 크로스 도메인 쿠키(사파리 등에서 자주 막히거나 일찍 만료됨) 대신 로그인 성공 시 발급하는 자체 세션 토큰을 `localStorage`에 저장하고 매 요청마다 `Authorization: Bearer` 헤더로 보낸다.
 
 ## 상태
 
-기획 완료, 개발 착수 전. 지금은 폴더 구조만 잡아둔 상태 — 각 파일은 TODO 주석만 있는 뼈대.
+Supabase 프로젝트 생성 + DB 스키마/RLS 적용 완료, 치지직 앱 등록 완료. 지금은 OAuth 로그인 흐름의 뼈대(함수 시그니처, 요청/응답 형태, 파일 구조)만 잡아둔 상태 — 실제 로직은 각 TODO 부분에 채워넣는 중.

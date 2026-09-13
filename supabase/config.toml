@@ -1,0 +1,17 @@
+# Edge Functions 설정.
+#
+# 이 프로젝트는 Supabase Auth를 안 쓰고 자체 세션 토큰(치지직 OAuth 기반, _shared/session.ts)을 쓴다.
+# 그래서 Supabase가 기본으로 요구하는 "Authorization 헤더에 Supabase JWT(anon key 등) 필수" 검증을
+# 함수별로 꺼두고, 대신 각 함수 안에서 우리 세션 토큰을 직접 검증한다.
+#   - oauth-callback: 로그인 전 최초 호출이라 애초에 우리 토큰이 없음 → 검증 끔
+#   - spend-points, attendance-check: Authorization 헤더를 "우리 세션 토큰" 용도로 쓰기 위해 검증 끔
+#     (각 함수 내부에서 _shared/session.ts의 verifySessionToken으로 직접 인증 처리)
+
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.spend-points]
+verify_jwt = false
+
+[functions.attendance-check]
+verify_jwt = false
