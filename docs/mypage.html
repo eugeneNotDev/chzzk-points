@@ -7,46 +7,54 @@
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <main>
-    <h1>마이페이지</h1>
-    <nav class="site-nav">
-      <a href="index.html">홈</a>
-      <a href="ranking.html">랭킹</a>
-      <a href="shop.html">소모처</a>
-    </nav>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><a href="index.html">chzzk-points</a></div>
+      <nav class="sidebar-nav">
+        <a href="index.html">홈</a>
+        <a href="mypage.html" class="active">마이페이지</a>
+        <a href="ranking.html">랭킹</a>
+        <a href="shop.html">소모처</a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
 
-    <div id="logged-out" class="card" hidden>
-      <p>로그인이 필요해요.</p>
-      <button onclick="location.href='index.html'">홈으로 가서 로그인</button>
-    </div>
+    <main class="main-content">
+      <h1>마이페이지</h1>
 
-    <div id="logged-in" hidden>
-      <div class="card">
-        <p class="muted">현재 포인트</p>
-        <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
+      <div id="logged-out" class="card" hidden>
+        <p>로그인이 필요해요.</p>
+        <button onclick="location.href='index.html'">홈으로 가서 로그인</button>
       </div>
 
-      <div class="card">
-        <div class="toggle-row">
-          <div>
-            <strong id="channel-name-label">채널명</strong>
-            <p class="muted">공개 설정을 켜면 랭킹 페이지에 내 순위가 노출돼요.</p>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="public-toggle">
-            <span class="slider"></span>
-          </label>
+      <div id="logged-in" hidden>
+        <div class="card">
+          <p class="muted">현재 포인트</p>
+          <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
         </div>
-        <p id="toggle-status" class="status-msg"></p>
-      </div>
 
-      <button class="secondary" onclick="logout(); location.reload();">로그아웃</button>
-    </div>
-  </main>
+        <div class="card">
+          <div class="toggle-row">
+            <div>
+              <strong id="channel-name-label">채널명</strong>
+              <p class="muted">공개 설정을 켜면 랭킹 페이지에 내 순위가 노출돼요.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="public-toggle">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <p id="toggle-status" class="status-msg"></p>
+        </div>
+      </div>
+    </main>
+  </div>
 
   <script src="assets/js/chzzk-auth.js"></script>
   <script type="module" src="assets/js/supabase-client.js"></script>
   <script>
+    renderSidebarUser();
+
     async function loadProfile() {
       const res = await authFetch(ME_URL);
       if (!res.ok) {

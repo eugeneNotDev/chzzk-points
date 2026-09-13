@@ -7,31 +7,205 @@
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <main>
-    <h1>chzzk-points</h1>
-    <button id="login-btn" onclick="startLogin()">치지직으로 로그인</button>
-    <div id="welcome" hidden>
-      <p>환영합니다, <strong id="welcome-name"></strong>님</p>
-      <nav>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><a href="index.html">chzzk-points</a></div>
+      <nav class="sidebar-nav">
+        <a href="index.html" class="active">홈</a>
         <a href="mypage.html">마이페이지</a>
         <a href="ranking.html">랭킹</a>
         <a href="shop.html">소모처</a>
       </nav>
-      <button onclick="logout(); location.reload();">로그아웃</button>
-    </div>
-  </main>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1>chzzk-points</h1>
+
+      <div class="card">
+        <div id="status-badge" class="status-badge offline">
+          <span class="dot"></span>
+          <span id="status-text">확인 중...</span>
+        </div>
+        <p id="live-title" class="live-title" hidden></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>공지사항</h2>
+        </div>
+
+        <div id="notice-form" class="notice-form" hidden>
+          <textarea id="notice-input" placeholder="공지 내용을 입력하세요 (방송 일정, 스케줄 변경 등)"></textarea>
+          <button id="notice-submit">등록</button>
+          <p id="notice-post-status" class="status-msg"></p>
+        </div>
+
+        <ul class="notice-list" id="notice-list"></ul>
+        <p id="notice-empty" class="empty-state" hidden>등록된 공지사항이 없어요.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>랭킹 미리보기</h2>
+          <a href="ranking.html">전체 보기 →</a>
+        </div>
+        <ol class="ranking-list" id="ranking-preview"></ol>
+        <p id="ranking-empty" class="empty-state" hidden>공개 설정한 유저가 아직 없어요.</p>
+      </div>
+    </main>
+  </div>
+
   <script src="assets/js/chzzk-auth.js"></script>
-  <script type="module" src="assets/js/supabase-client.js"></script>
-  <script>
-    // 페이지 열릴 때 로그인 콜백(?code=&state=)이 붙어 있는지 확인하고,
-    // 처리가 끝난 뒤(로그인 성공/기존 로그인 여부와 무관하게) 화면 상태를 갱신한다.
+  <script type="module">
+    import { supabase } from "./assets/js/supabase-client.js";
+
+    const RANKING_PREVIEW_LIMIT = 5;
+    const NOTICE_LIMIT = 10;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 방송 중인지: 인증 불필요, 로그인 여부와 무관하게 누구나 조회 가능.
+    async function loadBroadcastStatus() {
+      const badgeEl = document.getElementById("status-badge");
+      const textEl = document.getElementById("status-text");
+      const titleEl = document.getElementById("live-title");
+      try {
+        const res = await fetch(BROADCAST_STATUS_URL);
+        const data = await res.json();
+        if (data.isLive) {
+          badgeEl.className = "status-badge live";
+          textEl.textContent = "방송 중";
+          if (data.liveTitle) {
+            titleEl.textContent = data.liveTitle;
+            titleEl.hidden = false;
+          } else {
+            titleEl.hidden = true;
+          }
+        } else {
+          badgeEl.className = "status-badge offline";
+          textEl.textContent = "방송 종료";
+          titleEl.hidden = true;
+        }
+      } catch (err) {
+        console.error("[index] 방송 상태 조회 실패", err);
+        badgeEl.className = "status-badge offline";
+        textEl.textContent = "상태를 확인할 수 없어요";
+      }
+    }
+
+    // 공지사항 목록: notices 테이블이 전체 공개 읽기라서 anon 키로 직접 조회 (ranking과 동일 패턴).
+    async function loadNotices() {
+      const listEl = document.getElementById("notice-list");
+      const emptyEl = document.getElementById("notice-empty");
+      const { data, error } = await supabase
+        .from("notices")
+        .select("id, content, created_at")
+        .order("created_at", { ascending: false })
+        .limit(NOTICE_LIMIT);
+
+      if (error) {
+        console.error("[index] 공지 조회 실패", error);
+        emptyEl.textContent = "공지사항을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      if (!data || data.length === 0) {
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      listEl.innerHTML = data
+        .map(
+          (n) => `
+            <li class="notice-item">
+              <p>${escapeHtml(n.content)}</p>
+              <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
+            </li>`
+        )
+        .join("");
+    }
+
+    async function loadRankingPreview() {
+      const listEl = document.getElementById("ranking-preview");
+      const emptyEl = document.getElementById("ranking-empty");
+      const { data, error } = await supabase
+        .from("ranking")
+        .select("channel_id, channel_name, total_points")
+        .order("total_points", { ascending: false })
+        .limit(RANKING_PREVIEW_LIMIT);
+
+      if (error) {
+        console.error("[index] 랭킹 조회 실패", error);
+        emptyEl.textContent = "랭킹을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      if (!data || data.length === 0) {
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      const myChannelId = getChannelId();
+      listEl.innerHTML = data
+        .map((row, i) => {
+          const isMe = row.channel_id === myChannelId;
+          return `
+            <li class="${isMe ? "me" : ""}">
+              <span class="rank">${i + 1}</span>
+              <span class="name">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+              <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
+            </li>`;
+        })
+        .join("");
+    }
+
+    // 채널 주인으로 로그인된 경우에만 공지 작성 폼을 보여준다.
+    // (실제 쓰기 권한은 notices 함수가 세션 토큰으로 다시 검증하니, 여기선 UI 노출만 담당)
+    function setupNoticeForm() {
+      const formEl = document.getElementById("notice-form");
+      if (!isLoggedIn() || getChannelId() !== OWNER_CHANNEL_ID) {
+        formEl.hidden = true;
+        return;
+      }
+      formEl.hidden = false;
+
+      document.getElementById("notice-submit").addEventListener("click", async () => {
+        const input = document.getElementById("notice-input");
+        const statusEl = document.getElementById("notice-post-status");
+        const content = input.value.trim();
+        if (!content) return;
+
+        statusEl.textContent = "";
+        statusEl.className = "status-msg";
+        try {
+          const res = await authFetch(NOTICES_URL, {
+            method: "POST",
+            body: JSON.stringify({ content }),
+          });
+          if (!res.ok) throw new Error(String(res.status));
+          input.value = "";
+          statusEl.textContent = "등록했어요.";
+          statusEl.classList.add("ok");
+          await loadNotices();
+        } catch (err) {
+          statusEl.textContent = "등록에 실패했어요.";
+          statusEl.classList.add("error");
+        }
+      });
+    }
+
     (async () => {
       await handleOAuthCallbackIfPresent();
-      if (isLoggedIn()) {
-        document.getElementById("login-btn").hidden = true;
-        document.getElementById("welcome").hidden = false;
-        document.getElementById("welcome-name").textContent = getChannelName() || "(이름 없음)";
-      }
+      renderSidebarUser();
+      setupNoticeForm();
+      await Promise.all([loadBroadcastStatus(), loadNotices(), loadRankingPreview()]);
     })();
   </script>
 </body>

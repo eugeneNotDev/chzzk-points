@@ -18,3 +18,9 @@ verify_jwt = false
 
 [functions.me]
 verify_jwt = false
+
+[functions.broadcast-status]
+verify_jwt = false
+
+[functions.notices]
+verify_jwt = false

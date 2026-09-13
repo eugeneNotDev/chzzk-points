@@ -7,23 +7,33 @@
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-  <main>
-    <h1>포인트 랭킹</h1>
-    <nav class="site-nav">
-      <a href="index.html">홈</a>
-      <a href="mypage.html">마이페이지</a>
-      <a href="shop.html">소모처</a>
-    </nav>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><a href="index.html">chzzk-points</a></div>
+      <nav class="sidebar-nav">
+        <a href="index.html">홈</a>
+        <a href="mypage.html">마이페이지</a>
+        <a href="ranking.html" class="active">랭킹</a>
+        <a href="shop.html">소모처</a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
 
-    <div class="card">
-      <ol class="ranking-list" id="ranking-list"></ol>
-      <p id="empty-msg" class="empty-state" hidden>공개 설정한 유저가 아직 없어요. 마이페이지에서 공개로 바꾸면 여기 표시돼요.</p>
-    </div>
-  </main>
+    <main class="main-content">
+      <h1>포인트 랭킹</h1>
+
+      <div class="card">
+        <ol class="ranking-list" id="ranking-list"></ol>
+        <p id="empty-msg" class="empty-state" hidden>공개 설정한 유저가 아직 없어요. 마이페이지에서 공개로 바꾸면 여기 표시돼요.</p>
+      </div>
+    </main>
+  </div>
 
   <script src="assets/js/chzzk-auth.js"></script>
   <script type="module">
     import { supabase } from "./assets/js/supabase-client.js";
+
+    renderSidebarUser();
 
     const RANKING_LIMIT = 50;
 

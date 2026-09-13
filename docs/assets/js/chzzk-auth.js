@@ -15,6 +15,12 @@ const OAUTH_CALLBACK_URL = `${FUNCTIONS_BASE_URL}/oauth-callback`;
 const ME_URL = `${FUNCTIONS_BASE_URL}/me`;
 const SPEND_POINTS_URL = `${FUNCTIONS_BASE_URL}/spend-points`;
 const ATTENDANCE_CHECK_URL = `${FUNCTIONS_BASE_URL}/attendance-check`;
+const NOTICES_URL = `${FUNCTIONS_BASE_URL}/notices`;
+const BROADCAST_STATUS_URL = `${FUNCTIONS_BASE_URL}/broadcast-status`;
+// 공지사항 작성 등 "채널 주인만" 가능한 UI를 보여줄지 판단할 때 쓰는 값.
+// 시크릿이 아니라 공개된 channelId라서 프론트에 그대로 둬도 된다
+// (실제 쓰기 권한 체크는 서버(notices 함수)가 세션 토큰으로 다시 검증함 — 이건 UI 노출용).
+const OWNER_CHANNEL_ID = "d0bf0d3809a4a6b52a606b70df90b145";
 const TOKEN_STORAGE_KEY = "chzzk_points_token";
 const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
@@ -118,4 +124,31 @@ async function authFetch(url, options = {}) {
     logout();
   }
   return res;
+}
+
+// 사이드바 하단의 로그인/로그아웃 영역을 그린다.
+// index.html, mypage.html, ranking.html, shop.html 모두 <div id="sidebar-user"></div>를
+// 두고 이 함수를 한 번 호출하면 됨.
+function renderSidebarUser() {
+  const el = document.getElementById("sidebar-user");
+  if (!el) return;
+
+  if (isLoggedIn()) {
+    const name = getChannelName() || "(이름 없음)";
+    el.innerHTML = `
+      <p class="sidebar-user-name">${escapeHtmlForAuth(name)}님</p>
+      <button class="secondary" id="sidebar-logout-btn">로그아웃</button>
+    `;
+    document.getElementById("sidebar-logout-btn").addEventListener("click", () => {
+      logout();
+      location.href = "index.html";
+    });
+  } else {
+    el.innerHTML = `<button id="sidebar-login-btn">치지직으로 로그인</button>`;
+    document.getElementById("sidebar-login-btn").addEventListener("click", startLogin);
+  }
+}
+
+function escapeHtmlForAuth(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
