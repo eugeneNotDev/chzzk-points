@@ -1,0 +1,13 @@
+/* TODO: 공통 스타일. 지금은 최소한의 리셋만. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, "Noto Sans KR", sans-serif;
+  background: #14181c;
+  color: #edf0f2;
+}
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}

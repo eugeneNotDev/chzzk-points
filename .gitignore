@@ -1,0 +1,15 @@
+# 환경변수 / 시크릿
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase CLI 로컬 개발 산출물
+supabase/.branches
+supabase/.temp
+
+# 에디터
+.vscode/
+.idea/
