@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=4">
+<link rel="stylesheet" href="assets/css/style.css?v=5">
 </head>
 <body>
   <script>
@@ -255,16 +255,17 @@
       }
     }
 
-    // 랭킹 한 줄을 그린다. 비공개 유저는 이름이 "비공개"로 이미 가려져서 내려오는데(뷰에서 처리),
-    // 본인 행이면 로컬에 저장된 실제 채널명으로 다시 보여준다 (본인은 자기 이름을 당연히 알고 있으니까).
-    function renderRankingRow(row, i, myChannelId, myChannelName) {
+    // 랭킹 한 줄을 그린다. 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) —
+    // 본인 행도 예외 없이 그대로 보여준다. (전엔 본인 행만 로컬에 저장된 실제 채널명으로 덮어썼는데,
+    // 그러면 비공개로 설정해도 본인 눈에는 계속 실명이 보여서 설정이 잘 적용됐는지 헷갈린다는
+    // 피드백이 있었음 — 그래서 본인도 남들과 똑같이 마스킹된 값을 그대로 보게 함.)
+    function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
-      const displayName = isMe && myChannelName ? myChannelName : row.channel_name || "(이름 없음)";
-      const isPrivate = !isMe && row.is_public === false;
+      const isPrivate = row.is_public === false;
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(displayName)}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -292,8 +293,7 @@
       }
       emptyEl.hidden = true;
       const myChannelId = getChannelId();
-      const myChannelName = getChannelName();
-      listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId, myChannelName)).join("");
+      listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
     }
 
     // 관리자 계정으로 로그인된 경우에만 공지 작성 폼을 보여준다.

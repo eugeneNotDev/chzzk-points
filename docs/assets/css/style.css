@@ -143,6 +143,12 @@ a {
   font-weight: 600;
   border-left-color: var(--accent);
 }
+/* 위의 .sidebar-nav a { display: flex; } 가 일반 규칙이라 브라우저 기본 [hidden] 규칙보다
+   우선순위가 높아서, hidden 속성을 줘도 안 숨겨지는 문제가 있었음 — 그래서 명시적으로 덮어씀.
+   (관리자 링크(#admin-nav-link)를 JS로 hidden 처리해서 숨기는데 이게 없으면 계속 보였음) */
+.sidebar-nav a[hidden] {
+  display: none;
+}
 .sidebar-nav .icon,
 .sidebar-icon-btn .icon {
   flex-shrink: 0;

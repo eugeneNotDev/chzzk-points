@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=4">
+<link rel="stylesheet" href="assets/css/style.css?v=5">
 </head>
 <body>
   <script>
@@ -74,16 +74,16 @@
       return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
-    // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) — 본인 행이면
-    // 로컬에 저장된 실제 채널명으로 다시 보여준다.
-    function renderRankingRow(row, i, myChannelId, myChannelName) {
+    // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) — 본인 행도 예외 없이
+    // 그대로 보여준다 (본인 계정이 비공개 상태면 본인 눈에도 "비공개"로 보여야 설정이 잘
+    // 적용됐는지 헷갈리지 않음).
+    function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
-      const displayName = isMe && myChannelName ? myChannelName : row.channel_name || "(이름 없음)";
-      const isPrivate = !isMe && row.is_public === false;
+      const isPrivate = row.is_public === false;
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(displayName)}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -114,8 +114,7 @@
         listEl.innerHTML = "";
       } else {
         const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
-        const myChannelName = typeof getChannelName === "function" ? getChannelName() : null;
-        listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId, myChannelName)).join("");
+        listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
       }
     })();
   })();
