@@ -1,11 +1,34 @@
-/* 공통 스타일. 다크 배경 기준, 페이지마다 최소한의 컴포넌트만 재사용. */
+/* 공통 스타일. 치지직 느낌을 참고한 다크 + 그린 포인트 컬러 테마.
+   (실제 치지직 사이트에 자동으로 접속해서 정확한 색상값을 확인하진 못했고,
+   일반적으로 알려진 치지직의 다크 배경 + 네온 그린 포인트 컬러 느낌을 참고해서 만든 것.
+   나중에 정확한 색을 알려주시면 --accent 값만 바꾸면 전체에 반영됨.) */
+:root {
+  --bg: #0c0e11;
+  --sidebar-bg: #111418;
+  --surface: #15181c;
+  --surface-2: #1c2025;
+  --border: #23272d;
+  --text: #eef1f3;
+  --text-dim: #cfd6dc;
+  --muted: #8b939b;
+  --accent: #00e5a0;
+  --accent-strong: #3dffc4;
+  --accent-dim: rgba(0, 229, 160, 0.14);
+  --accent-text: #04120c;
+  --danger: #ff5a5a;
+  --danger-dim: rgba(255, 90, 90, 0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
   font-family: system-ui, "Noto Sans KR", sans-serif;
-  background: #14181c;
-  color: #edf0f2;
+  background: var(--bg);
+  color: var(--text);
 }
 
 h1 {
@@ -14,7 +37,7 @@ h1 {
 }
 
 a {
-  color: #7fd1ff;
+  color: var(--accent);
 }
 
 /* 레이아웃: 왼쪽 사이드바 + 메인 컨텐츠 */
@@ -27,8 +50,8 @@ a {
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: #1b2025;
-  border-right: 1px solid #2a2f35;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
@@ -52,7 +75,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #edf0f2;
+  color: var(--text);
   text-decoration: none;
   min-width: 0;
   overflow: hidden;
@@ -61,9 +84,9 @@ a {
   flex-shrink: 0;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  background: #2f81f7;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,11 +108,11 @@ a {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px solid #3a3f45;
-  border-radius: 8px;
-  color: #cfd6dc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
 }
-.sidebar-toggle-btn:hover { border-color: #7fd1ff; color: #7fd1ff; background: transparent; }
+.sidebar-toggle-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 .sidebar-toggle-btn svg {
   width: 16px;
   height: 16px;
@@ -105,15 +128,21 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #cfd6dc;
+  color: var(--text-dim);
   text-decoration: none;
   font-size: 0.95rem;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
+  border-left: 3px solid transparent;
 }
-.sidebar-nav a:hover { background: #22272d; color: #7fd1ff; }
-.sidebar-nav a.active { background: #22272d; color: #7fd1ff; font-weight: 600; }
+.sidebar-nav a:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-nav a.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+  border-left-color: var(--accent);
+}
 .sidebar-nav .icon,
 .sidebar-icon-btn .icon {
   flex-shrink: 0;
@@ -129,13 +158,13 @@ a {
 .sidebar-user {
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid #2a2f35;
+  border-top: 1px solid var(--border);
   overflow: hidden;
 }
 .sidebar-user-name {
   margin: 0 0 10px;
   font-size: 0.88rem;
-  color: #cfd6dc;
+  color: var(--text-dim);
   word-break: break-all;
   white-space: nowrap;
 }
@@ -160,7 +189,8 @@ a {
   body.sidebar-collapsed .sidebar-user-name {
     display: none;
   }
-  body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; }
+  body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; border-left: none; }
+  body.sidebar-collapsed .sidebar-nav a.active { border-radius: var(--radius-sm); }
   body.sidebar-collapsed .sidebar-toggle-btn svg { transform: rotate(180deg); }
 }
 
@@ -173,9 +203,16 @@ a {
   transition: opacity 0.15s ease;
 }
 /* 사이드바는 그대로 두고 본문만 fetch로 교체하는 라우터(assets/js/spa-router.js)가
-   페이지 전환 중일 때 붙이는 클래스 — 살짝 페이드 아웃/인 되면서 전환됨. */
+   페이지 전환 중일 때 붙이는 클래스 — View Transitions API를 지원 안 하는 브라우저에서
+   쓰는 대체 트랜지션(살짝 페이드). */
 .main-content.page-fade-out {
   opacity: 0;
+}
+
+/* 브라우저가 View Transitions API를 지원하면(크롬/엣지 등) 이 값으로 전환 속도를 맞춘다. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
 }
 
 @media (max-width: 720px) {
@@ -191,6 +228,7 @@ a {
     padding: 14px 16px;
   }
   .sidebar-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .sidebar-nav a { border-left: none; }
   .sidebar-user {
     margin-top: 0;
     margin-left: auto;
@@ -205,28 +243,48 @@ button {
   font: inherit;
   cursor: pointer;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 16px;
-  background: #2f81f7;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
 }
-button:hover { background: #4c93ff; }
+button:hover { background: var(--accent-strong); }
 button:disabled {
-  background: #33383e;
-  color: #74797f;
+  background: var(--surface-2);
+  color: var(--muted);
   cursor: not-allowed;
+  font-weight: 400;
 }
 button.secondary {
   background: transparent;
-  border: 1px solid #3a3f45;
-  color: #cfd6dc;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-weight: 400;
 }
-button.secondary:hover { border-color: #7fd1ff; color: #7fd1ff; }
+button.secondary:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+
+/* "전체 보기" 같은, 카드 헤더에 붙는 작은 필 모양 링크 버튼 */
+.pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pill-link:hover { border-color: var(--accent); color: var(--accent); }
+.pill-link svg { width: 14px; height: 14px; }
 
 .card {
-  background: #1b2025;
-  border: 1px solid #2a2f35;
-  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -239,15 +297,14 @@ button.secondary:hover { border-color: #7fd1ff; color: #7fd1ff; }
   margin-bottom: 12px;
 }
 .card-header h2 { margin: 0; font-size: 1.05rem; }
-.card-header a { font-size: 0.85rem; white-space: nowrap; }
 
-.muted { color: #8b939b; font-size: 0.88rem; }
+.muted { color: var(--muted); font-size: 0.88rem; }
 
 .balance {
   font-size: 2rem;
   font-weight: 700;
 }
-.balance .unit { font-size: 1rem; font-weight: 400; color: #8b939b; margin-left: 4px; }
+.balance .unit { font-size: 1rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
 
 /* 토글 스위치 (공개 설정용) */
 .toggle-row {
@@ -267,23 +324,24 @@ button.secondary:hover { border-color: #7fd1ff; color: #7fd1ff; }
 .switch .slider {
   position: absolute;
   inset: 0;
-  background: #3a3f45;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
   transition: background 0.15s;
 }
 .switch .slider::before {
   content: "";
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   left: 3px;
   top: 3px;
   background: #fff;
   border-radius: 50%;
   transition: transform 0.15s;
 }
-.switch input:checked + .slider { background: #2f81f7; }
-.switch input:checked + .slider::before { transform: translateX(20px); }
+.switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(20px); background: var(--accent-text); }
 
 /* 방송 상태 배지 */
 .status-badge {
@@ -301,19 +359,19 @@ button.secondary:hover { border-color: #7fd1ff; color: #7fd1ff; }
   border-radius: 50%;
   flex-shrink: 0;
 }
-.status-badge.live { background: rgba(255, 90, 90, 0.15); color: #ff8a8a; }
+.status-badge.live { background: var(--danger-dim); color: #ff8a8a; }
 .status-badge.live .dot {
-  background: #ff5a5a;
+  background: var(--danger);
   animation: status-pulse 1.6s infinite;
 }
-.status-badge.offline { background: rgba(139, 147, 155, 0.15); color: #8b939b; }
-.status-badge.offline .dot { background: #8b939b; }
+.status-badge.offline { background: rgba(139, 147, 155, 0.15); color: var(--muted); }
+.status-badge.offline .dot { background: var(--muted); }
 @keyframes status-pulse {
   0% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0.5); }
   70% { box-shadow: 0 0 0 6px rgba(255, 90, 90, 0); }
   100% { box-shadow: 0 0 0 0 rgba(255, 90, 90, 0); }
 }
-.live-title { margin: 10px 0 0; color: #cfd6dc; font-size: 0.92rem; }
+.live-title { margin: 10px 0 0; color: var(--text-dim); font-size: 0.92rem; }
 
 /* 공지사항 */
 ul.notice-list, ol.notice-list {
@@ -321,10 +379,10 @@ ul.notice-list, ol.notice-list {
   margin: 0;
   padding: 0;
 }
-.notice-item { padding: 12px 0; border-bottom: 1px solid #2a2f35; }
+.notice-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .notice-item:last-child { border-bottom: none; }
 .notice-item p { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; }
-.notice-item time { color: #8b939b; font-size: 0.8rem; }
+.notice-item time { color: var(--muted); font-size: 0.8rem; }
 
 .notice-form { margin-bottom: 16px; }
 .notice-form textarea {
@@ -332,13 +390,14 @@ ul.notice-list, ol.notice-list {
   min-height: 70px;
   resize: vertical;
   font: inherit;
-  background: #14181c;
-  border: 1px solid #2a2f35;
-  border-radius: 8px;
-  color: #edf0f2;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
   padding: 10px 12px;
   margin-bottom: 10px;
 }
+.notice-form textarea:focus { outline: none; border-color: var(--accent); }
 
 /* 랭킹 리스트 */
 ol.ranking-list {
@@ -351,21 +410,23 @@ ol.ranking-list li {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-bottom: 1px solid #2a2f35;
+  border-bottom: 1px solid var(--border);
 }
 ol.ranking-list li:last-child { border-bottom: none; }
 ol.ranking-list .rank {
   width: 28px;
   text-align: center;
-  color: #8b939b;
+  color: var(--muted);
   font-weight: 600;
 }
 ol.ranking-list .name { flex: 1; }
+ol.ranking-list .name.is-private { color: var(--muted); font-style: italic; }
 ol.ranking-list .points { font-weight: 600; }
 ol.ranking-list li.me {
-  background: rgba(47, 129, 247, 0.12);
-  border-radius: 8px;
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm);
 }
+ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 
 /* 소모처 목록 */
 .shop-grid {
@@ -374,15 +435,47 @@ ol.ranking-list li.me {
   gap: 14px;
 }
 .shop-item h3 { margin: 0 0 6px; font-size: 1.05rem; }
-.shop-item .cost { color: #ffd479; font-weight: 600; margin-bottom: 10px; }
-.shop-item p.desc { color: #a7aeb5; font-size: 0.88rem; min-height: 2.4em; }
+.shop-item .cost { color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+.shop-item p.desc { color: var(--text-dim); font-size: 0.88rem; min-height: 2.4em; }
 
 .status-msg { margin-top: 10px; font-size: 0.88rem; }
 .status-msg.error { color: #ff8a8a; }
-.status-msg.ok { color: #7fe0a8; }
+.status-msg.ok { color: var(--accent); }
 
 .empty-state {
-  color: #8b939b;
+  color: var(--muted);
   padding: 24px 0;
   text-align: center;
 }
+
+/* 스켈레톤(로딩 중 표시). 데이터가 오기 전, 빈 화면 대신 카드/리스트 모양의
+   회색 뼈대를 먼저 보여주고 자리를 채워 넣는 식으로 로딩을 표현한다. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+.skeleton-line { height: 14px; }
+.skeleton-pill { height: 28px; width: 110px; border-radius: 999px; }
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-row:last-child { border-bottom: none; }
+.skeleton-row .skeleton-avatar { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-row .skeleton-line.grow { flex: 1; }
