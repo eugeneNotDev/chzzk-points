@@ -1,11 +1,16 @@
 // 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그 + 칭호.
 // mypage.html, shop.html이 이 함수를 쓴다 (Authorization: Bearer <세션토큰> 필수).
 //
-// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, selectedTitleId, refreshedToken? }
+// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, selectedTitleId,
+//          purchasedTitleIds, refreshedToken? }
 //   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트 — 칭호 잠금해제 판정 기준.
 //   points_ledger에 행이 추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
 //   칭호 목록 자체(이름/필요 포인트)는 이 함수가 아니라 마이페이지가 titles 테이블에서
-//   직접 anon으로 조회한다 — shop_items와 같은 패턴.)
+//   직접 anon으로 조회한다 — shop_items와 같은 패턴.
+//   purchasedTitleIds: 포인트 상점에서 "구매"로 잠금해제한 칭호 id 목록(0020_purchasable_titles.sql).
+//   maxBalanceReached 달성 여부와는 별개 경로 — 마이페이지가 칭호 잠금해제 판정할 때 이 두
+//   조건을 OR로 합친다. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서
+//   여기서 서비스 롤로 조회해 내려준다.)
 // GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
 //   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
@@ -70,9 +75,10 @@ async function listMyPointsLog(channelId: string, page: number) {
 }
 
 // 칭호 장착/해제. titleId가 null이면 그냥 해제. 문자열이면 titles 테이블에 실존하는지 +
-// 본인의 max_balance_reached가 그 칭호의 min_points 이상인지(=잠금해제 됐는지) 서버에서
-// 다시 검증한 뒤에만 반영한다 — 프론트 검증만 믿고 넘어가면 개발자도구로 잠긴 칭호를
-// 강제로 장착하는 게 가능해지므로.
+// 본인이 그 칭호를 잠금해제했는지(= max_balance_reached가 min_points 이상이거나,
+// user_purchased_titles에 구매 기록이 있거나 — 0020_purchasable_titles.sql로 추가된
+// 두 번째 경로) 서버에서 다시 검증한 뒤에만 반영한다 — 프론트 검증만 믿고 넘어가면
+// 개발자도구로 잠긴 칭호를 강제로 장착하는 게 가능해지므로.
 async function setSelectedTitle(channelId: string, titleId: string | null) {
   const admin = getAdminClient();
 
@@ -96,7 +102,20 @@ async function setSelectedTitle(channelId: string, titleId: string | null) {
     .eq("channel_id", channelId)
     .maybeSingle();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
-  if (!user || user.max_balance_reached < title.min_points) {
+
+  const achievedByBalance = Boolean(user) && user!.max_balance_reached >= title.min_points;
+  let achievedByPurchase = false;
+  if (!achievedByBalance) {
+    const { data: purchased, error: purchasedError } = await admin
+      .from("user_purchased_titles")
+      .select("title_id")
+      .eq("channel_id", channelId)
+      .eq("title_id", titleId)
+      .maybeSingle();
+    if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
+    achievedByPurchase = Boolean(purchased);
+  }
+  if (!achievedByBalance && !achievedByPurchase) {
     return { ok: false as const, error: "title_locked" as const };
   }
 
@@ -123,6 +142,12 @@ async function getProfile(channelId: string) {
 
   const balance = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
 
+  const { data: purchasedRows, error: purchasedError } = await admin
+    .from("user_purchased_titles")
+    .select("title_id")
+    .eq("channel_id", channelId);
+  if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
+
   return {
     channelId: user.channel_id,
     channelName: user.channel_name,
@@ -131,6 +156,7 @@ async function getProfile(channelId: string) {
     balance,
     maxBalanceReached: user.max_balance_reached,
     selectedTitleId: user.selected_title_id,
+    purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
   };
 }
 

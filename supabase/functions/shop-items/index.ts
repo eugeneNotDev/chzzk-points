@@ -7,9 +7,14 @@
 //                                           일반 유저는 shop_items 테이블을 anon 키로 직접 읽지만
 //                                           (is_active=true만 RLS로 보임), 관리자는 비활성 상품도
 //                                           관리해야 하니 이 함수로 전체를 내려준다.
-// POST   { id, name, cost, description?, requiresLive?, cooldownSeconds?, sortOrder? }
+// POST   { id, name, cost, description?, requiresLive?, cooldownSeconds?, sortOrder?,
+//          grantsTitleId?, showOnOverlay? }
 //                                        → 새 상품 추가 (id는 소문자-하이픈 슬러그, 이후 수정 불가)
-// PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?, sortOrder?, isActive? }
+//   grantsTitleId: titles.id를 가리키면 이 상품은 "소모"가 아니라 "칭호 구매" 상품이 된다 —
+//   구매하면 그 칭호가 영구 잠금해제됨(0020_purchasable_titles.sql). null/생략이면 일반 상품.
+//   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜬다(기본 true).
+// PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?, sortOrder?,
+//          isActive?, grantsTitleId?, showOnOverlay? }
 //                                        → 기존 상품 수정 (보낸 필드만 갱신)
 // DELETE ?id=<item id>                   → 상품 삭제 (과거 구매 로그는 points_ledger.reason /
 //                                           spend_events.item_name에 문구가 그대로 스냅샷 되어
@@ -66,7 +71,7 @@ Deno.serve(async (req: Request) => {
       // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 이제 안 쓴다.
       const { data, error } = await admin
         .from("shop_items")
-        .select("id, name, cost, description, requires_live, is_active, cooldown_seconds, created_at")
+        .select("id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, created_at")
         .order("cost", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
@@ -82,6 +87,8 @@ Deno.serve(async (req: Request) => {
       const requiresLive = body.requiresLive === true;
       const cooldownSeconds = Number.isFinite(Number(body.cooldownSeconds)) ? Math.max(0, Math.trunc(Number(body.cooldownSeconds))) : 0;
       const sortOrder = Number.isFinite(Number(body.sortOrder)) ? Math.trunc(Number(body.sortOrder)) : 0;
+      const grantsTitleId = typeof body.grantsTitleId === "string" && body.grantsTitleId.trim().length > 0 ? body.grantsTitleId.trim() : null;
+      const showOnOverlay = body.showOnOverlay === undefined ? true : body.showOnOverlay === true;
 
       if (!ID_PATTERN.test(itemId)) {
         return jsonResponse({ error: "invalid_id" }, 400);
@@ -99,11 +106,14 @@ Deno.serve(async (req: Request) => {
           requires_live: requiresLive,
           cooldown_seconds: cooldownSeconds,
           sort_order: sortOrder,
+          grants_title_id: grantsTitleId,
+          show_on_overlay: showOnOverlay,
         })
         .select()
         .single();
       if (error) {
         if (error.code === "23505") return jsonResponse({ error: "duplicate_id" }, 409);
+        if (error.code === "23503") return jsonResponse({ error: "invalid_title" }, 400);
         throw new Error(`shop_items insert 실패: ${error.message}`);
       }
       return jsonResponse(data, 200);
@@ -143,11 +153,20 @@ Deno.serve(async (req: Request) => {
       if (body.isActive !== undefined) {
         update.is_active = body.isActive === true;
       }
+      if (body.grantsTitleId !== undefined) {
+        update.grants_title_id = typeof body.grantsTitleId === "string" && body.grantsTitleId.trim().length > 0 ? body.grantsTitleId.trim() : null;
+      }
+      if (body.showOnOverlay !== undefined) {
+        update.show_on_overlay = body.showOnOverlay === true;
+      }
 
       if (Object.keys(update).length === 0) return jsonResponse({ error: "empty_update" }, 400);
 
       const { data, error } = await admin.from("shop_items").update(update).eq("id", id).select().single();
-      if (error) throw new Error(`shop_items update 실패: ${error.message}`);
+      if (error) {
+        if (error.code === "23503") return jsonResponse({ error: "invalid_title" }, 400);
+        throw new Error(`shop_items update 실패: ${error.message}`);
+      }
       return jsonResponse(data, 200);
     }
 

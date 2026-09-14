@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=30">
+<link rel="stylesheet" href="assets/css/style.css?v=31">
 </head>
 <body>
   <script>
@@ -78,6 +78,15 @@
           <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
         </div>
         <div class="shop-grid" id="shop-list"></div>
+
+        <!-- 칭호를 부여하는 상품(grants_title_id가 있는 상품)만 따로 모아 보여주는 섹션.
+             상품이 하나도 없으면 통째로 숨긴다(관리자가 아직 칭호 상품을 안 만들었으면 빈 섹션이
+             안 보이게). -->
+        <div id="title-shop-section" hidden>
+          <h2 class="shop-section-heading">칭호 상점</h2>
+          <div class="shop-grid" id="title-shop-list"></div>
+        </div>
+
         <p id="global-status" class="status-msg"></p>
       </div>
 
@@ -110,11 +119,25 @@
               <input type="number" id="shop-item-cooldown-input" class="admin-amount-input" min="0">
             </div>
           </div>
+          <!-- 칭호를 고르면 이 상품은 "소모성"이 아니라 "칭호 구매" 상품이 된다(구매 시
+               user_purchased_titles에 영구 기록됨 — 소모/쿨타임 개념이 없어짐). -->
+          <div class="shop-item-field">
+            <label class="field-label" for="shop-item-title-select">칭호 부여 (선택하면 "칭호 구매" 상품이 돼요)</label>
+            <select id="shop-item-title-select" class="notice-title-input">
+              <option value="">없음 (일반 상품)</option>
+            </select>
+          </div>
           <div class="admin-bulk-row">
             <label class="admin-checkbox-label">
               <input type="checkbox" id="shop-item-live-input">
               방송 중에만 사용 가능
             </label>
+            <label class="admin-checkbox-label">
+              <input type="checkbox" id="shop-item-overlay-input" checked>
+              오버레이 알림 표시
+            </label>
+          </div>
+          <div class="admin-bulk-row">
             <label class="admin-checkbox-label" id="shop-item-active-row" hidden>
               <input type="checkbox" id="shop-item-active-input">
               활성화(상점에 노출)
@@ -144,60 +167,85 @@
     let shopItems = [];
     let currentBalance = 0;
     let isLive = false;
+    // 구매(칭호 상점)로 잠금해제한 칭호 id 집합. /me 응답의 purchasedTitleIds로 채워지고,
+    // 구매 성공 시 그 자리에서 바로 추가해서 새로고침 없이 "보유중"으로 바뀌게 한다.
+    let purchasedTitleIds = new Set();
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
-    // 관리자 화면에서는 비활성화된 상품도 같이 받아와서 카드에 "비활성화" 표시 + 수정/삭제
-    // 버튼을 얹는다. 일반 유저는 기존과 동일하게 활성 상품만 보임(사용 버튼 로직도 그대로).
-    function renderShop() {
-      const listEl = document.getElementById("shop-list");
-      const now = Date.now();
-      const admin = isAdmin();
-      listEl.innerHTML = shopItems.map((item) => {
-        const liveBlocked = item.requires_live && !isLive;
-        const affordable = currentBalance >= item.cost;
-        const until = cooldownUntil.get(item.id) ?? 0;
-        const remaining = Math.ceil((until - now) / 1000);
-        const onCooldown = remaining > 0;
-        const usable = !liveBlocked && affordable && !onCooldown;
-        const inactive = admin && item.is_active === false;
-        let label = "사용";
-        if (onCooldown) label = `${remaining}초 후 사용 가능`;
-        else if (liveBlocked) label = "방송 중에만 사용 가능";
-        else if (!affordable) label = "잔액 부족";
-        // 비활성화 배지는 별도 줄로 왼쪽에, 수정/삭제 버튼은 그 아래 줄에서 가운데 정렬 —
-        // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
-        const adminBar = admin ? `
-          <div class="shop-item-admin-bar">
-            ${inactive ? '<span class="shop-item-inactive-badge">비활성화</span>' : ""}
-            <div class="shop-item-admin-buttons">
-              <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
-              <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
-            </div>
-          </div>` : "";
-        return `
-          <div class="card shop-item${inactive ? " inactive" : ""}">
-            <h3>${escapeHtml(item.name)}</h3>
-            <p class="desc">${escapeHtml(item.description || "")}</p>
-            <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
-            <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
-            ${adminBar}
-          </div>`;
-      }).join("");
+    // 상품 카드 하나의 HTML. 일반 상품/칭호 구매 상품을 같은 함수로 그린다 — 칭호 상품은
+    // grants_title_id가 있고, 이미 산 칭호면(purchasedTitleIds) "보유중"으로 표시하고
+    // 버튼을 막는다(소모성 상품과 달리 쿨타임이 아니라 "이미 있음" 상태라 영구적으로 막힘).
+    function renderItemCard(item, admin, now) {
+      const isTitleItem = Boolean(item.grants_title_id);
+      const owned = isTitleItem && purchasedTitleIds.has(item.grants_title_id);
+      const liveBlocked = item.requires_live && !isLive;
+      const affordable = currentBalance >= item.cost;
+      const until = cooldownUntil.get(item.id) ?? 0;
+      const remaining = Math.ceil((until - now) / 1000);
+      const onCooldown = remaining > 0;
+      const usable = !owned && !liveBlocked && affordable && !onCooldown;
+      const inactive = admin && item.is_active === false;
+      let label = isTitleItem ? "구매" : "사용";
+      if (owned) label = "보유중";
+      else if (onCooldown) label = `${remaining}초 후 사용 가능`;
+      else if (liveBlocked) label = "방송 중에만 사용 가능";
+      else if (!affordable) label = "잔액 부족";
+      // 비활성화 배지는 별도 줄로 왼쪽에, 수정/삭제 버튼은 그 아래 줄에서 가운데 정렬 —
+      // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
+      const adminBar = admin ? `
+        <div class="shop-item-admin-bar">
+          ${inactive ? '<span class="shop-item-inactive-badge">비활성화</span>' : ""}
+          <div class="shop-item-admin-buttons">
+            <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
+            <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
+          </div>
+        </div>` : "";
+      return `
+        <div class="card shop-item${inactive ? " inactive" : ""}${owned ? " owned" : ""}">
+          <h3>${escapeHtml(item.name)}</h3>
+          <p class="desc">${escapeHtml(item.description || "")}</p>
+          <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
+          <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
+          ${adminBar}
+        </div>`;
+    }
 
-      listEl.querySelectorAll(".shop-item-use-btn").forEach((btn) => {
+    function wireCardButtons(container, admin) {
+      container.querySelectorAll(".shop-item-use-btn").forEach((btn) => {
         btn.addEventListener("click", () => useItem(btn.dataset.itemId, btn));
       });
       if (admin) {
-        listEl.querySelectorAll(".shop-item-edit-btn").forEach((btn) => {
+        container.querySelectorAll(".shop-item-edit-btn").forEach((btn) => {
           btn.addEventListener("click", () => openShopItemModal("edit", btn.dataset.itemId));
         });
-        listEl.querySelectorAll(".shop-item-delete-btn").forEach((btn) => {
+        container.querySelectorAll(".shop-item-delete-btn").forEach((btn) => {
           btn.addEventListener("click", () => deleteShopItem(btn.dataset.itemId));
         });
       }
+    }
+
+    // 일반 상품(shop-list)과 칭호 구매 상품(title-shop-list)을 grants_title_id 유무로 갈라서
+    // 각각 다른 그리드에 그린다. 관리자 화면에서는 비활성화된 상품도 같이 받아와서 카드에
+    // "비활성화" 표시 + 수정/삭제 버튼을 얹는다.
+    function renderShop() {
+      const listEl = document.getElementById("shop-list");
+      const titleListEl = document.getElementById("title-shop-list");
+      const titleSectionEl = document.getElementById("title-shop-section");
+      const now = Date.now();
+      const admin = isAdmin();
+
+      const regularItems = shopItems.filter((item) => !item.grants_title_id);
+      const titleItems = shopItems.filter((item) => item.grants_title_id);
+
+      listEl.innerHTML = regularItems.map((item) => renderItemCard(item, admin, now)).join("");
+      titleListEl.innerHTML = titleItems.map((item) => renderItemCard(item, admin, now)).join("");
+      titleSectionEl.hidden = titleItems.length === 0;
+
+      wireCardButtons(listEl, admin);
+      wireCardButtons(titleListEl, admin);
     }
 
     async function loadLiveStatus() {
@@ -228,9 +276,10 @@
       }
       // 정렬은 가격 오름차순 — 예전엔 sort_order를 따로 입력받았는데, "가격 낮은 순 정렬이면
       // 굳이 따로 순서를 정할 필요 없다"는 피드백으로 가격 기준 자동 정렬로 바꿨다.
+      // grants_title_id도 같이 받아와야 일반 유저 화면에서도 칭호 상점 섹션을 나눠 그릴 수 있다.
       const { data, error } = await supabase
         .from("shop_items")
-        .select("id, name, cost, description, requires_live, cooldown_seconds")
+        .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id")
         .order("cost", { ascending: true })
         .order("id", { ascending: true });
       if (error) {
@@ -239,6 +288,22 @@
         return;
       }
       shopItems = data ?? [];
+    }
+
+    // 관리자 수정 모달의 "칭호 부여" 드롭다운 선택지. titles 테이블은 마이페이지와 같은 패턴으로
+    // anon 키로 직접 읽는다(공개 정책이 이미 열려있음). 한 번만 불러오면 되니 캐싱.
+    let titlesList = [];
+    async function ensureTitlesLoaded() {
+      if (titlesList.length > 0) return;
+      const { data, error } = await supabase.from("titles").select("id, name").order("sort_order", { ascending: true });
+      if (error) {
+        console.error("[shop] 칭호 목록 조회 실패", error);
+        return;
+      }
+      titlesList = data ?? [];
+      const select = document.getElementById("shop-item-title-select");
+      select.innerHTML = '<option value="">없음 (일반 상품)</option>' +
+        titlesList.map((t) => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("");
     }
 
     // 상품 추가/수정 모달 상태. modalMode: "add" | "edit"
@@ -254,7 +319,9 @@
       const descInput = document.getElementById("shop-item-desc-input");
       const costInput = document.getElementById("shop-item-cost-input");
       const cooldownInput = document.getElementById("shop-item-cooldown-input");
+      const titleSelect = document.getElementById("shop-item-title-select");
       const liveInput = document.getElementById("shop-item-live-input");
+      const overlayInput = document.getElementById("shop-item-overlay-input");
       const activeRow = document.getElementById("shop-item-active-row");
       const activeInput = document.getElementById("shop-item-active-input");
       const statusEl = document.getElementById("shop-item-modal-status");
@@ -271,7 +338,9 @@
         descInput.value = item?.description ?? "";
         costInput.value = item?.cost ?? "";
         cooldownInput.value = item?.cooldown_seconds ?? 0;
+        titleSelect.value = item?.grants_title_id ?? "";
         liveInput.checked = Boolean(item?.requires_live);
+        overlayInput.checked = item?.show_on_overlay !== false;
         activeRow.hidden = false;
         activeInput.checked = item?.is_active !== false;
         document.getElementById("shop-item-modal-submit-btn").textContent = "저장";
@@ -284,7 +353,9 @@
         descInput.value = "";
         costInput.value = "";
         cooldownInput.value = 0;
+        titleSelect.value = "";
         liveInput.checked = false;
+        overlayInput.checked = true;
         activeRow.hidden = true;
         document.getElementById("shop-item-modal-submit-btn").textContent = "추가";
       }
@@ -306,6 +377,7 @@
     }
 
     function setupShopItemModal() {
+      ensureTitlesLoaded();
       document.getElementById("shop-item-add-btn").addEventListener("click", () => openShopItemModal("add"));
       document.getElementById("shop-item-modal-cancel-btn").addEventListener("click", () => {
         document.getElementById("shop-item-modal").close();
@@ -335,6 +407,8 @@
           cost,
           cooldownSeconds: Number(document.getElementById("shop-item-cooldown-input").value) || 0,
           requiresLive: document.getElementById("shop-item-live-input").checked,
+          grantsTitleId: document.getElementById("shop-item-title-select").value || null,
+          showOnOverlay: document.getElementById("shop-item-overlay-input").checked,
         };
 
         submitBtn.disabled = true;
@@ -423,6 +497,8 @@
               cooldownUntil.set(itemId, Date.now() + wait * 1000);
               ensureCooldownTicker();
             }
+          } else if (data.error === "already_owned") {
+            statusEl.textContent = "이미 보유한 칭호예요.";
           } else if (data.error !== "banned") {
             statusEl.textContent = "사용에 실패했어요. 다시 시도해주세요.";
           }
@@ -432,7 +508,12 @@
         }
         currentBalance = data.balance ?? currentBalance;
         document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
-        statusEl.textContent = `${data.item?.name ?? "아이템"} 사용했어요! (-${(data.item?.cost ?? 0).toLocaleString("ko-KR")}P)`;
+        if (data.titleGranted) {
+          purchasedTitleIds.add(data.titleGranted.id);
+          statusEl.textContent = `"${data.titleGranted.name}" 칭호를 획득했어요! 마이페이지에서 장착할 수 있어요.`;
+        } else {
+          statusEl.textContent = `${data.item?.name ?? "아이템"} 사용했어요! (-${(data.item?.cost ?? 0).toLocaleString("ko-KR")}P)`;
+        }
         statusEl.classList.add("ok");
         if (data.item?.cooldownSeconds > 0) {
           cooldownUntil.set(itemId, Date.now() + data.item.cooldownSeconds * 1000);
@@ -467,6 +548,7 @@
       }
       const profile = await res.json();
       currentBalance = profile.balance;
+      purchasedTitleIds = new Set(profile.purchasedTitleIds ?? []);
       document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
       loadingEl.hidden = true;
       document.getElementById("logged-in").hidden = false;

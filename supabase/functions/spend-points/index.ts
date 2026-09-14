@@ -2,15 +2,23 @@
 // (Authorization: Bearer <세션토큰>).
 //
 // POST { itemId: string }
-//   성공: { balance, item: { id, name, cost } }
+//   성공: { balance, item: { id, name, cost }, titleGranted?: { id, name } }
 //   실패: 401 { error: "unauthorized" } (미로그인)
 //         403 { error: "banned" } (밴된 계정)
 //         400 { error: "invalid_request" | "item_not_found" | "not_live" | "insufficient_balance"
-//               | "cooldown" }  (cooldown이면 retryAfterSeconds도 같이 내려줌)
+//               | "cooldown" | "already_owned" }  (cooldown이면 retryAfterSeconds도 같이 내려줌.
+//               already_owned는 grants_title_id가 있는 상품인데 이미 그 칭호를 구매한 경우)
 //
 // 상품 목록(shop_items)은 코드가 아니라 DB 테이블이라, 상품 추가/가격 변경/방송중 전용 토글/
 // 쿨타임은 전부 Supabase 테이블 편집기에서 바로 할 수 있다 (배포 불필요) — 0010_shop_items.sql,
 // 0013_shop_cooldown.sql 참고.
+//
+// 칭호 구매(0020_purchasable_titles.sql): shop_items.grants_title_id가 채워진 상품이면,
+// 정상 결제 후 user_purchased_titles에 기록해서 그 칭호를 영구 잠금해제한다(마이페이지
+// 칭호 그리드가 이 테이블도 같이 봄 — me/index.ts 참고). 같은 칭호를 이미 샀으면 다시
+// 못 사게 미리 막는다. shop_items.show_on_overlay가 false인 상품은 spend_events에 기록을
+// 안 남겨서 오버레이(overlay.html)에 안 뜬다 — 칭호 구매처럼 방송 화면에 안 떠도 되는
+// 상품에 관리자가 체크를 꺼두는 용도.
 //
 // 동시성 참고:
 //   - 다른 유저끼리는 서로 영향이 없다. 잔액도 쿨타임도 전부 channel_id로 스코프된 조회/기록이라
@@ -92,7 +100,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: item, error: itemError } = await admin
       .from("shop_items")
-      .select("id, name, cost, requires_live, is_active, cooldown_seconds")
+      .select("id, name, cost, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay")
       .eq("id", itemId)
       .maybeSingle();
     if (itemError) throw new Error(`shop_items 조회 실패: ${itemError.message}`);
@@ -110,6 +118,28 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 칭호 부여 상품이면 이미 그 칭호를 산 적 있는지 미리 확인 — 중복 구매(포인트만 날리고
+    // 아무 효과 없는 구매)를 막는다.
+    let titleName: string | null = null;
+    if (item.grants_title_id) {
+      const { data: title, error: titleError } = await admin
+        .from("titles")
+        .select("name")
+        .eq("id", item.grants_title_id)
+        .maybeSingle();
+      if (titleError) throw new Error(`titles 조회 실패: ${titleError.message}`);
+      titleName = title?.name ?? item.grants_title_id;
+
+      const { data: existing, error: existingError } = await admin
+        .from("user_purchased_titles")
+        .select("title_id")
+        .eq("channel_id", session.channelId)
+        .eq("title_id", item.grants_title_id)
+        .maybeSingle();
+      if (existingError) throw new Error(`user_purchased_titles 조회 실패: ${existingError.message}`);
+      if (existing) return jsonResponse({ error: "already_owned" }, 400);
+    }
+
     const balance = await getBalance(admin, session.channelId);
     if (balance < item.cost) return jsonResponse({ error: "insufficient_balance" }, 400);
 
@@ -123,24 +153,40 @@ Deno.serve(async (req: Request) => {
     });
     if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
 
+    // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남긴다. (channel_id, title_id) 기본키라
+    // 동시에 두 요청이 들어와도(위에서 미리 막았지만 이론상 레이스는 남아있음) 두 번째는
+    // unique violation(23505)으로 막힌다 — 그건 "이미 부여됨"과 같은 결과라 에러로 안 보고 무시.
+    if (item.grants_title_id) {
+      const { error: titleGrantError } = await admin
+        .from("user_purchased_titles")
+        .insert({ channel_id: session.channelId, title_id: item.grants_title_id });
+      if (titleGrantError && titleGrantError.code !== "23505") {
+        throw new Error(`user_purchased_titles insert 실패: ${titleGrantError.message}`);
+      }
+    }
+
     // 오버레이 표시용 이름 스냅샷 — 유저 이름은 세션 토큰의 channelName, 아이템 이름은 위에서
     // 이미 조회해둔 item.name을 그대로 쓴다(둘 다 추가 조회 불필요). 아이템 이름도 스냅샷으로
     // 남겨야 나중에 shop_items.name이 바뀌어도 과거 오버레이 로그가 안 틀어짐 — item_id(슬러그)
     // 를 그대로 보여주면 "OOO님이 temp1 사용!"처럼 사람이 못 알아보는 문제가 있었음
-    // (0018_bugfixes.sql 참고).
-    const { error: eventError } = await admin.from("spend_events").insert({
-      channel_id: session.channelId,
-      channel_name: session.channelName,
-      item_id: item.id,
-      item_name: item.name,
-    });
-    if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
+    // (0018_bugfixes.sql 참고). show_on_overlay가 false인 상품(칭호 구매 등)은 이 기록 자체를
+    // 안 남겨서 오버레이(overlay.html)에 안 뜨게 한다.
+    if (item.show_on_overlay) {
+      const { error: eventError } = await admin.from("spend_events").insert({
+        channel_id: session.channelId,
+        channel_name: session.channelName,
+        item_id: item.id,
+        item_name: item.name,
+      });
+      if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
+    }
 
     const newBalance = await getBalance(admin, session.channelId);
     return jsonResponse(
       {
         balance: newBalance,
         item: { id: item.id, name: item.name, cost: item.cost, cooldownSeconds: item.cooldown_seconds },
+        ...(item.grants_title_id ? { titleGranted: { id: item.grants_title_id, name: titleName } } : {}),
       },
       200,
     );

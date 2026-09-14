@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=30">
+<link rel="stylesheet" href="assets/css/style.css?v=31">
 </head>
 <body>
   <script>
@@ -260,15 +260,27 @@
       el.textContent = equipped ? equipped.name : "미장착";
     }
 
+    // 잠금해제 경로가 두 가지다 — (1) 포인트 달성(maxBalanceReached, 기존 방식) (2) 포인트
+    // 상점에서 구매(currentProfile.purchasedTitleIds, 0020_purchasable_titles.sql로 추가).
+    // 둘 중 하나만 만족해도 잠금해제된 걸로 본다. 설명 문구는 실제로 어느 경로로 풀렸는지에
+    // 맞춰서 다르게 보여준다 — 구매로 얻은 칭호인데 "N포인트 달성 완료"라고 뜨면 헷갈리니까.
     function renderTitlesGrid() {
       const gridEl = document.getElementById("titles-grid");
       if (!gridEl || !currentProfile) return;
+      const purchasedTitleIds = new Set(currentProfile.purchasedTitleIds ?? []);
       gridEl.innerHTML = cachedTitles.map((t) => {
-        const unlocked = currentProfile.maxBalanceReached >= t.min_points;
+        const achievedByBalance = currentProfile.maxBalanceReached >= t.min_points;
+        const achievedByPurchase = purchasedTitleIds.has(t.id);
+        const unlocked = achievedByBalance || achievedByPurchase;
         const selected = currentProfile.selectedTitleId === t.id;
-        const desc = unlocked
-          ? `${t.min_points.toLocaleString("ko-KR")}P 달성 완료`
-          : `${t.min_points.toLocaleString("ko-KR")}P 도달 시 잠금 해제`;
+        let desc;
+        if (achievedByPurchase && !achievedByBalance) {
+          desc = "포인트 상점에서 구매 완료";
+        } else if (unlocked) {
+          desc = `${t.min_points.toLocaleString("ko-KR")}P 달성 완료`;
+        } else {
+          desc = `${t.min_points.toLocaleString("ko-KR")}P 도달 시 잠금 해제`;
+        }
         const label = selected ? "장착 해제" : unlocked ? "장착하기" : "잠김";
         return `
           <div class="card title-card${selected ? " selected" : ""}${unlocked ? "" : " locked"}">
