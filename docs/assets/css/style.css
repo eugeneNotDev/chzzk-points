@@ -515,7 +515,7 @@ ol.ranking-list .rank {
   font-weight: 600;
 }
 ol.ranking-list .name { flex: 1; }
-ol.ranking-list .name.is-private { color: var(--muted); font-style: italic; }
+ol.ranking-list .name.is-private { color: var(--muted); }
 ol.ranking-list .points { font-weight: 600; }
 ol.ranking-list li.me {
   background: var(--accent-dim);
@@ -523,7 +523,7 @@ ol.ranking-list li.me {
 }
 ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 
-/* 소모처 목록 */
+/* 포인트 상점 목록 */
 .shop-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
