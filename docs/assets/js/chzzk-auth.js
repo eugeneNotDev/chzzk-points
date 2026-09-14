@@ -115,11 +115,7 @@ function isAdmin() {
 }
 
 // 로그아웃 — 로컬 토큰만 지운다 (서버에 별도 revoke는 두지 않음, MVP 범위 밖)
-// notifSeenIdKey는 이 파일 아래쪽(포인트 알림 폴링 섹션)에서 정의되지만, function/const 선언은
-// 스크립트 로드 시 먼저 다 세팅되고 logout()은 클릭 시점에야 실제로 실행되니 순서 문제 없음.
 function logout() {
-  const channelId = getChannelId();
-  if (channelId) localStorage.removeItem(notifSeenIdKey(channelId));
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_ID_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_NAME_STORAGE_KEY);
@@ -230,101 +226,3 @@ function initAdminNav() {
   if (!el) return;
   el.hidden = !isAdmin();
 }
-
-// ===== 관리자 포인트 지급/차감 알림(토스트) =====
-// 관리자가 관리자 페이지에서 포인트를 지급/차감하면, 유저가 사이트 어느 페이지에 있든
-// 짧은 주기로 조용히 폴링해서 토스트 알림을 띄운다.
-//
-// 실시간 웹소켓(Supabase Realtime) 대신 폴링을 쓰는 이유: 이 서비스는 Supabase Auth가 아니라
-// 직접 만든 세션 토큰(JWT)을 쓰고 있어서, Realtime 구독을 "본인 데이터만" 보이게 안전하게
-// 제한하려면 RLS/커스텀 클레임 연동 같은 추가 보안 설정이 필요함. 반면 폴링은 이미 있는
-// /me 함수(session 토큰으로 본인 인증)를 그대로 재사용할 수 있어서 훨씬 간단하고 안전하다.
-// 단점은 최대 폴링 주기만큼 알림이 늦게 뜰 수 있다는 것. 처음엔 20초로 뒀는데 실사용해보니
-// 체감 지연이 꽤 느껴져서 5초로 줄임 — /me 호출 자체가 channel_id 인덱스 걸린 가벼운 쿼리라
-// 이 정도 빈도는 지금 트래픽 규모에서 전혀 부담 없음. 그래도 여전히 최대 5초는 늦게 뜰 수
-// 있는데, 그것보다 더 줄이고 싶으면(=지연 거의 0) Realtime으로 바꾸는 걸 고려해볼 것.
-//
-// chzzk-auth.js는 <script src>로 한 번만 로드되고 spa-router.js가 페이지 이동 때 다시 끼워
-// 넣지 않으므로(스크립트 태그 자체는 그대로 유지됨 — spa-router.js의 spaRunScripts 참고),
-// 아래 setInterval은 사이트를 여는 동안 계속 살아있다. 매 tick마다 로그인 여부를 다시 확인하기
-// 때문에, 로그인 전에 시작됐어도(비로그인 상태) 이후 로그인하면 다음 tick부터 자연스럽게 동작한다.
-const POINTS_NOTIF_POLL_INTERVAL_MS = 5000;
-const NOTIF_SEEN_ID_KEY_PREFIX = "chzzk_points_notif_seen_";
-
-function notifSeenIdKey(channelId) {
-  return `${NOTIF_SEEN_ID_KEY_PREFIX}${channelId}`;
-}
-
-function ensurePointsToastContainer() {
-  let el = document.getElementById("points-toast-container");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "points-toast-container";
-    el.className = "toast-container";
-    document.body.appendChild(el);
-  }
-  return el;
-}
-
-// event: { id, amount, reason, createdAt } — points_ledger 한 줄
-function showPointsToast(event) {
-  const container = ensurePointsToastContainer();
-  const positive = event.amount > 0;
-  const sign = positive ? "+" : "";
-  const title = positive ? "포인트를 받았어요" : "포인트가 차감됐어요";
-  const reasonText = event.reason && String(event.reason).trim() ? event.reason : "관리자 지급/차감";
-
-  const toastEl = document.createElement("div");
-  toastEl.className = `toast ${positive ? "positive" : "negative"}`;
-  toastEl.innerHTML = `
-    <p class="toast-title">${escapeHtmlForAuth(title)}</p>
-    <p class="toast-body">${sign}${event.amount.toLocaleString("ko-KR")}P · ${escapeHtmlForAuth(reasonText)}</p>
-  `;
-  container.appendChild(toastEl);
-
-  // 다음 프레임에 .show를 붙여서 CSS 트랜지션이 실제로 재생되게 함(같은 프레임에 붙이면 생략될 수 있음)
-  requestAnimationFrame(() => requestAnimationFrame(() => toastEl.classList.add("show")));
-
-  const AUTO_DISMISS_MS = 5000;
-  setTimeout(() => {
-    toastEl.classList.remove("show");
-    toastEl.addEventListener("transitionend", () => toastEl.remove(), { once: true });
-    setTimeout(() => toastEl.remove(), 600); // transitionend를 못 받는 경우 대비 fallback
-  }, AUTO_DISMISS_MS);
-}
-
-async function pollPointsNotifications() {
-  if (!isLoggedIn()) return;
-  const channelId = getChannelId();
-  if (!channelId) return;
-
-  const key = notifSeenIdKey(channelId);
-  const stored = localStorage.getItem(key);
-  const hasBaseline = stored !== null && stored !== "";
-  const url = hasBaseline
-    ? `${ME_URL}?action=notifications&afterId=${encodeURIComponent(stored)}`
-    : `${ME_URL}?action=notifications`;
-
-  try {
-    const res = await authFetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (hasBaseline && Array.isArray(data.events)) {
-      data.events.forEach(showPointsToast);
-    }
-    if (typeof data.latestId === "number") {
-      localStorage.setItem(key, String(data.latestId));
-    }
-  } catch (err) {
-    console.error("[chzzk-auth] 포인트 알림 폴링 실패", err);
-  }
-}
-
-let pointsNotifPollTimer = null;
-function initPointsNotifPolling() {
-  if (pointsNotifPollTimer) return; // 이중 시작 방지
-  pollPointsNotifications();
-  pointsNotifPollTimer = setInterval(pollPointsNotifications, POINTS_NOTIF_POLL_INTERVAL_MS);
-}
-
-initPointsNotifPolling();
