@@ -55,7 +55,7 @@ a {
 }
 
 .sidebar {
-  width: 220px;
+  width: 248px;
   flex-shrink: 0;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
@@ -89,21 +89,20 @@ a {
 }
 .sidebar-brand .mark {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--accent-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.95rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .sidebar-brand .label {
-  font-size: 1.05rem;
+  /* "chzzk-points"보다 글자수가 많은 "EUGENE FANBOARD"로 바뀌면서 폭이 빠듯해져서
+     크기를 살짝 줄이고 자간을 좁혔다 — 그래도 넘치면(모바일 등) 말줄임표로 처리. */
+  font-size: 0.82rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-toggle-btn {
