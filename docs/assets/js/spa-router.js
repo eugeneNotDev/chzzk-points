@@ -19,7 +19,7 @@
 // 그래서 각 페이지 스크립트는 최상위에 const/let을 두지 않고 즉시실행함수(IIFE)로 감싸져
 // 있어야 한다 — 안 그러면 같은 이름을 두 번째 실행할 때 "이미 선언된 식별자" 에러가 난다.
 
-const SPA_PAGES = ["index.html", "mypage.html", "ranking.html", "shop.html", "admin.html"];
+const SPA_PAGES = ["index.html", "notice.html", "mypage.html", "ranking.html", "shop.html", "admin.html"];
 const spaPageCache = new Map();
 
 function spaPageNameFromUrl(url) {

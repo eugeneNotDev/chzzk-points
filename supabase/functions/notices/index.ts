@@ -1,9 +1,9 @@
 // 공지사항 작성/수정/삭제 (관리자 전용). 목록 읽기는 프론트에서 anon 키로 notices 테이블을
 // 직접 조회하면 되니까(RLS가 전체 공개), 이 함수는 쓰기 계열(POST/PATCH/DELETE)만 처리한다.
 //
-// POST   { content: string }                 → 새 공지 작성
-// PATCH  ?id=<notice id>  { content: string } → 기존 공지 수정
-// DELETE ?id=<notice id>                      → 공지 삭제
+// POST   { title: string, content: string }                 → 새 공지 작성
+// PATCH  ?id=<notice id>  { title: string, content: string } → 기존 공지 수정
+// DELETE ?id=<notice id>                                     → 공지 삭제
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
 //  일치해야만 허용 — 아니면 403)
 
@@ -47,13 +47,16 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
 
     if (req.method === "POST") {
-      const { content } = await req.json();
+      const { title, content } = await req.json();
+      if (typeof title !== "string" || title.trim().length === 0) {
+        return jsonResponse({ error: "empty_title" }, 400);
+      }
       if (typeof content !== "string" || content.trim().length === 0) {
         return jsonResponse({ error: "empty_content" }, 400);
       }
       const { data, error } = await admin
         .from("notices")
-        .insert({ content: content.trim() })
+        .insert({ title: title.trim(), content: content.trim() })
         .select()
         .single();
       if (error) throw new Error(`notices insert 실패: ${error.message}`);
@@ -62,13 +65,16 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "PATCH") {
       if (!id) return jsonResponse({ error: "missing_id" }, 400);
-      const { content } = await req.json();
+      const { title, content } = await req.json();
+      if (typeof title !== "string" || title.trim().length === 0) {
+        return jsonResponse({ error: "empty_title" }, 400);
+      }
       if (typeof content !== "string" || content.trim().length === 0) {
         return jsonResponse({ error: "empty_content" }, 400);
       }
       const { data, error } = await admin
         .from("notices")
-        .update({ content: content.trim(), updated_at: new Date().toISOString() })
+        .update({ title: title.trim(), content: content.trim(), updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
         .single();

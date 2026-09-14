@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공지사항 · chzzk-points</title>
+<link rel="stylesheet" href="assets/css/style.css?v=7">
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <span class="mark">C</span>
+          <span class="label">chzzk-points</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="notice.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg></span>
+          <span class="label">공지사항</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <a href="shop.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+          <span class="label">소모처</span>
+        </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <div class="card-header" style="margin-bottom:16px;">
+        <h1 style="margin:0;">공지사항</h1>
+        <button type="button" id="notice-write-btn" class="secondary" hidden>+ 글쓰기</button>
+      </div>
+
+      <div class="card">
+        <ul class="notice-list" id="notice-list">
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+        </ul>
+        <p id="notice-empty" class="empty-state" hidden>등록된 공지사항이 없어요.</p>
+      </div>
+
+      <!-- 글 보기/글쓰기/수정을 전부 이 하나의 dialog로 처리한다 (모드에 따라 안쪽 뷰만 토글) —
+           네이버카페 게시글처럼 제목 누르면 팝업으로 내용이 뜨는 느낌. -->
+      <dialog id="notice-modal" class="notice-modal">
+        <div id="notice-modal-view">
+          <h3 id="notice-modal-title"></h3>
+          <p class="muted" id="notice-modal-meta"></p>
+          <p class="notice-modal-content" id="notice-modal-content"></p>
+          <div class="notice-modal-actions">
+            <span class="notice-modal-admin-actions" id="notice-modal-admin-actions" hidden>
+              <button type="button" class="secondary" id="notice-modal-edit-btn">수정</button>
+              <button type="button" class="secondary" id="notice-modal-delete-btn">삭제</button>
+            </span>
+            <button type="button" class="secondary" id="notice-modal-close-btn">닫기</button>
+          </div>
+        </div>
+        <form id="notice-modal-form" hidden>
+          <input type="text" id="notice-modal-title-input" class="notice-title-input" placeholder="제목" maxlength="80">
+          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6"></textarea>
+          <p class="status-msg" id="notice-modal-status"></p>
+          <div class="notice-form-actions">
+            <button type="submit" id="notice-modal-submit-btn">등록</button>
+            <button type="button" class="secondary" id="notice-modal-cancel-btn">취소</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=3"></script>
+  <script src="assets/js/spa-router.js?v=4"></script>
+  <script>
+  // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  (function () {
+    let supabase;
+    const NOTICE_LIMIT = 50;
+
+    // id(문자열) -> 공지 원본. 목록/모달을 다시 그릴 때 서버 재조회 없이 사용.
+    let noticesById = new Map();
+    // 지금 모달이 어떤 모드인지: null(닫힘) | "view" | "edit" | "create"
+    let modalMode = null;
+    let modalNoticeId = null;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function autoResizeTextarea(el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString("ko-KR");
+    }
+
+    // 목록 한 줄 — 제목만 보이는 게시판 스타일. 제목을 누르면 모달로 내용이 뜬다.
+    function renderNoticeRow(n) {
+      const idStr = String(n.id);
+      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
+      const actions = isAdmin()
+        ? `
+          <span class="notice-item-actions">
+            <button type="button" class="link-btn notice-edit-btn" data-id="${idStr}">수정</button>
+            <button type="button" class="link-btn notice-delete-btn" data-id="${idStr}">삭제</button>
+          </span>`
+        : "";
+      return `
+        <li class="notice-item" data-id="${idStr}">
+          <button type="button" class="notice-title-btn" data-id="${idStr}">${escapeHtml(n.title || "(제목 없음)")}</button>
+          <div class="notice-item-footer">
+            <time>${formatDate(n.created_at)}${editedLabel}</time>
+            ${actions}
+          </div>
+        </li>`;
+    }
+
+    function renderNoticeList() {
+      const listEl = document.getElementById("notice-list");
+      listEl.innerHTML = Array.from(noticesById.values()).map((n) => renderNoticeRow(n)).join("");
+      wireNoticeRowButtons();
+    }
+
+    function wireNoticeRowButtons() {
+      document.querySelectorAll(".notice-title-btn").forEach((btn) => {
+        btn.addEventListener("click", () => openViewModal(btn.dataset.id));
+      });
+      document.querySelectorAll(".notice-edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => openEditModal(btn.dataset.id));
+      });
+      document.querySelectorAll(".notice-delete-btn").forEach((btn) => {
+        btn.addEventListener("click", () => deleteNotice(btn.dataset.id));
+      });
+    }
+
+    async function loadNotices() {
+      const listEl = document.getElementById("notice-list");
+      const emptyEl = document.getElementById("notice-empty");
+      const { data, error } = await supabase
+        .from("notices")
+        .select("id, title, content, created_at, updated_at")
+        .order("created_at", { ascending: false })
+        .limit(NOTICE_LIMIT);
+
+      if (error) {
+        console.error("[notice] 공지 조회 실패", error);
+        emptyEl.textContent = "공지사항을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      if (!data || data.length === 0) {
+        noticesById = new Map();
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      noticesById = new Map(data.map((n) => [String(n.id), n]));
+      renderNoticeList();
+    }
+
+    function openViewModal(id) {
+      const n = noticesById.get(id);
+      if (!n) return;
+      modalMode = "view";
+      modalNoticeId = id;
+      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
+      document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
+      document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at) + editedLabel;
+      document.getElementById("notice-modal-content").textContent = n.content;
+      document.getElementById("notice-modal-admin-actions").hidden = !isAdmin();
+      document.getElementById("notice-modal-view").hidden = false;
+      document.getElementById("notice-modal-form").hidden = true;
+      showModal();
+    }
+
+    function openEditModal(id) {
+      const n = noticesById.get(id);
+      if (!n) return;
+      modalMode = "edit";
+      modalNoticeId = id;
+      fillForm(n.title, n.content, "저장");
+      showModal();
+    }
+
+    function openCreateModal() {
+      modalMode = "create";
+      modalNoticeId = null;
+      fillForm("", "", "등록");
+      showModal();
+    }
+
+    function fillForm(title, content, submitLabel) {
+      document.getElementById("notice-modal-title-input").value = title;
+      const contentInput = document.getElementById("notice-modal-content-input");
+      contentInput.value = content;
+      document.getElementById("notice-modal-submit-btn").textContent = submitLabel;
+      const statusEl = document.getElementById("notice-modal-status");
+      statusEl.textContent = "";
+      statusEl.className = "status-msg";
+      document.getElementById("notice-modal-view").hidden = true;
+      document.getElementById("notice-modal-form").hidden = false;
+      // dialog가 화면에 붙은(open) 다음이라야 scrollHeight 계산이 정확해서, showModal 이후에도 한 번 더 맞춰준다.
+      requestAnimationFrame(() => autoResizeTextarea(contentInput));
+    }
+
+    function showModal() {
+      const dialog = document.getElementById("notice-modal");
+      if (!dialog.open) dialog.showModal();
+    }
+
+    function closeModal() {
+      const dialog = document.getElementById("notice-modal");
+      if (dialog.open) dialog.close();
+      modalMode = null;
+      modalNoticeId = null;
+    }
+
+    async function deleteNotice(id) {
+      if (!confirm("이 공지를 삭제할까요?")) return;
+      try {
+        const res = await authFetch(`${NOTICES_URL}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(String(res.status));
+        if (modalNoticeId === id) closeModal();
+        await loadNotices();
+      } catch (err) {
+        alert("삭제에 실패했어요.");
+      }
+    }
+
+    function setupModal() {
+      const dialog = document.getElementById("notice-modal");
+      const contentInput = document.getElementById("notice-modal-content-input");
+
+      document.getElementById("notice-write-btn").addEventListener("click", openCreateModal);
+      document.getElementById("notice-modal-close-btn").addEventListener("click", closeModal);
+      document.getElementById("notice-modal-edit-btn").addEventListener("click", () => openEditModal(modalNoticeId));
+      document.getElementById("notice-modal-delete-btn").addEventListener("click", () => deleteNotice(modalNoticeId));
+      document.getElementById("notice-modal-cancel-btn").addEventListener("click", () => {
+        // 기존 글을 고치다가 취소했으면 보기 화면으로, 새 글 작성 중 취소했으면 그냥 닫는다.
+        if (modalMode === "edit" && modalNoticeId) {
+          openViewModal(modalNoticeId);
+        } else {
+          closeModal();
+        }
+      });
+      contentInput.addEventListener("input", () => autoResizeTextarea(contentInput));
+
+      // 배경(backdrop) 클릭 시 닫기 — dialog 엘리먼트 자체를 클릭한 경우만(안쪽 내용 클릭은 버블링 안 됨).
+      dialog.addEventListener("click", (e) => {
+        if (e.target === dialog) closeModal();
+      });
+      // Esc로 닫힐 때도 상태 초기화.
+      dialog.addEventListener("close", () => {
+        modalMode = null;
+        modalNoticeId = null;
+      });
+
+      document.getElementById("notice-modal-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const titleInput = document.getElementById("notice-modal-title-input");
+        const statusEl = document.getElementById("notice-modal-status");
+        const title = titleInput.value.trim();
+        const content = contentInput.value.trim();
+        if (!title || !content) {
+          statusEl.textContent = "제목과 내용을 모두 입력해주세요.";
+          statusEl.className = "status-msg error";
+          return;
+        }
+        statusEl.textContent = "";
+        statusEl.className = "status-msg";
+        try {
+          const isEdit = modalMode === "edit";
+          const url = isEdit ? `${NOTICES_URL}?id=${encodeURIComponent(modalNoticeId)}` : NOTICES_URL;
+          const res = await authFetch(url, {
+            method: isEdit ? "PATCH" : "POST",
+            body: JSON.stringify({ title, content }),
+          });
+          if (!res.ok) throw new Error(String(res.status));
+          closeModal();
+          await loadNotices();
+        } catch (err) {
+          statusEl.textContent = modalMode === "edit" ? "저장에 실패했어요." : "등록에 실패했어요.";
+          statusEl.className = "status-msg error";
+        }
+      });
+    }
+
+    (async () => {
+      ({ supabase } = await import("./assets/js/supabase-client.js"));
+      renderSidebarUser();
+      initSidebarToggle();
+      initAdminNav();
+      setupModal();
+
+      document.getElementById("notice-write-btn").hidden = !isAdmin();
+
+      await loadNotices();
+
+      // 메인 페이지 미리보기에서 특정 글로 바로 들어온 경우(notice.html?id=5) 해당 글 모달을 자동으로 연다.
+      const targetId = new URLSearchParams(location.search).get("id");
+      if (targetId && noticesById.has(targetId)) {
+        openViewModal(targetId);
+      }
+    })();
+  })();
+  </script>
+</body>
+</html>

@@ -379,7 +379,7 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 }
 .live-title { margin: 10px 0 0; color: var(--text-dim); font-size: 0.92rem; }
 
-/* 공지사항 */
+/* 공지사항 — 게시판 스타일(제목 목록 + 클릭하면 내용 팝업). */
 ul.notice-list, ol.notice-list {
   list-style: none;
   margin: 0;
@@ -387,7 +387,6 @@ ul.notice-list, ol.notice-list {
 }
 .notice-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .notice-item:last-child { border-bottom: none; }
-.notice-item p { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; }
 .notice-item-footer {
   display: flex;
   align-items: center;
@@ -396,6 +395,24 @@ ul.notice-list, ol.notice-list {
 }
 .notice-item time { color: var(--muted); font-size: 0.8rem; }
 .notice-item-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+/* 글 제목 — 목록 행(버튼, notice.html)과 홈 화면 미리보기(링크, index.html)가 같은 모양을 쓴다. */
+.notice-title-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0 0 4px;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.notice-title-btn:hover { color: var(--accent); background: none; }
 
 /* 텍스트만 있는 작은 버튼 (공지 수정/삭제 등). <button class="secondary">보다 더 가볍게. */
 .link-btn {
@@ -409,9 +426,7 @@ ul.notice-list, ol.notice-list {
 }
 .link-btn:hover { color: var(--accent); background: none; }
 
-.notice-form { margin-bottom: 16px; }
-/* 새 공지 작성 폼(.notice-form)과 목록 항목 안의 인라인 수정 폼(.notice-item.is-editing)이
-   둘 다 이 클래스를 쓴다 — 둘이 같은 모양이어야 자연스러워서 공용으로 뺌. */
+/* 공지 글쓰기/수정/내용보기 팝업(notice.html의 <dialog>)과 그 안 textarea 공용 스타일. */
 .notice-textarea {
   display: block;
   width: 100%;
@@ -430,16 +445,46 @@ ul.notice-list, ol.notice-list {
   margin-bottom: 10px;
 }
 .notice-textarea:focus { outline: none; border-color: var(--accent); }
-.notice-form-actions { display: flex; gap: 8px; margin-bottom: 10px; }
-/* 목록에서 "수정" 누른 항목 — 다른 항목들과 구분되게 살짝 배경을 준다. */
-.notice-item.is-editing {
-  background: var(--surface-2);
+.notice-title-input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-weight: 600;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 12px;
-  margin: 4px 0;
-  border-bottom: none;
+  color: var(--text);
+  padding: 10px 12px;
+  margin-bottom: 10px;
 }
-.notice-item.is-editing .notice-edit-status { margin: 0; }
+.notice-title-input:focus { outline: none; border-color: var(--accent); }
+.notice-form-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+
+/* 네이티브 <dialog> — 제목 누르면 뜨는 팝업(보기/수정/글쓰기 공용). */
+.notice-modal {
+  width: min(520px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+.notice-modal::backdrop { background: rgba(0, 0, 0, 0.55); }
+.notice-modal h3 { margin: 0 0 6px; font-size: 1.15rem; word-break: break-word; }
+.notice-modal-content {
+  margin: 14px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+.notice-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 18px;
+}
 
 /* 랭킹 리스트 */
 ol.ranking-list {

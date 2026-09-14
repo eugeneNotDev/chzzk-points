@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=5">
+<link rel="stylesheet" href="assets/css/style.css?v=7">
 </head>
 <body>
   <script>
@@ -27,6 +27,10 @@
         <a href="index.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
           <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg></span>
+          <span class="label">공지사항</span>
         </a>
         <a href="mypage.html" class="active">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
@@ -85,7 +89,7 @@
   </div>
 
   <script src="assets/js/chzzk-auth.js?v=3"></script>
-  <script src="assets/js/spa-router.js?v=3"></script>
+  <script src="assets/js/spa-router.js?v=4"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감싼다
   // (안 그러면 두 번째 실행에서 함수 재선언 등으로 꼬일 수 있음 — index.html/ranking.html과 동일한 이유).

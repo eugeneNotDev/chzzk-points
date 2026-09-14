@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=6">
+<link rel="stylesheet" href="assets/css/style.css?v=7">
 </head>
 <body>
   <script>
@@ -27,6 +27,10 @@
         <a href="index.html" class="active">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
           <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg></span>
+          <span class="label">공지사항</span>
         </a>
         <a href="mypage.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
@@ -63,17 +67,13 @@
       <div class="card">
         <div class="card-header">
           <h2>공지사항</h2>
+          <a href="notice.html" class="pill-link">
+            전체 보기
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
         </div>
 
-        <div id="notice-form" class="notice-form" hidden>
-          <textarea id="notice-input" class="notice-textarea" placeholder="공지 내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="1"></textarea>
-          <div class="notice-form-actions">
-            <button id="notice-submit">등록</button>
-          </div>
-          <p id="notice-post-status" class="status-msg"></p>
-        </div>
-
-        <ul class="notice-list" id="notice-list">
+        <ul class="notice-list" id="notice-preview">
           <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
           <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
         </ul>
@@ -99,7 +99,7 @@
   </div>
 
   <script src="assets/js/chzzk-auth.js?v=3"></script>
-  <script src="assets/js/spa-router.js?v=3"></script>
+  <script src="assets/js/spa-router.js?v=4"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하기 때문에,
   // 최상위에 const/let을 두면 두 번째 실행에서 "이미 선언됨" 에러가 난다 — 그래서 전체를
@@ -109,22 +109,10 @@
     let supabase;
 
     const RANKING_PREVIEW_LIMIT = 10;
-    const NOTICE_LIMIT = 10;
-
-    // 지금 인라인으로 수정 중인 공지 id (문자열). null이면 아무 것도 수정 중이 아님.
-    // "수정" 누른 그 공지 항목 자체가 textarea로 바뀌는 방식 — 위쪽 작성 폼과는 별개.
-    let editingNoticeId = null;
-    // id -> 공지 원본(content 등). 목록을 다시 그릴 때(수정모드 토글 등) 사용.
-    let noticesById = new Map();
+    const NOTICE_PREVIEW_LIMIT = 5;
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    }
-
-    // textarea 높이를 내용에 맞게 늘린다 (줄바꿈해도 스크롤 대신 박스 자체가 커짐).
-    function autoResizeTextarea(el) {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
     }
 
     // 방송 중인지: 인증 불필요, 로그인 여부와 무관하게 누구나 조회 가능.
@@ -160,83 +148,26 @@
       }
     }
 
-    // 공지 한 줄을 그린다. 관리자로 로그인된 경우에만 수정/삭제 버튼을 보여준다
-    // (실제 권한 체크는 notices 함수가 세션 토큰으로 다시 함 — 여기선 UI 노출만 담당).
-    // 지금 수정 중인 공지면(editingNoticeId와 일치) 일반 표시 대신 인라인 수정 폼을 그린다.
-    function renderNoticeItem(n) {
-      const idStr = String(n.id);
-      if (idStr === editingNoticeId) {
-        return renderNoticeEditForm(n);
-      }
-      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
-      const actions = isAdmin()
-        ? `
-          <span class="notice-item-actions">
-            <button type="button" class="link-btn notice-edit-btn" data-id="${idStr}">수정</button>
-            <button type="button" class="link-btn notice-delete-btn" data-id="${idStr}">삭제</button>
-          </span>`
-        : "";
+    // 홈 화면은 최신 공지 몇 개만 제목으로 보여주는 미리보기 — 실제 글 작성/수정/삭제/내용 보기는
+    // 전부 공지사항 탭(notice.html)에서 게시판 형태로 처리한다 (제목 누르면 그 글이 자동으로 열림).
+    function renderNoticePreviewItem(n) {
       return `
-        <li class="notice-item" data-id="${idStr}">
-          <p>${escapeHtml(n.content)}</p>
+        <li class="notice-item">
+          <a class="notice-title-btn" href="notice.html?id=${encodeURIComponent(n.id)}">${escapeHtml(n.title || "(제목 없음)")}</a>
           <div class="notice-item-footer">
-            <time>${new Date(n.created_at).toLocaleString("ko-KR")}${editedLabel}</time>
-            ${actions}
+            <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
           </div>
         </li>`;
     }
 
-    // "수정" 눌렀을 때 해당 공지 항목 자체가 이 모양으로 바뀐다 (위쪽 작성 폼과는 별개 —
-    // 어떤 공지를 고치고 있는지 헷갈리지 않게, 그 공지 자리에서 바로 고치는 방식).
-    function renderNoticeEditForm(n) {
-      const idStr = String(n.id);
-      return `
-        <li class="notice-item is-editing" data-id="${idStr}">
-          <textarea class="notice-textarea notice-edit-input" data-id="${idStr}" rows="1">${escapeHtml(n.content)}</textarea>
-          <div class="notice-form-actions">
-            <button type="button" class="notice-save-btn" data-id="${idStr}">저장</button>
-            <button type="button" class="secondary notice-cancel-inline-btn">취소</button>
-          </div>
-          <p class="status-msg notice-edit-status" data-id="${idStr}"></p>
-        </li>`;
-    }
-
-    function wireNoticeItemButtons() {
-      document.querySelectorAll(".notice-edit-btn").forEach((btn) => {
-        btn.addEventListener("click", () => startEditNotice(btn.dataset.id));
-      });
-      document.querySelectorAll(".notice-delete-btn").forEach((btn) => {
-        btn.addEventListener("click", () => deleteNotice(btn.dataset.id));
-      });
-      document.querySelectorAll(".notice-save-btn").forEach((btn) => {
-        btn.addEventListener("click", () => saveNoticeEdit(btn.dataset.id));
-      });
-      document.querySelectorAll(".notice-cancel-inline-btn").forEach((btn) => {
-        btn.addEventListener("click", () => cancelEditNotice());
-      });
-      document.querySelectorAll(".notice-edit-input").forEach((el) => {
-        autoResizeTextarea(el);
-        el.addEventListener("input", () => autoResizeTextarea(el));
-      });
-    }
-
-    // 목록 전체를 noticesById 기준으로 다시 그린다 (수정모드 토글 등, 서버 재조회 없이 다시
-    // 그려야 할 때 사용 — Map은 넣은 순서를 유지하므로 정렬 순서도 그대로 유지됨).
-    function renderNoticeList() {
-      const listEl = document.getElementById("notice-list");
-      listEl.innerHTML = Array.from(noticesById.values()).map((n) => renderNoticeItem(n)).join("");
-      wireNoticeItemButtons();
-    }
-
-    // 공지사항 목록: notices 테이블이 전체 공개 읽기라서 anon 키로 직접 조회 (ranking과 동일 패턴).
-    async function loadNotices() {
-      const listEl = document.getElementById("notice-list");
+    async function loadNoticePreview() {
+      const listEl = document.getElementById("notice-preview");
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, content, created_at, updated_at")
+        .select("id, title, created_at")
         .order("created_at", { ascending: false })
-        .limit(NOTICE_LIMIT);
+        .limit(NOTICE_PREVIEW_LIMIT);
 
       if (error) {
         console.error("[index] 공지 조회 실패", error);
@@ -246,76 +177,12 @@
         return;
       }
       if (!data || data.length === 0) {
-        noticesById = new Map();
-        editingNoticeId = null;
         emptyEl.hidden = false;
         listEl.innerHTML = "";
         return;
       }
       emptyEl.hidden = true;
-      noticesById = new Map(data.map((n) => [String(n.id), n]));
-      // 수정 중이던 공지가 그 사이 삭제됐으면 수정 모드 해제.
-      if (editingNoticeId !== null && !noticesById.has(editingNoticeId)) {
-        editingNoticeId = null;
-      }
-      renderNoticeList();
-    }
-
-    // "수정" 버튼 — 해당 공지 항목을 인라인 수정 폼으로 전환.
-    function startEditNotice(id) {
-      if (!noticesById.has(id)) return;
-      editingNoticeId = id;
-      renderNoticeList();
-      const input = document.querySelector(`.notice-edit-input[data-id="${id}"]`);
-      if (input) {
-        input.focus();
-        input.setSelectionRange(input.value.length, input.value.length);
-        input.closest("li")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
-
-    // 인라인 수정 취소 — 해당 항목을 원래 표시로 되돌린다.
-    function cancelEditNotice() {
-      editingNoticeId = null;
-      renderNoticeList();
-    }
-
-    async function saveNoticeEdit(id) {
-      const input = document.querySelector(`.notice-edit-input[data-id="${id}"]`);
-      const statusEl = document.querySelector(`.notice-edit-status[data-id="${id}"]`);
-      if (!input) return;
-      const content = input.value.trim();
-      if (!content) return;
-      if (statusEl) {
-        statusEl.textContent = "";
-        statusEl.className = "status-msg notice-edit-status";
-      }
-      try {
-        const res = await authFetch(`${NOTICES_URL}?id=${encodeURIComponent(id)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ content }),
-        });
-        if (!res.ok) throw new Error(String(res.status));
-        editingNoticeId = null;
-        await loadNotices();
-      } catch (err) {
-        if (statusEl) {
-          statusEl.textContent = "수정에 실패했어요.";
-          statusEl.classList.add("error");
-        }
-      }
-    }
-
-    async function deleteNotice(id) {
-      if (!confirm("이 공지를 삭제할까요?")) return;
-      try {
-        const res = await authFetch(`${NOTICES_URL}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-        if (!res.ok) throw new Error(String(res.status));
-        if (editingNoticeId === id) editingNoticeId = null;
-        await loadNotices();
-      } catch (err) {
-        alert("삭제에 실패했어요.");
-      }
+      listEl.innerHTML = data.map((n) => renderNoticePreviewItem(n)).join("");
     }
 
     // 랭킹 한 줄을 그린다. 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) —
@@ -359,54 +226,13 @@
       listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
     }
 
-    // 관리자 계정으로 로그인된 경우에만 공지 작성 폼을 보여준다. 새 공지 등록 전용
-    // (기존 공지 수정은 이제 목록의 각 항목에서 인라인으로 처리 — startEditNotice 참고).
-    // (실제 쓰기 권한은 notices 함수가 세션 토큰으로 다시 검증하니, 여기선 UI 노출만 담당)
-    function setupNoticeForm() {
-      const formEl = document.getElementById("notice-form");
-      const input = document.getElementById("notice-input");
-
-      input.addEventListener("input", () => autoResizeTextarea(input));
-
-      document.getElementById("notice-submit").addEventListener("click", async () => {
-        const statusEl = document.getElementById("notice-post-status");
-        const content = input.value.trim();
-        if (!content) return;
-
-        statusEl.textContent = "";
-        statusEl.className = "status-msg";
-        try {
-          const res = await authFetch(NOTICES_URL, {
-            method: "POST",
-            body: JSON.stringify({ content }),
-          });
-          if (!res.ok) throw new Error(String(res.status));
-          input.value = "";
-          autoResizeTextarea(input);
-          statusEl.textContent = "등록했어요.";
-          statusEl.classList.add("ok");
-          await loadNotices();
-        } catch (err) {
-          statusEl.textContent = "등록에 실패했어요.";
-          statusEl.classList.add("error");
-        }
-      });
-
-      if (!isAdmin()) {
-        formEl.hidden = true;
-        return;
-      }
-      formEl.hidden = false;
-    }
-
     (async () => {
       ({ supabase } = await import("./assets/js/supabase-client.js"));
       await handleOAuthCallbackIfPresent();
       renderSidebarUser();
       initSidebarToggle();
       initAdminNav();
-      setupNoticeForm();
-      await Promise.all([loadBroadcastStatus(), loadNotices(), loadRankingPreview()]);
+      await Promise.all([loadBroadcastStatus(), loadNoticePreview(), loadRankingPreview()]);
     })();
   })();
   </script>
