@@ -627,23 +627,46 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-tab-btn:hover { background: var(--surface-2); color: var(--text); }
 .admin-tab-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
+/* who(가변폭) / amount·time(고정폭)로 나눠서 행마다 글자 길이가 달라도 금액·시간 칸이
+   세로로 딱 맞게 정렬되도록 함 (who만 가변이라 나머지 두 칸은 항상 같은 자리에 옴). */
 .points-log-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
 }
 .points-log-row:last-child { border-bottom: none; }
-.points-log-who { display: flex; flex-direction: column; gap: 2px; }
-.points-log-reason { color: var(--muted); font-size: 0.8rem; }
-.points-log-amount { font-weight: 700; white-space: nowrap; }
+.points-log-who { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.points-log-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.points-log-reason { color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.points-log-amount { flex: 0 0 84px; width: 84px; text-align: right; font-weight: 700; white-space: nowrap; }
 .points-log-amount.positive { color: var(--accent); }
 .points-log-amount.negative { color: var(--danger); }
-.points-log-time { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+.points-log-time { flex: 0 0 148px; width: 148px; text-align: right; color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .points-log-row { flex-wrap: wrap; }
+  .points-log-who { flex-basis: 100%; }
+  .points-log-amount { flex: 0 0 auto; width: auto; text-align: left; }
+  .points-log-time { flex: 1 1 auto; width: auto; text-align: right; }
+}
+
+.pagination { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+.page-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  min-width: 36px;
+}
+.page-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.page-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.page-btn:disabled { opacity: 0.4; }
+.page-ellipsis { color: var(--muted); padding: 6px 2px; font-size: 0.85rem; }
 
 /* 출석체크 — 달력 UI. */
 .attendance-header {

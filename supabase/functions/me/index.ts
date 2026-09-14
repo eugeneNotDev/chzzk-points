@@ -1,8 +1,14 @@
-// 로그인한 유저 본인의 프로필 + 포인트 잔액.
+// 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그.
 // mypage.html, shop.html이 이 함수를 쓴다 (Authorization: Bearer <세션토큰> 필수).
 //
 // GET  → { channelId, channelName, isPublic, balance }
-// POST { isPublic: boolean } → is_public 갱신 후 위와 동일한 형태로 최신 상태 리턴
+// GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
+//   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
+//   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
+//   주는 기능이 생기면 그건 reason을 "채팅:"/"후원:" 접두사로 남기고 여기선 제외할 것 — 그런
+//   포인트는 양이 너무 많아서 개인 로그에 넣기엔 부적합하다고 판단함. 지금은 그 기능이 아직
+//   없어서 이 필터는 사실상 아무것도 걸러내지 않음.)
+// POST { isPublic: boolean } → is_public 갱신 후 프로필 형태로 최신 상태 리턴
 //
 // verify_jwt는 config.toml에서 꺼져있다 (우리 세션 토큰을 Authorization에 쓰기 때문).
 
@@ -17,6 +23,39 @@ function getAdminClient() {
     throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
   }
   return createClient(url, serviceRoleKey);
+}
+
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+const MY_POINTS_LOG_PAGE_SIZE = 10;
+
+async function listMyPointsLog(channelId: string, page: number) {
+  const admin = getAdminClient();
+  const offset = (page - 1) * MY_POINTS_LOG_PAGE_SIZE;
+
+  const { data: rows, error, count } = await admin
+    .from("points_ledger")
+    .select("id, amount, reason, created_at", { count: "exact" })
+    .eq("channel_id", channelId)
+    .not("reason", "like", "채팅:%")
+    .not("reason", "like", "후원:%")
+    .order("created_at", { ascending: false })
+    .range(offset, offset + MY_POINTS_LOG_PAGE_SIZE - 1);
+  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
+
+  const entries = (rows ?? []).map((r) => ({
+    id: r.id,
+    amount: r.amount,
+    reason: r.reason,
+    createdAt: r.created_at,
+  }));
+
+  return { entries, totalCount: count ?? 0 };
 }
 
 async function getProfile(channelId: string) {
@@ -76,6 +115,14 @@ Deno.serve(async (req: Request) => {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (req.method === "GET" && new URL(req.url).searchParams.get("action") === "points-log") {
+      const rawPage = Number(new URL(req.url).searchParams.get("page") ?? "1");
+      const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.trunc(rawPage) : 1;
+      const { entries, totalCount } = await listMyPointsLog(session.channelId, page);
+      const totalPages = Math.max(Math.ceil(totalCount / MY_POINTS_LOG_PAGE_SIZE), 1);
+      return jsonResponse({ entries, page, pageSize: MY_POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (req.method === "POST") {

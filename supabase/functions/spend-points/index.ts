@@ -113,10 +113,13 @@ Deno.serve(async (req: Request) => {
     const balance = await getBalance(admin, session.channelId);
     if (balance < item.cost) return jsonResponse({ error: "insufficient_balance" }, 400);
 
+    // reason은 관리자 포인트 로그/마이페이지 로그에 그대로 노출되니 상품 코드가 아니라
+    // 사람이 읽을 문구로 남긴다 (예전엔 "spend:water"처럼 코드로 남겨서 뭘 산건지 알아보기
+    // 힘들었음 — 0015_backfill_spend_reason_names.sql 참고).
     const { error: ledgerError } = await admin.from("points_ledger").insert({
       channel_id: session.channelId,
       amount: -item.cost,
-      reason: `spend:${item.id}`,
+      reason: `포인트 상점 사용: ${item.name}`,
     });
     if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
 

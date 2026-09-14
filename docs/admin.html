@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=11">
+<link rel="stylesheet" href="assets/css/style.css?v=12">
 </head>
 <body>
   <script>
@@ -104,6 +104,7 @@
           <div class="card">
             <div id="points-log-list"></div>
             <p id="points-log-empty" class="empty-state" hidden>기록이 없어요.</p>
+            <div id="points-log-pagination" class="pagination"></div>
           </div>
         </div>
       </div>
@@ -229,7 +230,9 @@
     const logSearchStatus = document.getElementById("log-search-status");
     const logListEl = document.getElementById("points-log-list");
     const logEmptyEl = document.getElementById("points-log-empty");
+    const logPaginationEl = document.getElementById("points-log-pagination");
     let pointsLogLoaded = false;
+    let logCurrentPage = 1;
 
     function formatDateTime(iso) {
       const d = new Date(iso);
@@ -251,13 +254,42 @@
         </div>`;
     }
 
-    async function loadPointsLog(q) {
+    // 페이지 번호 버튼을 그린다 — 현재 페이지 기준 앞뒤 2개씩 + 처음/끝 페이지, 나머지는 "…"로 생략.
+    // admin.html/mypage.html 둘 다 똑같이 쓰는 로직이라 살짝 중복이지만, 페이지 하나 분량이라
+    // 별도 공용 JS 파일로 뺄 만큼은 아니라고 판단.
+    function renderPagination(container, page, totalPages, onGoToPage) {
+      if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+      }
+      const pageSet = new Set([1, totalPages]);
+      for (let p = page - 2; p <= page + 2; p++) {
+        if (p >= 1 && p <= totalPages) pageSet.add(p);
+      }
+      const sorted = [...pageSet].sort((a, b) => a - b);
+
+      let html = `<button type="button" class="page-btn" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>이전</button>`;
+      let prev = 0;
+      for (const p of sorted) {
+        if (prev && p - prev > 1) html += `<span class="page-ellipsis">…</span>`;
+        html += `<button type="button" class="page-btn${p === page ? " active" : ""}" data-page="${p}">${p}</button>`;
+        prev = p;
+      }
+      html += `<button type="button" class="page-btn" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>다음</button>`;
+      container.innerHTML = html;
+      container.querySelectorAll(".page-btn:not(:disabled)").forEach((btn) => {
+        btn.addEventListener("click", () => onGoToPage(Number(btn.dataset.page)));
+      });
+    }
+
+    async function loadPointsLog(q, page) {
+      logCurrentPage = page ?? 1;
       logSearchStatus.textContent = "불러오는 중...";
       logSearchStatus.className = "status-msg";
       try {
         const res = await authFetch(ADMIN_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "list-points-log", q }),
+          body: JSON.stringify({ action: "list-points-log", q, page: logCurrentPage }),
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
@@ -265,19 +297,21 @@
         if (!data.entries || data.entries.length === 0) {
           logListEl.innerHTML = "";
           logEmptyEl.hidden = false;
+          logPaginationEl.innerHTML = "";
           return;
         }
         logEmptyEl.hidden = true;
         logListEl.innerHTML = data.entries.map(renderLogRow).join("");
+        renderPagination(logPaginationEl, data.page, data.totalPages, (p) => loadPointsLog(logSearchInput.value, p));
       } catch (err) {
         logSearchStatus.textContent = "불러오기에 실패했어요.";
         logSearchStatus.classList.add("error");
       }
     }
 
-    logSearchBtn.addEventListener("click", () => loadPointsLog(logSearchInput.value));
+    logSearchBtn.addEventListener("click", () => loadPointsLog(logSearchInput.value, 1));
     logSearchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") loadPointsLog(logSearchInput.value);
+      if (e.key === "Enter") loadPointsLog(logSearchInput.value, 1);
     });
 
     // 탭 전환 ----------------------------------------------------------------
@@ -293,7 +327,7 @@
         Object.entries(tabPanels).forEach(([key, panel]) => { panel.hidden = key !== tab; });
         if (tab === "log" && !pointsLogLoaded) {
           pointsLogLoaded = true;
-          loadPointsLog("");
+          loadPointsLog("", 1);
         }
       });
     });

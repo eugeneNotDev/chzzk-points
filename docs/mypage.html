@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=11">
+<link rel="stylesheet" href="assets/css/style.css?v=12">
 </head>
 <body>
   <script>
@@ -88,6 +88,17 @@
           </div>
           <p id="toggle-status" class="status-msg"></p>
         </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>포인트 내역</h2>
+          </div>
+          <p class="muted">출석체크·포인트 상점 사용·관리자 지급/차감 내역을 최신순으로 보여줘요.</p>
+          <div id="my-log-list"></div>
+          <p id="my-log-empty" class="empty-state" hidden>아직 내역이 없어요.</p>
+          <p id="my-log-status" class="status-msg"></p>
+          <div id="my-log-pagination" class="pagination"></div>
+        </div>
       </div>
     </main>
   </div>
@@ -98,6 +109,83 @@
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감싼다
   // (안 그러면 두 번째 실행에서 함수 재선언 등으로 꼬일 수 있음 — index.html/ranking.html과 동일한 이유).
   (function () {
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function formatDateTime(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    // 관리자 페이지와 동일한 페이지네이션 버튼 로직 (admin.html 참고 — 공용 JS 파일로 뺄
+    // 만큼은 아니라고 판단해서 페이지마다 따로 둠).
+    function renderPagination(container, page, totalPages, onGoToPage) {
+      if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+      }
+      const pageSet = new Set([1, totalPages]);
+      for (let p = page - 2; p <= page + 2; p++) {
+        if (p >= 1 && p <= totalPages) pageSet.add(p);
+      }
+      const sorted = [...pageSet].sort((a, b) => a - b);
+
+      let html = `<button type="button" class="page-btn" data-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>이전</button>`;
+      let prev = 0;
+      for (const p of sorted) {
+        if (prev && p - prev > 1) html += `<span class="page-ellipsis">…</span>`;
+        html += `<button type="button" class="page-btn${p === page ? " active" : ""}" data-page="${p}">${p}</button>`;
+        prev = p;
+      }
+      html += `<button type="button" class="page-btn" data-page="${page + 1}" ${page >= totalPages ? "disabled" : ""}>다음</button>`;
+      container.innerHTML = html;
+      container.querySelectorAll(".page-btn:not(:disabled)").forEach((btn) => {
+        btn.addEventListener("click", () => onGoToPage(Number(btn.dataset.page)));
+      });
+    }
+
+    function renderMyLogRow(entry) {
+      const positive = entry.amount > 0;
+      const sign = positive ? "+" : "";
+      return `
+        <div class="points-log-row">
+          <div class="points-log-who">
+            <strong>${escapeHtml(entry.reason || "")}</strong>
+          </div>
+          <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
+          <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
+        </div>`;
+    }
+
+    async function loadMyPointsLog(page) {
+      const listEl = document.getElementById("my-log-list");
+      const emptyEl = document.getElementById("my-log-empty");
+      const statusEl = document.getElementById("my-log-status");
+      const paginationEl = document.getElementById("my-log-pagination");
+      statusEl.textContent = "불러오는 중...";
+      statusEl.className = "status-msg";
+      try {
+        const res = await authFetch(`${ME_URL}?action=points-log&page=${page}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        statusEl.textContent = "";
+        if (!data.entries || data.entries.length === 0) {
+          listEl.innerHTML = "";
+          emptyEl.hidden = false;
+          paginationEl.innerHTML = "";
+          return;
+        }
+        emptyEl.hidden = true;
+        listEl.innerHTML = data.entries.map(renderMyLogRow).join("");
+        renderPagination(paginationEl, data.page, data.totalPages, (p) => loadMyPointsLog(p));
+      } catch (err) {
+        statusEl.textContent = "불러오기에 실패했어요.";
+        statusEl.classList.add("error");
+      }
+    }
+
     async function loadProfile() {
       const loadingEl = document.getElementById("loading-state");
       const res = await authFetch(ME_URL);
@@ -115,6 +203,7 @@
       document.getElementById("balance-value").textContent = profile.balance.toLocaleString("ko-KR");
       document.getElementById("channel-name-label").textContent = profile.channelName || "(이름 없음)";
       document.getElementById("public-toggle").checked = profile.isPublic;
+      loadMyPointsLog(1);
     }
 
     renderSidebarUser();

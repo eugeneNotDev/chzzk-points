@@ -8,10 +8,15 @@
 //   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
 // POST { action: "set-ban", channelId: string, banned: boolean }
 //   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고)
-// POST { action: "list-points-log", q?: string, limit?: number }
-//   → { entries: [{ id, channelId, channelName, amount, reason, createdAt }] }
-//     (points_ledger 최근 기록. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체 유저 통틀어
-//     최신순 — 오버레이 놓쳤을 때 누가 언제 뭘 썼는지 대조용. limit 기본 100, 최대 300)
+// POST { action: "list-points-log", q?: string, page?: number }
+//   → { entries: [{ id, channelId, channelName, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
+//     (points_ledger 최근 기록, 페이지당 10개. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체
+//     유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘 썼는지 대조용.
+//     최근 24시간 것만 보여준다 — 그 이상 지난 관리자 모니터링용 로그는 화면에 굳이 안 보여줘도
+//     된다고 판단(요청사항). 단, 이건 "화면 표시" 필터일 뿐 points_ledger 자체에서 실제로 지우진
+//     않는다 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를 합산)라서 오래된 행을 진짜
+//     삭제하면 유저 잔액이 깨진다. 마이페이지 개인 로그(me/index.ts)는 이 24시간 제한 없이 전체
+//     기록을 그대로 보여줌.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -93,10 +98,13 @@ async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: strin
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
 }
 
+const POINTS_LOG_PAGE_SIZE = 10;
+const POINTS_LOG_WINDOW_HOURS = 24;
+
 async function listPointsLog(
   admin: ReturnType<typeof getAdminClient>,
   q: string | undefined,
-  limit: number,
+  page: number,
 ) {
   let channelIdFilter: string[] | null = null;
   if (q && q.trim().length > 0) {
@@ -108,19 +116,23 @@ async function listPointsLog(
       .ilike("channel_name", `%${q.trim()}%`);
     if (userError) throw new Error(`users 검색 실패: ${userError.message}`);
     channelIdFilter = (matchedUsers ?? []).map((u) => u.channel_id);
-    if (channelIdFilter.length === 0) return [];
+    if (channelIdFilter.length === 0) return { entries: [], totalCount: 0 };
   }
+
+  const cutoffIso = new Date(Date.now() - POINTS_LOG_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const offset = (page - 1) * POINTS_LOG_PAGE_SIZE;
 
   let query = admin
     .from("points_ledger")
-    .select("id, channel_id, amount, reason, created_at")
+    .select("id, channel_id, amount, reason, created_at", { count: "exact" })
+    .gte("created_at", cutoffIso)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(offset, offset + POINTS_LOG_PAGE_SIZE - 1);
   if (channelIdFilter) query = query.in("channel_id", channelIdFilter);
 
-  const { data: rows, error } = await query;
+  const { data: rows, error, count } = await query;
   if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
-  if (!rows || rows.length === 0) return [];
+  if (!rows || rows.length === 0) return { entries: [], totalCount: count ?? 0 };
 
   const channelIds = [...new Set(rows.map((r) => r.channel_id))];
   const { data: users, error: usersError } = await admin
@@ -130,7 +142,7 @@ async function listPointsLog(
   if (usersError) throw new Error(`users 조회 실패: ${usersError.message}`);
   const nameByChannel = new Map((users ?? []).map((u) => [u.channel_id, u.channel_name]));
 
-  return rows.map((r) => ({
+  const entries = rows.map((r) => ({
     id: r.id,
     channelId: r.channel_id,
     channelName: nameByChannel.get(r.channel_id) ?? null,
@@ -138,6 +150,8 @@ async function listPointsLog(
     reason: r.reason,
     createdAt: r.created_at,
   }));
+
+  return { entries, totalCount: count ?? 0 };
 }
 
 Deno.serve(async (req: Request) => {
@@ -179,10 +193,11 @@ Deno.serve(async (req: Request) => {
 
     if (body.action === "list-points-log") {
       const q = typeof body.q === "string" ? body.q : undefined;
-      const rawLimit = typeof body.limit === "number" ? Math.trunc(body.limit) : 100;
-      const limit = Math.min(Math.max(rawLimit, 1), 300);
-      const entries = await listPointsLog(admin, q, limit);
-      return jsonResponse({ entries }, 200);
+      const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
+      const page = Math.max(rawPage, 1);
+      const { entries, totalCount } = await listPointsLog(admin, q, page);
+      const totalPages = Math.max(Math.ceil(totalCount / POINTS_LOG_PAGE_SIZE), 1);
+      return jsonResponse({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     return jsonResponse({ error: "unknown_action" }, 400);
