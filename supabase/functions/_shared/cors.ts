@@ -5,8 +5,9 @@
 // 브라우저는 Origin 헤더의 호스트를 항상 소문자로 보낸다 (URL 스펙상 host 정규화).
 // 여기 값이 대소문자 하나라도 다르면 브라우저가 CORS 검증에서 실제 요청을 막아버린다
 // (OPTIONS preflight는 200이 떠도, 그 다음 본 요청이 아예 안 나가는 식으로 조용히 실패함).
-// TODO: Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugenenotdev.github.io" 로 대체
-const ALLOWED_ORIGIN = "https://eugenenotdev.github.io";
+// 환경변수(ALLOWED_ORIGIN)로 덮어쓸 수 있게 해서, 로컬에서 http://localhost:xxxx로 띄워놓고
+// 테스트할 때 Supabase 프로젝트 환경변수만 잠깐 바꿔서 쓸 수 있다 (기본값은 실제 배포 도메인).
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugenenotdev.github.io";
 
 export const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
