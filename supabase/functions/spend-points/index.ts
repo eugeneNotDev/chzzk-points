@@ -123,11 +123,16 @@ Deno.serve(async (req: Request) => {
     });
     if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
 
-    // 오버레이 표시용 이름 스냅샷 — 세션 토큰의 channelName을 그대로 쓴다(추가 조회 불필요).
+    // 오버레이 표시용 이름 스냅샷 — 유저 이름은 세션 토큰의 channelName, 아이템 이름은 위에서
+    // 이미 조회해둔 item.name을 그대로 쓴다(둘 다 추가 조회 불필요). 아이템 이름도 스냅샷으로
+    // 남겨야 나중에 shop_items.name이 바뀌어도 과거 오버레이 로그가 안 틀어짐 — item_id(슬러그)
+    // 를 그대로 보여주면 "OOO님이 temp1 사용!"처럼 사람이 못 알아보는 문제가 있었음
+    // (0018_bugfixes.sql 참고).
     const { error: eventError } = await admin.from("spend_events").insert({
       channel_id: session.channelId,
       channel_name: session.channelName,
       item_id: item.id,
+      item_name: item.name,
     });
     if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
 

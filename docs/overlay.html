@@ -53,10 +53,14 @@
     }
 
     // 소모처별 연출 문구 — item_id에 맞춰 나중에 늘리면 됨 (지금은 공통 문구).
+    // item_name: spend-points가 지급 시점 shop_items.name을 스냅샷으로 남긴 값(0018_bugfixes.sql).
+    // 예전엔 이게 없어서 item_id(내부 슬러그, 예: "water"/"temp1")가 그대로 노출됐었음 — 혹시
+    // 예전 이벤트라 item_name이 비어있는 경우를 대비해 item_id로 폴백.
     function renderToast(event) {
       const el = document.createElement("div");
       el.className = "toast";
-      el.innerHTML = `<span class="who">${escapeHtml(event.channel_name || event.channel_id)}</span>님이 <b>${escapeHtml(event.item_id)}</b> 사용!`;
+      const itemLabel = event.item_name || event.item_id;
+      el.innerHTML = `<span class="who">${escapeHtml(event.channel_name || event.channel_id)}</span>님이 <b>${escapeHtml(itemLabel)}</b> 사용!`;
       root.appendChild(el);
       playAlertSound();
       // 애니메이션 끝나면 DOM에서 제거 (누적 방지)
