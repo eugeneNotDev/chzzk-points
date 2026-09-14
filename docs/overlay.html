@@ -41,12 +41,24 @@
 
     const root = document.getElementById("overlay-root");
 
+    // 알림음 — 원본 파일 자체를 절반 볼륨으로 미리 낮춰서 넣어뒀다(assets/audio/spend-alert.mp3).
+    // 재생할 때마다 새 Audio 인스턴스를 만든다 — 연타로 여러 개 뜰 때 소리끼리 끊기지 않고 겹쳐서 남.
+    const ALERT_SOUND_URL = "./assets/audio/spend-alert.mp3";
+    function playAlertSound() {
+      const audio = new Audio(ALERT_SOUND_URL);
+      audio.play().catch((err) => {
+        // 자동재생이 막히는 특수한 경우가 있을 수 있어 조용히 무시 (OBS 브라우저 소스는 보통 허용됨).
+        console.error("[overlay] 알림음 재생 실패", err);
+      });
+    }
+
     // 소모처별 연출 문구 — item_id에 맞춰 나중에 늘리면 됨 (지금은 공통 문구).
     function renderToast(event) {
       const el = document.createElement("div");
       el.className = "toast";
       el.innerHTML = `<span class="who">${escapeHtml(event.channel_name || event.channel_id)}</span>님이 <b>${escapeHtml(event.item_id)}</b> 사용!`;
       root.appendChild(el);
+      playAlertSound();
       // 애니메이션 끝나면 DOM에서 제거 (누적 방지)
       setTimeout(() => el.remove(), 5200);
     }
