@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=24">
+<link rel="stylesheet" href="assets/css/style.css?v=25">
 </head>
 <body>
   <script>
@@ -57,7 +57,7 @@
     </aside>
 
     <main class="main-content">
-      <h1>관리자</h1>
+      <h1 class="brand-heading">관리자</h1>
 
       <div id="admin-forbidden" class="card" hidden>
         <p>관리자 계정으로 로그인해야 볼 수 있는 페이지예요.</p>
@@ -82,7 +82,31 @@
             <p id="admin-search-status" class="status-msg"></p>
           </div>
 
+          <div class="card" id="admin-bulk-card">
+            <div class="card-header">
+              <h2>일괄 포인트 지급/차감</h2>
+            </div>
+            <p class="muted">체크한 유저들에게 한 번에 지급/차감하거나, 검색 결과와 무관하게 전체 유저에게 지급/차감할 수 있어요.</p>
+            <div class="admin-bulk-row">
+              <input type="number" id="admin-bulk-amount" class="admin-amount-input" placeholder="수량" min="1">
+              <button type="button" class="secondary" id="admin-bulk-give-selected" disabled>선택한 유저에게 지급</button>
+              <button type="button" class="secondary" id="admin-bulk-take-selected" disabled>선택한 유저에게 차감</button>
+            </div>
+            <div class="admin-bulk-row">
+              <button type="button" class="secondary" id="admin-bulk-give-all">전체 유저에게 지급</button>
+              <button type="button" class="secondary" id="admin-bulk-take-all">전체 유저에게 차감</button>
+            </div>
+            <p id="admin-bulk-selected-count" class="muted">선택된 유저: 0명</p>
+            <p id="admin-bulk-status" class="status-msg"></p>
+          </div>
+
           <div class="card">
+            <div class="admin-select-all-row">
+              <label class="admin-checkbox-label">
+                <input type="checkbox" id="admin-select-all">
+                현재 목록 전체 선택
+              </label>
+            </div>
             <div id="admin-user-list"></div>
             <p id="admin-user-empty" class="empty-state" hidden>검색 결과가 없어요.</p>
           </div>
@@ -126,9 +150,24 @@
     const listEl = document.getElementById("admin-user-list");
     const emptyEl = document.getElementById("admin-user-empty");
 
+    // 일괄 지급/차감용 선택 상태 — 검색어를 바꿔도(목록이 다시 그려져도) 유지된다.
+    // "체크한 유저에게 지급"은 검색 결과 페이지를 넘나들며 여러 명을 모아 담는 용도라서,
+    // Set을 검색 함수 바깥(모듈 스코프)에 둬서 재검색해도 선택이 안 풀리게 했다.
+    const selectedChannelIds = new Set();
+    const bulkAmountInput = document.getElementById("admin-bulk-amount");
+    const bulkStatus = document.getElementById("admin-bulk-status");
+    const bulkSelectedCountEl = document.getElementById("admin-bulk-selected-count");
+    const bulkGiveSelectedBtn = document.getElementById("admin-bulk-give-selected");
+    const bulkTakeSelectedBtn = document.getElementById("admin-bulk-take-selected");
+    const selectAllCheckbox = document.getElementById("admin-select-all");
+
     function renderUserRow(u) {
+      const checked = selectedChannelIds.has(u.channelId);
       return `
         <div class="admin-user-row${u.banned ? " is-banned" : ""}" data-channel-id="${escapeHtml(u.channelId)}">
+          <label class="admin-checkbox-label admin-row-checkbox">
+            <input type="checkbox" class="admin-user-checkbox" ${checked ? "checked" : ""}>
+          </label>
           <div class="admin-user-info">
             <strong>${escapeHtml(u.channelName || "(이름 없음)")}</strong>
             <span class="muted">${u.balance.toLocaleString("ko-KR")}P · ${u.isPublic ? "공개" : "비공개"}${u.banned ? " · 밴됨" : ""}</span>
@@ -151,8 +190,95 @@
         row.querySelector(".admin-ban-btn").addEventListener("click", () =>
           toggleBan(channelId, row.classList.contains("is-banned")),
         );
+        row.querySelector(".admin-user-checkbox").addEventListener("change", (e) => {
+          if (e.target.checked) selectedChannelIds.add(channelId);
+          else selectedChannelIds.delete(channelId);
+          updateBulkSelectedUI();
+        });
       });
+      updateBulkSelectedUI();
     }
+
+    // 선택 인원 수 표시 + 선택 기반 버튼 활성/비활성 + "전체 선택" 체크박스 상태(전체/일부/없음) 동기화.
+    function updateBulkSelectedUI() {
+      bulkSelectedCountEl.textContent = `선택된 유저: ${selectedChannelIds.size}명`;
+      bulkGiveSelectedBtn.disabled = selectedChannelIds.size === 0;
+      bulkTakeSelectedBtn.disabled = selectedChannelIds.size === 0;
+
+      const rows = [...document.querySelectorAll(".admin-user-row")];
+      if (rows.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+        return;
+      }
+      const checkedCount = rows.filter((r) => selectedChannelIds.has(r.dataset.channelId)).length;
+      selectAllCheckbox.checked = checkedCount === rows.length;
+      selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < rows.length;
+    }
+
+    // 현재 화면에 보이는 목록(검색 결과)만 대상 — "전체 유저에게 지급" 버튼(서버가 계산하는
+    // 진짜 전체 유저)과는 별개다.
+    selectAllCheckbox.addEventListener("change", () => {
+      document.querySelectorAll(".admin-user-row").forEach((row) => {
+        const cb = row.querySelector(".admin-user-checkbox");
+        if (selectAllCheckbox.checked) {
+          selectedChannelIds.add(row.dataset.channelId);
+          cb.checked = true;
+        } else {
+          selectedChannelIds.delete(row.dataset.channelId);
+          cb.checked = false;
+        }
+      });
+      updateBulkSelectedUI();
+    });
+
+    // target: "selected"(체크한 유저들) | "all"(서버가 계산하는 banned 제외 전체 유저, 관리자 계정 제외)
+    // sign: +1 지급 / -1 차감
+    async function bulkAdjustPoints(target, sign) {
+      const raw = Number(bulkAmountInput.value);
+      if (!Number.isFinite(raw) || raw <= 0) {
+        alert("지급/차감할 수량을 1 이상 숫자로 입력해주세요.");
+        return;
+      }
+      const amount = Math.trunc(raw) * sign;
+      const verb = sign > 0 ? "지급" : "차감";
+
+      let channelIds = null;
+      if (target === "selected") {
+        channelIds = [...selectedChannelIds];
+        if (channelIds.length === 0) {
+          alert("선택된 유저가 없어요.");
+          return;
+        }
+        if (!confirm(`선택한 ${channelIds.length}명에게 ${Math.abs(amount).toLocaleString("ko-KR")}P를 ${verb}할까요?`)) return;
+      } else {
+        if (!confirm(`전체 유저에게 ${Math.abs(amount).toLocaleString("ko-KR")}P를 ${verb}할까요?\n(밴 처리된 유저와 관리자 계정은 제외돼요)`)) return;
+      }
+
+      bulkStatus.textContent = "처리 중...";
+      bulkStatus.className = "status-msg";
+      try {
+        const body = target === "selected"
+          ? { action: "bulk-adjust-points", target: "selected", channelIds, amount }
+          : { action: "bulk-adjust-points", target: "all", amount };
+        const res = await authFetch(ADMIN_URL, { method: "POST", body: JSON.stringify(body) });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        bulkStatus.textContent = `${(data.affected ?? 0).toLocaleString("ko-KR")}명에게 ${verb} 완료했어요.`;
+        bulkStatus.classList.add("ok");
+        bulkAmountInput.value = "";
+        if (target === "selected") selectedChannelIds.clear();
+        await searchUsers(searchInput.value);
+      } catch (err) {
+        bulkStatus.textContent = `${verb}에 실패했어요.`;
+        bulkStatus.classList.add("error");
+      }
+    }
+
+    bulkGiveSelectedBtn.addEventListener("click", () => bulkAdjustPoints("selected", 1));
+    bulkTakeSelectedBtn.addEventListener("click", () => bulkAdjustPoints("selected", -1));
+    document.getElementById("admin-bulk-give-all").addEventListener("click", () => bulkAdjustPoints("all", 1));
+    document.getElementById("admin-bulk-take-all").addEventListener("click", () => bulkAdjustPoints("all", -1));
 
     async function searchUsers(q) {
       searchStatus.textContent = "검색 중...";

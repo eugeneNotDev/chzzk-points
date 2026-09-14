@@ -732,8 +732,24 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .admin-user-row:last-child { border-bottom: none; }
 .admin-user-row.is-banned { opacity: 0.6; }
+.admin-user-info { flex: 1; min-width: 0; }
 .admin-user-info strong { display: block; margin-bottom: 2px; }
 .admin-user-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* 일괄 지급/차감 + 체크박스 선택 */
+.admin-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.admin-checkbox-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.admin-select-all-row { padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.admin-row-checkbox { flex-shrink: 0; }
+.admin-bulk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+#admin-bulk-selected-count { margin-top: 10px; margin-bottom: 0; }
 .admin-amount-input {
   width: 90px;
   font: inherit;

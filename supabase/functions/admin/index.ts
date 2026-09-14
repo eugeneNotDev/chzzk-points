@@ -8,6 +8,11 @@
 //   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
 // POST { action: "set-ban", channelId: string, banned: boolean }
 //   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고)
+// POST { action: "bulk-adjust-points", target: "all" | "selected", channelIds?: string[], amount: number, reason?: string }
+//   → { affected: number }  (points_ledger에 대상 전원 몫으로 한 줄씩 insert. amount는 음수 가능 — 일괄 차감.
+//     target="all"이면 서버가 banned=false && 관리자 계정 제외한 전체 유저를 대상으로 계산함(클라이언트가
+//     보고 있는 검색 목록/페이지와 무관하게 진짜 전체). target="selected"면 channelIds에 담아 보낸 유저들만
+//     대상 — 관리자 화면에서 체크박스로 고른 유저 목록.)
 // POST { action: "list-points-log", q?: string, page?: number }
 //   → { entries: [{ id, channelId, channelName, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
 //     (points_ledger 최근 기록, 페이지당 10개. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체
@@ -96,6 +101,34 @@ async function adjustPoints(
 async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: string, banned: boolean) {
   const { error } = await admin.from("users").update({ banned }).eq("channel_id", channelId);
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
+}
+
+// target="all"용 — banned 유저와 관리자 계정(OWNER_CHANNEL_ID)은 제외한 전체 채널ID 목록.
+async function getAllActiveChannelIds(admin: ReturnType<typeof getAdminClient>): Promise<string[]> {
+  const { data, error } = await admin
+    .from("users")
+    .select("channel_id")
+    .eq("banned", false)
+    .neq("channel_id", OWNER_CHANNEL_ID);
+  if (error) throw new Error(`users 조회 실패: ${error.message}`);
+  return (data ?? []).map((u) => u.channel_id);
+}
+
+async function bulkAdjustPoints(
+  admin: ReturnType<typeof getAdminClient>,
+  channelIds: string[],
+  amount: number,
+  reason: string,
+): Promise<number> {
+  if (channelIds.length === 0) return 0;
+  const rows = channelIds.map((channelId) => ({
+    channel_id: channelId,
+    amount,
+    reason: reason || "관리자 일괄 지급/차감",
+  }));
+  const { error } = await admin.from("points_ledger").insert(rows);
+  if (error) throw new Error(`points_ledger 일괄 insert 실패: ${error.message}`);
+  return channelIds.length;
 }
 
 const POINTS_LOG_PAGE_SIZE = 10;
@@ -189,6 +222,29 @@ Deno.serve(async (req: Request) => {
       if (typeof banned !== "boolean") return jsonResponse({ error: "invalid_banned" }, 400);
       await setBan(admin, channelId, banned);
       return jsonResponse({ channelId, banned }, 200);
+    }
+
+    if (body.action === "bulk-adjust-points") {
+      const { target, amount, reason } = body;
+      if (typeof amount !== "number" || !Number.isFinite(amount) || amount === 0) {
+        return jsonResponse({ error: "invalid_amount" }, 400);
+      }
+      const truncAmount = Math.trunc(amount);
+
+      let channelIds: string[];
+      if (target === "all") {
+        channelIds = await getAllActiveChannelIds(admin);
+      } else if (target === "selected") {
+        if (!Array.isArray(body.channelIds) || body.channelIds.some((c: unknown) => typeof c !== "string" || !c)) {
+          return jsonResponse({ error: "invalid_channel_ids" }, 400);
+        }
+        channelIds = [...new Set(body.channelIds as string[])];
+      } else {
+        return jsonResponse({ error: "invalid_target" }, 400);
+      }
+
+      const affected = await bulkAdjustPoints(admin, channelIds, truncAmount, typeof reason === "string" ? reason : "");
+      return jsonResponse({ affected }, 200);
     }
 
     if (body.action === "list-points-log") {
