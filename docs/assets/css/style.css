@@ -831,7 +831,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-ban-btn.is-banned { border-color: var(--danger); color: #ff8a8a; }
 .admin-ban-btn.is-banned:hover { border-color: var(--danger); color: #ff8a8a; }
 
-.admin-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.admin-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .admin-tab-btn {
   background: transparent;
   border: 1px solid var(--border);

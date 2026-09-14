@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=26">
+<link rel="stylesheet" href="assets/css/style.css?v=27">
 </head>
 <body>
   <script>
@@ -87,6 +87,7 @@
         <div class="admin-tabs">
           <button type="button" class="admin-tab-btn active" data-tab="users">유저 관리</button>
           <button type="button" class="admin-tab-btn" data-tab="log">포인트 로그</button>
+          <button type="button" class="admin-tab-btn" data-tab="spend">상점 내역</button>
         </div>
 
         <div id="admin-tab-users" class="admin-tab-panel">
@@ -142,7 +143,7 @@
             <div class="card-header">
               <h2>포인트 로그</h2>
             </div>
-            <p class="muted">포인트 지급/차감/상점 사용 기록을 최신순으로 보여줘요. 오버레이 알림을 놓쳤을 때 여기서 대조할 수 있어요.</p>
+            <p class="muted">포인트 지급/차감/상점 사용/출석체크 등 모든 기록을 최근 24시간 기준 최신순으로 보여줘요. 상점 사용 처리완료 체크는 "상점 내역" 탭에서 해요.</p>
             <div class="admin-search-row">
               <input type="text" id="log-search-input" placeholder="채널명으로 검색 (비워두면 전체 최신순)">
               <button type="button" id="log-search-btn">검색</button>
@@ -154,6 +155,26 @@
             <div id="points-log-list"></div>
             <p id="points-log-empty" class="empty-state" hidden>기록이 없어요.</p>
             <div id="points-log-pagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <div id="admin-tab-spend" class="admin-tab-panel" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h2>상점 내역</h2>
+            </div>
+            <p class="muted">포인트 상점 사용 기록만 모아서 보여줘요(전체 기간). 오버레이 알림을 놓쳤을 때 여기서 처리완료로 체크해두세요.</p>
+            <div class="admin-search-row">
+              <input type="text" id="spend-search-input" placeholder="채널명으로 검색 (비워두면 전체 최신순)">
+              <button type="button" id="spend-search-btn">검색</button>
+            </div>
+            <p id="spend-search-status" class="status-msg"></p>
+          </div>
+
+          <div class="card">
+            <div id="spend-log-list"></div>
+            <p id="spend-log-empty" class="empty-state" hidden>기록이 없어요.</p>
+            <div id="spend-log-pagination" class="pagination"></div>
           </div>
         </div>
       </div>
@@ -412,21 +433,34 @@
       return d.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
-    // 상점 사용 항목("포인트 상점 사용: ...")에만 처리완료 체크박스를 보여준다 — 지급/차감/
-    // 출석체크는 그 자체가 이미 완료된 행위라 체크할 게 없음 (0019_admin_features.sql 참고).
-    function isSpendLogEntry(entry) {
-      return typeof entry.reason === "string" && entry.reason.startsWith("포인트 상점 사용:");
-    }
-
+    // 포인트 로그 탭 + 유저 상세 모달에서 쓰는 일반 로그 한 줄 — 처리완료 체크박스 없음
+    // (예전엔 상점 사용 항목에만 붙였는데, 온갖 종류 기록이 섞인 화면에 체크박스까지 있으니
+    // 오히려 헷갈린다는 피드백으로 상점 내역 탭으로 뺐음). 유저 상세 모달은 이미 그 유저
+    // 한 명만 보여주는 화면이라 채널명을 굳이 또 안 보여준다 — get-user-detail 응답의 log에는
+    // channelName 필드 자체가 없어서(getUserDetail 참고), entry.channelName이 undefined인지로
+    // "포인트 로그 탭(이름 있음)"과 "유저 상세 모달(이름 없음)"을 구분한다.
     function renderLogRow(entry) {
       const positive = entry.amount > 0;
       const sign = positive ? "+" : "";
-      const processedToggle = isSpendLogEntry(entry)
-        ? `<label class="admin-checkbox-label points-log-processed">
-             <input type="checkbox" class="processed-checkbox" data-id="${entry.id}" ${entry.processed ? "checked" : ""}>
-             처리완료
-           </label>`
+      const whoLine = entry.channelName !== undefined
+        ? `<strong>${escapeHtml(entry.channelName || "(알 수 없음)")}</strong>`
         : "";
+      return `
+        <div class="points-log-row">
+          <div class="points-log-who">
+            ${whoLine}
+            <span class="points-log-reason">${escapeHtml(entry.reason || "")}</span>
+          </div>
+          <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
+          <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
+        </div>`;
+    }
+
+    // 상점 내역 탭 전용 — list-spend-log가 이미 상점 사용 기록만 걸러서 주기 때문에 모든 행에
+    // 처리완료 체크박스가 항상 뜬다.
+    function renderSpendLogRow(entry) {
+      const positive = entry.amount > 0;
+      const sign = positive ? "+" : "";
       return `
         <div class="points-log-row">
           <div class="points-log-who">
@@ -435,12 +469,15 @@
           </div>
           <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
           <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
-          ${processedToggle}
+          <label class="admin-checkbox-label points-log-processed">
+            <input type="checkbox" class="processed-checkbox" data-id="${entry.id}" ${entry.processed ? "checked" : ""}>
+            처리완료
+          </label>
         </div>`;
     }
 
-    // container 안의 처리완료 체크박스에 이벤트를 붙인다 — 포인트 로그 탭 목록과 유저 상세
-    // 모달 목록 둘 다에서 쓴다(둘 다 renderLogRow로 그림).
+    // container 안의 처리완료 체크박스에 이벤트를 붙인다 — 상점 내역 탭 목록(renderSpendLogRow)
+    // 전용. 포인트 로그 탭/유저 상세 모달은 이제 처리완료 체크박스가 없어서 안 씀.
     function wireProcessedCheckboxes(container) {
       container.querySelectorAll(".processed-checkbox").forEach((cb) => {
         cb.addEventListener("change", async (e) => {
@@ -511,7 +548,6 @@
         }
         logEmptyEl.hidden = true;
         logListEl.innerHTML = data.entries.map(renderLogRow).join("");
-        wireProcessedCheckboxes(logListEl);
         renderPagination(logPaginationEl, data.page, data.totalPages, (p) => loadPointsLog(logSearchInput.value, p));
       } catch (err) {
         logSearchStatus.textContent = "불러오기에 실패했어요.";
@@ -524,10 +560,54 @@
       if (e.key === "Enter") loadPointsLog(logSearchInput.value, 1);
     });
 
+    // 상점 내역 탭 -----------------------------------------------------------
+    const spendSearchInput = document.getElementById("spend-search-input");
+    const spendSearchBtn = document.getElementById("spend-search-btn");
+    const spendSearchStatus = document.getElementById("spend-search-status");
+    const spendListEl = document.getElementById("spend-log-list");
+    const spendEmptyEl = document.getElementById("spend-log-empty");
+    const spendPaginationEl = document.getElementById("spend-log-pagination");
+    let spendLogLoaded = false;
+    let spendCurrentPage = 1;
+
+    async function loadSpendLog(q, page) {
+      spendCurrentPage = page ?? 1;
+      spendSearchStatus.textContent = "불러오는 중...";
+      spendSearchStatus.className = "status-msg";
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "list-spend-log", q, page: spendCurrentPage }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        spendSearchStatus.textContent = "";
+        if (!data.entries || data.entries.length === 0) {
+          spendListEl.innerHTML = "";
+          spendEmptyEl.hidden = false;
+          spendPaginationEl.innerHTML = "";
+          return;
+        }
+        spendEmptyEl.hidden = true;
+        spendListEl.innerHTML = data.entries.map(renderSpendLogRow).join("");
+        wireProcessedCheckboxes(spendListEl);
+        renderPagination(spendPaginationEl, data.page, data.totalPages, (p) => loadSpendLog(spendSearchInput.value, p));
+      } catch (err) {
+        spendSearchStatus.textContent = "불러오기에 실패했어요.";
+        spendSearchStatus.classList.add("error");
+      }
+    }
+
+    spendSearchBtn.addEventListener("click", () => loadSpendLog(spendSearchInput.value, 1));
+    spendSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadSpendLog(spendSearchInput.value, 1);
+    });
+
     // 유저 상세 모달 ----------------------------------------------------------
     // 유저 목록에서 이름을 누르면 뜬다 — 그 유저의 전체 내역(24시간 제한 없이, list-points-log와
-    // 달리 get-user-detail을 씀)을 보여준다. renderLogRow/wireProcessedCheckboxes/renderPagination을
-    // 포인트 로그 탭과 그대로 재사용한다(같은 모양의 데이터라서).
+    // 달리 get-user-detail을 씀, 한 페이지 5개)을 보여준다. renderLogRow/renderPagination을 포인트
+    // 로그 탭과 그대로 재사용한다(같은 모양의 데이터라서) — 처리완료 체크박스는 여기 안 뜬다
+    // (상점 내역 탭에서만 처리하기로 함, 채팅 피드백 반영).
     const userDetailModal = document.getElementById("user-detail-modal");
     const userDetailNameEl = document.getElementById("user-detail-name");
     const userDetailMetaEl = document.getElementById("user-detail-meta");
@@ -573,7 +653,6 @@
         }
         userDetailLogEmptyEl.hidden = true;
         userDetailLogListEl.innerHTML = data.log.map(renderLogRow).join("");
-        wireProcessedCheckboxes(userDetailLogListEl);
         renderPagination(userDetailPaginationEl, data.page, data.totalPages, (p) => loadUserDetail(channelId, p));
       } catch (err) {
         userDetailNameEl.textContent = "불러오지 못했어요.";
@@ -621,6 +700,7 @@
     const tabPanels = {
       users: document.getElementById("admin-tab-users"),
       log: document.getElementById("admin-tab-log"),
+      spend: document.getElementById("admin-tab-spend"),
     };
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -630,6 +710,10 @@
         if (tab === "log" && !pointsLogLoaded) {
           pointsLogLoaded = true;
           loadPointsLog("", 1);
+        }
+        if (tab === "spend" && !spendLogLoaded) {
+          spendLogLoaded = true;
+          loadSpendLog("", 1);
         }
       });
     });

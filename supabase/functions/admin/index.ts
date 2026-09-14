@@ -16,18 +16,25 @@
 //     대상 — 관리자 화면에서 체크박스로 고른 유저 목록.)
 // POST { action: "list-points-log", q?: string, page?: number }
 //   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
-//     (points_ledger 최근 기록, 페이지당 10개. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체
-//     유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘 썼는지 대조용.
-//     최근 24시간 것만 보여준다 — 그 이상 지난 관리자 모니터링용 로그는 화면에 굳이 안 보여줘도
-//     된다고 판단(요청사항). 단, 이건 "화면 표시" 필터일 뿐 points_ledger 자체에서 실제로 지우진
-//     않는다 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를 합산)라서 오래된 행을 진짜
-//     삭제하면 유저 잔액이 깨진다. 마이페이지 개인 로그(me/index.ts)는 이 24시간 제한 없이 전체
-//     기록을 그대로 보여줌.
+//     (points_ledger 최근 기록(지급/차감/상점 사용/출석체크 등 전부), 페이지당 10개. q 있으면 그
+//     이름을 가진 유저 기록만, 없으면 전체 유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘
+//     했는지 훑어보는 용도. 최근 24시간 것만 보여준다 — 그 이상 지난 관리자 모니터링용 로그는
+//     화면에 굳이 안 보여줘도 된다고 판단(요청사항). 단, 이건 "화면 표시" 필터일 뿐 points_ledger
+//     자체에서 실제로 지우진 않는다 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를
+//     합산)라서 오래된 행을 진짜 삭제하면 유저 잔액이 깨진다. 마이페이지 개인 로그(me/index.ts)는
+//     이 24시간 제한 없이 전체 기록을 그대로 보여줌.
+//     처리완료 체크는 여기 없음 — 상점 사용 처리는 아래 list-spend-log 전용 화면에서만 한다
+//     (한 화면에 모든 종류 기록 + 체크박스가 섞여 있으니 오히려 헷갈린다는 피드백으로 분리함).
+// POST { action: "list-spend-log", q?: string, page?: number }
+//   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
+//     (points_ledger에서 상점 사용("포인트 상점 사용: ..." reason) 기록만 걸러서 보여준다 —
+//     list-points-log와 달리 24시간 제한 없이 전체 기간. 예전에 처리해둔 것도 나중에 다시 찾아볼
+//     수 있어야 해서 기간을 안 자름. admin.html의 "상점 내역" 탭 전용 — 처리완료 체크박스는 여기
+//     항목에만 뜬다.)
 // POST { action: "set-processed", id: number, processed: boolean }
 //   → { id, processed }  (points_ledger 한 행의 처리완료 표시를 토글. 오버레이 상점 사용 알림을
-//     놓쳤을 때, 포인트 로그에서 이미 처리한 건지 체크해두는 용도 — 0019_admin_features.sql 참고.
-//     어떤 행에든 걸 수 있지만, 화면(admin.html)에서는 상점 사용("포인트 상점 사용: ..." reason)
-//     항목에만 체크박스를 보여준다.)
+//     놓쳤을 때, 상점 내역에서 이미 처리한 건지 체크해두는 용도 — 0019_admin_features.sql 참고.
+//     어떤 행에든 걸 수 있는 범용 필드지만, 화면(admin.html)에서는 상점 내역 탭에서만 쓴다.)
 // POST { action: "get-stats" }
 //   → { userCount, bannedCount, totalPoints, todaySpendCount, todayAttendanceCount }
 //     (관리자 페이지 상단 요약 카드용 — 전체 가입자 수, 밴된 유저 수, 현재 전체 유저 잔액 합계,
@@ -200,7 +207,9 @@ async function getStats(admin: ReturnType<typeof getAdminClient>) {
   };
 }
 
-const USER_DETAIL_LOG_PAGE_SIZE = 10;
+// 유저 상세 모달은 팝업 안에 들어가는 목록이라 한 페이지에 10개씩 보여주면 스크롤이 길어져서
+// 5개로 줄였다 (요청사항) — 포인트 로그/상점 내역 탭은 페이지 전체를 쓰는 목록이라 그대로 10개.
+const USER_DETAIL_LOG_PAGE_SIZE = 5;
 
 async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId: string, page: number) {
   const { data: user, error: userError } = await admin
@@ -311,6 +320,61 @@ async function listPointsLog(
   return { entries, totalCount: count ?? 0 };
 }
 
+const SPEND_LOG_PAGE_SIZE = 10;
+
+// listPointsLog와 거의 같지만 (1) 상점 사용 기록만 걸러내고 (2) 24시간 제한이 없다 — "상점 내역"
+// 탭은 처리완료 체크를 위한 전용 화면이라, 예전에 놓친 것도 뒤늦게 찾아서 체크할 수 있어야 한다.
+async function listSpendLog(
+  admin: ReturnType<typeof getAdminClient>,
+  q: string | undefined,
+  page: number,
+) {
+  let channelIdFilter: string[] | null = null;
+  if (q && q.trim().length > 0) {
+    const { data: matchedUsers, error: userError } = await admin
+      .from("users")
+      .select("channel_id")
+      .ilike("channel_name", `%${q.trim()}%`);
+    if (userError) throw new Error(`users 검색 실패: ${userError.message}`);
+    channelIdFilter = (matchedUsers ?? []).map((u) => u.channel_id);
+    if (channelIdFilter.length === 0) return { entries: [], totalCount: 0 };
+  }
+
+  const offset = (page - 1) * SPEND_LOG_PAGE_SIZE;
+
+  let query = admin
+    .from("points_ledger")
+    .select("id, channel_id, amount, reason, processed, created_at", { count: "exact" })
+    .like("reason", "포인트 상점 사용:%")
+    .order("created_at", { ascending: false })
+    .range(offset, offset + SPEND_LOG_PAGE_SIZE - 1);
+  if (channelIdFilter) query = query.in("channel_id", channelIdFilter);
+
+  const { data: rows, error, count } = await query;
+  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
+  if (!rows || rows.length === 0) return { entries: [], totalCount: count ?? 0 };
+
+  const channelIds = [...new Set(rows.map((r) => r.channel_id))];
+  const { data: users, error: usersError } = await admin
+    .from("users")
+    .select("channel_id, channel_name")
+    .in("channel_id", channelIds);
+  if (usersError) throw new Error(`users 조회 실패: ${usersError.message}`);
+  const nameByChannel = new Map((users ?? []).map((u) => [u.channel_id, u.channel_name]));
+
+  const entries = rows.map((r) => ({
+    id: r.id,
+    channelId: r.channel_id,
+    channelName: nameByChannel.get(r.channel_id) ?? null,
+    amount: r.amount,
+    reason: r.reason,
+    processed: r.processed,
+    createdAt: r.created_at,
+  }));
+
+  return { entries, totalCount: count ?? 0 };
+}
+
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -382,6 +446,15 @@ Deno.serve(async (req: Request) => {
       const { entries, totalCount } = await listPointsLog(admin, q, page);
       const totalPages = Math.max(Math.ceil(totalCount / POINTS_LOG_PAGE_SIZE), 1);
       return jsonResponse({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
+    }
+
+    if (body.action === "list-spend-log") {
+      const q = typeof body.q === "string" ? body.q : undefined;
+      const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
+      const page = Math.max(rawPage, 1);
+      const { entries, totalCount } = await listSpendLog(admin, q, page);
+      const totalPages = Math.max(Math.ceil(totalCount / SPEND_LOG_PAGE_SIZE), 1);
+      return jsonResponse({ entries, page, pageSize: SPEND_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (body.action === "set-processed") {
