@@ -123,6 +123,10 @@ function logout() {
 
 // Edge Function 호출 공통 래퍼. 로그인 상태면 Authorization 헤더를 자동으로 붙여준다.
 // 401이 오면 세션 만료로 보고 로컬 로그아웃 처리 (호출부에서 로그인 화면으로 유도).
+// 403 { error: "banned" }가 오면 — 로그인은 유효했지만(토큰 자체는 안 만료) 그 사이 밴된
+// 경우 — 강제 로그아웃 + 안내 후 홈으로 보낸다. (토큰 자체를 서버에서 즉시 무효화하는 건
+// 아니라서 "완전한" 강제 로그아웃은 아니지만, 로그인 상태에서 호출되는 API들이 /me를 통해
+// 밴 여부를 다시 확인하기 때문에 사실상 곧바로 걸러진다 — me/index.ts, verifySessionInBackground 참고)
 // 사용 예: authFetch(SPEND_POINTS_URL, { method: "POST", body: JSON.stringify({ itemId }) })
 async function authFetch(url, options = {}) {
   const token = getToken();
@@ -137,8 +141,25 @@ async function authFetch(url, options = {}) {
   const res = await fetch(url, { ...options, headers });
   if (res.status === 401) {
     logout();
+  } else if (res.status === 403) {
+    // body는 한 번만 읽을 수 있어서 clone해서 확인 — 호출부가 원본 res.json()을 또 읽을 수 있게.
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.error === "banned" && isLoggedIn()) {
+      logout();
+      alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+      location.href = "index.html";
+    }
   }
   return res;
+}
+
+// 로그인 상태인 페이지에서 한 번 /me를 백그라운드로 조용히 호출해서, 그 사이 밴 당했는지를
+// 확인한다. mypage.html/shop.html은 화면을 그리려고 어차피 ME_URL을 직접 호출하니 따로 필요
+// 없고, index.html/notice.html/ranking.html/admin.html처럼 /me를 안 쓰는 페이지에서 호출한다.
+// (밴 감지 자체는 authFetch가 처리 — 여기선 그냥 그 authFetch를 한 번 트리거만 해주는 역할.)
+function verifySessionInBackground() {
+  if (!isLoggedIn()) return;
+  authFetch(ME_URL).catch(() => {});
 }
 
 // 사이드바 하단의 로그인/로그아웃 영역을 그린다.

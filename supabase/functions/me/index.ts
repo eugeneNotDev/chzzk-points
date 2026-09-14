@@ -24,7 +24,7 @@ async function getProfile(channelId: string) {
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public")
+    .select("channel_id, channel_name, is_public, banned")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -41,6 +41,7 @@ async function getProfile(channelId: string) {
     channelId: user.channel_id,
     channelName: user.channel_name,
     isPublic: user.is_public,
+    banned: user.banned,
     balance,
   };
 }
@@ -58,6 +59,25 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // 로그인은 이미 했는데(토큰을 갖고 있는데) 그 사이 밴 당한 경우 — 매 /me 호출마다 다시
+    // 체크해서 강제로 걸러낸다. mypage.html/shop.html은 로그인 상태면 항상 /me를 먼저 부르고,
+    // 다른 페이지들도 verifySessionInBackground()로 /me를 한 번씩 백그라운드 호출하기 때문에
+    // (chzzk-auth.js 참고) 밴된 유저는 어느 페이지를 열든 곧 로그아웃 처리된다.
+    // (로그인 자체를 막는 처리는 oauth-callback에 별도로 있음 — 거긴 아직 토큰이 없는 시점이라서.)
+    const admin = getAdminClient();
+    const { data: bannedCheck, error: bannedError } = await admin
+      .from("users")
+      .select("banned")
+      .eq("channel_id", session.channelId)
+      .maybeSingle();
+    if (bannedError) throw new Error(`banned 조회 실패: ${bannedError.message}`);
+    if (bannedCheck?.banned === true) {
+      return new Response(JSON.stringify({ error: "banned" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       if (typeof body.isPublic === "boolean") {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=8">
+<link rel="stylesheet" href="assets/css/style.css?v=9">
 </head>
 <body>
   <script>
@@ -35,6 +35,10 @@
         <a href="mypage.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
           <span class="label">마이페이지</span>
+        </a>
+        <a href="attendance.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+          <span class="label">출석체크</span>
         </a>
         <a href="ranking.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
@@ -109,8 +113,8 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=3"></script>
-  <script src="assets/js/spa-router.js?v=4"></script>
+  <script src="assets/js/chzzk-auth.js?v=4"></script>
+  <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하기 때문에,
   // 최상위에 const/let을 두면 두 번째 실행에서 "이미 선언됨" 에러가 난다 — 그래서 전체를
@@ -276,6 +280,7 @@
       renderSidebarUser();
       initSidebarToggle();
       initAdminNav();
+      verifySessionInBackground();
       setupNoticeModal();
       await Promise.all([loadBroadcastStatus(), loadNoticePreview(), loadRankingPreview()]);
     })();
