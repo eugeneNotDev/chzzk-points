@@ -4,15 +4,263 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=3">
 </head>
 <body>
-  <main>
-    <h1>chzzk-points</h1>
-    <!-- TODO: 치지직 로그인 버튼 -->
-    <!-- TODO: OAuth 콜백(?code=...)으로 돌아왔을 때 supabase/functions/oauth-callback 호출해서 세션 발급 -->
-    <button id="login-btn">치지직으로 로그인</button>
-  </main>
-  <script type="module" src="assets/js/supabase-client.js"></script>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <span class="mark">C</span>
+          <span class="label">chzzk-points</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <a href="shop.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+          <span class="label">소모처</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1>chzzk-points</h1>
+
+      <div class="card">
+        <div id="status-skeleton" class="skeleton skeleton-pill"></div>
+        <div id="status-badge" class="status-badge offline" hidden>
+          <span class="dot"></span>
+          <span id="status-text"></span>
+        </div>
+        <p id="live-title" class="live-title" hidden></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>공지사항</h2>
+        </div>
+
+        <div id="notice-form" class="notice-form" hidden>
+          <textarea id="notice-input" placeholder="공지 내용을 입력하세요 (방송 일정, 스케줄 변경 등)"></textarea>
+          <button id="notice-submit">등록</button>
+          <p id="notice-post-status" class="status-msg"></p>
+        </div>
+
+        <ul class="notice-list" id="notice-list">
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+        </ul>
+        <p id="notice-empty" class="empty-state" hidden>등록된 공지사항이 없어요.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>랭킹 미리보기</h2>
+          <a href="ranking.html" class="pill-link">
+            전체 보기
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+        <ol class="ranking-list" id="ranking-preview">
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+        </ol>
+        <p id="ranking-empty" class="empty-state" hidden>아직 랭킹에 등록된 유저가 없어요.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=2"></script>
+  <script src="assets/js/spa-router.js?v=2"></script>
+  <script>
+  // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하기 때문에,
+  // 최상위에 const/let을 두면 두 번째 실행에서 "이미 선언됨" 에러가 난다 — 그래서 전체를
+  // 즉시실행함수(IIFE)로 감싼다. supabase는 type=module 정적 import 대신 동적 import()로
+  // 가져온다 (동적 import는 매번 새로 실행해도 안전하고, 이미 로드된 모듈은 캐시해서 씀).
+  (function () {
+    let supabase;
+
+    const RANKING_PREVIEW_LIMIT = 10;
+    const NOTICE_LIMIT = 10;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 방송 중인지: 인증 불필요, 로그인 여부와 무관하게 누구나 조회 가능.
+    async function loadBroadcastStatus() {
+      const skeletonEl = document.getElementById("status-skeleton");
+      const badgeEl = document.getElementById("status-badge");
+      const textEl = document.getElementById("status-text");
+      const titleEl = document.getElementById("live-title");
+      try {
+        const res = await fetch(BROADCAST_STATUS_URL);
+        const data = await res.json();
+        if (data.isLive) {
+          badgeEl.className = "status-badge live";
+          textEl.textContent = "방송 중";
+          if (data.liveTitle) {
+            titleEl.textContent = data.liveTitle;
+            titleEl.hidden = false;
+          } else {
+            titleEl.hidden = true;
+          }
+        } else {
+          badgeEl.className = "status-badge offline";
+          textEl.textContent = "방송 종료";
+          titleEl.hidden = true;
+        }
+      } catch (err) {
+        console.error("[index] 방송 상태 조회 실패", err);
+        badgeEl.className = "status-badge offline";
+        textEl.textContent = "상태를 확인할 수 없어요";
+      } finally {
+        skeletonEl.hidden = true;
+        badgeEl.hidden = false;
+      }
+    }
+
+    // 공지사항 목록: notices 테이블이 전체 공개 읽기라서 anon 키로 직접 조회 (ranking과 동일 패턴).
+    async function loadNotices() {
+      const listEl = document.getElementById("notice-list");
+      const emptyEl = document.getElementById("notice-empty");
+      const { data, error } = await supabase
+        .from("notices")
+        .select("id, content, created_at")
+        .order("created_at", { ascending: false })
+        .limit(NOTICE_LIMIT);
+
+      if (error) {
+        console.error("[index] 공지 조회 실패", error);
+        emptyEl.textContent = "공지사항을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      if (!data || data.length === 0) {
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      listEl.innerHTML = data
+        .map(
+          (n) => `
+            <li class="notice-item">
+              <p>${escapeHtml(n.content)}</p>
+              <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
+            </li>`
+        )
+        .join("");
+    }
+
+    // 랭킹 한 줄을 그린다. 비공개 유저는 이름이 "비공개"로 이미 가려져서 내려오는데(뷰에서 처리),
+    // 본인 행이면 로컬에 저장된 실제 채널명으로 다시 보여준다 (본인은 자기 이름을 당연히 알고 있으니까).
+    function renderRankingRow(row, i, myChannelId, myChannelName) {
+      const isMe = row.channel_id === myChannelId;
+      const displayName = isMe && myChannelName ? myChannelName : row.channel_name || "(이름 없음)";
+      const isPrivate = !isMe && row.is_public === false;
+      return `
+        <li class="${isMe ? "me" : ""}">
+          <span class="rank">${i + 1}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(displayName)}${isMe ? " (나)" : ""}</span>
+          <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
+        </li>`;
+    }
+
+    async function loadRankingPreview() {
+      const listEl = document.getElementById("ranking-preview");
+      const emptyEl = document.getElementById("ranking-empty");
+      const { data, error } = await supabase
+        .from("ranking")
+        .select("channel_id, channel_name, total_points, is_public")
+        .order("total_points", { ascending: false })
+        .limit(RANKING_PREVIEW_LIMIT);
+
+      if (error) {
+        console.error("[index] 랭킹 조회 실패", error);
+        emptyEl.textContent = "랭킹을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      if (!data || data.length === 0) {
+        emptyEl.hidden = false;
+        listEl.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      const myChannelId = getChannelId();
+      const myChannelName = getChannelName();
+      listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId, myChannelName)).join("");
+    }
+
+    // 채널 주인으로 로그인된 경우에만 공지 작성 폼을 보여준다.
+    // (실제 쓰기 권한은 notices 함수가 세션 토큰으로 다시 검증하니, 여기선 UI 노출만 담당)
+    function setupNoticeForm() {
+      const formEl = document.getElementById("notice-form");
+      if (!isLoggedIn() || getChannelId() !== OWNER_CHANNEL_ID) {
+        formEl.hidden = true;
+        return;
+      }
+      formEl.hidden = false;
+
+      document.getElementById("notice-submit").addEventListener("click", async () => {
+        const input = document.getElementById("notice-input");
+        const statusEl = document.getElementById("notice-post-status");
+        const content = input.value.trim();
+        if (!content) return;
+
+        statusEl.textContent = "";
+        statusEl.className = "status-msg";
+        try {
+          const res = await authFetch(NOTICES_URL, {
+            method: "POST",
+            body: JSON.stringify({ content }),
+          });
+          if (!res.ok) throw new Error(String(res.status));
+          input.value = "";
+          statusEl.textContent = "등록했어요.";
+          statusEl.classList.add("ok");
+          await loadNotices();
+        } catch (err) {
+          statusEl.textContent = "등록에 실패했어요.";
+          statusEl.classList.add("error");
+        }
+      });
+    }
+
+    (async () => {
+      ({ supabase } = await import("./assets/js/supabase-client.js"));
+      await handleOAuthCallbackIfPresent();
+      renderSidebarUser();
+      initSidebarToggle();
+      setupNoticeForm();
+      await Promise.all([loadBroadcastStatus(), loadNotices(), loadRankingPreview()]);
+    })();
+  })();
+  </script>
 </body>
 </html>
