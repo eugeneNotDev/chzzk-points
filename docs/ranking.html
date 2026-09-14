@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=3">
+<link rel="stylesheet" href="assets/css/style.css?v=4">
 </head>
 <body>
   <script>
@@ -40,6 +40,10 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
           <span class="label">소모처</span>
         </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
       </nav>
       <div class="sidebar-user" id="sidebar-user"></div>
     </aside>
@@ -60,8 +64,8 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=2"></script>
-  <script src="assets/js/spa-router.js?v=2"></script>
+  <script src="assets/js/chzzk-auth.js?v=3"></script>
+  <script src="assets/js/spa-router.js?v=3"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
   // 이 스크립트를 다시 실행하므로, 최상위 const/let은 두 번째 실행에서 에러가 남).
@@ -87,6 +91,7 @@
     (async () => {
       renderSidebarUser();
       initSidebarToggle();
+      initAdminNav();
 
       const RANKING_LIMIT = 50;
       const { supabase } = await import("./assets/js/supabase-client.js");

@@ -382,14 +382,38 @@ ul.notice-list, ol.notice-list {
 .notice-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .notice-item:last-child { border-bottom: none; }
 .notice-item p { margin: 0 0 4px; white-space: pre-wrap; word-break: break-word; }
+.notice-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .notice-item time { color: var(--muted); font-size: 0.8rem; }
+.notice-item-actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+/* 텍스트만 있는 작은 버튼 (공지 수정/삭제 등). <button class="secondary">보다 더 가볍게. */
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 400;
+  text-decoration: underline;
+}
+.link-btn:hover { color: var(--accent); background: none; }
 
 .notice-form { margin-bottom: 16px; }
 .notice-form textarea {
+  display: block;
   width: 100%;
-  min-height: 70px;
-  resize: vertical;
+  min-height: 44px;
+  /* 줄바꿈하면 스크롤 대신 박스 높이 자체가 늘어나게(JS의 autoResizeTextarea가 height를 갱신) —
+     그래서 resize는 막고, 늘어난 높이만큼 넘치는 내용도 안 잘리게 overflow는 숨김 처리. */
+  resize: none;
+  overflow: hidden;
   font: inherit;
+  line-height: 1.5;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -398,6 +422,7 @@ ul.notice-list, ol.notice-list {
   margin-bottom: 10px;
 }
 .notice-form textarea:focus { outline: none; border-color: var(--accent); }
+.notice-form-actions { display: flex; gap: 8px; margin-bottom: 10px; }
 
 /* 랭킹 리스트 */
 ol.ranking-list {
@@ -479,3 +504,43 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .skeleton-row:last-child { border-bottom: none; }
 .skeleton-row .skeleton-avatar { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
 .skeleton-row .skeleton-line.grow { flex: 1; }
+
+/* 관리자 페이지 */
+.admin-search-row { display: flex; gap: 8px; }
+.admin-search-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 10px 12px;
+}
+.admin-search-row input[type="text"]:focus { outline: none; border-color: var(--accent); }
+
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.admin-user-row:last-child { border-bottom: none; }
+.admin-user-row.is-banned { opacity: 0.6; }
+.admin-user-info strong { display: block; margin-bottom: 2px; }
+.admin-user-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.admin-amount-input {
+  width: 90px;
+  font: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 8px 10px;
+}
+.admin-amount-input:focus { outline: none; border-color: var(--accent); }
+.admin-ban-btn.is-banned { border-color: var(--danger); color: #ff8a8a; }
+.admin-ban-btn.is-banned:hover { border-color: var(--danger); color: #ff8a8a; }

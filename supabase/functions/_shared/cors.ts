@@ -11,7 +11,7 @@ const ALLOWED_ORIGIN = "https://eugenenotdev.github.io";
 export const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
 // preflight(OPTIONS) 요청이면 바로 응답을 리턴하고, 아니면 null을 리턴한다.

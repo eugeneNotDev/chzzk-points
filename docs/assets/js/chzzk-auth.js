@@ -17,10 +17,12 @@ const SPEND_POINTS_URL = `${FUNCTIONS_BASE_URL}/spend-points`;
 const ATTENDANCE_CHECK_URL = `${FUNCTIONS_BASE_URL}/attendance-check`;
 const NOTICES_URL = `${FUNCTIONS_BASE_URL}/notices`;
 const BROADCAST_STATUS_URL = `${FUNCTIONS_BASE_URL}/broadcast-status`;
-// 공지사항 작성 등 "채널 주인만" 가능한 UI를 보여줄지 판단할 때 쓰는 값.
-// 시크릿이 아니라 공개된 channelId라서 프론트에 그대로 둬도 된다
-// (실제 쓰기 권한 체크는 서버(notices 함수)가 세션 토큰으로 다시 검증함 — 이건 UI 노출용).
-const OWNER_CHANNEL_ID = "d0bf0d3809a4a6b52a606b70df90b145";
+const ADMIN_URL = `${FUNCTIONS_BASE_URL}/admin`;
+// 공지사항 작성/수정/삭제, 관리자 페이지 등 "관리자만" 가능한 UI를 보여줄지 판단할 때 쓰는 값.
+// 방송/사이트 관리 전부 이 계정(유진 알파)으로 한다 — 검머짐은 개발 중 로그인 테스트용 부계정이라
+// 여기 안 쓴다. 시크릿이 아니라 공개된 channelId라서 프론트에 그대로 둬도 된다
+// (실제 쓰기 권한 체크는 서버(notices/admin 함수)가 세션 토큰으로 다시 검증함 — 이건 UI 노출용).
+const OWNER_CHANNEL_ID = "37a1acfaa35d56311bf428dc96142e9f";
 const TOKEN_STORAGE_KEY = "chzzk_points_token";
 const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
@@ -68,6 +70,13 @@ async function handleOAuthCallbackIfPresent() {
       body: JSON.stringify({ code, state }),
     });
     if (!res.ok) {
+      if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === "banned") {
+          alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+          return;
+        }
+      }
       console.error("[chzzk-auth] 로그인 처리 실패", res.status);
       return;
     }
@@ -98,6 +107,11 @@ function getChannelId() {
 // 로그인 상태인지 (토큰 존재 여부만 체크 — 실제 유효성은 서버가 401로 판단)
 function isLoggedIn() {
   return getToken() !== null;
+}
+
+// 관리자 계정으로 로그인했는지 (UI 노출용 — 실제 권한 체크는 서버가 세션 토큰으로 다시 함)
+function isAdmin() {
+  return isLoggedIn() && getChannelId() === OWNER_CHANNEL_ID;
 }
 
 // 로그아웃 — 로컬 토큰만 지운다 (서버에 별도 revoke는 두지 않음, MVP 범위 밖)
@@ -181,4 +195,13 @@ function initSidebarToggle() {
     document.body.classList.toggle("sidebar-collapsed", next);
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
   });
+}
+
+// 사이드바의 "관리자" 링크는 기본 hidden — 관리자 계정으로 로그인된 경우에만 보여준다.
+// 각 페이지 <nav class="sidebar-nav">에 <a href="admin.html" id="admin-nav-link" hidden> 를 두고
+// renderSidebarUser() 근처에서 한 번 호출하면 됨.
+function initAdminNav() {
+  const el = document.getElementById("admin-nav-link");
+  if (!el) return;
+  el.hidden = !isAdmin();
 }

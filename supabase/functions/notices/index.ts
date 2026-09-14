@@ -1,8 +1,11 @@
-// 공지사항 작성 (채널 주인 전용). 목록 읽기는 프론트에서 anon 키로 notices 테이블을
-// 직접 조회하면 되니까(RLS가 전체 공개), 이 함수는 POST(작성)만 처리한다.
+// 공지사항 작성/수정/삭제 (관리자 전용). 목록 읽기는 프론트에서 anon 키로 notices 테이블을
+// 직접 조회하면 되니까(RLS가 전체 공개), 이 함수는 쓰기 계열(POST/PATCH/DELETE)만 처리한다.
 //
-// POST { content: string } (Authorization: Bearer <세션토큰>, session.channelId가
-// OWNER_CHANNEL_ID와 일치해야만 허용 — 아니면 403)
+// POST   { content: string }                 → 새 공지 작성
+// PATCH  ?id=<notice id>  { content: string } → 기존 공지 수정
+// DELETE ?id=<notice id>                      → 공지 삭제
+// (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
+//  일치해야만 허용 — 아니면 403)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -18,57 +21,68 @@ function getAdminClient() {
   return createClient(url, serviceRoleKey);
 }
 
+function jsonResponse(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "method_not_allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (!["POST", "PATCH", "DELETE"].includes(req.method)) {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
   }
 
   const session = await requireSession(req);
-  if (!session) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  if (session.channelId !== OWNER_CHANNEL_ID) {
-    return new Response(JSON.stringify({ error: "forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
+  if (session.channelId !== OWNER_CHANNEL_ID) return jsonResponse({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const id = url.searchParams.get("id");
 
   try {
-    const { content } = await req.json();
-    if (typeof content !== "string" || content.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "empty_content" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const admin = getAdminClient();
+
+    if (req.method === "POST") {
+      const { content } = await req.json();
+      if (typeof content !== "string" || content.trim().length === 0) {
+        return jsonResponse({ error: "empty_content" }, 400);
+      }
+      const { data, error } = await admin
+        .from("notices")
+        .insert({ content: content.trim() })
+        .select()
+        .single();
+      if (error) throw new Error(`notices insert 실패: ${error.message}`);
+      return jsonResponse(data, 200);
     }
 
-    const admin = getAdminClient();
-    const { data, error } = await admin
-      .from("notices")
-      .insert({ content: content.trim() })
-      .select()
-      .single();
-    if (error) throw new Error(`notices insert 실패: ${error.message}`);
+    if (req.method === "PATCH") {
+      if (!id) return jsonResponse({ error: "missing_id" }, 400);
+      const { content } = await req.json();
+      if (typeof content !== "string" || content.trim().length === 0) {
+        return jsonResponse({ error: "empty_content" }, 400);
+      }
+      const { data, error } = await admin
+        .from("notices")
+        .update({ content: content.trim(), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new Error(`notices update 실패: ${error.message}`);
+      return jsonResponse(data, 200);
+    }
 
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // DELETE
+    if (!id) return jsonResponse({ error: "missing_id" }, 400);
+    const { error } = await admin.from("notices").delete().eq("id", id);
+    if (error) throw new Error(`notices delete 실패: ${error.message}`);
+    return jsonResponse({ ok: true }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return new Response(JSON.stringify({ error: "notice_failed" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "notice_failed" }, 500);
   }
 });

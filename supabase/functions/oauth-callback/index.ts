@@ -89,7 +89,7 @@ function getAdminClient() {
   return createClient(url, serviceRoleKey);
 }
 
-// users 테이블에 upsert. channel_name만 갱신하고 is_public/created_at은 기존 값 유지
+// users 테이블에 upsert. channel_name만 갱신하고 is_public/banned/created_at은 기존 값 유지
 // (upsert에 안 넣은 컬럼은 건드리지 않음).
 async function upsertUser(user: ChzzkUser): Promise<void> {
   const admin = getAdminClient();
@@ -102,6 +102,20 @@ async function upsertUser(user: ChzzkUser): Promise<void> {
   if (error) {
     throw new Error(`users upsert 실패: ${error.message}`);
   }
+}
+
+// 관리자 페이지에서 밴된 유저인지 확인. 밴 상태면 로그인 자체를 막는다(세션 토큰 미발급).
+async function isBanned(channelId: string): Promise<boolean> {
+  const admin = getAdminClient();
+  const { data, error } = await admin
+    .from("users")
+    .select("banned")
+    .eq("channel_id", channelId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`banned 조회 실패: ${error.message}`);
+  }
+  return data?.banned === true;
 }
 
 Deno.serve(async (req: Request) => {
@@ -120,6 +134,14 @@ Deno.serve(async (req: Request) => {
     const { accessToken } = await exchangeCodeForToken(code, state);
     const user = await fetchChzzkUser(accessToken);
     await upsertUser(user);
+
+    if (await isBanned(user.channelId)) {
+      return new Response(JSON.stringify({ error: "banned" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const token = await issueSessionToken(user);
 
     return new Response(
