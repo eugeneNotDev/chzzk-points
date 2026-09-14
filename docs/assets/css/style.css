@@ -481,9 +481,17 @@ ul.notice-list, ol.notice-list {
 .notice-modal-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* 오른쪽 정렬이 기본 — 홈 화면 팝업(notice.html)처럼 버튼이 "닫기" 하나뿐인 경우에도
+     자연스럽게 오른쪽에 붙는다. 관리자용 수정/삭제가 같이 있을 땐 그쪽에 margin-right:auto를
+     줘서 왼쪽으로 밀어내고 닫기는 계속 오른쪽에 남게 한다. */
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+}
+.notice-modal-admin-actions {
+  display: inline-flex;
+  gap: 10px;
+  margin-right: auto;
 }
 
 /* 랭킹 리스트 */
