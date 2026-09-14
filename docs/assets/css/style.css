@@ -312,13 +312,15 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 .balance .unit { font-size: 1rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
 
 /* 마이페이지 "현재 포인트" 박스 — 반으로 나눠서 왼쪽엔 포인트, 오른쪽엔 칭호 자리를 둔다
-   (칭호 기능은 아직 없어서 지금은 "준비 중" 플레이스홀더만). 둘 다 세로 중앙 정렬. */
+   (칭호 기능은 아직 없어서 지금은 "준비 중" 플레이스홀더만). grid로 폭을 1fr/auto/1fr로
+   딱 나눠서 두 칸이 항상 정확히 같은 폭이 되게 함(flex 50% 기반이면 divider 폭만큼 미세하게
+   안 맞을 수 있어서 grid로 바꿈). */
 .balance-split {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: stretch;
 }
 .balance-half {
-  flex: 1 1 50%;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -328,9 +330,15 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
   gap: 4px;
   padding: 4px 10px;
 }
-.balance-half .muted { margin: 0; }
-.balance-divider { width: 1px; align-self: stretch; background: var(--border); }
+.balance-half .muted,
+.balance-half .balance { margin: 0; }
+.balance-divider { width: 1px; background: var(--border); }
 .balance-title-placeholder { color: var(--muted); font-size: 1.1rem; margin: 0; }
+
+/* 포인트 상점의 "현재 포인트" 박스는 (칭호 칸 없이) 통짜라서 그냥 박스 전체를 중앙 정렬. */
+.balance-card-centered { text-align: center; }
+.balance-card-centered .muted,
+.balance-card-centered .balance { margin: 0; }
 
 /* 토글 스위치 (공개 설정용) */
 .toggle-row {

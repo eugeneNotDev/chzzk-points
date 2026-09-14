@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=13">
+<link rel="stylesheet" href="assets/css/style.css?v=14">
 </head>
 <body>
   <script>
@@ -59,9 +59,9 @@
     <main class="main-content">
       <h1>포인트 상점</h1>
 
-      <div id="loading-state" class="card">
+      <div id="loading-state" class="card balance-card-centered">
         <p class="muted">현재 포인트</p>
-        <p class="skeleton skeleton-line" style="width:120px;height:28px;margin-top:6px;"></p>
+        <p class="skeleton skeleton-line" style="width:120px;height:28px;margin-top:6px;margin-left:auto;margin-right:auto;"></p>
       </div>
 
       <div id="logged-out" class="card" hidden>
@@ -70,7 +70,7 @@
       </div>
 
       <div id="logged-in" hidden>
-        <div class="card">
+        <div class="card balance-card-centered">
           <p class="muted">현재 포인트</p>
           <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
         </div>
