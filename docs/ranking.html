@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=25">
+<link rel="stylesheet" href="assets/css/style.css?v=26">
 </head>
 <body>
   <script>
@@ -72,7 +72,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=8"></script>
+  <script src="assets/js/chzzk-auth.js?v=9"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -97,14 +97,9 @@
         </li>`;
     }
 
-    (async () => {
-      renderSidebarUser();
-      initSidebarToggle();
-      initAdminNav();
-      verifySessionInBackground();
+    const RANKING_LIMIT = 50;
 
-      const RANKING_LIMIT = 50;
-      const { supabase } = await import("./assets/js/supabase-client.js");
+    async function loadRanking(supabase) {
       const { data, error } = await supabase
         .from("ranking")
         .select("channel_id, channel_name, total_points, is_public, title_name")
@@ -113,6 +108,7 @@
 
       const listEl = document.getElementById("ranking-list");
       const emptyEl = document.getElementById("empty-msg");
+      if (!listEl || !emptyEl) return; // 다른 페이지로 이미 넘어간 뒤 늦게 도착한 응답이면 무시
 
       if (error) {
         console.error("[ranking] 조회 실패", error);
@@ -126,6 +122,34 @@
         const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
         listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
       }
+    }
+
+    (async () => {
+      renderSidebarUser();
+      initSidebarToggle();
+      initAdminNav();
+      verifySessionInBackground();
+
+      const { supabase } = await import("./assets/js/supabase-client.js");
+      await loadRanking(supabase);
+
+      // 실시간 갱신: points_ledger는 RLS로 막혀있어 직접 구독할 수 없어서, 그 대신 매
+      // insert마다 트리거가 채워주는 ranking_pings(공개 읽기 가능한 신호용 테이블)를 구독한다
+      // (0019_admin_features.sql 참고). 관리자가 일괄 지급을 하면 짧은 시간에 ping이 여러 번
+      // 올 수 있어서 debounce로 묶어서 한 번만 다시 불러온다.
+      let refetchTimer = null;
+      const channel = supabase
+        .channel("ranking_pings_page")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => {
+          clearTimeout(refetchTimer);
+          refetchTimer = setTimeout(() => loadRanking(supabase), 800);
+        })
+        .subscribe();
+
+      window.__pageCleanup = () => {
+        clearTimeout(refetchTimer);
+        supabase.removeChannel(channel);
+      };
     })();
   })();
   </script>

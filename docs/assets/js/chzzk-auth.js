@@ -149,6 +149,15 @@ async function authFetch(url, options = {}) {
       alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
       location.href = "index.html";
     }
+  } else if (res.ok) {
+    // 슬라이딩 세션 — /me가 남은 유효기간이 얼마 안 남았을 때만 refreshedToken을 응답에 실어
+    // 보낸다(me/index.ts 참고). 그 필드가 있으면 조용히 localStorage 토큰을 갈아끼운다.
+    // 다른 엔드포인트 응답엔 이 필드가 없어서(.refreshedToken이 undefined) 사실상 아무 일도 안 함.
+    res.clone().json().then((body) => {
+      if (typeof body.refreshedToken === "string" && body.refreshedToken) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, body.refreshedToken);
+      }
+    }).catch(() => {});
   }
   return res;
 }

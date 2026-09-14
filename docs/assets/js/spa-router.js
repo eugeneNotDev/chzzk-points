@@ -42,6 +42,20 @@ async function spaFetchPage(url) {
 // fetch로 받아온 문서에서 <body> 바로 아래 <script>들을 찾아 다시 실행한다.
 // src가 있는 외부 스크립트(chzzk-auth.js, spa-router.js 등)는 이미 로드돼 있으니 건너뜀.
 function spaRunScripts(doc) {
+  // 이전 페이지 스크립트가 등록해둔 정리 작업이 있으면 새 페이지 스크립트를 실행하기 전에
+  // 먼저 실행한다 — 주로 Supabase Realtime 구독 해제용. 페이지 스크립트는 매번 새로 끼워
+  // 넣어서 실행되기 때문에(위 설명 참고) DOM이 바뀌는 것과 별개로 이전 페이지가 열어둔
+  // 구독(예: 랭킹/공지 실시간 갱신 — ranking.html/notice.html/index.html 참고)은 저절로
+  // 안 끊긴다. 그대로 두면 페이지를 옮겨다닐 때마다 구독이 계속 쌓인다.
+  if (typeof window.__pageCleanup === "function") {
+    try {
+      window.__pageCleanup();
+    } catch (err) {
+      console.error("[spa-router] 페이지 정리 중 오류", err);
+    }
+    window.__pageCleanup = null;
+  }
+
   const scripts = Array.from(doc.querySelectorAll("body > script"));
   for (const oldScript of scripts) {
     if (oldScript.getAttribute("src")) continue;

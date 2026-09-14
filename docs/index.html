@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=25">
+<link rel="stylesheet" href="assets/css/style.css?v=26">
 </head>
 <body>
   <script>
@@ -113,7 +113,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=8"></script>
+  <script src="assets/js/chzzk-auth.js?v=9"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하기 때문에,
@@ -283,6 +283,40 @@
       verifySessionInBackground();
       setupNoticeModal();
       await Promise.all([loadBroadcastStatus(), loadNoticePreview(), loadRankingPreview()]);
+
+      // 실시간 갱신: 공지 미리보기 + 랭킹 미리보기 둘 다 구독한다. 랭킹은 points_ledger가
+      // RLS로 막혀있어서 직접 구독 못 하고, 대신 트리거가 채워주는 ranking_pings(공개 읽기
+      // 테이블)를 구독한다(0019_admin_features.sql 참고) — ranking.html과 동일한 패턴.
+      // 관리자가 일괄 지급하면 짧은 시간에 ping이 여러 번 올 수 있어 debounce로 묶는다.
+      let noticeRefetchTimer = null;
+      let rankingRefetchTimer = null;
+      const noticeChannel = supabase
+        .channel("notices_index_preview")
+        .on("postgres_changes", { event: "*", schema: "public", table: "notices" }, () => {
+          clearTimeout(noticeRefetchTimer);
+          noticeRefetchTimer = setTimeout(() => {
+            if (!document.getElementById("notice-preview")) return; // 이미 다른 페이지로 이동함
+            loadNoticePreview();
+          }, 500);
+        })
+        .subscribe();
+      const rankingChannel = supabase
+        .channel("ranking_pings_index_preview")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => {
+          clearTimeout(rankingRefetchTimer);
+          rankingRefetchTimer = setTimeout(() => {
+            if (!document.getElementById("ranking-preview")) return;
+            loadRankingPreview();
+          }, 800);
+        })
+        .subscribe();
+
+      window.__pageCleanup = () => {
+        clearTimeout(noticeRefetchTimer);
+        clearTimeout(rankingRefetchTimer);
+        supabase.removeChannel(noticeChannel);
+        supabase.removeChannel(rankingChannel);
+      };
     })();
   })();
   </script>

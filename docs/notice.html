@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=25">
+<link rel="stylesheet" href="assets/css/style.css?v=26">
 </head>
 <body>
   <script>
@@ -99,7 +99,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=8"></script>
+  <script src="assets/js/chzzk-auth.js?v=9"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -336,6 +336,26 @@
       if (targetId && noticesById.has(targetId)) {
         openViewModal(targetId);
       }
+
+      // 실시간 갱신: 다른 브라우저(관리자 등)에서 공지를 쓰거나 고치거나 지우면 새로고침 없이
+      // 목록에 바로 반영한다. notices 테이블은 이미 공개 읽기 정책이 있어서 바로 구독 가능
+      // (0019_admin_features.sql에서 realtime publication에만 추가함).
+      let refetchTimer = null;
+      const channel = supabase
+        .channel("notices_page")
+        .on("postgres_changes", { event: "*", schema: "public", table: "notices" }, () => {
+          clearTimeout(refetchTimer);
+          refetchTimer = setTimeout(() => {
+            if (!document.getElementById("notice-list")) return; // 이미 다른 페이지로 이동함
+            loadNotices();
+          }, 500);
+        })
+        .subscribe();
+
+      window.__pageCleanup = () => {
+        clearTimeout(refetchTimer);
+        supabase.removeChannel(channel);
+      };
     })();
   })();
   </script>

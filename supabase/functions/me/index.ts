@@ -1,20 +1,31 @@
-// 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그.
+// 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그 + 칭호.
 // mypage.html, shop.html이 이 함수를 쓴다 (Authorization: Bearer <세션토큰> 필수).
 //
-// GET  → { channelId, channelName, isPublic, balance }
+// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, selectedTitleId, refreshedToken? }
+//   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트 — 칭호 잠금해제 판정 기준.
+//   points_ledger에 행이 추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
+//   칭호 목록 자체(이름/필요 포인트)는 이 함수가 아니라 마이페이지가 titles 테이블에서
+//   직접 anon으로 조회한다 — shop_items와 같은 패턴.)
 // GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
 //   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
 //   주는 기능이 생기면 그건 reason을 "채팅:"/"후원:" 접두사로 남기고 여기선 제외할 것 — 그런
 //   포인트는 양이 너무 많아서 개인 로그에 넣기엔 부적합하다고 판단함. 지금은 그 기능이 아직
 //   없어서 이 필터는 사실상 아무것도 걸러내지 않음.)
-// POST { isPublic: boolean } → is_public 갱신 후 프로필 형태로 최신 상태 리턴
+// POST { isPublic?: boolean, selectedTitleId?: string | null } → 갱신 후 프로필 형태로 최신 상태 리턴
+//   (selectedTitleId: null이면 장착 해제. 문자열이면 그 칭호가 실존하고 본인이 잠금해제한
+//   상태인지 서버에서 다시 검증한다 — 잠긴 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
+//
+// 모든 응답(GET/POST 공통)에 refreshedToken이 실려올 수 있다 — 세션 토큰의 남은 유효기간이
+// 얼마 안 남았을 때만(_shared/session.ts의 shouldRefresh) 새 토큰을 같이 내려준다("슬라이딩
+// 세션". 별도 리프레시 엔드포인트 없이, 이 페이지들이 어차피 주기적으로 /me를 부르는 걸
+// 이용함 — chzzk-auth.js의 authFetch가 이 필드를 보고 자동으로 localStorage를 갈아끼운다).
 //
 // verify_jwt는 config.toml에서 꺼져있다 (우리 세션 토큰을 Authorization에 쓰기 때문).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
-import { requireSession } from "../_shared/session.ts";
+import { requireSession, issueSessionToken, shouldRefresh } from "../_shared/session.ts";
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -58,12 +69,48 @@ async function listMyPointsLog(channelId: string, page: number) {
   return { entries, totalCount: count ?? 0 };
 }
 
+// 칭호 장착/해제. titleId가 null이면 그냥 해제. 문자열이면 titles 테이블에 실존하는지 +
+// 본인의 max_balance_reached가 그 칭호의 min_points 이상인지(=잠금해제 됐는지) 서버에서
+// 다시 검증한 뒤에만 반영한다 — 프론트 검증만 믿고 넘어가면 개발자도구로 잠긴 칭호를
+// 강제로 장착하는 게 가능해지므로.
+async function setSelectedTitle(channelId: string, titleId: string | null) {
+  const admin = getAdminClient();
+
+  if (titleId === null) {
+    const { error } = await admin.from("users").update({ selected_title_id: null }).eq("channel_id", channelId);
+    if (error) throw new Error(`selected_title_id 갱신 실패: ${error.message}`);
+    return { ok: true as const };
+  }
+
+  const { data: title, error: titleError } = await admin
+    .from("titles")
+    .select("id, min_points")
+    .eq("id", titleId)
+    .maybeSingle();
+  if (titleError) throw new Error(`titles 조회 실패: ${titleError.message}`);
+  if (!title) return { ok: false as const, error: "title_not_found" as const };
+
+  const { data: user, error: userError } = await admin
+    .from("users")
+    .select("max_balance_reached")
+    .eq("channel_id", channelId)
+    .maybeSingle();
+  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+  if (!user || user.max_balance_reached < title.min_points) {
+    return { ok: false as const, error: "title_locked" as const };
+  }
+
+  const { error } = await admin.from("users").update({ selected_title_id: titleId }).eq("channel_id", channelId);
+  if (error) throw new Error(`selected_title_id 갱신 실패: ${error.message}`);
+  return { ok: true as const };
+}
+
 async function getProfile(channelId: string) {
   const admin = getAdminClient();
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned")
+    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -82,6 +129,8 @@ async function getProfile(channelId: string) {
     isPublic: user.is_public,
     banned: user.banned,
     balance,
+    maxBalanceReached: user.max_balance_reached,
+    selectedTitleId: user.selected_title_id,
   };
 }
 
@@ -117,28 +166,45 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // 슬라이딩 세션 — 남은 유효기간이 얼마 없을 때만 새 토큰을 같이 내려준다 (session.ts 참고).
+    const refreshedToken = shouldRefresh(session)
+      ? await issueSessionToken({ channelId: session.channelId, channelName: session.channelName })
+      : undefined;
+
     if (req.method === "GET" && new URL(req.url).searchParams.get("action") === "points-log") {
       const rawPage = Number(new URL(req.url).searchParams.get("page") ?? "1");
       const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.trunc(rawPage) : 1;
       const { entries, totalCount } = await listMyPointsLog(session.channelId, page);
       const totalPages = Math.max(Math.ceil(totalCount / MY_POINTS_LOG_PAGE_SIZE), 1);
-      return jsonResponse({ entries, page, pageSize: MY_POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
+      return jsonResponse(
+        { entries, page, pageSize: MY_POINTS_LOG_PAGE_SIZE, totalCount, totalPages, ...(refreshedToken ? { refreshedToken } : {}) },
+        200,
+      );
     }
 
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       if (typeof body.isPublic === "boolean") {
-        const admin = getAdminClient();
         const { error } = await admin
           .from("users")
           .update({ is_public: body.isPublic })
           .eq("channel_id", session.channelId);
         if (error) throw new Error(`is_public 갱신 실패: ${error.message}`);
       }
+      if ("selectedTitleId" in body) {
+        const titleId = body.selectedTitleId;
+        if (titleId !== null && typeof titleId !== "string") {
+          return jsonResponse({ error: "invalid_title" }, 400);
+        }
+        const result = await setSelectedTitle(session.channelId, titleId);
+        if (!result.ok) {
+          return jsonResponse({ error: result.error }, 400);
+        }
+      }
     }
 
     const profile = await getProfile(session.channelId);
-    return new Response(JSON.stringify(profile), {
+    return new Response(JSON.stringify({ ...profile, ...(refreshedToken ? { refreshedToken } : {}) }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

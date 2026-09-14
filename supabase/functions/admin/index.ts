@@ -15,7 +15,7 @@
 //     보고 있는 검색 목록/페이지와 무관하게 진짜 전체). target="selected"면 channelIds에 담아 보낸 유저들만
 //     대상 — 관리자 화면에서 체크박스로 고른 유저 목록.)
 // POST { action: "list-points-log", q?: string, page?: number }
-//   → { entries: [{ id, channelId, channelName, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
+//   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
 //     (points_ledger 최근 기록, 페이지당 10개. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체
 //     유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘 썼는지 대조용.
 //     최근 24시간 것만 보여준다 — 그 이상 지난 관리자 모니터링용 로그는 화면에 굳이 안 보여줘도
@@ -23,6 +23,21 @@
 //     않는다 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를 합산)라서 오래된 행을 진짜
 //     삭제하면 유저 잔액이 깨진다. 마이페이지 개인 로그(me/index.ts)는 이 24시간 제한 없이 전체
 //     기록을 그대로 보여줌.
+// POST { action: "set-processed", id: number, processed: boolean }
+//   → { id, processed }  (points_ledger 한 행의 처리완료 표시를 토글. 오버레이 상점 사용 알림을
+//     놓쳤을 때, 포인트 로그에서 이미 처리한 건지 체크해두는 용도 — 0019_admin_features.sql 참고.
+//     어떤 행에든 걸 수 있지만, 화면(admin.html)에서는 상점 사용("포인트 상점 사용: ..." reason)
+//     항목에만 체크박스를 보여준다.)
+// POST { action: "get-stats" }
+//   → { userCount, bannedCount, totalPoints, todaySpendCount, todayAttendanceCount }
+//     (관리자 페이지 상단 요약 카드용 — 전체 가입자 수, 밴된 유저 수, 현재 전체 유저 잔액 합계,
+//     오늘(KST) 상점 사용 건수, 오늘(KST) 출석체크 인원.)
+// POST { action: "get-user-detail", channelId: string, page?: number }
+//   → { channelId, channelName, isPublic, banned, createdAt, maxBalanceReached, balance,
+//       attendanceCount, log: [{ id, amount, reason, processed, createdAt }], page, pageSize,
+//       totalCount, totalPages }
+//     (유저 한 명의 전체 내역 — list-points-log와 달리 24시간 제한 없이 전체 기간, 페이지당 10개.
+//     관리자 유저 목록에서 행을 클릭하면 뜨는 상세 모달용.)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -136,6 +151,109 @@ async function bulkAdjustPoints(
   return channelIds.length;
 }
 
+// 주어진 시각을 "한국 시간(KST) 기준 YYYY-MM-DD" 문자열로 (attendance-check/index.ts와 동일 —
+// 페이지 하나 분량이라 공용 파일로 안 빼고 필요한 곳마다 둠).
+function kstDateString(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+async function setProcessed(admin: ReturnType<typeof getAdminClient>, id: number, processed: boolean) {
+  const { error } = await admin.from("points_ledger").update({ processed }).eq("id", id);
+  if (error) throw new Error(`processed 갱신 실패: ${error.message}`);
+}
+
+async function getStats(admin: ReturnType<typeof getAdminClient>) {
+  const todayStr = kstDateString(new Date());
+  // 오늘(KST) 00:00을 UTC ISO로 — spend_events.created_at(timestamptz) 비교용.
+  const todayStartIso = new Date(`${todayStr}T00:00:00+09:00`).toISOString();
+
+  const [
+    { count: userCount, error: userCountError },
+    { count: bannedCount, error: bannedCountError },
+    { data: ledgerRows, error: ledgerError },
+    { count: todaySpendCount, error: spendCountError },
+    { count: todayAttendanceCount, error: attendanceCountError },
+  ] = await Promise.all([
+    admin.from("users").select("*", { count: "exact", head: true }),
+    admin.from("users").select("*", { count: "exact", head: true }).eq("banned", true),
+    admin.from("points_ledger").select("amount"),
+    admin.from("spend_events").select("*", { count: "exact", head: true }).gte("created_at", todayStartIso),
+    admin.from("attendance").select("*", { count: "exact", head: true }).eq("attended_on", todayStr),
+  ]);
+  for (const e of [userCountError, bannedCountError, ledgerError, spendCountError, attendanceCountError]) {
+    if (e) throw new Error(`통계 조회 실패: ${e.message}`);
+  }
+
+  const totalPoints = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+
+  return {
+    userCount: userCount ?? 0,
+    bannedCount: bannedCount ?? 0,
+    totalPoints,
+    todaySpendCount: todaySpendCount ?? 0,
+    todayAttendanceCount: todayAttendanceCount ?? 0,
+  };
+}
+
+const USER_DETAIL_LOG_PAGE_SIZE = 10;
+
+async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId: string, page: number) {
+  const { data: user, error: userError } = await admin
+    .from("users")
+    .select("channel_id, channel_name, is_public, banned, created_at, max_balance_reached")
+    .eq("channel_id", channelId)
+    .maybeSingle();
+  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+  if (!user) return null;
+
+  const offset = (page - 1) * USER_DETAIL_LOG_PAGE_SIZE;
+
+  const [
+    { data: balanceRows, error: balanceError },
+    { data: logRows, error: logError, count: logTotalCount },
+    { count: attendanceCount, error: attendanceError },
+  ] = await Promise.all([
+    admin.from("points_ledger").select("amount").eq("channel_id", channelId),
+    admin
+      .from("points_ledger")
+      .select("id, amount, reason, processed, created_at", { count: "exact" })
+      .eq("channel_id", channelId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + USER_DETAIL_LOG_PAGE_SIZE - 1),
+    admin.from("attendance").select("*", { count: "exact", head: true }).eq("channel_id", channelId),
+  ]);
+  if (balanceError) throw new Error(`points_ledger 조회 실패: ${balanceError.message}`);
+  if (logError) throw new Error(`points_ledger 조회 실패: ${logError.message}`);
+  if (attendanceError) throw new Error(`attendance 조회 실패: ${attendanceError.message}`);
+
+  const balance = (balanceRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+  const log = (logRows ?? []).map((r) => ({
+    id: r.id,
+    amount: r.amount,
+    reason: r.reason,
+    processed: r.processed,
+    createdAt: r.created_at,
+  }));
+
+  return {
+    channelId: user.channel_id,
+    channelName: user.channel_name,
+    isPublic: user.is_public,
+    banned: user.banned,
+    createdAt: user.created_at,
+    maxBalanceReached: user.max_balance_reached,
+    balance,
+    attendanceCount: attendanceCount ?? 0,
+    log,
+    logTotalCount: logTotalCount ?? 0,
+  };
+}
+
 const POINTS_LOG_PAGE_SIZE = 10;
 const POINTS_LOG_WINDOW_HOURS = 24;
 
@@ -162,7 +280,7 @@ async function listPointsLog(
 
   let query = admin
     .from("points_ledger")
-    .select("id, channel_id, amount, reason, created_at", { count: "exact" })
+    .select("id, channel_id, amount, reason, processed, created_at", { count: "exact" })
     .gte("created_at", cutoffIso)
     .order("created_at", { ascending: false })
     .range(offset, offset + POINTS_LOG_PAGE_SIZE - 1);
@@ -186,6 +304,7 @@ async function listPointsLog(
     channelName: nameByChannel.get(r.channel_id) ?? null,
     amount: r.amount,
     reason: r.reason,
+    processed: r.processed,
     createdAt: r.created_at,
   }));
 
@@ -263,6 +382,30 @@ Deno.serve(async (req: Request) => {
       const { entries, totalCount } = await listPointsLog(admin, q, page);
       const totalPages = Math.max(Math.ceil(totalCount / POINTS_LOG_PAGE_SIZE), 1);
       return jsonResponse({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
+    }
+
+    if (body.action === "set-processed") {
+      const { id, processed } = body;
+      if (typeof id !== "number" || !Number.isFinite(id)) return jsonResponse({ error: "missing_id" }, 400);
+      if (typeof processed !== "boolean") return jsonResponse({ error: "invalid_processed" }, 400);
+      await setProcessed(admin, id, processed);
+      return jsonResponse({ id, processed }, 200);
+    }
+
+    if (body.action === "get-stats") {
+      const stats = await getStats(admin);
+      return jsonResponse(stats, 200);
+    }
+
+    if (body.action === "get-user-detail") {
+      const { channelId } = body;
+      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
+      const page = Math.max(rawPage, 1);
+      const detail = await getUserDetail(admin, channelId, page);
+      if (!detail) return jsonResponse({ error: "user_not_found" }, 404);
+      const totalPages = Math.max(Math.ceil(detail.logTotalCount / USER_DETAIL_LOG_PAGE_SIZE), 1);
+      return jsonResponse({ ...detail, page, pageSize: USER_DETAIL_LOG_PAGE_SIZE, totalPages }, 200);
     }
 
     return jsonResponse({ error: "unknown_action" }, 400);

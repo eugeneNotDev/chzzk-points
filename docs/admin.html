@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=25">
+<link rel="stylesheet" href="assets/css/style.css?v=26">
 </head>
 <body>
   <script>
@@ -65,6 +65,25 @@
       </div>
 
       <div id="admin-content" hidden>
+        <div class="card" id="admin-stats-card">
+          <button type="button" class="card-header collapse-toggle" id="admin-stats-toggle" aria-expanded="true" aria-controls="admin-stats-collapse">
+            <h2>현황 요약</h2>
+            <svg class="details-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="collapse open" id="admin-stats-collapse">
+            <div class="collapse-inner">
+              <div class="admin-stats-grid" id="admin-stats-grid">
+                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-user-count">-</span><span class="admin-stat-label">전체 가입자</span></div>
+                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-banned-count">-</span><span class="admin-stat-label">밴된 유저</span></div>
+                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-total-points">-</span><span class="admin-stat-label">전체 발행 포인트</span></div>
+                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-today-spend">-</span><span class="admin-stat-label">오늘 상점 사용</span></div>
+                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-today-attendance">-</span><span class="admin-stat-label">오늘 출석체크</span></div>
+              </div>
+              <p id="admin-stats-status" class="status-msg"></p>
+            </div>
+          </div>
+        </div>
+
         <div class="admin-tabs">
           <button type="button" class="admin-tab-btn active" data-tab="users">유저 관리</button>
           <button type="button" class="admin-tab-btn" data-tab="log">포인트 로그</button>
@@ -138,10 +157,23 @@
           </div>
         </div>
       </div>
+
+      <!-- 유저 목록에서 이름을 누르면 뜨는 상세 모달 — 그 유저의 전체 내역(24시간 제한 없음)을 본다. -->
+      <dialog id="user-detail-modal" class="notice-modal admin-user-modal">
+        <h3 id="user-detail-name"></h3>
+        <p class="muted" id="user-detail-meta"></p>
+        <div class="admin-user-detail-stats" id="user-detail-stats"></div>
+        <div id="user-detail-log-list"></div>
+        <p id="user-detail-log-empty" class="empty-state" hidden>내역이 없어요.</p>
+        <div id="user-detail-pagination" class="pagination"></div>
+        <div class="notice-modal-actions">
+          <button type="button" class="secondary" id="user-detail-close-btn">닫기</button>
+        </div>
+      </dialog>
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=8"></script>
+  <script src="assets/js/chzzk-auth.js?v=9"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -177,7 +209,7 @@
             <input type="checkbox" class="admin-user-checkbox" ${checked ? "checked" : ""}>
           </label>
           <div class="admin-user-info">
-            <strong>${escapeHtml(u.channelName || "(이름 없음)")}</strong>
+            <button type="button" class="admin-user-name-btn" title="상세 내역 보기">${escapeHtml(u.channelName || "(이름 없음)")}</button>
             <span class="muted">${u.balance.toLocaleString("ko-KR")}P · ${u.isPublic ? "공개" : "비공개"}${u.banned ? " · 밴됨" : ""}</span>
           </div>
           <div class="admin-user-actions">
@@ -198,6 +230,7 @@
         row.querySelector(".admin-ban-btn").addEventListener("click", () =>
           toggleBan(channelId, row.classList.contains("is-banned")),
         );
+        row.querySelector(".admin-user-name-btn").addEventListener("click", () => openUserDetailModal(channelId));
         row.querySelector(".admin-user-checkbox").addEventListener("change", (e) => {
           if (e.target.checked) selectedChannelIds.add(channelId);
           else selectedChannelIds.delete(channelId);
@@ -379,9 +412,21 @@
       return d.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
+    // 상점 사용 항목("포인트 상점 사용: ...")에만 처리완료 체크박스를 보여준다 — 지급/차감/
+    // 출석체크는 그 자체가 이미 완료된 행위라 체크할 게 없음 (0019_admin_features.sql 참고).
+    function isSpendLogEntry(entry) {
+      return typeof entry.reason === "string" && entry.reason.startsWith("포인트 상점 사용:");
+    }
+
     function renderLogRow(entry) {
       const positive = entry.amount > 0;
       const sign = positive ? "+" : "";
+      const processedToggle = isSpendLogEntry(entry)
+        ? `<label class="admin-checkbox-label points-log-processed">
+             <input type="checkbox" class="processed-checkbox" data-id="${entry.id}" ${entry.processed ? "checked" : ""}>
+             처리완료
+           </label>`
+        : "";
       return `
         <div class="points-log-row">
           <div class="points-log-who">
@@ -390,7 +435,32 @@
           </div>
           <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
           <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
+          ${processedToggle}
         </div>`;
+    }
+
+    // container 안의 처리완료 체크박스에 이벤트를 붙인다 — 포인트 로그 탭 목록과 유저 상세
+    // 모달 목록 둘 다에서 쓴다(둘 다 renderLogRow로 그림).
+    function wireProcessedCheckboxes(container) {
+      container.querySelectorAll(".processed-checkbox").forEach((cb) => {
+        cb.addEventListener("change", async (e) => {
+          const id = Number(cb.dataset.id);
+          const processed = e.target.checked;
+          cb.disabled = true;
+          try {
+            const res = await authFetch(ADMIN_URL, {
+              method: "POST",
+              body: JSON.stringify({ action: "set-processed", id, processed }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+          } catch (err) {
+            cb.checked = !processed; // 실패 시 원상복구
+            alert("처리완료 표시 변경에 실패했어요.");
+          } finally {
+            cb.disabled = false;
+          }
+        });
+      });
     }
 
     // 페이지 번호 버튼을 그린다 — 현재 페이지 기준 앞뒤 2개씩 + 처음/끝 페이지, 나머지는 "…"로 생략.
@@ -441,6 +511,7 @@
         }
         logEmptyEl.hidden = true;
         logListEl.innerHTML = data.entries.map(renderLogRow).join("");
+        wireProcessedCheckboxes(logListEl);
         renderPagination(logPaginationEl, data.page, data.totalPages, (p) => loadPointsLog(logSearchInput.value, p));
       } catch (err) {
         logSearchStatus.textContent = "불러오기에 실패했어요.";
@@ -451,6 +522,98 @@
     logSearchBtn.addEventListener("click", () => loadPointsLog(logSearchInput.value, 1));
     logSearchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") loadPointsLog(logSearchInput.value, 1);
+    });
+
+    // 유저 상세 모달 ----------------------------------------------------------
+    // 유저 목록에서 이름을 누르면 뜬다 — 그 유저의 전체 내역(24시간 제한 없이, list-points-log와
+    // 달리 get-user-detail을 씀)을 보여준다. renderLogRow/wireProcessedCheckboxes/renderPagination을
+    // 포인트 로그 탭과 그대로 재사용한다(같은 모양의 데이터라서).
+    const userDetailModal = document.getElementById("user-detail-modal");
+    const userDetailNameEl = document.getElementById("user-detail-name");
+    const userDetailMetaEl = document.getElementById("user-detail-meta");
+    const userDetailStatsEl = document.getElementById("user-detail-stats");
+    const userDetailLogListEl = document.getElementById("user-detail-log-list");
+    const userDetailLogEmptyEl = document.getElementById("user-detail-log-empty");
+    const userDetailPaginationEl = document.getElementById("user-detail-pagination");
+
+    async function openUserDetailModal(channelId) {
+      userDetailNameEl.textContent = "불러오는 중...";
+      userDetailMetaEl.textContent = "";
+      userDetailStatsEl.innerHTML = "";
+      userDetailLogListEl.innerHTML = "";
+      userDetailLogEmptyEl.hidden = true;
+      userDetailPaginationEl.innerHTML = "";
+      if (!userDetailModal.open) userDetailModal.showModal();
+      await loadUserDetail(channelId, 1);
+    }
+
+    async function loadUserDetail(channelId, page) {
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "get-user-detail", channelId, page }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+
+        userDetailNameEl.textContent = data.channelName || "(이름 없음)";
+        userDetailMetaEl.textContent = `가입일 ${formatDateTime(data.createdAt)}${data.banned ? " · 밴됨" : ""}`;
+        userDetailStatsEl.innerHTML = `
+          <div class="admin-user-detail-stat"><strong>${data.balance.toLocaleString("ko-KR")}P</strong><span>현재 잔액</span></div>
+          <div class="admin-user-detail-stat"><strong>${data.maxBalanceReached.toLocaleString("ko-KR")}P</strong><span>역대 최고 보유</span></div>
+          <div class="admin-user-detail-stat"><strong>${data.attendanceCount.toLocaleString("ko-KR")}회</strong><span>출석체크</span></div>
+          <div class="admin-user-detail-stat"><strong>${data.isPublic ? "공개" : "비공개"}</strong><span>공개 설정</span></div>
+        `;
+
+        if (!data.log || data.log.length === 0) {
+          userDetailLogListEl.innerHTML = "";
+          userDetailLogEmptyEl.hidden = false;
+          userDetailPaginationEl.innerHTML = "";
+          return;
+        }
+        userDetailLogEmptyEl.hidden = true;
+        userDetailLogListEl.innerHTML = data.log.map(renderLogRow).join("");
+        wireProcessedCheckboxes(userDetailLogListEl);
+        renderPagination(userDetailPaginationEl, data.page, data.totalPages, (p) => loadUserDetail(channelId, p));
+      } catch (err) {
+        userDetailNameEl.textContent = "불러오지 못했어요.";
+      }
+    }
+
+    document.getElementById("user-detail-close-btn").addEventListener("click", () => userDetailModal.close());
+    // 배경(backdrop) 클릭 시 닫기 — index.html의 공지 모달과 같은 패턴.
+    userDetailModal.addEventListener("click", (e) => {
+      if (e.target === userDetailModal) userDetailModal.close();
+    });
+
+    // 관리자 현황 요약 카드 -----------------------------------------------------
+    const statsStatusEl = document.getElementById("admin-stats-status");
+
+    async function loadStats() {
+      statsStatusEl.textContent = "";
+      statsStatusEl.className = "status-msg";
+      try {
+        const res = await authFetch(ADMIN_URL, { method: "POST", body: JSON.stringify({ action: "get-stats" }) });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        document.getElementById("stat-user-count").textContent = data.userCount.toLocaleString("ko-KR");
+        document.getElementById("stat-banned-count").textContent = data.bannedCount.toLocaleString("ko-KR");
+        document.getElementById("stat-total-points").textContent = data.totalPoints.toLocaleString("ko-KR");
+        document.getElementById("stat-today-spend").textContent = data.todaySpendCount.toLocaleString("ko-KR");
+        document.getElementById("stat-today-attendance").textContent = data.todayAttendanceCount.toLocaleString("ko-KR");
+      } catch (err) {
+        statsStatusEl.textContent = "현황을 불러오지 못했어요.";
+        statsStatusEl.classList.add("error");
+      }
+    }
+
+    // 현황 요약 카드 접기/펴기 — 일괄 지급 카드와 같은 방식이지만 기본은 펼쳐진 상태로 둔다
+    // (한눈에 바로 보이는 게 요약 카드의 목적이라, 필요할 때만 접어두는 용도).
+    document.getElementById("admin-stats-toggle").addEventListener("click", () => {
+      const btn = document.getElementById("admin-stats-toggle");
+      const panel = document.getElementById("admin-stats-collapse");
+      const isOpen = panel.classList.toggle("open");
+      btn.setAttribute("aria-expanded", String(isOpen));
     });
 
     // 탭 전환 ----------------------------------------------------------------
@@ -488,6 +651,7 @@
       document.getElementById("admin-forbidden").hidden = false;
     } else {
       document.getElementById("admin-content").hidden = false;
+      loadStats();
       searchUsers("", 1);
     }
   })();

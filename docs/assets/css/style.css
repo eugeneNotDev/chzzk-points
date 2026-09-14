@@ -750,6 +750,74 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-row-checkbox { flex-shrink: 0; }
 .admin-bulk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 #admin-bulk-selected-count { margin-top: 10px; margin-bottom: 0; }
+
+/* 관리자 페이지 상단 현황 요약 카드 */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+.admin-stat-tile {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  text-align: center;
+}
+.admin-stat-value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.admin-stat-label {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* 유저 목록에서 이름을 눌러 상세 모달을 여는 버튼 — <strong>처럼 보이되 클릭 가능함을
+   살짝 드러내려고 hover에서만 밑줄. */
+.admin-user-name-btn {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 2px;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-user-name-btn:hover { color: var(--accent); text-decoration: underline; background: none; }
+
+/* 유저 상세 모달 (notice-modal 재사용 + 내용이 길어질 수 있어서 자체 스크롤 추가) */
+.admin-user-modal {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.admin-user-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+.admin-user-detail-stat {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+}
+.admin-user-detail-stat strong { display: block; font-size: 1.05rem; }
+.admin-user-detail-stat span { display: block; margin-top: 2px; font-size: 0.76rem; color: var(--muted); }
+
+/* 포인트 로그 행의 "처리완료" 체크박스 — 상점 사용 항목에만 붙는다. */
+.points-log-processed { flex: 0 0 auto; white-space: nowrap; }
+@media (max-width: 560px) {
+  .points-log-processed { flex-basis: 100%; margin-top: 4px; }
+}
 .admin-amount-input {
   width: 90px;
   font: inherit;
