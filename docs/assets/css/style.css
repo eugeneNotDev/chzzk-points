@@ -20,6 +20,10 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  /* 브랜드 이름("EUGENE FANBOARD")에만 쓰는 로고용 폰트 — 본문(system-ui)은 그대로 두고
+     사이드바 로고 글자 + 홈 화면 상단 제목, 이 두 군데에만 적용한다 (index.html <link>에서
+     Google Fonts로 불러옴). */
+  --font-logo: "Orbitron", system-ui, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -96,13 +100,24 @@ a {
 }
 .sidebar-brand .label {
   /* "chzzk-points"보다 글자수가 많은 "EUGENE FANBOARD"로 바뀌면서 폭이 빠듯해져서
-     크기를 살짝 줄이고 자간을 좁혔다 — 그래도 넘치면(모바일 등) 말줄임표로 처리. */
-  font-size: 0.82rem;
+     크기를 살짝 줄였다 — 그래도 넘치면(모바일 등) 말줄임표로 처리.
+     기본 system-ui 폰트는 로고치고 밋밋하다는 피드백을 받아서 --font-logo(Orbitron)로
+     바꿨다 — Orbitron은 자간이 좁으면 붙어 보여서 letter-spacing을 넉넉히 줬다. */
+  font-family: var(--font-logo);
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 홈 화면(index.html) 맨 위 제목 — 사이드바 로고와 같은 문구("EUGENE FANBOARD")라
+   같은 로고 폰트를 쓴다. */
+.brand-heading {
+  font-family: var(--font-logo);
+  letter-spacing: 0.04em;
+  font-size: clamp(1.3rem, 4vw, 1.7rem);
 }
 
 .sidebar-toggle-btn {
