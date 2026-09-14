@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=12">
+<link rel="stylesheet" href="assets/css/style.css?v=13">
 </head>
 <body>
   <script>
@@ -71,8 +71,18 @@
 
       <div id="logged-in" hidden>
         <div class="card">
-          <p class="muted">현재 포인트</p>
-          <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
+          <div class="balance-split">
+            <div class="balance-half">
+              <p class="muted">현재 포인트</p>
+              <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
+            </div>
+            <div class="balance-divider"></div>
+            <div class="balance-half">
+              <p class="muted">칭호</p>
+              <!-- 칭호 기능은 아직 없음 — 나중에 여기에 현재 칭호 표시 + 변경 버튼/셀렉트가 들어갈 자리만 미리 잡아둠. -->
+              <p class="balance-title-placeholder">준비 중</p>
+            </div>
+          </div>
         </div>
 
         <div class="card">

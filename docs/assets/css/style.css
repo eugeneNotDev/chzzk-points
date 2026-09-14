@@ -134,14 +134,12 @@ a {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  border-left: 3px solid transparent;
 }
 .sidebar-nav a:hover { background: var(--surface-2); color: var(--text); }
 .sidebar-nav a.active {
   background: var(--accent-dim);
   color: var(--accent);
   font-weight: 600;
-  border-left-color: var(--accent);
 }
 /* 위의 .sidebar-nav a { display: flex; } 가 일반 규칙이라 브라우저 기본 [hidden] 규칙보다
    우선순위가 높아서, hidden 속성을 줘도 안 숨겨지는 문제가 있었음 — 그래서 명시적으로 덮어씀.
@@ -195,8 +193,7 @@ a {
   body.sidebar-collapsed .sidebar-user-name {
     display: none;
   }
-  body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; border-left: none; }
-  body.sidebar-collapsed .sidebar-nav a.active { border-radius: var(--radius-sm); }
+  body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; }
   body.sidebar-collapsed .sidebar-toggle-btn svg { transform: rotate(180deg); }
 }
 
@@ -234,7 +231,6 @@ a {
     padding: 14px 16px;
   }
   .sidebar-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .sidebar-nav a { border-left: none; }
   .sidebar-user {
     margin-top: 0;
     margin-left: auto;
@@ -307,10 +303,34 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 .muted { color: var(--muted); font-size: 0.88rem; }
 
 .balance {
-  font-size: 2rem;
+  /* clamp로 잡아둬서 포인트가 나중에 자릿수가 늘어나도(예: 999999P) 박스 폭을 안 벗어나고
+     알아서 살짝 작아짐 — 최소 1.4rem, 기본 2rem, 화면이 아주 좁으면 그 사이로 줄어듦. */
+  font-size: clamp(1.4rem, 5vw, 2rem);
   font-weight: 700;
+  word-break: break-all;
 }
 .balance .unit { font-size: 1rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
+
+/* 마이페이지 "현재 포인트" 박스 — 반으로 나눠서 왼쪽엔 포인트, 오른쪽엔 칭호 자리를 둔다
+   (칭호 기능은 아직 없어서 지금은 "준비 중" 플레이스홀더만). 둘 다 세로 중앙 정렬. */
+.balance-split {
+  display: flex;
+  align-items: stretch;
+}
+.balance-half {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 4px 10px;
+}
+.balance-half .muted { margin: 0; }
+.balance-divider { width: 1px; align-self: stretch; background: var(--border); }
+.balance-title-placeholder { color: var(--muted); font-size: 1.1rem; margin: 0; }
 
 /* 토글 스위치 (공개 설정용) */
 .toggle-row {
