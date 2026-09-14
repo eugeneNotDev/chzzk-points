@@ -3,7 +3,7 @@
 // 매번 대시보드 들어가기 번거로워서 포인트 상점 페이지(shop.html)에 관리자만 보이는
 // 인라인 수정 UI를 추가하며 이 함수를 새로 만들었다.
 //
-// GET                                    → 전체 상품 목록 (비활성화 포함, sort_order 순).
+// GET                                    → 전체 상품 목록 (비활성화 포함, 가격 오름차순).
 //                                           일반 유저는 shop_items 테이블을 anon 키로 직접 읽지만
 //                                           (is_active=true만 RLS로 보임), 관리자는 비활성 상품도
 //                                           관리해야 하니 이 함수로 전체를 내려준다.
@@ -61,10 +61,13 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
 
     if (req.method === "GET") {
+      // 정렬은 가격 오름차순 — 예전엔 sort_order를 관리자가 직접 입력했는데, "가격 낮은 순
+      // 정렬이면 굳이 따로 순서를 정할 필요 없다"는 피드백으로 가격 기준 자동 정렬로 바꿨다.
+      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 이제 안 쓴다.
       const { data, error } = await admin
         .from("shop_items")
-        .select("id, name, cost, description, requires_live, is_active, sort_order, cooldown_seconds, created_at")
-        .order("sort_order", { ascending: true })
+        .select("id, name, cost, description, requires_live, is_active, cooldown_seconds, created_at")
+        .order("cost", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
       return jsonResponse({ items: data ?? [] }, 200);

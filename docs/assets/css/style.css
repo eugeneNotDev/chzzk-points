@@ -623,6 +623,10 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 /* 상품 추가/수정 모달의 입력칸 — placeholder만으로는 값을 채우고 나면(특히 숫자 입력칸)
    뭘 의미하는지 안 보여서, 각 입력칸 위에 사라지지 않는 작은 라벨을 고정으로 둔다. */
 .shop-item-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+/* .shop-item-field가 display:flex를 주는 author 규칙이라, 브라우저 기본 [hidden]{display:none}
+   (user-agent 규칙)보다 우선순위가 높아서 JS로 .hidden=true를 줘도 안 숨겨지는 문제가 있었다 —
+   같은 author 레이어에서 더 구체적인 선택자로 다시 눌러줘야 함(id 필드 숨김 버그의 원인). */
+.shop-item-field[hidden] { display: none; }
 .shop-item-field .field-label { font-size: 0.8rem; color: var(--muted); }
 .shop-item-field .notice-title-input,
 .shop-item-field .notice-textarea,
@@ -775,6 +779,9 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   cursor: pointer;
 }
 .admin-checkbox-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+/* .shop-item-field[hidden]와 같은 이유 — display:inline-flex를 주는 author 규칙이 브라우저
+   기본 [hidden] 규칙보다 우선순위가 높아서 JS로 .hidden=true를 줘도 안 숨겨짐. */
+.admin-checkbox-label[hidden] { display: none; }
 .admin-select-all-row { padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
 .admin-row-checkbox { flex-shrink: 0; }
 .admin-bulk-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
