@@ -83,21 +83,26 @@
           </div>
 
           <div class="card" id="admin-bulk-card">
-            <div class="card-header">
+            <button type="button" class="card-header collapse-toggle" id="admin-bulk-toggle" aria-expanded="false" aria-controls="admin-bulk-collapse">
               <h2>일괄 포인트 지급/차감</h2>
+              <svg class="details-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="collapse" id="admin-bulk-collapse">
+              <div class="collapse-inner">
+                <p class="muted">체크한 유저들에게 한 번에 지급/차감하거나, 검색 결과와 무관하게 전체 유저에게 지급/차감할 수 있어요.</p>
+                <div class="admin-bulk-row">
+                  <input type="number" id="admin-bulk-amount" class="admin-amount-input" placeholder="수량" min="1">
+                  <button type="button" class="secondary" id="admin-bulk-give-selected" disabled>선택한 유저에게 지급</button>
+                  <button type="button" class="secondary" id="admin-bulk-take-selected" disabled>선택한 유저에게 차감</button>
+                </div>
+                <div class="admin-bulk-row">
+                  <button type="button" class="secondary" id="admin-bulk-give-all">전체 유저에게 지급</button>
+                  <button type="button" class="secondary" id="admin-bulk-take-all">전체 유저에게 차감</button>
+                </div>
+                <p id="admin-bulk-selected-count" class="muted">선택된 유저: 0명</p>
+                <p id="admin-bulk-status" class="status-msg"></p>
+              </div>
             </div>
-            <p class="muted">체크한 유저들에게 한 번에 지급/차감하거나, 검색 결과와 무관하게 전체 유저에게 지급/차감할 수 있어요.</p>
-            <div class="admin-bulk-row">
-              <input type="number" id="admin-bulk-amount" class="admin-amount-input" placeholder="수량" min="1">
-              <button type="button" class="secondary" id="admin-bulk-give-selected" disabled>선택한 유저에게 지급</button>
-              <button type="button" class="secondary" id="admin-bulk-take-selected" disabled>선택한 유저에게 차감</button>
-            </div>
-            <div class="admin-bulk-row">
-              <button type="button" class="secondary" id="admin-bulk-give-all">전체 유저에게 지급</button>
-              <button type="button" class="secondary" id="admin-bulk-take-all">전체 유저에게 차감</button>
-            </div>
-            <p id="admin-bulk-selected-count" class="muted">선택된 유저: 0명</p>
-            <p id="admin-bulk-status" class="status-msg"></p>
           </div>
 
           <div class="card">
@@ -109,6 +114,7 @@
             </div>
             <div id="admin-user-list"></div>
             <p id="admin-user-empty" class="empty-state" hidden>검색 결과가 없어요.</p>
+            <div id="admin-user-pagination" class="pagination"></div>
           </div>
         </div>
 
@@ -149,6 +155,8 @@
     const searchStatus = document.getElementById("admin-search-status");
     const listEl = document.getElementById("admin-user-list");
     const emptyEl = document.getElementById("admin-user-empty");
+    const userPaginationEl = document.getElementById("admin-user-pagination");
+    let adminUserCurrentPage = 1;
 
     // 일괄 지급/차감용 선택 상태 — 검색어를 바꿔도(목록이 다시 그려져도) 유지된다.
     // "체크한 유저에게 지급"은 검색 결과 페이지를 넘나들며 여러 명을 모아 담는 용도라서,
@@ -280,13 +288,16 @@
     document.getElementById("admin-bulk-give-all").addEventListener("click", () => bulkAdjustPoints("all", 1));
     document.getElementById("admin-bulk-take-all").addEventListener("click", () => bulkAdjustPoints("all", -1));
 
-    async function searchUsers(q) {
+    // page 생략하면 현재 페이지(adminUserCurrentPage) 유지 — 지급/차감/밴 후 새로고침할 때
+    // 보던 페이지에서 안 튕기게 하려고. 검색어를 바꿔서 새로 검색할 때만 1페이지로 명시적으로 리셋.
+    async function searchUsers(q, page) {
+      adminUserCurrentPage = page ?? adminUserCurrentPage;
       searchStatus.textContent = "검색 중...";
       searchStatus.className = "status-msg";
       try {
         const res = await authFetch(ADMIN_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "search-users", q }),
+          body: JSON.stringify({ action: "search-users", q, page: adminUserCurrentPage }),
         });
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
@@ -294,11 +305,13 @@
         if (!data.users || data.users.length === 0) {
           listEl.innerHTML = "";
           emptyEl.hidden = false;
+          userPaginationEl.innerHTML = "";
           return;
         }
         emptyEl.hidden = true;
         listEl.innerHTML = data.users.map(renderUserRow).join("");
         wireUserRowButtons();
+        renderPagination(userPaginationEl, data.page, data.totalPages, (p) => searchUsers(searchInput.value, p));
       } catch (err) {
         searchStatus.textContent = "검색에 실패했어요.";
         searchStatus.classList.add("error");
@@ -345,9 +358,9 @@
       }
     }
 
-    searchBtn.addEventListener("click", () => searchUsers(searchInput.value));
+    searchBtn.addEventListener("click", () => searchUsers(searchInput.value, 1));
     searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") searchUsers(searchInput.value);
+      if (e.key === "Enter") searchUsers(searchInput.value, 1);
     });
 
     // 포인트 로그 탭 ---------------------------------------------------------
@@ -458,6 +471,14 @@
       });
     });
 
+    // 일괄 지급/차감 카드 접기/펴기 — 칭호 카드(mypage.html)와 같은 방식, 기본 닫힘.
+    document.getElementById("admin-bulk-toggle").addEventListener("click", () => {
+      const btn = document.getElementById("admin-bulk-toggle");
+      const panel = document.getElementById("admin-bulk-collapse");
+      const isOpen = panel.classList.toggle("open");
+      btn.setAttribute("aria-expanded", String(isOpen));
+    });
+
     renderSidebarUser();
     initSidebarToggle();
     initAdminNav();
@@ -467,7 +488,7 @@
       document.getElementById("admin-forbidden").hidden = false;
     } else {
       document.getElementById("admin-content").hidden = false;
-      searchUsers("");
+      searchUsers("", 1);
     }
   })();
   </script>

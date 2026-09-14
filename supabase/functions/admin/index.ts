@@ -2,8 +2,9 @@
 // Authorization: Bearer <세션토큰> 필수, session.channelId가 OWNER_CHANNEL_ID와
 // 일치해야만 허용 (아니면 403). 전부 POST + body.action으로 분기한다.
 //
-// POST { action: "search-users", q?: string }
-//   → { users: [{ channelId, channelName, isPublic, banned, balance }] } (channel_name ilike 검색, q 없으면 전체 최대 50명)
+// POST { action: "search-users", q?: string, page?: number }
+//   → { users: [{ channelId, channelName, isPublic, banned, balance }], page, pageSize, totalCount, totalPages }
+//     (channel_name ilike 검색, q 없으면 전체. 페이지당 10명 — list-points-log와 같은 페이지네이션 패턴.)
 // POST { action: "adjust-points", channelId: string, amount: number, reason?: string }
 //   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
 // POST { action: "set-ban", channelId: string, banned: boolean }
@@ -44,18 +45,21 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-async function searchUsers(admin: ReturnType<typeof getAdminClient>, q: string | undefined) {
+const ADMIN_USER_PAGE_SIZE = 10;
+
+async function searchUsers(admin: ReturnType<typeof getAdminClient>, q: string | undefined, page: number) {
+  const offset = (page - 1) * ADMIN_USER_PAGE_SIZE;
   let query = admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned")
+    .select("channel_id, channel_name, is_public, banned", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(50);
+    .range(offset, offset + ADMIN_USER_PAGE_SIZE - 1);
   if (q && q.trim().length > 0) {
     query = query.ilike("channel_name", `%${q.trim()}%`);
   }
-  const { data: users, error } = await query;
+  const { data: users, error, count } = await query;
   if (error) throw new Error(`users 검색 실패: ${error.message}`);
-  if (!users || users.length === 0) return [];
+  if (!users || users.length === 0) return { users: [], totalCount: count ?? 0 };
 
   const channelIds = users.map((u) => u.channel_id);
   const { data: ledgerRows, error: ledgerError } = await admin
@@ -69,13 +73,14 @@ async function searchUsers(admin: ReturnType<typeof getAdminClient>, q: string |
     balanceByChannel.set(row.channel_id, (balanceByChannel.get(row.channel_id) ?? 0) + row.amount);
   }
 
-  return users.map((u) => ({
+  const mapped = users.map((u) => ({
     channelId: u.channel_id,
     channelName: u.channel_name,
     isPublic: u.is_public,
     banned: u.banned,
     balance: balanceByChannel.get(u.channel_id) ?? 0,
   }));
+  return { users: mapped, totalCount: count ?? 0 };
 }
 
 async function adjustPoints(
@@ -202,8 +207,12 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
 
     if (body.action === "search-users") {
-      const users = await searchUsers(admin, typeof body.q === "string" ? body.q : undefined);
-      return jsonResponse({ users }, 200);
+      const q = typeof body.q === "string" ? body.q : undefined;
+      const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
+      const page = Math.max(rawPage, 1);
+      const { users, totalCount } = await searchUsers(admin, q, page);
+      const totalPages = Math.max(Math.ceil(totalCount / ADMIN_USER_PAGE_SIZE), 1);
+      return jsonResponse({ users, page, pageSize: ADMIN_USER_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (body.action === "adjust-points") {
