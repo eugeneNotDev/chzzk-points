@@ -4,16 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=33">
+<link rel="stylesheet" href="assets/css/style.css?v=34">
 </head>
 <body>
   <script>
     if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
       document.body.classList.add("sidebar-collapsed");
-    }
-    var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
-    if (shopNavPref === "1") {
-      document.body.classList.add("shop-nav-expanded");
     }
   </script>
   <div class="app-shell">
@@ -85,10 +81,11 @@
           <p class="muted">현재 포인트</p>
           <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
         </div>
-        <!-- 페이지가 일반 상점/칭호 상점 두 섹션으로 나뉘어 있어서(사이드바 하위 링크가 각
-             섹션으로 스크롤 이동) "+ 상품 추가"/"+ 칭호 상품 추가" 버튼도 각자 자기 섹션 안에
-             둔다 — 예전엔 위에 툴바 하나로 몰아뒀더니 일반 상점을 보고 있어도 칭호 상품 추가
-             버튼이 같이 보여서 헷갈렸음. -->
+        <!-- 일반 상점/칭호 상점은 완전히 분리된 탭처럼 동작한다 — 사이드바 하위 링크로
+             고른 한쪽만 보이고 다른 쪽은 hidden. 두 섹션 다 같은 구조(툴바+그리드+빈 상태
+             안내)라 디자인이 동일하게 맞춰진다. 어느 섹션을 보여줄지는 chzzk-auth.js의
+             showShopSection()이 페이지 진입 시(해시/사이드바 클릭 기준)와 클릭 시 둘 다
+             담당한다 — 기본값은 일반 상점. -->
         <div id="general-shop-section">
           <div class="shop-section-toolbar" id="shop-item-toolbar" hidden>
             <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
@@ -98,12 +95,10 @@
         </div>
 
         <!-- 칭호를 부여하는 상품(grants_title_id가 있는 상품)만 따로 모아 보여주는 섹션.
-             예전엔 상품이 하나도 없으면 섹션째로 숨겼는데, 그러면 사이드바에서 "칭호 상점"을
-             눌러도 스크롤할 대상이 숨겨져 있어서 아무 반응이 없는 것처럼 보이는 문제가 있었다 —
-             이제는 항상 띄워두고, 비어 있을 땐 "상품 준비 중입니다."만 대신 보여준다. -->
-        <div id="title-shop-section">
-          <hr class="shop-section-rule">
-          <h2 class="shop-section-heading">칭호 상점</h2>
+             일반 상점과 완전히 같은 레이아웃(제목 텍스트 없이 툴바+그리드+빈 상태 안내)이고,
+             상품이 하나도 없을 땐 그리드 대신 "상품 준비 중입니다."를 보여준다. 기본은
+             hidden — showShopSection()이 필요할 때만 보여준다. -->
+        <div id="title-shop-section" hidden>
           <div class="shop-section-toolbar" id="title-item-toolbar" hidden>
             <button type="button" class="secondary" id="title-item-add-btn">+ 칭호 상품 추가</button>
           </div>
@@ -182,7 +177,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=10"></script>
+  <script src="assets/js/chzzk-auth.js?v=11"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감싼다
@@ -649,22 +644,15 @@
       await Promise.all([loadShopItems(), loadLiveStatus()]);
       renderShop();
 
-      // 사이드바 "포인트 상점" 하위 메뉴(일반 상점/칭호 상점)에서 넘어왔을 때 해당 섹션으로
-      // 스크롤. spa-router.js가 스크립트 실행 직후에 window.scrollTo(top:0)을 무조건
-      // 호출하므로, requestAnimationFrame으로 한 프레임 미뤄서 그 리셋 이후에 실행되게 한다.
-      // window.__pendingShopScrollTarget은 같은 페이지 안에 있지 않을 때(다른 페이지에서
-      // 하위 링크를 눌러 여기로 넘어온 경우) initShopNavGroup()이 남겨둔 값 — 이 시점엔
-      // location.hash가 아직 안 바뀌어 있어서(spa-router가 pushState를 스크립트 실행보다
-      // 나중에 함) 이걸로 대신 읽는다. 직접 주소창에 해시를 넣고 들어왔거나 뒤로/앞으로
-      // 가기(popstate)로 왔을 땐 location.hash가 이미 맞게 갱신돼 있으니 그걸 그대로 쓴다.
-      requestAnimationFrame(() => {
-        const target = window.__pendingShopScrollTarget || (location.hash ? location.hash.slice(1) : null);
-        window.__pendingShopScrollTarget = null;
-        if (target) {
-          const el = document.getElementById(target);
-          if (el && !el.hidden) el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
+      // 어느 섹션(일반 상점/칭호 상점)을 보여줄지 결정. window.__pendingShopScrollTarget은
+      // 다른 페이지에서 사이드바 하위 링크를 눌러 여기로 넘어온 경우 initShopNavGroup()이
+      // 남겨둔 값 — 이 시점엔 location.hash가 아직 안 바뀌어 있어서(spa-router가 pushState를
+      // 스크립트 실행보다 나중에 함) 이걸로 대신 읽는다. 직접 주소창에 해시를 넣고 들어왔거나
+      // 뒤로/앞으로 가기(popstate)로 왔을 땐 location.hash가 이미 맞게 갱신돼 있으니 그걸
+      // 쓰고, 둘 다 없으면(그냥 shop.html로 바로 들어온 경우) 일반 상점을 기본으로 보여준다.
+      const target = window.__pendingShopScrollTarget || (location.hash ? location.hash.slice(1) : null) || "general-shop-section";
+      window.__pendingShopScrollTarget = null;
+      showShopSection(target);
     })();
   })();
   </script>

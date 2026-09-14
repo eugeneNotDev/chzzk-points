@@ -4,16 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=33">
+<link rel="stylesheet" href="assets/css/style.css?v=34">
 </head>
 <body>
   <script>
     if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
       document.body.classList.add("sidebar-collapsed");
-    }
-    var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
-    if (shopNavPref === "1") {
-      document.body.classList.add("shop-nav-expanded");
     }
   </script>
   <div class="app-shell">
@@ -110,7 +106,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=10"></script>
+  <script src="assets/js/chzzk-auth.js?v=11"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).

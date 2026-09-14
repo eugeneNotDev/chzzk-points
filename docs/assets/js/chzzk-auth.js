@@ -29,7 +29,6 @@ const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
-const SHOP_NAV_EXPANDED_KEY = "chzzk_points_shop_nav_expanded";
 
 // 로그인 버튼 onclick에 연결. 랜덤 state를 만들어 sessionStorage에 저장해두고
 // 치지직 인증 페이지(account-interlock)로 이동한다. 콜백에서 이 state와 대조해서
@@ -239,17 +238,17 @@ function initAdminNav() {
 }
 
 // 사이드바 "포인트 상점" 아코디언 그룹(펼치면 일반 상점/칭호 상점 하위 링크가 나오는 형태).
-// 각 페이지 <body> 맨 앞 인라인 스크립트가 렌더링 전에 body.shop-nav-expanded 클래스를
-// 미리 붙여두므로(sidebar-collapsed와 같은 패턴), 여기서는 클릭 핸들러 연결과
-// 현재 페이지 기준 active 상태 표시만 담당한다.
+// 펼침 상태는 일부러 localStorage에 저장하지 않는다 — 새로고침/최초 접속 시엔 항상 접힌
+// 상태로 시작하고, 눌러야만 펼쳐지게 하기 위함(디폴트로 펼쳐져 있던 걸 고쳐달라는 피드백
+// 반영). SPA 페이지 전환 중에는(spa-router.js가 .main-content만 갈아끼우고 사이드바
+// 엘리먼트 자체는 그대로 두므로) body 클래스가 자연히 유지돼서 펼친 채로 다른 페이지로
+// 이동해도 다시 접히지 않는다 — 진짜 새로고침(F5)이나 새 탭으로 열 때만 초기 상태로 리셋된다.
 function initShopNavGroup() {
   const toggleBtn = document.getElementById("shop-nav-toggle");
   if (toggleBtn && toggleBtn.dataset.bound !== "1") {
     toggleBtn.dataset.bound = "1";
     toggleBtn.addEventListener("click", () => {
-      const next = !document.body.classList.contains("shop-nav-expanded");
-      document.body.classList.toggle("shop-nav-expanded", next);
-      localStorage.setItem(SHOP_NAV_EXPANDED_KEY, next ? "1" : "0");
+      document.body.classList.toggle("shop-nav-expanded");
     });
   }
 
@@ -268,7 +267,7 @@ function initShopNavGroup() {
 
       if (isOnShopPage()) {
         history.pushState({ spaPage: "shop.html" }, "", href);
-        scrollToShopSection(targetId);
+        showShopSection(targetId);
       } else if (typeof spaNavigate === "function") {
         // shop.html 스크립트가 다시 실행되는 시점엔 아직 location.hash가 갱신 전이라
         // (spa-router가 pushState를 스크립트 실행보다 나중에 하기 때문) 목표 섹션 id를
@@ -299,12 +298,16 @@ function isOnShopPage() {
   return document.getElementById("general-shop-section") !== null;
 }
 
-// shop.html 안에서 특정 섹션(일반 상점/칭호 상점)으로 스크롤. 존재하지 않으면 무시.
-function scrollToShopSection(sectionId) {
-  if (!sectionId) return;
-  const el = document.getElementById(sectionId);
-  if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
+// shop.html 안에서 일반 상점/칭호 상점 중 하나만 보이게 전환한다(둘 다 같은 자리에 있고
+// 서로 완전히 분리된 탭처럼 동작 — 스크롤이 아니라 표시/숨김으로 바꾼다). shop.html이 아닌
+// 페이지에서는 두 섹션 엘리먼트가 없어서 아무 일도 안 하고 조용히 리턴.
+function showShopSection(targetId) {
+  const generalEl = document.getElementById("general-shop-section");
+  const titleEl = document.getElementById("title-shop-section");
+  if (!generalEl || !titleEl) return;
+  const showTitle = targetId === "title-shop-section";
+  generalEl.hidden = showTitle;
+  titleEl.hidden = !showTitle;
 }
 
 // 토글 버튼 + 하위 링크 중 하나(targetId)를 즉시 활성 표시로 바꾼다. 실제로 shop.html로
