@@ -690,9 +690,9 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 
 /* 상점 상품 관리자용 인라인 수정 UI (shop.html — 관리자로 로그인했을 때만 노출).
-   "+ 상품 추가"/"+ 칭호 상품 추가" 버튼을 한 줄에 나란히 배치.
+   "+ 상품 추가"/"+ 칭호 상품 추가" 버튼은 각자 자기 섹션(일반 상점/칭호 상점) 안에 따로 둔다.
    비활성화 상품은 title-card.locked와 같은 패턴으로 흐리게 표시. */
-#shop-admin-toolbar { margin: -4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+.shop-section-toolbar { margin: -4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
 .shop-item.inactive { opacity: 0.55; }
 .shop-item-admin-bar {
   display: flex;

@@ -265,11 +265,8 @@ function initShopNavGroup() {
       e.preventDefault();
       const targetId = link.dataset.shopAnchor;
       const href = link.getAttribute("href");
-      const onShopPage = typeof spaPageNameFromUrl === "function"
-        ? spaPageNameFromUrl(location.href) === "shop.html"
-        : location.pathname.endsWith("shop.html");
 
-      if (onShopPage) {
+      if (isOnShopPage()) {
         history.pushState({ spaPage: "shop.html" }, "", href);
         scrollToShopSection(targetId);
       } else if (typeof spaNavigate === "function") {
@@ -282,36 +279,66 @@ function initShopNavGroup() {
         location.href = href;
       }
 
-      updateShopNavActiveState();
+      // 이 클릭 자체가 "포인트 상점으로 이동"이라는 의도이므로, 목적지 페이지 스크립트가
+      // 실제로 실행되기 전(라우터가 fetch+전환하는 짧은 순간)이라도 사이드바 하이라이트는
+      // 클릭 즉시 반영한다 — location.href 기준으로 판단하면 spa-router가 history.pushState를
+      // 스크립트 실행보다 나중에 하는 탓에 한 박자 늦게(또는 아예 안) 반영되는 문제가 있었음.
+      // 페이지 전환이 끝나면 아래 updateShopNavActiveState()가 다시 한 번 정확하게 맞춰준다.
+      setShopNavActive(targetId);
     });
   });
 
   updateShopNavActiveState();
 }
 
-// shop.html 안에서 특정 섹션(일반 상점/칭호 상점)으로 스크롤. hidden 상태거나 없으면 무시.
+// 지금 보고 있는 페이지가 shop.html인지 판단. location.pathname/href는 spa-router.js가
+// 실제 이동을 다 끝낸 뒤에야(history.pushState) 갱신되기 때문에 그 시점까지 못 믿고, 대신
+// shop.html에만 있는 DOM(#general-shop-section)의 존재 여부로 판단한다 — main-content는
+// 페이지 스크립트가 다시 실행되기 전에 이미 교체돼 있어서 이 방식은 항상 정확하다.
+function isOnShopPage() {
+  return document.getElementById("general-shop-section") !== null;
+}
+
+// shop.html 안에서 특정 섹션(일반 상점/칭호 상점)으로 스크롤. 존재하지 않으면 무시.
 function scrollToShopSection(sectionId) {
   if (!sectionId) return;
   const el = document.getElementById(sectionId);
-  if (!el || el.hidden) return;
+  if (!el) return;
   el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// 토글 버튼 + 하위 링크 중 하나(targetId)를 즉시 활성 표시로 바꾼다. 실제로 shop.html로
+// 이동했는지와 무관하게, 하위 링크를 누른 시점에 바로 호출해서 하이라이트가 늦게 뜨는
+// 문제를 없앤다.
+function setShopNavActive(targetId) {
+  const toggleBtn = document.getElementById("shop-nav-toggle");
+  if (toggleBtn) toggleBtn.classList.add("active");
+  document.querySelectorAll(".sidebar-nav-sublink").forEach((link) => {
+    link.classList.toggle("active", link.dataset.shopAnchor === targetId);
+  });
 }
 
 // "포인트 상점" 토글 버튼/하위 링크의 active 표시를 현재 페이지·해시 기준으로 갱신.
 // spa-router.js의 active 갱신 루프는 .sidebar-nav-sublink는 건드리지 않고 건너뛰므로
 // (하위 링크는 href가 전부 shop.html#...라 단순 href 비교로는 구분이 안 됨) 이 함수가 전담한다.
+// 각 페이지 스크립트 맨 끝에서 initShopNavGroup()을 통해 매번 호출되므로, 다른 페이지로
+// 넘어갔을 때 토글/하위 링크의 active를 지우는 것도 이 함수가 담당한다.
 function updateShopNavActiveState() {
   const toggleBtn = document.getElementById("shop-nav-toggle");
-  const sublinks = document.querySelectorAll(".sidebar-nav-sublink");
-  const onShopPage = typeof spaPageNameFromUrl === "function"
-    ? spaPageNameFromUrl(location.href) === "shop.html"
-    : location.pathname.endsWith("shop.html");
+  const onShopPage = isOnShopPage();
 
   if (toggleBtn) toggleBtn.classList.toggle("active", onShopPage);
 
-  const currentAnchor = location.hash ? location.hash.slice(1) : "";
-  sublinks.forEach((link) => {
-    const isCurrent = onShopPage && link.dataset.shopAnchor === currentAnchor;
-    link.classList.toggle("active", isCurrent);
+  if (!onShopPage) {
+    document.querySelectorAll(".sidebar-nav-sublink").forEach((link) => link.classList.remove("active"));
+    return;
+  }
+
+  // location.hash는 direct load/새로고침/뒤로가기(popstate)에선 이미 정확하지만, 하위 링크로
+  // 막 넘어온 직후엔 아직 안 바뀌어 있을 수 있어서(위 클릭 핸들러 주석 참고) 그 경우엔
+  // window.__pendingShopScrollTarget(클릭 핸들러가 남겨둔 값)을 우선 쓴다.
+  const currentAnchor = window.__pendingShopScrollTarget || (location.hash ? location.hash.slice(1) : "");
+  document.querySelectorAll(".sidebar-nav-sublink").forEach((link) => {
+    link.classList.toggle("active", link.dataset.shopAnchor === currentAnchor);
   });
 }

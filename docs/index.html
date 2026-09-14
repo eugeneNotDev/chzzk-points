@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=32">
+<link rel="stylesheet" href="assets/css/style.css?v=33">
 </head>
 <body>
   <script>
@@ -12,7 +12,7 @@
       document.body.classList.add("sidebar-collapsed");
     }
     var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
-    if (shopNavPref === "1" || (shopNavPref === null && location.pathname.endsWith("shop.html"))) {
+    if (shopNavPref === "1") {
       document.body.classList.add("shop-nav-expanded");
     }
   </script>

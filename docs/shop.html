@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=32">
+<link rel="stylesheet" href="assets/css/style.css?v=33">
 </head>
 <body>
   <script>
@@ -12,7 +12,7 @@
       document.body.classList.add("sidebar-collapsed");
     }
     var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
-    if (shopNavPref === "1" || (shopNavPref === null && location.pathname.endsWith("shop.html"))) {
+    if (shopNavPref === "1") {
       document.body.classList.add("shop-nav-expanded");
     }
   </script>
@@ -85,23 +85,30 @@
           <p class="muted">현재 포인트</p>
           <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
         </div>
-        <div id="shop-admin-toolbar" hidden>
-          <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
-          <button type="button" class="secondary" id="title-item-add-btn">+ 칭호 상품 추가</button>
-        </div>
-
+        <!-- 페이지가 일반 상점/칭호 상점 두 섹션으로 나뉘어 있어서(사이드바 하위 링크가 각
+             섹션으로 스크롤 이동) "+ 상품 추가"/"+ 칭호 상품 추가" 버튼도 각자 자기 섹션 안에
+             둔다 — 예전엔 위에 툴바 하나로 몰아뒀더니 일반 상점을 보고 있어도 칭호 상품 추가
+             버튼이 같이 보여서 헷갈렸음. -->
         <div id="general-shop-section">
-          <h2 class="shop-section-heading">일반 상점</h2>
+          <div class="shop-section-toolbar" id="shop-item-toolbar" hidden>
+            <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
+          </div>
           <div class="shop-grid" id="shop-list"></div>
+          <p id="shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
         </div>
 
         <!-- 칭호를 부여하는 상품(grants_title_id가 있는 상품)만 따로 모아 보여주는 섹션.
-             상품이 하나도 없으면 통째로 숨긴다("+ 칭호 상품 추가" 버튼은 위 툴바로 옮겨져서
-             이 섹션이 비어 있어도 버튼 노출을 위해 계속 띄워둘 필요가 없어졌다). -->
-        <div id="title-shop-section" hidden>
+             예전엔 상품이 하나도 없으면 섹션째로 숨겼는데, 그러면 사이드바에서 "칭호 상점"을
+             눌러도 스크롤할 대상이 숨겨져 있어서 아무 반응이 없는 것처럼 보이는 문제가 있었다 —
+             이제는 항상 띄워두고, 비어 있을 땐 "상품 준비 중입니다."만 대신 보여준다. -->
+        <div id="title-shop-section">
           <hr class="shop-section-rule">
           <h2 class="shop-section-heading">칭호 상점</h2>
+          <div class="shop-section-toolbar" id="title-item-toolbar" hidden>
+            <button type="button" class="secondary" id="title-item-add-btn">+ 칭호 상품 추가</button>
+          </div>
           <div class="shop-grid" id="title-shop-list"></div>
+          <p id="title-shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
         </div>
 
         <p id="global-status" class="status-msg"></p>
@@ -266,7 +273,8 @@
     function renderShop() {
       const listEl = document.getElementById("shop-list");
       const titleListEl = document.getElementById("title-shop-list");
-      const titleSectionEl = document.getElementById("title-shop-section");
+      const listEmptyEl = document.getElementById("shop-list-empty");
+      const titleListEmptyEl = document.getElementById("title-shop-list-empty");
       const now = Date.now();
       const admin = isAdmin();
 
@@ -275,9 +283,10 @@
 
       listEl.innerHTML = regularItems.map((item) => renderItemCard(item, admin, now)).join("");
       titleListEl.innerHTML = titleItems.map((item) => renderItemCard(item, admin, now)).join("");
-      // "+ 칭호 상품 추가" 버튼이 상단 툴바로 옮겨져서, 이제는 칭호 상품이 하나도 없으면
-      // (관리자든 아니든) 섹션 자체를 그냥 숨긴다.
-      titleSectionEl.hidden = titleItems.length === 0;
+      // 섹션 자체는 항상 띄워두고(사이드바 "칭호 상점" 링크가 스크롤할 대상이 항상 있어야 하니까),
+      // 상품이 하나도 없을 때만 그리드 대신 "상품 준비 중입니다." 안내를 보여준다.
+      listEmptyEl.hidden = regularItems.length > 0;
+      titleListEmptyEl.hidden = titleItems.length > 0;
 
       wireCardButtons(listEl, admin);
       wireCardButtons(titleListEl, admin);
@@ -632,7 +641,8 @@
       document.getElementById("logged-in").hidden = false;
 
       if (isAdmin()) {
-        document.getElementById("shop-admin-toolbar").hidden = false;
+        document.getElementById("shop-item-toolbar").hidden = false;
+        document.getElementById("title-item-toolbar").hidden = false;
         setupShopItemModal();
       }
 
