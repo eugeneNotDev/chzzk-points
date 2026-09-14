@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=28">
+<link rel="stylesheet" href="assets/css/style.css?v=29">
 </head>
 <body>
   <script>
@@ -81,17 +81,38 @@
         <p id="global-status" class="status-msg"></p>
       </div>
 
-      <!-- 상품 추가/수정 모달 (관리자 전용 — notice-modal 재사용). -->
+      <!-- 상품 추가/수정 모달 (관리자 전용 — notice-modal 재사용). id는 추가할 때만 정할 수 있고
+           이후엔 못 바꾸는 값이라, 수정 모드에서는 아예 안 보이게 숨긴다(수정 화면에서 회색 비활성
+           입력칸만 덜렁 떠 있으면 뭔지 헷갈림). 숫자 입력칸들도 placeholder만으로는 값을 채우고
+           나면 뭘 의미하는지 안 보여서 각각 위에 작은 라벨을 고정으로 달아뒀다. -->
       <dialog id="shop-item-modal" class="notice-modal">
         <h3 id="shop-item-modal-title">상품 추가</h3>
         <form id="shop-item-modal-form">
-          <input type="text" id="shop-item-id-input" class="notice-title-input" placeholder="상품 id (영문 소문자/숫자/하이픈, 추가 후 수정 불가)" maxlength="64">
-          <input type="text" id="shop-item-name-input" class="notice-title-input" placeholder="상품명" maxlength="80">
-          <textarea id="shop-item-desc-input" class="notice-textarea" placeholder="설명" rows="3"></textarea>
+          <div class="shop-item-field" id="shop-item-id-row">
+            <label class="field-label" for="shop-item-id-input">상품 id (내부 식별용, 추가 후 수정 불가)</label>
+            <input type="text" id="shop-item-id-input" class="notice-title-input" placeholder="예: water (영문 소문자/숫자/하이픈)" maxlength="64">
+          </div>
+          <div class="shop-item-field">
+            <label class="field-label" for="shop-item-name-input">상품명</label>
+            <input type="text" id="shop-item-name-input" class="notice-title-input" placeholder="상점에 표시될 이름" maxlength="80">
+          </div>
+          <div class="shop-item-field">
+            <label class="field-label" for="shop-item-desc-input">설명</label>
+            <textarea id="shop-item-desc-input" class="notice-textarea" placeholder="상품 카드에 표시될 설명" rows="3"></textarea>
+          </div>
           <div class="admin-bulk-row">
-            <input type="number" id="shop-item-cost-input" class="admin-amount-input" placeholder="가격(P)" min="1">
-            <input type="number" id="shop-item-cooldown-input" class="admin-amount-input" placeholder="쿨타임(초)" min="0">
-            <input type="number" id="shop-item-sort-input" class="admin-amount-input" placeholder="정렬 순서">
+            <div class="shop-item-field">
+              <label class="field-label" for="shop-item-cost-input">가격 (P)</label>
+              <input type="number" id="shop-item-cost-input" class="admin-amount-input" min="1">
+            </div>
+            <div class="shop-item-field">
+              <label class="field-label" for="shop-item-cooldown-input">쿨타임 (초, 0=없음)</label>
+              <input type="number" id="shop-item-cooldown-input" class="admin-amount-input" min="0">
+            </div>
+            <div class="shop-item-field">
+              <label class="field-label" for="shop-item-sort-input">정렬 순서 (낮을수록 먼저)</label>
+              <input type="number" id="shop-item-sort-input" class="admin-amount-input">
+            </div>
           </div>
           <div class="admin-bulk-row">
             <label class="admin-checkbox-label">
@@ -150,11 +171,15 @@
         if (onCooldown) label = `${remaining}초 후 사용 가능`;
         else if (liveBlocked) label = "방송 중에만 사용 가능";
         else if (!affordable) label = "잔액 부족";
+        // 비활성화 배지는 별도 줄로 왼쪽에, 수정/삭제 버튼은 그 아래 줄에서 가운데 정렬 —
+        // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
         const adminBar = admin ? `
           <div class="shop-item-admin-bar">
             ${inactive ? '<span class="shop-item-inactive-badge">비활성화</span>' : ""}
-            <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
-            <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
+            <div class="shop-item-admin-buttons">
+              <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
+              <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
+            </div>
           </div>` : "";
         return `
           <div class="card shop-item${inactive ? " inactive" : ""}">
@@ -224,6 +249,7 @@
     function openShopItemModal(mode, itemId) {
       modalMode = mode;
       modalItemId = itemId ?? null;
+      const idRow = document.getElementById("shop-item-id-row");
       const idInput = document.getElementById("shop-item-id-input");
       const nameInput = document.getElementById("shop-item-name-input");
       const descInput = document.getElementById("shop-item-desc-input");
@@ -240,6 +266,7 @@
       if (mode === "edit") {
         const item = shopItems.find((it) => it.id === itemId);
         document.getElementById("shop-item-modal-title").textContent = "상품 수정";
+        idRow.hidden = true;
         idInput.value = item?.id ?? "";
         idInput.disabled = true;
         nameInput.value = item?.name ?? "";
@@ -253,6 +280,7 @@
         document.getElementById("shop-item-modal-submit-btn").textContent = "저장";
       } else {
         document.getElementById("shop-item-modal-title").textContent = "상품 추가";
+        idRow.hidden = false;
         idInput.value = "";
         idInput.disabled = false;
         nameInput.value = "";

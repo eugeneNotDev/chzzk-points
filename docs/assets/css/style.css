@@ -608,8 +608,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item.inactive { opacity: 0.55; }
 .shop-item-admin-bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
@@ -617,8 +617,17 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item-inactive-badge {
   font-size: 0.78rem;
   color: var(--muted);
-  margin-right: auto;
 }
+.shop-item-admin-buttons { display: flex; justify-content: center; gap: 8px; }
+
+/* 상품 추가/수정 모달의 입력칸 — placeholder만으로는 값을 채우고 나면(특히 숫자 입력칸)
+   뭘 의미하는지 안 보여서, 각 입력칸 위에 사라지지 않는 작은 라벨을 고정으로 둔다. */
+.shop-item-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.shop-item-field .field-label { font-size: 0.8rem; color: var(--muted); }
+.shop-item-field .notice-title-input,
+.shop-item-field .notice-textarea,
+.shop-item-field .admin-amount-input { margin-bottom: 0; width: 100%; }
+.admin-bulk-row .shop-item-field { flex: 1 1 120px; align-items: stretch; margin-bottom: 0; }
 
 /* 마이페이지 칭호 목록 (shop-grid/shop-item과 같은 레이아웃 패턴, 잠김/장착 상태만 추가). */
 .titles-grid {
