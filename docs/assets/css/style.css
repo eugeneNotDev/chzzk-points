@@ -410,7 +410,9 @@ ul.notice-list, ol.notice-list {
 .link-btn:hover { color: var(--accent); background: none; }
 
 .notice-form { margin-bottom: 16px; }
-.notice-form textarea {
+/* 새 공지 작성 폼(.notice-form)과 목록 항목 안의 인라인 수정 폼(.notice-item.is-editing)이
+   둘 다 이 클래스를 쓴다 — 둘이 같은 모양이어야 자연스러워서 공용으로 뺌. */
+.notice-textarea {
   display: block;
   width: 100%;
   min-height: 44px;
@@ -427,8 +429,17 @@ ul.notice-list, ol.notice-list {
   padding: 10px 12px;
   margin-bottom: 10px;
 }
-.notice-form textarea:focus { outline: none; border-color: var(--accent); }
+.notice-textarea:focus { outline: none; border-color: var(--accent); }
 .notice-form-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+/* 목록에서 "수정" 누른 항목 — 다른 항목들과 구분되게 살짝 배경을 준다. */
+.notice-item.is-editing {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin: 4px 0;
+  border-bottom: none;
+}
+.notice-item.is-editing .notice-edit-status { margin: 0; }
 
 /* 랭킹 리스트 */
 ol.ranking-list {

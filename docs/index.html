@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=5">
+<link rel="stylesheet" href="assets/css/style.css?v=6">
 </head>
 <body>
   <script>
@@ -66,10 +66,9 @@
         </div>
 
         <div id="notice-form" class="notice-form" hidden>
-          <textarea id="notice-input" placeholder="공지 내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="1"></textarea>
+          <textarea id="notice-input" class="notice-textarea" placeholder="공지 내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="1"></textarea>
           <div class="notice-form-actions">
             <button id="notice-submit">등록</button>
-            <button id="notice-cancel-edit" type="button" class="secondary" hidden>취소</button>
           </div>
           <p id="notice-post-status" class="status-msg"></p>
         </div>
@@ -112,9 +111,10 @@
     const RANKING_PREVIEW_LIMIT = 10;
     const NOTICE_LIMIT = 10;
 
-    // 지금 수정 중인 공지 id. null이면 "새로 작성" 모드.
+    // 지금 인라인으로 수정 중인 공지 id (문자열). null이면 아무 것도 수정 중이 아님.
+    // "수정" 누른 그 공지 항목 자체가 textarea로 바뀌는 방식 — 위쪽 작성 폼과는 별개.
     let editingNoticeId = null;
-    // id -> 공지 원본(content 등). 수정 버튼 눌렀을 때 textarea에 원문을 채우는 용도.
+    // id -> 공지 원본(content 등). 목록을 다시 그릴 때(수정모드 토글 등) 사용.
     let noticesById = new Map();
 
     function escapeHtml(str) {
@@ -162,22 +162,42 @@
 
     // 공지 한 줄을 그린다. 관리자로 로그인된 경우에만 수정/삭제 버튼을 보여준다
     // (실제 권한 체크는 notices 함수가 세션 토큰으로 다시 함 — 여기선 UI 노출만 담당).
+    // 지금 수정 중인 공지면(editingNoticeId와 일치) 일반 표시 대신 인라인 수정 폼을 그린다.
     function renderNoticeItem(n) {
+      const idStr = String(n.id);
+      if (idStr === editingNoticeId) {
+        return renderNoticeEditForm(n);
+      }
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       const actions = isAdmin()
         ? `
           <span class="notice-item-actions">
-            <button type="button" class="link-btn notice-edit-btn" data-id="${n.id}">수정</button>
-            <button type="button" class="link-btn notice-delete-btn" data-id="${n.id}">삭제</button>
+            <button type="button" class="link-btn notice-edit-btn" data-id="${idStr}">수정</button>
+            <button type="button" class="link-btn notice-delete-btn" data-id="${idStr}">삭제</button>
           </span>`
         : "";
       return `
-        <li class="notice-item" data-id="${n.id}">
+        <li class="notice-item" data-id="${idStr}">
           <p>${escapeHtml(n.content)}</p>
           <div class="notice-item-footer">
             <time>${new Date(n.created_at).toLocaleString("ko-KR")}${editedLabel}</time>
             ${actions}
           </div>
+        </li>`;
+    }
+
+    // "수정" 눌렀을 때 해당 공지 항목 자체가 이 모양으로 바뀐다 (위쪽 작성 폼과는 별개 —
+    // 어떤 공지를 고치고 있는지 헷갈리지 않게, 그 공지 자리에서 바로 고치는 방식).
+    function renderNoticeEditForm(n) {
+      const idStr = String(n.id);
+      return `
+        <li class="notice-item is-editing" data-id="${idStr}">
+          <textarea class="notice-textarea notice-edit-input" data-id="${idStr}" rows="1">${escapeHtml(n.content)}</textarea>
+          <div class="notice-form-actions">
+            <button type="button" class="notice-save-btn" data-id="${idStr}">저장</button>
+            <button type="button" class="secondary notice-cancel-inline-btn">취소</button>
+          </div>
+          <p class="status-msg notice-edit-status" data-id="${idStr}"></p>
         </li>`;
     }
 
@@ -188,6 +208,24 @@
       document.querySelectorAll(".notice-delete-btn").forEach((btn) => {
         btn.addEventListener("click", () => deleteNotice(btn.dataset.id));
       });
+      document.querySelectorAll(".notice-save-btn").forEach((btn) => {
+        btn.addEventListener("click", () => saveNoticeEdit(btn.dataset.id));
+      });
+      document.querySelectorAll(".notice-cancel-inline-btn").forEach((btn) => {
+        btn.addEventListener("click", () => cancelEditNotice());
+      });
+      document.querySelectorAll(".notice-edit-input").forEach((el) => {
+        autoResizeTextarea(el);
+        el.addEventListener("input", () => autoResizeTextarea(el));
+      });
+    }
+
+    // 목록 전체를 noticesById 기준으로 다시 그린다 (수정모드 토글 등, 서버 재조회 없이 다시
+    // 그려야 할 때 사용 — Map은 넣은 순서를 유지하므로 정렬 순서도 그대로 유지됨).
+    function renderNoticeList() {
+      const listEl = document.getElementById("notice-list");
+      listEl.innerHTML = Array.from(noticesById.values()).map((n) => renderNoticeItem(n)).join("");
+      wireNoticeItemButtons();
     }
 
     // 공지사항 목록: notices 테이블이 전체 공개 읽기라서 anon 키로 직접 조회 (ranking과 동일 패턴).
@@ -209,38 +247,63 @@
       }
       if (!data || data.length === 0) {
         noticesById = new Map();
+        editingNoticeId = null;
         emptyEl.hidden = false;
         listEl.innerHTML = "";
         return;
       }
       emptyEl.hidden = true;
       noticesById = new Map(data.map((n) => [String(n.id), n]));
-      listEl.innerHTML = data.map((n) => renderNoticeItem(n)).join("");
-      wireNoticeItemButtons();
+      // 수정 중이던 공지가 그 사이 삭제됐으면 수정 모드 해제.
+      if (editingNoticeId !== null && !noticesById.has(editingNoticeId)) {
+        editingNoticeId = null;
+      }
+      renderNoticeList();
     }
 
-    // "수정" 버튼 — 위쪽 작성 폼에 기존 내용을 채우고 "수정 완료" 모드로 전환.
+    // "수정" 버튼 — 해당 공지 항목을 인라인 수정 폼으로 전환.
     function startEditNotice(id) {
-      const notice = noticesById.get(id);
-      if (!notice) return;
+      if (!noticesById.has(id)) return;
       editingNoticeId = id;
-      const input = document.getElementById("notice-input");
-      input.value = notice.content;
-      autoResizeTextarea(input);
-      input.focus();
-      document.getElementById("notice-submit").textContent = "수정 완료";
-      document.getElementById("notice-cancel-edit").hidden = false;
-      document.getElementById("notice-form").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      renderNoticeList();
+      const input = document.querySelector(`.notice-edit-input[data-id="${id}"]`);
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        input.closest("li")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
     }
 
-    // 수정 모드 취소 (또는 등록/수정 성공 후 폼 초기화에도 재사용).
+    // 인라인 수정 취소 — 해당 항목을 원래 표시로 되돌린다.
     function cancelEditNotice() {
       editingNoticeId = null;
-      const input = document.getElementById("notice-input");
-      input.value = "";
-      autoResizeTextarea(input);
-      document.getElementById("notice-submit").textContent = "등록";
-      document.getElementById("notice-cancel-edit").hidden = true;
+      renderNoticeList();
+    }
+
+    async function saveNoticeEdit(id) {
+      const input = document.querySelector(`.notice-edit-input[data-id="${id}"]`);
+      const statusEl = document.querySelector(`.notice-edit-status[data-id="${id}"]`);
+      if (!input) return;
+      const content = input.value.trim();
+      if (!content) return;
+      if (statusEl) {
+        statusEl.textContent = "";
+        statusEl.className = "status-msg notice-edit-status";
+      }
+      try {
+        const res = await authFetch(`${NOTICES_URL}?id=${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ content }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        editingNoticeId = null;
+        await loadNotices();
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = "수정에 실패했어요.";
+          statusEl.classList.add("error");
+        }
+      }
     }
 
     async function deleteNotice(id) {
@@ -248,7 +311,7 @@
       try {
         const res = await authFetch(`${NOTICES_URL}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
         if (!res.ok) throw new Error(String(res.status));
-        if (editingNoticeId === id) cancelEditNotice();
+        if (editingNoticeId === id) editingNoticeId = null;
         await loadNotices();
       } catch (err) {
         alert("삭제에 실패했어요.");
@@ -296,15 +359,14 @@
       listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
     }
 
-    // 관리자 계정으로 로그인된 경우에만 공지 작성 폼을 보여준다.
+    // 관리자 계정으로 로그인된 경우에만 공지 작성 폼을 보여준다. 새 공지 등록 전용
+    // (기존 공지 수정은 이제 목록의 각 항목에서 인라인으로 처리 — startEditNotice 참고).
     // (실제 쓰기 권한은 notices 함수가 세션 토큰으로 다시 검증하니, 여기선 UI 노출만 담당)
     function setupNoticeForm() {
       const formEl = document.getElementById("notice-form");
       const input = document.getElementById("notice-input");
 
       input.addEventListener("input", () => autoResizeTextarea(input));
-
-      document.getElementById("notice-cancel-edit").addEventListener("click", cancelEditNotice);
 
       document.getElementById("notice-submit").addEventListener("click", async () => {
         const statusEl = document.getElementById("notice-post-status");
@@ -314,19 +376,18 @@
         statusEl.textContent = "";
         statusEl.className = "status-msg";
         try {
-          const isEdit = editingNoticeId !== null;
-          const url = isEdit ? `${NOTICES_URL}?id=${encodeURIComponent(editingNoticeId)}` : NOTICES_URL;
-          const res = await authFetch(url, {
-            method: isEdit ? "PATCH" : "POST",
+          const res = await authFetch(NOTICES_URL, {
+            method: "POST",
             body: JSON.stringify({ content }),
           });
           if (!res.ok) throw new Error(String(res.status));
-          cancelEditNotice();
-          statusEl.textContent = isEdit ? "수정했어요." : "등록했어요.";
+          input.value = "";
+          autoResizeTextarea(input);
+          statusEl.textContent = "등록했어요.";
           statusEl.classList.add("ok");
           await loadNotices();
         } catch (err) {
-          statusEl.textContent = editingNoticeId ? "수정에 실패했어요." : "등록에 실패했어요.";
+          statusEl.textContent = "등록에 실패했어요.";
           statusEl.classList.add("error");
         }
       });
