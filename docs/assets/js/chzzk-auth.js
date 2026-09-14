@@ -239,13 +239,16 @@ function initAdminNav() {
 // 직접 만든 세션 토큰(JWT)을 쓰고 있어서, Realtime 구독을 "본인 데이터만" 보이게 안전하게
 // 제한하려면 RLS/커스텀 클레임 연동 같은 추가 보안 설정이 필요함. 반면 폴링은 이미 있는
 // /me 함수(session 토큰으로 본인 인증)를 그대로 재사용할 수 있어서 훨씬 간단하고 안전하다.
-// 단점은 최대 폴링 주기만큼 알림이 늦게 뜰 수 있다는 것 — 지금 규모에선 이 정도 지연은 괜찮음.
+// 단점은 최대 폴링 주기만큼 알림이 늦게 뜰 수 있다는 것. 처음엔 20초로 뒀는데 실사용해보니
+// 체감 지연이 꽤 느껴져서 5초로 줄임 — /me 호출 자체가 channel_id 인덱스 걸린 가벼운 쿼리라
+// 이 정도 빈도는 지금 트래픽 규모에서 전혀 부담 없음. 그래도 여전히 최대 5초는 늦게 뜰 수
+// 있는데, 그것보다 더 줄이고 싶으면(=지연 거의 0) Realtime으로 바꾸는 걸 고려해볼 것.
 //
 // chzzk-auth.js는 <script src>로 한 번만 로드되고 spa-router.js가 페이지 이동 때 다시 끼워
 // 넣지 않으므로(스크립트 태그 자체는 그대로 유지됨 — spa-router.js의 spaRunScripts 참고),
 // 아래 setInterval은 사이트를 여는 동안 계속 살아있다. 매 tick마다 로그인 여부를 다시 확인하기
 // 때문에, 로그인 전에 시작됐어도(비로그인 상태) 이후 로그인하면 다음 tick부터 자연스럽게 동작한다.
-const POINTS_NOTIF_POLL_INTERVAL_MS = 20000;
+const POINTS_NOTIF_POLL_INTERVAL_MS = 5000;
 const NOTIF_SEEN_ID_KEY_PREFIX = "chzzk_points_notif_seen_";
 
 function notifSeenIdKey(channelId) {
