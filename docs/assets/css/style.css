@@ -337,7 +337,9 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
   gap: 12px;
   margin-bottom: 12px;
 }
-.card-header h2 { margin: 0; font-size: 1.05rem; }
+/* 카드 소제목("공지사항", "랭킹 미리보기" 등)도 브랜드 로고와 같은 치지직 느낌 폰트(고도체)로 —
+   사이드바 로고/홈 상단 제목에만 쓰던 --font-logo를 모든 카드 소제목까지 넓혔다. */
+.card-header h2 { margin: 0; font-size: 1.05rem; font-family: var(--font-logo); }
 
 .muted { color: var(--muted); font-size: 0.88rem; }
 
@@ -599,6 +601,24 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .shop-item .cost { color: var(--accent); font-weight: 600; margin-bottom: 10px; }
 .shop-item p.desc { color: var(--text-dim); font-size: 0.88rem; min-height: 2.4em; }
+
+/* 상점 상품 관리자용 인라인 수정 UI (shop.html — 관리자로 로그인했을 때만 노출).
+   비활성화 상품은 title-card.locked와 같은 패턴으로 흐리게 표시. */
+#shop-admin-toolbar { margin: -4px 0 14px; }
+.shop-item.inactive { opacity: 0.55; }
+.shop-item-admin-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.shop-item-inactive-badge {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-right: auto;
+}
 
 /* 마이페이지 칭호 목록 (shop-grid/shop-item과 같은 레이아웃 패턴, 잠김/장착 상태만 추가). */
 .titles-grid {

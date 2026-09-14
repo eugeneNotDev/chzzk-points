@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=27">
+<link rel="stylesheet" href="assets/css/style.css?v=28">
 </head>
 <body>
   <script>
@@ -74,13 +74,46 @@
           <p class="muted">현재 포인트</p>
           <p class="balance"><span id="balance-value">0</span><span class="unit">P</span></p>
         </div>
+        <div id="shop-admin-toolbar" hidden>
+          <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
+        </div>
         <div class="shop-grid" id="shop-list"></div>
         <p id="global-status" class="status-msg"></p>
       </div>
+
+      <!-- 상품 추가/수정 모달 (관리자 전용 — notice-modal 재사용). -->
+      <dialog id="shop-item-modal" class="notice-modal">
+        <h3 id="shop-item-modal-title">상품 추가</h3>
+        <form id="shop-item-modal-form">
+          <input type="text" id="shop-item-id-input" class="notice-title-input" placeholder="상품 id (영문 소문자/숫자/하이픈, 추가 후 수정 불가)" maxlength="64">
+          <input type="text" id="shop-item-name-input" class="notice-title-input" placeholder="상품명" maxlength="80">
+          <textarea id="shop-item-desc-input" class="notice-textarea" placeholder="설명" rows="3"></textarea>
+          <div class="admin-bulk-row">
+            <input type="number" id="shop-item-cost-input" class="admin-amount-input" placeholder="가격(P)" min="1">
+            <input type="number" id="shop-item-cooldown-input" class="admin-amount-input" placeholder="쿨타임(초)" min="0">
+            <input type="number" id="shop-item-sort-input" class="admin-amount-input" placeholder="정렬 순서">
+          </div>
+          <div class="admin-bulk-row">
+            <label class="admin-checkbox-label">
+              <input type="checkbox" id="shop-item-live-input">
+              방송 중에만 사용 가능
+            </label>
+            <label class="admin-checkbox-label" id="shop-item-active-row" hidden>
+              <input type="checkbox" id="shop-item-active-input">
+              활성화(상점에 노출)
+            </label>
+          </div>
+          <p class="status-msg" id="shop-item-modal-status"></p>
+          <div class="notice-modal-actions">
+            <button type="submit" id="shop-item-modal-submit-btn">저장</button>
+            <button type="button" class="secondary" id="shop-item-modal-cancel-btn">취소</button>
+          </div>
+        </form>
+      </dialog>
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=9"></script>
+  <script src="assets/js/chzzk-auth.js?v=10"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감싼다
@@ -99,9 +132,12 @@
       return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
+    // 관리자 화면에서는 비활성화된 상품도 같이 받아와서 카드에 "비활성화" 표시 + 수정/삭제
+    // 버튼을 얹는다. 일반 유저는 기존과 동일하게 활성 상품만 보임(사용 버튼 로직도 그대로).
     function renderShop() {
       const listEl = document.getElementById("shop-list");
       const now = Date.now();
+      const admin = isAdmin();
       listEl.innerHTML = shopItems.map((item) => {
         const liveBlocked = item.requires_live && !isLive;
         const affordable = currentBalance >= item.cost;
@@ -109,22 +145,38 @@
         const remaining = Math.ceil((until - now) / 1000);
         const onCooldown = remaining > 0;
         const usable = !liveBlocked && affordable && !onCooldown;
+        const inactive = admin && item.is_active === false;
         let label = "사용";
         if (onCooldown) label = `${remaining}초 후 사용 가능`;
         else if (liveBlocked) label = "방송 중에만 사용 가능";
         else if (!affordable) label = "잔액 부족";
+        const adminBar = admin ? `
+          <div class="shop-item-admin-bar">
+            ${inactive ? '<span class="shop-item-inactive-badge">비활성화</span>' : ""}
+            <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
+            <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
+          </div>` : "";
         return `
-          <div class="card shop-item">
+          <div class="card shop-item${inactive ? " inactive" : ""}">
             <h3>${escapeHtml(item.name)}</h3>
             <p class="desc">${escapeHtml(item.description || "")}</p>
             <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
-            <button data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
+            <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
+            ${adminBar}
           </div>`;
       }).join("");
 
-      listEl.querySelectorAll("button[data-item-id]").forEach((btn) => {
+      listEl.querySelectorAll(".shop-item-use-btn").forEach((btn) => {
         btn.addEventListener("click", () => useItem(btn.dataset.itemId, btn));
       });
+      if (admin) {
+        listEl.querySelectorAll(".shop-item-edit-btn").forEach((btn) => {
+          btn.addEventListener("click", () => openShopItemModal("edit", btn.dataset.itemId));
+        });
+        listEl.querySelectorAll(".shop-item-delete-btn").forEach((btn) => {
+          btn.addEventListener("click", () => deleteShopItem(btn.dataset.itemId));
+        });
+      }
     }
 
     async function loadLiveStatus() {
@@ -138,7 +190,21 @@
       }
     }
 
+    // 관리자는 비활성 상품도 관리해야 해서 shop-items 함수(서비스 롤, 세션 검증)로 전체를
+    // 받아온다. 일반 유저는 기존처럼 anon 키로 활성 상품만 직접 조회(RLS가 걸러줌).
     async function loadShopItems() {
+      if (isAdmin()) {
+        try {
+          const res = await authFetch(SHOP_ITEMS_URL);
+          if (!res.ok) throw new Error(String(res.status));
+          const data = await res.json();
+          shopItems = data.items ?? [];
+          return;
+        } catch (err) {
+          console.error("[shop] 관리자용 상품 목록 조회 실패", err);
+          // 실패해도 아래로 흘러서 최소한 일반 유저 화면(활성 상품만)이라도 보여준다.
+        }
+      }
       const { data, error } = await supabase
         .from("shop_items")
         .select("id, name, cost, description, requires_live, cooldown_seconds")
@@ -149,6 +215,143 @@
         return;
       }
       shopItems = data ?? [];
+    }
+
+    // 상품 추가/수정 모달 상태. modalMode: "add" | "edit"
+    let modalMode = null;
+    let modalItemId = null;
+
+    function openShopItemModal(mode, itemId) {
+      modalMode = mode;
+      modalItemId = itemId ?? null;
+      const idInput = document.getElementById("shop-item-id-input");
+      const nameInput = document.getElementById("shop-item-name-input");
+      const descInput = document.getElementById("shop-item-desc-input");
+      const costInput = document.getElementById("shop-item-cost-input");
+      const cooldownInput = document.getElementById("shop-item-cooldown-input");
+      const sortInput = document.getElementById("shop-item-sort-input");
+      const liveInput = document.getElementById("shop-item-live-input");
+      const activeRow = document.getElementById("shop-item-active-row");
+      const activeInput = document.getElementById("shop-item-active-input");
+      const statusEl = document.getElementById("shop-item-modal-status");
+      statusEl.textContent = "";
+      statusEl.className = "status-msg";
+
+      if (mode === "edit") {
+        const item = shopItems.find((it) => it.id === itemId);
+        document.getElementById("shop-item-modal-title").textContent = "상품 수정";
+        idInput.value = item?.id ?? "";
+        idInput.disabled = true;
+        nameInput.value = item?.name ?? "";
+        descInput.value = item?.description ?? "";
+        costInput.value = item?.cost ?? "";
+        cooldownInput.value = item?.cooldown_seconds ?? 0;
+        sortInput.value = item?.sort_order ?? 0;
+        liveInput.checked = Boolean(item?.requires_live);
+        activeRow.hidden = false;
+        activeInput.checked = item?.is_active !== false;
+        document.getElementById("shop-item-modal-submit-btn").textContent = "저장";
+      } else {
+        document.getElementById("shop-item-modal-title").textContent = "상품 추가";
+        idInput.value = "";
+        idInput.disabled = false;
+        nameInput.value = "";
+        descInput.value = "";
+        costInput.value = "";
+        cooldownInput.value = 0;
+        sortInput.value = 0;
+        liveInput.checked = false;
+        activeRow.hidden = true;
+        document.getElementById("shop-item-modal-submit-btn").textContent = "추가";
+      }
+      document.getElementById("shop-item-modal").showModal();
+    }
+
+    async function deleteShopItem(itemId) {
+      const item = shopItems.find((it) => it.id === itemId);
+      if (!confirm(`"${item?.name ?? itemId}" 상품을 삭제할까요? 과거 구매 로그(포인트 내역)에는 영향 없어요.`)) return;
+      try {
+        const res = await authFetch(`${SHOP_ITEMS_URL}?id=${encodeURIComponent(itemId)}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(String(res.status));
+        await loadShopItems();
+        renderShop();
+      } catch (err) {
+        console.error("[shop] 상품 삭제 실패", err);
+        alert("삭제에 실패했어요.");
+      }
+    }
+
+    function setupShopItemModal() {
+      document.getElementById("shop-item-add-btn").addEventListener("click", () => openShopItemModal("add"));
+      document.getElementById("shop-item-modal-cancel-btn").addEventListener("click", () => {
+        document.getElementById("shop-item-modal").close();
+      });
+
+      document.getElementById("shop-item-modal-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const statusEl = document.getElementById("shop-item-modal-status");
+        const submitBtn = document.getElementById("shop-item-modal-submit-btn");
+
+        const name = document.getElementById("shop-item-name-input").value.trim();
+        const cost = Number(document.getElementById("shop-item-cost-input").value);
+        if (!name) {
+          statusEl.textContent = "상품명을 입력해주세요.";
+          statusEl.className = "status-msg error";
+          return;
+        }
+        if (!Number.isFinite(cost) || cost <= 0) {
+          statusEl.textContent = "가격을 1 이상으로 입력해주세요.";
+          statusEl.className = "status-msg error";
+          return;
+        }
+
+        const payload = {
+          name,
+          description: document.getElementById("shop-item-desc-input").value.trim(),
+          cost,
+          cooldownSeconds: Number(document.getElementById("shop-item-cooldown-input").value) || 0,
+          sortOrder: Number(document.getElementById("shop-item-sort-input").value) || 0,
+          requiresLive: document.getElementById("shop-item-live-input").checked,
+        };
+
+        submitBtn.disabled = true;
+        statusEl.textContent = "저장 중...";
+        statusEl.className = "status-msg";
+        try {
+          let res;
+          if (modalMode === "add") {
+            const idValue = document.getElementById("shop-item-id-input").value.trim();
+            if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(idValue)) {
+              statusEl.textContent = "상품 id는 영문 소문자/숫자/하이픈만 가능해요 (첫 글자는 하이픈 불가).";
+              statusEl.className = "status-msg error";
+              submitBtn.disabled = false;
+              return;
+            }
+            res = await authFetch(SHOP_ITEMS_URL, { method: "POST", body: JSON.stringify({ id: idValue, ...payload }) });
+          } else {
+            payload.isActive = document.getElementById("shop-item-active-input").checked;
+            res = await authFetch(`${SHOP_ITEMS_URL}?id=${encodeURIComponent(modalItemId)}`, { method: "PATCH", body: JSON.stringify(payload) });
+          }
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (data.error === "duplicate_id") statusEl.textContent = "이미 존재하는 상품 id예요.";
+            else if (data.error === "invalid_id") statusEl.textContent = "상품 id 형식이 올바르지 않아요.";
+            else statusEl.textContent = "저장에 실패했어요.";
+            statusEl.className = "status-msg error";
+            submitBtn.disabled = false;
+            return;
+          }
+          document.getElementById("shop-item-modal").close();
+          await loadShopItems();
+          renderShop();
+        } catch (err) {
+          console.error("[shop] 상품 저장 실패", err);
+          statusEl.textContent = "저장에 실패했어요.";
+          statusEl.className = "status-msg error";
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
     }
 
     // 아이템별 쿨타임 종료 시각(ms epoch). 사용 성공 시 세팅하고, 남은 시간 동안 버튼을
@@ -244,6 +447,11 @@
       document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
       loadingEl.hidden = true;
       document.getElementById("logged-in").hidden = false;
+
+      if (isAdmin()) {
+        document.getElementById("shop-admin-toolbar").hidden = false;
+        setupShopItemModal();
+      }
 
       await Promise.all([loadShopItems(), loadLiveStatus()]);
       renderShop();
