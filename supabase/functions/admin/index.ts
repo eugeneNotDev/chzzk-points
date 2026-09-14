@@ -35,6 +35,10 @@
 //   → { id, processed }  (points_ledger 한 행의 처리완료 표시를 토글. 오버레이 상점 사용 알림을
 //     놓쳤을 때, 상점 내역에서 이미 처리한 건지 체크해두는 용도 — 0019_admin_features.sql 참고.
 //     어떤 행에든 걸 수 있는 범용 필드지만, 화면(admin.html)에서는 상점 내역 탭에서만 쓴다.)
+// POST { action: "bulk-set-processed", ids: number[], processed: boolean }
+//   → { affected: number }  (points_ledger 여러 행의 처리완료 표시를 한 번에 토글 — 상점 내역
+//     탭에서 체크박스로 여러 항목을 고른 뒤 "일괄 처리완료로 표시" 같은 버튼을 누르면 여기로
+//     들어온다. set-processed와 같은 컬럼을 건드리지만 여러 id를 한 쿼리로 처리.)
 // POST { action: "get-stats" }
 //   → { userCount, bannedCount, totalPoints, todaySpendCount, todayAttendanceCount }
 //     (관리자 페이지 상단 요약 카드용 — 전체 가입자 수, 밴된 유저 수, 현재 전체 유저 잔액 합계,
@@ -172,6 +176,13 @@ function kstDateString(date: Date): string {
 async function setProcessed(admin: ReturnType<typeof getAdminClient>, id: number, processed: boolean) {
   const { error } = await admin.from("points_ledger").update({ processed }).eq("id", id);
   if (error) throw new Error(`processed 갱신 실패: ${error.message}`);
+}
+
+async function bulkSetProcessed(admin: ReturnType<typeof getAdminClient>, ids: number[], processed: boolean): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { error } = await admin.from("points_ledger").update({ processed }).in("id", ids);
+  if (error) throw new Error(`processed 일괄 갱신 실패: ${error.message}`);
+  return ids.length;
 }
 
 async function getStats(admin: ReturnType<typeof getAdminClient>) {
@@ -463,6 +474,16 @@ Deno.serve(async (req: Request) => {
       if (typeof processed !== "boolean") return jsonResponse({ error: "invalid_processed" }, 400);
       await setProcessed(admin, id, processed);
       return jsonResponse({ id, processed }, 200);
+    }
+
+    if (body.action === "bulk-set-processed") {
+      const { ids, processed } = body;
+      if (!Array.isArray(ids) || ids.length === 0 || ids.some((i: unknown) => typeof i !== "number" || !Number.isFinite(i))) {
+        return jsonResponse({ error: "invalid_ids" }, 400);
+      }
+      if (typeof processed !== "boolean") return jsonResponse({ error: "invalid_processed" }, 400);
+      const affected = await bulkSetProcessed(admin, ids as number[], processed);
+      return jsonResponse({ affected }, 200);
     }
 
     if (body.action === "get-stats") {

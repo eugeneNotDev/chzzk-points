@@ -172,6 +172,17 @@
           </div>
 
           <div class="card">
+            <div class="admin-select-all-row">
+              <label class="admin-checkbox-label">
+                <input type="checkbox" id="spend-select-all">
+                현재 목록 전체 선택
+              </label>
+              <div class="admin-bulk-row">
+                <button type="button" class="secondary" id="spend-bulk-mark-processed" disabled>선택 항목 처리완료로 표시</button>
+                <button type="button" class="secondary" id="spend-bulk-mark-unprocessed" disabled>선택 항목 처리안함으로 표시</button>
+              </div>
+              <p id="spend-bulk-selected-count" class="muted">선택된 항목: 0개</p>
+            </div>
             <div id="spend-log-list"></div>
             <p id="spend-log-empty" class="empty-state" hidden>기록이 없어요.</p>
             <div id="spend-log-pagination" class="pagination"></div>
@@ -456,13 +467,23 @@
         </div>`;
     }
 
+    // 상점 내역 탭에서 여러 항목을 골라 한 번에 처리완료(또는 처리안함)로 바꿀 때 쓰는 선택
+    // 상태 — 검색/페이지를 넘나들며 여러 개를 모아 담을 수 있게 일괄 지급 때(selectedChannelIds)와
+    // 같은 방식으로 모듈 스코프 Set에 둔다.
+    const selectedSpendIds = new Set();
+
     // 상점 내역 탭 전용 — list-spend-log가 이미 상점 사용 기록만 걸러서 주기 때문에 모든 행에
-    // 처리완료 체크박스가 항상 뜬다.
+    // 처리완료 체크박스가 항상 뜬다. 맨 앞의 선택 체크박스는 그 아래 처리완료 체크박스와는
+    // 별개 — 선택은 "일괄 처리" 버튼용이고, 처리완료 체크박스는 그 자리에서 바로 하나씩 토글.
     function renderSpendLogRow(entry) {
       const positive = entry.amount > 0;
       const sign = positive ? "+" : "";
+      const selected = selectedSpendIds.has(entry.id);
       return `
-        <div class="points-log-row">
+        <div class="points-log-row" data-id="${entry.id}">
+          <label class="admin-checkbox-label admin-row-checkbox">
+            <input type="checkbox" class="spend-select-checkbox" data-id="${entry.id}" ${selected ? "checked" : ""}>
+          </label>
           <div class="points-log-who">
             <strong>${escapeHtml(entry.channelName || "(알 수 없음)")}</strong>
             <span class="points-log-reason">${escapeHtml(entry.reason || "")}</span>
@@ -570,8 +591,85 @@
     let spendLogLoaded = false;
     let spendCurrentPage = 1;
 
+    // 일괄 처리완료용 UI 요소 — 유저 관리 탭의 일괄 지급 선택 UI(selectedChannelIds 쪽)와 같은 구조.
+    const spendSelectAllCheckbox = document.getElementById("spend-select-all");
+    const spendBulkSelectedCountEl = document.getElementById("spend-bulk-selected-count");
+    const spendBulkMarkProcessedBtn = document.getElementById("spend-bulk-mark-processed");
+    const spendBulkMarkUnprocessedBtn = document.getElementById("spend-bulk-mark-unprocessed");
+
+    function wireSpendRowCheckboxes() {
+      spendListEl.querySelectorAll(".spend-select-checkbox").forEach((cb) => {
+        cb.addEventListener("change", (e) => {
+          const id = Number(cb.dataset.id);
+          if (e.target.checked) selectedSpendIds.add(id);
+          else selectedSpendIds.delete(id);
+          updateSpendBulkSelectedUI();
+        });
+      });
+      updateSpendBulkSelectedUI();
+    }
+
+    // 선택 개수 표시 + 버튼 활성/비활성 + "전체 선택" 체크박스 상태(전체/일부/없음) 동기화 —
+    // updateBulkSelectedUI(유저 관리 탭)와 같은 패턴.
+    function updateSpendBulkSelectedUI() {
+      spendBulkSelectedCountEl.textContent = `선택된 항목: ${selectedSpendIds.size}개`;
+      spendBulkMarkProcessedBtn.disabled = selectedSpendIds.size === 0;
+      spendBulkMarkUnprocessedBtn.disabled = selectedSpendIds.size === 0;
+
+      const rows = [...spendListEl.querySelectorAll(".points-log-row")];
+      if (rows.length === 0) {
+        spendSelectAllCheckbox.checked = false;
+        spendSelectAllCheckbox.indeterminate = false;
+        return;
+      }
+      const checkedCount = rows.filter((r) => selectedSpendIds.has(Number(r.dataset.id))).length;
+      spendSelectAllCheckbox.checked = checkedCount === rows.length;
+      spendSelectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < rows.length;
+    }
+
+    // 현재 화면에 보이는 목록(현재 페이지)만 대상 — 다른 페이지에서 이미 선택해둔 항목은 그대로 유지.
+    spendSelectAllCheckbox.addEventListener("change", () => {
+      spendListEl.querySelectorAll(".points-log-row").forEach((row) => {
+        const id = Number(row.dataset.id);
+        const cb = row.querySelector(".spend-select-checkbox");
+        if (spendSelectAllCheckbox.checked) {
+          selectedSpendIds.add(id);
+          cb.checked = true;
+        } else {
+          selectedSpendIds.delete(id);
+          cb.checked = false;
+        }
+      });
+      updateSpendBulkSelectedUI();
+    });
+
+    async function bulkSetSpendProcessed(processed) {
+      const ids = [...selectedSpendIds];
+      if (ids.length === 0) return;
+      const verb = processed ? "처리완료로" : "처리안함으로";
+      if (!confirm(`선택한 ${ids.length}개 항목을 ${verb} 표시할까요?`)) return;
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "bulk-set-processed", ids, processed }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        selectedSpendIds.clear();
+        await loadSpendLog(spendSearchInput.value, spendCurrentPage);
+      } catch (err) {
+        alert("일괄 처리에 실패했어요.");
+      }
+    }
+
+    spendBulkMarkProcessedBtn.addEventListener("click", () => bulkSetSpendProcessed(true));
+    spendBulkMarkUnprocessedBtn.addEventListener("click", () => bulkSetSpendProcessed(false));
+
     async function loadSpendLog(q, page) {
       spendCurrentPage = page ?? 1;
+      // 일괄 처리완료는 "현재 페이지"에서만 적용되어야 하므로, 페이지/검색이 바뀔 때마다
+      // 이전 선택은 무조건 초기화한다 (페이지 넘어가도 선택이 남아있으면 안 보이는 다른
+      // 페이지의 항목까지 같이 처리될 수 있음).
+      selectedSpendIds.clear();
       spendSearchStatus.textContent = "불러오는 중...";
       spendSearchStatus.className = "status-msg";
       try {
@@ -586,11 +684,13 @@
           spendListEl.innerHTML = "";
           spendEmptyEl.hidden = false;
           spendPaginationEl.innerHTML = "";
+          updateSpendBulkSelectedUI();
           return;
         }
         spendEmptyEl.hidden = true;
         spendListEl.innerHTML = data.entries.map(renderSpendLogRow).join("");
         wireProcessedCheckboxes(spendListEl);
+        wireSpendRowCheckboxes();
         renderPagination(spendPaginationEl, data.page, data.totalPages, (p) => loadSpendLog(spendSearchInput.value, p));
       } catch (err) {
         spendSearchStatus.textContent = "불러오기에 실패했어요.";
