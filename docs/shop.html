@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>소모처 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=2">
+<link rel="stylesheet" href="assets/css/style.css?v=3">
 </head>
 <body>
   <script>
@@ -46,6 +46,11 @@
 
     <main class="main-content">
       <h1>포인트 소모처</h1>
+
+      <div id="loading-state" class="card">
+        <p class="muted">현재 포인트</p>
+        <p class="skeleton skeleton-line" style="width:120px;height:28px;margin-top:6px;"></p>
+      </div>
 
       <div id="logged-out" class="card" hidden>
         <p>로그인하면 소모처를 이용할 수 있어요.</p>
@@ -134,18 +139,22 @@
     }
 
     (async () => {
+      const loadingEl = document.getElementById("loading-state");
       if (!isLoggedIn()) {
+        loadingEl.hidden = true;
         document.getElementById("logged-out").hidden = false;
         return;
       }
       const res = await authFetch(ME_URL);
       if (!res.ok) {
+        loadingEl.hidden = true;
         document.getElementById("logged-out").hidden = false;
         return;
       }
       const profile = await res.json();
       currentBalance = profile.balance;
       document.getElementById("balance-value").textContent = currentBalance.toLocaleString("ko-KR");
+      loadingEl.hidden = true;
       document.getElementById("logged-in").hidden = false;
       renderShop();
     })();

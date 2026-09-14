@@ -170,6 +170,12 @@ a {
   max-width: 720px;
   margin: 0 auto;
   padding: 24px 16px 64px;
+  transition: opacity 0.15s ease;
+}
+/* 사이드바는 그대로 두고 본문만 fetch로 교체하는 라우터(assets/js/spa-router.js)가
+   페이지 전환 중일 때 붙이는 클래스 — 살짝 페이드 아웃/인 되면서 전환됨. */
+.main-content.page-fade-out {
+  opacity: 0;
 }
 
 @media (max-width: 720px) {

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=3">
 </head>
 <body>
   <script>
@@ -48,20 +48,40 @@
       <h1>포인트 랭킹</h1>
 
       <div class="card">
-        <ol class="ranking-list" id="ranking-list"></ol>
-        <p id="empty-msg" class="empty-state" hidden>공개 설정한 유저가 아직 없어요. 마이페이지에서 공개로 바꾸면 여기 표시돼요.</p>
+        <ol class="ranking-list" id="ranking-list">
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
+        </ol>
+        <p id="empty-msg" class="empty-state" hidden>아직 랭킹에 등록된 유저가 없어요.</p>
       </div>
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js"></script>
-  <script src="assets/js/spa-router.js"></script>
+  <script src="assets/js/chzzk-auth.js?v=2"></script>
+  <script src="assets/js/spa-router.js?v=2"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
   // 이 스크립트를 다시 실행하므로, 최상위 const/let은 두 번째 실행에서 에러가 남).
   (function () {
     function escapeHtml(str) {
       return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) — 본인 행이면
+    // 로컬에 저장된 실제 채널명으로 다시 보여준다.
+    function renderRankingRow(row, i, myChannelId, myChannelName) {
+      const isMe = row.channel_id === myChannelId;
+      const displayName = isMe && myChannelName ? myChannelName : row.channel_name || "(이름 없음)";
+      const isPrivate = !isMe && row.is_public === false;
+      return `
+        <li class="${isMe ? "me" : ""}">
+          <span class="rank">${i + 1}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(displayName)}${isMe ? " (나)" : ""}</span>
+          <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
+        </li>`;
     }
 
     (async () => {
@@ -72,7 +92,7 @@
       const { supabase } = await import("./assets/js/supabase-client.js");
       const { data, error } = await supabase
         .from("ranking")
-        .select("channel_id, channel_name, total_points")
+        .select("channel_id, channel_name, total_points, is_public")
         .order("total_points", { ascending: false })
         .limit(RANKING_LIMIT);
 
@@ -83,21 +103,14 @@
         console.error("[ranking] 조회 실패", error);
         emptyEl.textContent = "랭킹을 불러오지 못했어요.";
         emptyEl.hidden = false;
+        listEl.innerHTML = "";
       } else if (!data || data.length === 0) {
         emptyEl.hidden = false;
+        listEl.innerHTML = "";
       } else {
         const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
-        listEl.innerHTML = data
-          .map((row, i) => {
-            const isMe = row.channel_id === myChannelId;
-            return `
-              <li class="${isMe ? "me" : ""}">
-                <span class="rank">${i + 1}</span>
-                <span class="name">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
-                <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
-              </li>`;
-          })
-          .join("");
+        const myChannelName = typeof getChannelName === "function" ? getChannelName() : null;
+        listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId, myChannelName)).join("");
       }
     })();
   })();
