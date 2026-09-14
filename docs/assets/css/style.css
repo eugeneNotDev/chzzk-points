@@ -576,6 +576,24 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 /* 랭킹 목록에서 장착된 칭호가 이름 앞에 "[칭호1]" 형태로 붙는다. */
 .title-badge { color: var(--accent); font-weight: 600; }
 
+/* 칭호 카드를 <details>/<summary>로 접었다 펼 수 있게 함 — 칭호 개수가 늘어나도 마이페이지가
+   너무 길어지지 않도록 기본은 접힌 상태로 시작한다(마크업에 open 속성 없음). 브라우저 기본
+   삼각형 마커는 지우고 우측에 직접 그린 화살표 아이콘으로 대체, 펼치면 180도 회전. */
+details.card > summary.card-header {
+  cursor: pointer;
+  list-style: none;
+}
+details.card > summary.card-header::-webkit-details-marker { display: none; }
+details.card:not([open]) > summary.card-header { margin-bottom: 0; }
+.details-arrow {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+details.card[open] .details-arrow { transform: rotate(180deg); }
+
 .status-msg { margin-top: 10px; font-size: 0.88rem; }
 .status-msg.error { color: #ff8a8a; }
 .status-msg.ok { color: var(--accent); }

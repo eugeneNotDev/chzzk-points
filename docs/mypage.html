@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=17">
+<link rel="stylesheet" href="assets/css/style.css?v=18">
 </head>
 <body>
   <script>
@@ -84,14 +84,15 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
+        <details class="card">
+          <summary class="card-header">
             <h2>칭호</h2>
-          </div>
+            <svg class="details-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </summary>
           <p class="muted">보유 포인트가 일정 금액을 한 번이라도 넘으면 칭호가 잠금 해제돼요. 이후 포인트를 쓰거나 차감돼도 해제된 칭호는 계속 쓸 수 있어요. (지금은 임시 이름/디자인이에요.)</p>
           <div class="titles-grid" id="titles-grid"></div>
           <p id="titles-status" class="status-msg"></p>
-        </div>
+        </details>
 
         <div class="card">
           <div class="toggle-row">
