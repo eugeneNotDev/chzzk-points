@@ -576,23 +576,41 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 /* 랭킹 목록에서 장착된 칭호가 이름 앞에 "[칭호1]" 형태로 붙는다. */
 .title-badge { color: var(--accent); font-weight: 600; }
 
-/* 칭호 카드를 <details>/<summary>로 접었다 펼 수 있게 함 — 칭호 개수가 늘어나도 마이페이지가
-   너무 길어지지 않도록 기본은 접힌 상태로 시작한다(마크업에 open 속성 없음). 브라우저 기본
-   삼각형 마커는 지우고 우측에 직접 그린 화살표 아이콘으로 대체, 펼치면 180도 회전. */
-details.card > summary.card-header {
+/* 칭호 카드 접기/펴기. 처음엔 <details>/<summary>로 했는데 브라우저 기본 동작이라 열고 닫을
+   때 애니메이션 없이 뚝 끊기듯 전환돼서, 버튼 + 클래스 토글 + CSS 트랜지션 방식으로 바꿨다.
+   grid-template-rows를 0fr↔1fr로 트랜지션시키는 방식이라("auto 높이 애니메이션" 트릭) 내용
+   높이를 JS로 재는 코드 없이도 부드럽게 늘었다 줄었다 한다 — 자식(.collapse-inner)에
+   overflow:hidden + min-height:0을 줘야 진짜 0으로 접힌다.
+   칭호 목록 자체도 /me 응답 + titles 테이블 조회가 끝나야 채워지는데, 그 사이 빈 칸이 잠깐
+   보이는 "딜레이"가 느껴지지 않도록 마크업에 스켈레톤 카드 3개를 기본으로 넣어뒀다 — 데이터가
+   오면 renderTitlesGrid()가 그 자리를 통째로 덮어씀(랭킹 스켈레톤 행과 같은 패턴). */
+.collapse-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+  font: inherit;
+  color: inherit;
   cursor: pointer;
-  list-style: none;
+  text-align: left;
 }
-details.card > summary.card-header::-webkit-details-marker { display: none; }
-details.card:not([open]) > summary.card-header { margin-bottom: 0; }
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.collapse.open { grid-template-rows: 1fr; }
+.collapse-inner { overflow: hidden; min-height: 0; }
+.collapse-inner > *:first-child { margin-top: 12px; }
 .details-arrow {
   width: 18px;
   height: 18px;
   color: var(--muted);
   flex-shrink: 0;
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease;
 }
-details.card[open] .details-arrow { transform: rotate(180deg); }
+.collapse-toggle[aria-expanded="true"] .details-arrow { transform: rotate(180deg); }
 
 .status-msg { margin-top: 10px; font-size: 0.88rem; }
 .status-msg.error { color: #ff8a8a; }
