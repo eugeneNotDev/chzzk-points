@@ -8,6 +8,10 @@
 //   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
 // POST { action: "set-ban", channelId: string, banned: boolean }
 //   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고)
+// POST { action: "list-points-log", q?: string, limit?: number }
+//   → { entries: [{ id, channelId, channelName, amount, reason, createdAt }] }
+//     (points_ledger 최근 기록. q 있으면 그 이름을 가진 유저 기록만, 없으면 전체 유저 통틀어
+//     최신순 — 오버레이 놓쳤을 때 누가 언제 뭘 썼는지 대조용. limit 기본 100, 최대 300)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -89,6 +93,53 @@ async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: strin
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
 }
 
+async function listPointsLog(
+  admin: ReturnType<typeof getAdminClient>,
+  q: string | undefined,
+  limit: number,
+) {
+  let channelIdFilter: string[] | null = null;
+  if (q && q.trim().length > 0) {
+    // 이름으로 먼저 유저를 찾고, 그 채널ID들의 기록만 본다 (points_ledger엔 이름이 없어서
+    // 역방향 조회 — 이름이 없는 유저는 검색으로는 못 찾음, channel_id 직접 검색은 아직 미지원).
+    const { data: matchedUsers, error: userError } = await admin
+      .from("users")
+      .select("channel_id")
+      .ilike("channel_name", `%${q.trim()}%`);
+    if (userError) throw new Error(`users 검색 실패: ${userError.message}`);
+    channelIdFilter = (matchedUsers ?? []).map((u) => u.channel_id);
+    if (channelIdFilter.length === 0) return [];
+  }
+
+  let query = admin
+    .from("points_ledger")
+    .select("id, channel_id, amount, reason, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (channelIdFilter) query = query.in("channel_id", channelIdFilter);
+
+  const { data: rows, error } = await query;
+  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
+  if (!rows || rows.length === 0) return [];
+
+  const channelIds = [...new Set(rows.map((r) => r.channel_id))];
+  const { data: users, error: usersError } = await admin
+    .from("users")
+    .select("channel_id, channel_name")
+    .in("channel_id", channelIds);
+  if (usersError) throw new Error(`users 조회 실패: ${usersError.message}`);
+  const nameByChannel = new Map((users ?? []).map((u) => [u.channel_id, u.channel_name]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    channelId: r.channel_id,
+    channelName: nameByChannel.get(r.channel_id) ?? null,
+    amount: r.amount,
+    reason: r.reason,
+    createdAt: r.created_at,
+  }));
+}
+
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -124,6 +175,14 @@ Deno.serve(async (req: Request) => {
       if (typeof banned !== "boolean") return jsonResponse({ error: "invalid_banned" }, 400);
       await setBan(admin, channelId, banned);
       return jsonResponse({ channelId, banned }, 200);
+    }
+
+    if (body.action === "list-points-log") {
+      const q = typeof body.q === "string" ? body.q : undefined;
+      const rawLimit = typeof body.limit === "number" ? Math.trunc(body.limit) : 100;
+      const limit = Math.min(Math.max(rawLimit, 1), 300);
+      const entries = await listPointsLog(admin, q, limit);
+      return jsonResponse({ entries }, 200);
     }
 
     return jsonResponse({ error: "unknown_action" }, 400);

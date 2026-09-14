@@ -615,6 +615,36 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-ban-btn.is-banned { border-color: var(--danger); color: #ff8a8a; }
 .admin-ban-btn.is-banned:hover { border-color: var(--danger); color: #ff8a8a; }
 
+.admin-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.admin-tab-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+.admin-tab-btn:hover { background: var(--surface-2); color: var(--text); }
+.admin-tab-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.points-log-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.points-log-row:last-child { border-bottom: none; }
+.points-log-who { display: flex; flex-direction: column; gap: 2px; }
+.points-log-reason { color: var(--muted); font-size: 0.8rem; }
+.points-log-amount { font-weight: 700; white-space: nowrap; }
+.points-log-amount.positive { color: var(--accent); }
+.points-log-amount.negative { color: var(--danger); }
+.points-log-time { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+
 /* 출석체크 — 달력 UI. */
 .attendance-header {
   display: flex;

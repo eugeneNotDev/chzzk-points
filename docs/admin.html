@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=10">
+<link rel="stylesheet" href="assets/css/style.css?v=11">
 </head>
 <body>
   <script>
@@ -65,20 +65,46 @@
       </div>
 
       <div id="admin-content" hidden>
-        <div class="card">
-          <div class="card-header">
-            <h2>유저 검색</h2>
-          </div>
-          <div class="admin-search-row">
-            <input type="text" id="admin-search-input" placeholder="채널명으로 검색 (비워두면 최근 가입자 순으로 표시)">
-            <button type="button" id="admin-search-btn">검색</button>
-          </div>
-          <p id="admin-search-status" class="status-msg"></p>
+        <div class="admin-tabs">
+          <button type="button" class="admin-tab-btn active" data-tab="users">유저 관리</button>
+          <button type="button" class="admin-tab-btn" data-tab="log">포인트 로그</button>
         </div>
 
-        <div class="card">
-          <div id="admin-user-list"></div>
-          <p id="admin-user-empty" class="empty-state" hidden>검색 결과가 없어요.</p>
+        <div id="admin-tab-users" class="admin-tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>유저 검색</h2>
+            </div>
+            <div class="admin-search-row">
+              <input type="text" id="admin-search-input" placeholder="채널명으로 검색 (비워두면 최근 가입자 순으로 표시)">
+              <button type="button" id="admin-search-btn">검색</button>
+            </div>
+            <p id="admin-search-status" class="status-msg"></p>
+          </div>
+
+          <div class="card">
+            <div id="admin-user-list"></div>
+            <p id="admin-user-empty" class="empty-state" hidden>검색 결과가 없어요.</p>
+          </div>
+        </div>
+
+        <div id="admin-tab-log" class="admin-tab-panel" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h2>포인트 로그</h2>
+            </div>
+            <p class="muted">포인트 지급/차감/상점 사용 기록을 최신순으로 보여줘요. 오버레이 알림을 놓쳤을 때 여기서 대조할 수 있어요.</p>
+            <div class="admin-search-row">
+              <input type="text" id="log-search-input" placeholder="채널명으로 검색 (비워두면 전체 최신순)">
+              <button type="button" id="log-search-btn">검색</button>
+            </div>
+            <p id="log-search-status" class="status-msg"></p>
+          </div>
+
+          <div class="card">
+            <div id="points-log-list"></div>
+            <p id="points-log-empty" class="empty-state" hidden>기록이 없어요.</p>
+          </div>
         </div>
       </div>
     </main>
@@ -195,6 +221,81 @@
     searchBtn.addEventListener("click", () => searchUsers(searchInput.value));
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") searchUsers(searchInput.value);
+    });
+
+    // 포인트 로그 탭 ---------------------------------------------------------
+    const logSearchInput = document.getElementById("log-search-input");
+    const logSearchBtn = document.getElementById("log-search-btn");
+    const logSearchStatus = document.getElementById("log-search-status");
+    const logListEl = document.getElementById("points-log-list");
+    const logEmptyEl = document.getElementById("points-log-empty");
+    let pointsLogLoaded = false;
+
+    function formatDateTime(iso) {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function renderLogRow(entry) {
+      const positive = entry.amount > 0;
+      const sign = positive ? "+" : "";
+      return `
+        <div class="points-log-row">
+          <div class="points-log-who">
+            <strong>${escapeHtml(entry.channelName || "(알 수 없음)")}</strong>
+            <span class="points-log-reason">${escapeHtml(entry.reason || "")}</span>
+          </div>
+          <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
+          <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
+        </div>`;
+    }
+
+    async function loadPointsLog(q) {
+      logSearchStatus.textContent = "불러오는 중...";
+      logSearchStatus.className = "status-msg";
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "list-points-log", q }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        logSearchStatus.textContent = "";
+        if (!data.entries || data.entries.length === 0) {
+          logListEl.innerHTML = "";
+          logEmptyEl.hidden = false;
+          return;
+        }
+        logEmptyEl.hidden = true;
+        logListEl.innerHTML = data.entries.map(renderLogRow).join("");
+      } catch (err) {
+        logSearchStatus.textContent = "불러오기에 실패했어요.";
+        logSearchStatus.classList.add("error");
+      }
+    }
+
+    logSearchBtn.addEventListener("click", () => loadPointsLog(logSearchInput.value));
+    logSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadPointsLog(logSearchInput.value);
+    });
+
+    // 탭 전환 ----------------------------------------------------------------
+    const tabBtns = document.querySelectorAll(".admin-tab-btn");
+    const tabPanels = {
+      users: document.getElementById("admin-tab-users"),
+      log: document.getElementById("admin-tab-log"),
+    };
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        tabBtns.forEach((b) => b.classList.toggle("active", b === btn));
+        Object.entries(tabPanels).forEach(([key, panel]) => { panel.hidden = key !== tab; });
+        if (tab === "log" && !pointsLogLoaded) {
+          pointsLogLoaded = true;
+          loadPointsLog("");
+        }
+      });
     });
 
     renderSidebarUser();
