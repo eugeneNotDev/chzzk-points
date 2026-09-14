@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · chzzk-points</title>
-<link rel="stylesheet" href="assets/css/style.css?v=16">
+<link rel="stylesheet" href="assets/css/style.css?v=17">
 </head>
 <body>
   <script>
@@ -88,10 +88,11 @@
     function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
       const isPrivate = row.is_public === false;
+      const titleBadge = row.title_name ? `<span class="title-badge">[${escapeHtml(row.title_name)}]</span> ` : "";
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${titleBadge}${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -106,7 +107,7 @@
       const { supabase } = await import("./assets/js/supabase-client.js");
       const { data, error } = await supabase
         .from("ranking")
-        .select("channel_id, channel_name, total_points, is_public")
+        .select("channel_id, channel_name, total_points, is_public, title_name")
         .order("total_points", { ascending: false })
         .limit(RANKING_LIMIT);
 

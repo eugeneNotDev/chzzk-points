@@ -561,6 +561,21 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item .cost { color: var(--accent); font-weight: 600; margin-bottom: 10px; }
 .shop-item p.desc { color: var(--text-dim); font-size: 0.88rem; min-height: 2.4em; }
 
+/* 마이페이지 칭호 목록 (shop-grid/shop-item과 같은 레이아웃 패턴, 잠김/장착 상태만 추가). */
+.titles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.title-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.title-card p.desc { color: var(--text-dim); font-size: 0.88rem; min-height: 2.4em; }
+.title-card.locked { opacity: 0.55; }
+.title-card.selected { border-color: var(--accent); }
+.title-card.selected h3 { color: var(--accent); }
+
+/* 랭킹 목록에서 장착된 칭호가 이름 앞에 "[칭호1]" 형태로 붙는다. */
+.title-badge { color: var(--accent); font-weight: 600; }
+
 .status-msg { margin-top: 10px; font-size: 0.88rem; }
 .status-msg.error { color: #ff8a8a; }
 .status-msg.ok { color: var(--accent); }
