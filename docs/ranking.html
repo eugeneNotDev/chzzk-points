@@ -4,12 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=31">
+<link rel="stylesheet" href="assets/css/style.css?v=32">
 </head>
 <body>
   <script>
     if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
       document.body.classList.add("sidebar-collapsed");
+    }
+    var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
+    if (shopNavPref === "1" || (shopNavPref === null && location.pathname.endsWith("shop.html"))) {
+      document.body.classList.add("shop-nav-expanded");
     }
   </script>
   <div class="app-shell">
@@ -36,10 +40,17 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
           <span class="label">랭킹</span>
         </a>
-        <a href="shop.html">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
-          <span class="label">포인트 상점</span>
-        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
         <a href="attendance.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
           <span class="label">출석체크</span>
@@ -128,6 +139,7 @@
       renderSidebarUser();
       initSidebarToggle();
       initAdminNav();
+      initShopNavGroup();
       verifySessionInBackground();
 
       const { supabase } = await import("./assets/js/supabase-client.js");

@@ -4,12 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=31">
+<link rel="stylesheet" href="assets/css/style.css?v=32">
 </head>
 <body>
   <script>
     if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
       document.body.classList.add("sidebar-collapsed");
+    }
+    var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
+    if (shopNavPref === "1" || (shopNavPref === null && location.pathname.endsWith("shop.html"))) {
+      document.body.classList.add("shop-nav-expanded");
     }
   </script>
   <div class="app-shell">
@@ -36,10 +40,17 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
           <span class="label">랭킹</span>
         </a>
-        <a href="shop.html">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
-          <span class="label">포인트 상점</span>
-        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
         <a href="attendance.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
           <span class="label">출석체크</span>
@@ -91,7 +102,7 @@
           </button>
           <div class="collapse" id="titles-collapse">
             <div class="collapse-inner">
-              <p class="muted">보유 포인트가 일정 금액을 한 번이라도 넘으면 칭호가 잠금 해제돼요. 이후 포인트를 쓰거나 차감돼도 해제된 칭호는 계속 쓸 수 있어요. (지금은 임시 이름/디자인이에요.)</p>
+              <p class="muted">보유 포인트가 일정 금액을 한 번이라도 넘으면 칭호가 잠금 해제돼요.<br>이후 포인트를 쓰거나 차감돼도 해제된 칭호는 계속 쓸 수 있어요.</p>
               <div class="titles-grid" id="titles-grid">
                 <div class="card title-card">
                   <span class="skeleton skeleton-line" style="width:50%;height:18px;"></span>
@@ -245,6 +256,11 @@
     // 칭호가 상점에서 파는 칭호인지도 같이 조회해서(shop_items.grants_title_id), 잠긴 채로
     // 상점에서 살 수 있는 칭호는 "포인트 상점에서 구매할 수 있어요"라고 다르게 보여준다.
     let purchasableTitleIds = new Set();
+    // 칭호 상점 전용 칭호는 min_points가 이 값 이상이다(shop-items 함수의
+    // PURCHASE_ONLY_MIN_POINTS = 999,999,999,999 참고 — 실제 성취형 칭호 중 가장 큰 값이
+    // 1,000,000이라 이 정도 문턱이면 안전하게 구분됨). renderTitlesGrid에서 "구매 전용인데
+    // 상품이 삭제돼서 더 이상 못 사고, 아무도 안 산 칭호"를 걸러낼 때 쓴다.
+    const PURCHASE_ONLY_THRESHOLD = 1000000000;
     async function ensureTitlesLoaded() {
       if (cachedTitles.length > 0) return;
       if (!supabase) ({ supabase } = await import("./assets/js/supabase-client.js"));
@@ -279,7 +295,14 @@
       const gridEl = document.getElementById("titles-grid");
       if (!gridEl || !currentProfile) return;
       const purchasedTitleIds = new Set(currentProfile.purchasedTitleIds ?? []);
-      gridEl.innerHTML = cachedTitles.map((t) => {
+      // 구매 전용 칭호인데(min_points가 문턱 이상) 연결됐던 상품이 삭제돼서 더 이상 상점에서
+      // 살 수 없고, 이 유저가 산 적도 없는 칭호는 "고아" 상태 — 카드 자체를 안 그린다(예전엔
+      // 999,999,999,999P 도달 시 잠금해제처럼 의미 없는 카드로 계속 남아있는 버그가 있었음).
+      const visibleTitles = cachedTitles.filter((t) => {
+        if (t.min_points < PURCHASE_ONLY_THRESHOLD) return true;
+        return purchasedTitleIds.has(t.id) || purchasableTitleIds.has(t.id);
+      });
+      gridEl.innerHTML = visibleTitles.map((t) => {
         const achievedByBalance = currentProfile.maxBalanceReached >= t.min_points;
         const achievedByPurchase = purchasedTitleIds.has(t.id);
         const unlocked = achievedByBalance || achievedByPurchase;
@@ -365,6 +388,7 @@
     renderSidebarUser();
     initSidebarToggle();
     initAdminNav();
+    initShopNavGroup();
 
     // 칭호 카드 접기/펴기. 열림 상태는 새로고침마다 초기화(기본 닫힘) — 굳이 localStorage에
     // 남길 만큼 중요한 상태는 아니라고 판단.

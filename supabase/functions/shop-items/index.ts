@@ -20,15 +20,18 @@
 //                                           (is_active=true만 RLS로 보임), 관리자는 비활성 상품도
 //                                           관리해야 하니 이 함수로 전체를 내려준다.
 // POST   { id, name, cost, description?, requiresLive?, cooldownSeconds?, showOnOverlay?,
-//          isTitleItem?, titleName? }
+//          isTitleItem?, titleName?, stockLimit? }
 //                                        → 새 상품 추가 (id는 소문자-하이픈 슬러그, 이후 수정 불가)
+//   stockLimit: 한정 수량(양의 정수). 생략/null이면 무제한. 다 팔리면(sold_count가 이 값에
+//   도달) 상품이 지워지지 않고 "품절" 상태로만 표시된다(spend-points가 검사).
 //   isTitleItem: true면 titleName(필수, 지급할 칭호 문구)으로 titles 테이블에 전용 칭호를
 //   새로 만들고 이 상품에 연결한다(칭호 id = 상품 id). false/생략이면 그냥 소모성 상품이고
 //   requiresLive/cooldownSeconds가 그대로 적용된다(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
 //   한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념 자체가 안 맞음).
 //   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜬다(기본 true).
 // PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?,
-//          isActive?, showOnOverlay?, titleName? }
+//          isActive?, showOnOverlay?, titleName?, stockLimit? }
+//   stockLimit: null을 보내면 무제한으로 되돌린다.
 //                                        → 기존 상품 수정 (보낸 필드만 갱신)
 //   titleName: 이 상품이 칭호 상품(연결된 titles row가 있음)일 때만 유효 — 연결된 titles.name을
 //   갱신한다. 칭호 상품이 아닌데 titleName을 보내면 not_title_item으로 거부.
@@ -96,7 +99,7 @@ Deno.serve(async (req: Request) => {
       const { data, error } = await admin
         .from("shop_items")
         .select(
-          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, created_at, titles(name)",
+          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count, created_at, titles(name)",
         )
         .order("cost", { ascending: true })
         .order("id", { ascending: true });
@@ -122,6 +125,16 @@ Deno.serve(async (req: Request) => {
         : Number.isFinite(Number(body.cooldownSeconds))
         ? Math.max(0, Math.trunc(Number(body.cooldownSeconds)))
         : 0;
+      // 한정 수량(재고) — null/생략이면 무제한. 지금은 shop.html이 칭호 상품에서만 이 필드를
+      // 보내지만, 컬럼 자체는 범용이라 다른 상품 유형에서 와도 그냥 똑같이 처리한다.
+      let stockLimit: number | null = null;
+      if (body.stockLimit !== undefined && body.stockLimit !== null) {
+        const n = Number(body.stockLimit);
+        if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+          return jsonResponse({ error: "invalid_stock_limit" }, 400);
+        }
+        stockLimit = n;
+      }
 
       if (!ID_PATTERN.test(itemId)) {
         return jsonResponse({ error: "invalid_id" }, 400);
@@ -165,6 +178,7 @@ Deno.serve(async (req: Request) => {
           sort_order: sortOrder,
           grants_title_id: isTitleItem ? itemId : null,
           show_on_overlay: showOnOverlay,
+          stock_limit: stockLimit,
         })
         .select()
         .single();
@@ -216,6 +230,17 @@ Deno.serve(async (req: Request) => {
       }
       if (body.showOnOverlay !== undefined) {
         update.show_on_overlay = body.showOnOverlay === true;
+      }
+      if (body.stockLimit !== undefined) {
+        if (body.stockLimit === null) {
+          update.stock_limit = null;
+        } else {
+          const stockLimit = Number(body.stockLimit);
+          if (!Number.isFinite(stockLimit) || !Number.isInteger(stockLimit) || stockLimit <= 0) {
+            return jsonResponse({ error: "invalid_stock_limit" }, 400);
+          }
+          update.stock_limit = stockLimit;
+        }
       }
 
       // titleName은 이 상품이 칭호 상품일 때만 의미가 있다 — 연결된 titles row의 이름을 갱신한다

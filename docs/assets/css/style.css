@@ -198,6 +198,68 @@ a {
 .sidebar-nav .icon svg { width: 20px; height: 20px; }
 .sidebar-icon-btn .icon svg { width: 18px; height: 18px; }
 
+/* "포인트 상점" 아코디언 그룹 — 기본은 접혀있고 펼치면 하위 링크(일반 상점/칭호 상점)가
+   나온다. 토글 버튼은 <button>이라 아래 공통 button {} 규칙을 덮어써야 해서 클래스
+   선택자로 배경/보더를 다시 투명하게 잡아준다(클래스 선택자가 태그 선택자보다 우선순위가
+   높아서 순서와 무관하게 항상 이긴다). */
+.sidebar-nav-group { display: flex; flex-direction: column; }
+.sidebar-nav-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 400;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  text-align: left;
+}
+.sidebar-nav-toggle:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-nav-toggle.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.sidebar-nav-toggle .chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+.sidebar-nav-toggle .chevron svg { width: 14px; height: 14px; }
+body.shop-nav-expanded .sidebar-nav-toggle .chevron { transform: rotate(180deg); }
+
+.sidebar-nav-submenu {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 4px 44px;
+}
+body.shop-nav-expanded .sidebar-nav-submenu { display: flex; }
+.sidebar-nav-submenu a {
+  display: block;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.sidebar-nav-submenu a:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-nav-submenu a.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .sidebar-user {
   margin-top: auto;
   padding-top: 16px;
@@ -234,6 +296,11 @@ a {
   }
   body.sidebar-collapsed .sidebar-nav a { justify-content: center; padding: 10px 0; }
   body.sidebar-collapsed .sidebar-toggle-btn svg { transform: rotate(180deg); }
+  /* 접힌 상태에선 아이콘만 보이는 폭(64px)이라 하위 메뉴를 펼쳐봐야 잘려 보이므로,
+     펼침 상태였더라도 접힌 사이드바에서는 화살표/하위 링크를 그냥 숨긴다. */
+  body.sidebar-collapsed .sidebar-nav-toggle { justify-content: center; padding: 10px 0; }
+  body.sidebar-collapsed .sidebar-nav-toggle .chevron { display: none; }
+  body.sidebar-collapsed .sidebar-nav-submenu { display: none !important; }
 }
 
 .main-content {
@@ -604,22 +671,28 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 /* 이미 구매한 칭호 상품 카드 — 마이페이지 title-card.selected와 같은 강조 패턴. */
 .shop-item.owned { border-color: var(--accent); }
 .shop-item.owned h3 { color: var(--accent); }
+/* 한정 수량(재고)이 걸린 상품의 "N개 남음/품절" 안내 — cost 바로 아래 붙게 간격을 좁힌다. */
+.shop-item .stock-note { margin: -4px 0 10px; font-size: 0.82rem; }
+.shop-item.sold-out { opacity: 0.65; }
 
-/* 칭호 상점 섹션 제목 — 일반 상점 그리드와 구분되는 별도 섹션이라 카드 소제목과 같은
-   로고 폰트로 눈에 띄게 구분한다. 관리자면 옆에 "+ 칭호 상품 추가" 버튼도 같이 뜨니
-   한 줄에 나란히 배치. */
-.shop-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin: 28px 0 14px;
+/* 일반 상점/칭호 상점 섹션 제목 — 칭호 상점은 위에 가로 구분선을 긋고, 제목은 그 선
+   아래쪽 가운데에 둔다(카드 소제목과 같은 로고 폰트로 눈에 띄게 구분). */
+.shop-section-rule {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 32px 0 0;
 }
-.shop-section-heading { margin: 0; font-size: 1.05rem; font-family: var(--font-logo); }
+.shop-section-heading {
+  margin: 14px 0 14px;
+  font-size: 1.05rem;
+  font-family: var(--font-logo);
+  text-align: center;
+}
 
 /* 상점 상품 관리자용 인라인 수정 UI (shop.html — 관리자로 로그인했을 때만 노출).
+   "+ 상품 추가"/"+ 칭호 상품 추가" 버튼을 한 줄에 나란히 배치.
    비활성화 상품은 title-card.locked와 같은 패턴으로 흐리게 표시. */
-#shop-admin-toolbar { margin: -4px 0 14px; }
+#shop-admin-toolbar { margin: -4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
 .shop-item.inactive { opacity: 0.55; }
 .shop-item-admin-bar {
   display: flex;
@@ -647,6 +720,9 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item-field .notice-textarea,
 .shop-item-field .admin-amount-input { margin-bottom: 0; width: 100%; }
 .admin-bulk-row .shop-item-field { flex: 1 1 120px; align-items: stretch; margin-bottom: 0; }
+/* .admin-bulk-row는 margin-bottom이 없어서, 바로 다음에 오는 독립 .shop-item-field(칭호명 등)와
+   붙어버려 다른 필드 사이 간격(10px)이랑 안 맞았음 — 그 필드에 margin-top을 직접 줘서 맞춘다. */
+#shop-item-titlename-row { margin-top: 10px; }
 
 /* 마이페이지 칭호 목록 (shop-grid/shop-item과 같은 레이아웃 패턴, 잠김/장착 상태만 추가). */
 .titles-grid {

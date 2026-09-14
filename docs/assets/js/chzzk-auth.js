@@ -29,6 +29,7 @@ const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
+const SHOP_NAV_EXPANDED_KEY = "chzzk_points_shop_nav_expanded";
 
 // 로그인 버튼 onclick에 연결. 랜덤 state를 만들어 sessionStorage에 저장해두고
 // 치지직 인증 페이지(account-interlock)로 이동한다. 콜백에서 이 state와 대조해서
@@ -235,4 +236,82 @@ function initAdminNav() {
   const el = document.getElementById("admin-nav-link");
   if (!el) return;
   el.hidden = !isAdmin();
+}
+
+// 사이드바 "포인트 상점" 아코디언 그룹(펼치면 일반 상점/칭호 상점 하위 링크가 나오는 형태).
+// 각 페이지 <body> 맨 앞 인라인 스크립트가 렌더링 전에 body.shop-nav-expanded 클래스를
+// 미리 붙여두므로(sidebar-collapsed와 같은 패턴), 여기서는 클릭 핸들러 연결과
+// 현재 페이지 기준 active 상태 표시만 담당한다.
+function initShopNavGroup() {
+  const toggleBtn = document.getElementById("shop-nav-toggle");
+  if (toggleBtn && toggleBtn.dataset.bound !== "1") {
+    toggleBtn.dataset.bound = "1";
+    toggleBtn.addEventListener("click", () => {
+      const next = !document.body.classList.contains("shop-nav-expanded");
+      document.body.classList.toggle("shop-nav-expanded", next);
+      localStorage.setItem(SHOP_NAV_EXPANDED_KEY, next ? "1" : "0");
+    });
+  }
+
+  // 하위 링크(일반 상점/칭호 상점) 클릭 처리. spa-router.js의 document 클릭 리스너는
+  // e.defaultPrevented가 true면 맨 처음에 그냥 return하므로, 여기서 먼저
+  // preventDefault를 호출해두면 이 핸들러가 라우팅을 전적으로 책임지게 된다.
+  // (같은 shop.html 안에서의 앵커 이동은 spa-router가 "이미 있는 페이지"로 보고
+  // 아무것도 안 하는 죽은 클릭이 되는 문제를 이렇게 피한다.)
+  document.querySelectorAll(".sidebar-nav-sublink").forEach((link) => {
+    if (link.dataset.bound === "1") return;
+    link.dataset.bound = "1";
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const targetId = link.dataset.shopAnchor;
+      const href = link.getAttribute("href");
+      const onShopPage = typeof spaPageNameFromUrl === "function"
+        ? spaPageNameFromUrl(location.href) === "shop.html"
+        : location.pathname.endsWith("shop.html");
+
+      if (onShopPage) {
+        history.pushState({ spaPage: "shop.html" }, "", href);
+        scrollToShopSection(targetId);
+      } else if (typeof spaNavigate === "function") {
+        // shop.html 스크립트가 다시 실행되는 시점엔 아직 location.hash가 갱신 전이라
+        // (spa-router가 pushState를 스크립트 실행보다 나중에 하기 때문) 목표 섹션 id를
+        // 전역에 잠깐 남겨두고 shop.html 쪽에서 꺼내 쓰게 한다.
+        window.__pendingShopScrollTarget = targetId;
+        spaNavigate(href);
+      } else {
+        location.href = href;
+      }
+
+      updateShopNavActiveState();
+    });
+  });
+
+  updateShopNavActiveState();
+}
+
+// shop.html 안에서 특정 섹션(일반 상점/칭호 상점)으로 스크롤. hidden 상태거나 없으면 무시.
+function scrollToShopSection(sectionId) {
+  if (!sectionId) return;
+  const el = document.getElementById(sectionId);
+  if (!el || el.hidden) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// "포인트 상점" 토글 버튼/하위 링크의 active 표시를 현재 페이지·해시 기준으로 갱신.
+// spa-router.js의 active 갱신 루프는 .sidebar-nav-sublink는 건드리지 않고 건너뛰므로
+// (하위 링크는 href가 전부 shop.html#...라 단순 href 비교로는 구분이 안 됨) 이 함수가 전담한다.
+function updateShopNavActiveState() {
+  const toggleBtn = document.getElementById("shop-nav-toggle");
+  const sublinks = document.querySelectorAll(".sidebar-nav-sublink");
+  const onShopPage = typeof spaPageNameFromUrl === "function"
+    ? spaPageNameFromUrl(location.href) === "shop.html"
+    : location.pathname.endsWith("shop.html");
+
+  if (toggleBtn) toggleBtn.classList.toggle("active", onShopPage);
+
+  const currentAnchor = location.hash ? location.hash.slice(1) : "";
+  sublinks.forEach((link) => {
+    const isCurrent = onShopPage && link.dataset.shopAnchor === currentAnchor;
+    link.classList.toggle("active", isCurrent);
+  });
 }

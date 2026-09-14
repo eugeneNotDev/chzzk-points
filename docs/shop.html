@@ -4,12 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=31">
+<link rel="stylesheet" href="assets/css/style.css?v=32">
 </head>
 <body>
   <script>
     if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
       document.body.classList.add("sidebar-collapsed");
+    }
+    var shopNavPref = localStorage.getItem("chzzk_points_shop_nav_expanded");
+    if (shopNavPref === "1" || (shopNavPref === null && location.pathname.endsWith("shop.html"))) {
+      document.body.classList.add("shop-nav-expanded");
     }
   </script>
   <div class="app-shell">
@@ -36,10 +40,17 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
           <span class="label">랭킹</span>
         </a>
-        <a href="shop.html" class="active">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
-          <span class="label">포인트 상점</span>
-        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
         <a href="attendance.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
           <span class="label">출석체크</span>
@@ -76,17 +87,20 @@
         </div>
         <div id="shop-admin-toolbar" hidden>
           <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
+          <button type="button" class="secondary" id="title-item-add-btn">+ 칭호 상품 추가</button>
         </div>
-        <div class="shop-grid" id="shop-list"></div>
+
+        <div id="general-shop-section">
+          <h2 class="shop-section-heading">일반 상점</h2>
+          <div class="shop-grid" id="shop-list"></div>
+        </div>
 
         <!-- 칭호를 부여하는 상품(grants_title_id가 있는 상품)만 따로 모아 보여주는 섹션.
-             일반 유저는 상품이 하나도 없으면 통째로 숨기고, 관리자는 첫 칭호 상품을 추가할 수
-             있어야 하니 비어 있어도 계속 보여준다(renderShop에서 admin 여부로 분기). -->
+             상품이 하나도 없으면 통째로 숨긴다("+ 칭호 상품 추가" 버튼은 위 툴바로 옮겨져서
+             이 섹션이 비어 있어도 버튼 노출을 위해 계속 띄워둘 필요가 없어졌다). -->
         <div id="title-shop-section" hidden>
-          <div class="shop-section-header">
-            <h2 class="shop-section-heading">칭호 상점</h2>
-            <button type="button" class="secondary" id="title-item-add-btn" hidden>+ 칭호 상품 추가</button>
-          </div>
+          <hr class="shop-section-rule">
+          <h2 class="shop-section-heading">칭호 상점</h2>
           <div class="shop-grid" id="title-shop-list"></div>
         </div>
 
@@ -129,7 +143,13 @@
             <label class="field-label" for="shop-item-titlename-input">지급할 칭호명</label>
             <input type="text" id="shop-item-titlename-input" class="notice-title-input" placeholder="예: 네루" maxlength="40">
           </div>
-          <div class="admin-bulk-row">
+          <!-- 한정 수량(재고) — 역시 칭호 상품 전용. 비워두면 무제한이고, 다 팔리면 상품이
+               사라지는 게 아니라 "품절"로 바뀌면서 구매 버튼만 막힌다. -->
+          <div class="shop-item-field" id="shop-item-stock-row" hidden>
+            <label class="field-label" for="shop-item-stock-input">한정 수량 (비워두면 무제한)</label>
+            <input type="number" id="shop-item-stock-input" class="admin-amount-input" min="1" placeholder="예: 10">
+          </div>
+          <div class="admin-bulk-row" id="shop-item-checkbox-row">
             <label class="admin-checkbox-label" id="shop-item-live-row">
               <input type="checkbox" id="shop-item-live-input">
               방송 중에만 사용 가능
@@ -188,10 +208,17 @@
       const until = cooldownUntil.get(item.id) ?? 0;
       const remaining = Math.ceil((until - now) / 1000);
       const onCooldown = remaining > 0;
-      const usable = !owned && !liveBlocked && affordable && !onCooldown;
+      // 한정 수량(재고) — stock_limit이 null이면 무제한. 다 팔리면(sold_count >= stock_limit)
+      // 상품이 사라지는 게 아니라 "품절" 상태로 버튼만 막힌다(요청한 대로 재고 소진 ≠ 삭제).
+      const stockLimit = item.stock_limit ?? null;
+      const soldCount = item.sold_count ?? 0;
+      const stockRemaining = stockLimit != null ? Math.max(0, stockLimit - soldCount) : null;
+      const soldOut = stockLimit != null && stockRemaining <= 0;
+      const usable = !owned && !soldOut && !liveBlocked && affordable && !onCooldown;
       const inactive = admin && item.is_active === false;
       let label = isTitleItem ? "구매" : "사용";
       if (owned) label = "보유중";
+      else if (soldOut) label = "품절";
       else if (onCooldown) label = `${remaining}초 후 사용 가능`;
       else if (liveBlocked) label = "방송 중에만 사용 가능";
       else if (!affordable) label = "잔액 부족";
@@ -205,11 +232,15 @@
             <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
           </div>
         </div>` : "";
+      const stockNote = stockLimit != null
+        ? `<p class="muted stock-note">${soldOut ? "품절되었어요" : `한정 ${stockRemaining.toLocaleString("ko-KR")}개 남음`}</p>`
+        : "";
       return `
-        <div class="card shop-item${inactive ? " inactive" : ""}${owned ? " owned" : ""}">
+        <div class="card shop-item${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}">
           <h3>${escapeHtml(item.name)}</h3>
           <p class="desc">${escapeHtml(item.description || "")}</p>
           <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
+          ${stockNote}
           <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
           ${adminBar}
         </div>`;
@@ -244,9 +275,9 @@
 
       listEl.innerHTML = regularItems.map((item) => renderItemCard(item, admin, now)).join("");
       titleListEl.innerHTML = titleItems.map((item) => renderItemCard(item, admin, now)).join("");
-      // 일반 유저는 칭호 상품이 하나도 없으면 섹션 자체를 숨기고, 관리자는 첫 칭호 상품을
-      // 등록할 수 있어야 하니 비어 있어도 "+ 칭호 상품 추가" 버튼이 보이게 계속 띄워둔다.
-      titleSectionEl.hidden = titleItems.length === 0 && !admin;
+      // "+ 칭호 상품 추가" 버튼이 상단 툴바로 옮겨져서, 이제는 칭호 상품이 하나도 없으면
+      // (관리자든 아니든) 섹션 자체를 그냥 숨긴다.
+      titleSectionEl.hidden = titleItems.length === 0;
 
       wireCardButtons(listEl, admin);
       wireCardButtons(titleListEl, admin);
@@ -283,7 +314,7 @@
       // grants_title_id도 같이 받아와야 일반 유저 화면에서도 칭호 상점 섹션을 나눠 그릴 수 있다.
       const { data, error } = await supabase
         .from("shop_items")
-        .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id")
+        .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id, stock_limit, sold_count")
         .order("cost", { ascending: true })
         .order("id", { ascending: true });
       if (error) {
@@ -298,8 +329,11 @@
     // 칭호 상품은 쿨타임/방송중 전용 개념이 없고(한 번 사면 끝), 대신 지급할 칭호명을 입력한다.
     function applyModalItemType(itemType) {
       document.getElementById("shop-item-cooldown-row").hidden = itemType === "title";
-      document.getElementById("shop-item-live-row").hidden = itemType === "title";
+      // 칭호 상품은 "방송 중에만 사용 가능"/"오버레이 알림 표시" 둘 다 의미가 없어서
+      // (칭호 구매는 항상 showOnOverlay=false로 고정) 체크박스 줄 전체를 숨긴다.
+      document.getElementById("shop-item-checkbox-row").hidden = itemType === "title";
       document.getElementById("shop-item-titlename-row").hidden = itemType !== "title";
+      document.getElementById("shop-item-stock-row").hidden = itemType !== "title";
     }
 
     // 상품 추가/수정 모달 상태. modalMode: "add" | "edit", modalItemType: "regular" | "title"
@@ -317,6 +351,7 @@
       const costInput = document.getElementById("shop-item-cost-input");
       const cooldownInput = document.getElementById("shop-item-cooldown-input");
       const titlenameInput = document.getElementById("shop-item-titlename-input");
+      const stockInput = document.getElementById("shop-item-stock-input");
       const liveInput = document.getElementById("shop-item-live-input");
       const overlayInput = document.getElementById("shop-item-overlay-input");
       const activeRow = document.getElementById("shop-item-active-row");
@@ -338,6 +373,7 @@
         costInput.value = item?.cost ?? "";
         cooldownInput.value = item?.cooldown_seconds ?? 0;
         titlenameInput.value = item?.titles?.name ?? "";
+        stockInput.value = item?.stock_limit ?? "";
         liveInput.checked = Boolean(item?.requires_live);
         overlayInput.checked = item?.show_on_overlay !== false;
         activeRow.hidden = false;
@@ -355,6 +391,7 @@
         costInput.value = "";
         cooldownInput.value = 0;
         titlenameInput.value = "";
+        stockInput.value = "";
         liveInput.checked = false;
         // 칭호 상품은 방송 화면에 굳이 안 떠도 되는 경우가 많아서 기본 꺼짐, 일반 상품은
         // 기존 동작 그대로 기본 켜짐.
@@ -411,11 +448,11 @@
           name,
           description: document.getElementById("shop-item-desc-input").value.trim(),
           cost,
-          showOnOverlay: document.getElementById("shop-item-overlay-input").checked,
         };
 
         // 칭호 상품은 쿨타임/방송중 전용 개념이 없는 대신 지급할 칭호명이 필수 — 이 값 그대로가
-        // titles 테이블에 새 칭호로 등록된다(기존 칭호 중에서 고르는 게 아님).
+        // titles 테이블에 새 칭호로 등록된다(기존 칭호 중에서 고르는 게 아님). 오버레이 알림은
+        // 체크박스 없이 항상 꺼둔다(칭호 구매는 방송 오버레이에 띄울 일이 없어서).
         if (modalItemType === "title") {
           const titleName = document.getElementById("shop-item-titlename-input").value.trim();
           if (!titleName) {
@@ -424,9 +461,24 @@
             return;
           }
           payload.titleName = titleName;
+          payload.showOnOverlay = false;
+
+          const stockRaw = document.getElementById("shop-item-stock-input").value.trim();
+          if (stockRaw) {
+            const stockLimit = Number(stockRaw);
+            if (!Number.isInteger(stockLimit) || stockLimit <= 0) {
+              statusEl.textContent = "한정 수량은 1 이상의 정수로 입력해주세요.";
+              statusEl.className = "status-msg error";
+              return;
+            }
+            payload.stockLimit = stockLimit;
+          } else {
+            payload.stockLimit = null;
+          }
         } else {
           payload.cooldownSeconds = Number(document.getElementById("shop-item-cooldown-input").value) || 0;
           payload.requiresLive = document.getElementById("shop-item-live-input").checked;
+          payload.showOnOverlay = document.getElementById("shop-item-overlay-input").checked;
         }
 
         submitBtn.disabled = true;
@@ -522,6 +574,8 @@
             }
           } else if (data.error === "already_owned") {
             statusEl.textContent = "이미 보유한 칭호예요.";
+          } else if (data.error === "sold_out") {
+            statusEl.textContent = "품절된 상품이에요.";
           } else if (data.error !== "banned") {
             statusEl.textContent = "사용에 실패했어요. 다시 시도해주세요.";
           }
@@ -554,6 +608,7 @@
     renderSidebarUser();
     initSidebarToggle();
     initAdminNav();
+    initShopNavGroup();
 
     (async () => {
       const loadingEl = document.getElementById("loading-state");
@@ -578,12 +633,28 @@
 
       if (isAdmin()) {
         document.getElementById("shop-admin-toolbar").hidden = false;
-        document.getElementById("title-item-add-btn").hidden = false;
         setupShopItemModal();
       }
 
       await Promise.all([loadShopItems(), loadLiveStatus()]);
       renderShop();
+
+      // 사이드바 "포인트 상점" 하위 메뉴(일반 상점/칭호 상점)에서 넘어왔을 때 해당 섹션으로
+      // 스크롤. spa-router.js가 스크립트 실행 직후에 window.scrollTo(top:0)을 무조건
+      // 호출하므로, requestAnimationFrame으로 한 프레임 미뤄서 그 리셋 이후에 실행되게 한다.
+      // window.__pendingShopScrollTarget은 같은 페이지 안에 있지 않을 때(다른 페이지에서
+      // 하위 링크를 눌러 여기로 넘어온 경우) initShopNavGroup()이 남겨둔 값 — 이 시점엔
+      // location.hash가 아직 안 바뀌어 있어서(spa-router가 pushState를 스크립트 실행보다
+      // 나중에 함) 이걸로 대신 읽는다. 직접 주소창에 해시를 넣고 들어왔거나 뒤로/앞으로
+      // 가기(popstate)로 왔을 땐 location.hash가 이미 맞게 갱신돼 있으니 그걸 그대로 쓴다.
+      requestAnimationFrame(() => {
+        const target = window.__pendingShopScrollTarget || (location.hash ? location.hash.slice(1) : null);
+        window.__pendingShopScrollTarget = null;
+        if (target) {
+          const el = document.getElementById(target);
+          if (el && !el.hidden) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
     })();
   })();
   </script>

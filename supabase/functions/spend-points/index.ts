@@ -6,8 +6,9 @@
 //   실패: 401 { error: "unauthorized" } (미로그인)
 //         403 { error: "banned" } (밴된 계정)
 //         400 { error: "invalid_request" | "item_not_found" | "not_live" | "insufficient_balance"
-//               | "cooldown" | "already_owned" }  (cooldown이면 retryAfterSeconds도 같이 내려줌.
-//               already_owned는 grants_title_id가 있는 상품인데 이미 그 칭호를 구매한 경우)
+//               | "cooldown" | "already_owned" | "sold_out" }  (cooldown이면 retryAfterSeconds도
+//               같이 내려줌. already_owned는 grants_title_id가 있는 상품인데 이미 그 칭호를
+//               구매한 경우. sold_out은 한정 수량(stock_limit)을 다 채운 경우 — 0021_shop_item_stock.sql)
 //
 // 상품 목록(shop_items)은 코드가 아니라 DB 테이블이라, 상품 추가/가격 변경/방송중 전용 토글/
 // 쿨타임은 전부 Supabase 테이블 편집기에서 바로 할 수 있다 (배포 불필요) — 0010_shop_items.sql,
@@ -100,7 +101,9 @@ Deno.serve(async (req: Request) => {
 
     const { data: item, error: itemError } = await admin
       .from("shop_items")
-      .select("id, name, cost, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay")
+      .select(
+        "id, name, cost, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count",
+      )
       .eq("id", itemId)
       .maybeSingle();
     if (itemError) throw new Error(`shop_items 조회 실패: ${itemError.message}`);
@@ -140,6 +143,11 @@ Deno.serve(async (req: Request) => {
       if (existing) return jsonResponse({ error: "already_owned" }, 400);
     }
 
+    // 한정 수량(재고) — 다 팔렸으면 상품을 지우지 않고 구매만 막는다(0021_shop_item_stock.sql).
+    if (item.stock_limit != null && item.sold_count >= item.stock_limit) {
+      return jsonResponse({ error: "sold_out" }, 400);
+    }
+
     const balance = await getBalance(admin, session.channelId);
     if (balance < item.cost) return jsonResponse({ error: "insufficient_balance" }, 400);
 
@@ -163,6 +171,18 @@ Deno.serve(async (req: Request) => {
       if (titleGrantError && titleGrantError.code !== "23505") {
         throw new Error(`user_purchased_titles insert 실패: ${titleGrantError.message}`);
       }
+    }
+
+    // 한정 수량 상품이면 판매 개수를 1 늘린다. 읽고-다시-쓰는 방식이라 아주 짧은 간격의
+    // 동시 요청에는 이론적 레이스가 남아있지만(파일 상단 "동시성 참고"와 같은 이유로 지금
+    // 규모에선 감수), 위에서 재고 체크를 이미 통과한 뒤라 최악의 경우도 한두 개 초과 판매
+    // 정도라 실사용에 문제 없다.
+    if (item.stock_limit != null) {
+      const { error: stockUpdateError } = await admin
+        .from("shop_items")
+        .update({ sold_count: item.sold_count + 1 })
+        .eq("id", item.id);
+      if (stockUpdateError) throw new Error(`sold_count 갱신 실패: ${stockUpdateError.message}`);
     }
 
     // 오버레이 표시용 이름 스냅샷 — 유저 이름은 세션 토큰의 channelName, 아이템 이름은 위에서
