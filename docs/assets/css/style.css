@@ -606,8 +606,16 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item.owned h3 { color: var(--accent); }
 
 /* 칭호 상점 섹션 제목 — 일반 상점 그리드와 구분되는 별도 섹션이라 카드 소제목과 같은
-   로고 폰트로 눈에 띄게 구분한다. */
-.shop-section-heading { margin: 28px 0 14px; font-size: 1.05rem; font-family: var(--font-logo); }
+   로고 폰트로 눈에 띄게 구분한다. 관리자면 옆에 "+ 칭호 상품 추가" 버튼도 같이 뜨니
+   한 줄에 나란히 배치. */
+.shop-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 28px 0 14px;
+}
+.shop-section-heading { margin: 0; font-size: 1.05rem; font-family: var(--font-logo); }
 
 /* 상점 상품 관리자용 인라인 수정 UI (shop.html — 관리자로 로그인했을 때만 노출).
    비활성화 상품은 title-card.locked와 같은 패턴으로 흐리게 표시. */
