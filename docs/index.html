@@ -95,6 +95,21 @@
         </ol>
         <p id="ranking-empty" class="empty-state" hidden>아직 랭킹에 등록된 유저가 없어요.</p>
       </div>
+
+      <!-- 미리보기에서 제목 누르면 페이지 이동 없이 여기서 바로 내용을 보여준다(보기 전용 —
+           글쓰기/수정/삭제 같은 관리는 공지사항 탭에서). -->
+      <dialog id="notice-modal" class="notice-modal">
+        <h3 id="notice-modal-title"></h3>
+        <p class="muted" id="notice-modal-meta"></p>
+        <p class="notice-modal-content" id="notice-modal-content"></p>
+        <div class="notice-modal-actions">
+          <a href="notice.html" class="pill-link">
+            공지사항 전체보기
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+          <button type="button" class="secondary" id="notice-modal-close-btn">닫기</button>
+        </div>
+      </dialog>
     </main>
   </div>
 
@@ -148,16 +163,46 @@
       }
     }
 
-    // 홈 화면은 최신 공지 몇 개만 제목으로 보여주는 미리보기 — 실제 글 작성/수정/삭제/내용 보기는
-    // 전부 공지사항 탭(notice.html)에서 게시판 형태로 처리한다 (제목 누르면 그 글이 자동으로 열림).
+    // 홈 화면은 최신 공지 몇 개만 제목으로 보여주는 미리보기. 제목을 누르면 다른 페이지로
+    // 이동하지 않고 그 자리에서 팝업으로 내용을 보여준다(보기 전용). 글쓰기/수정/삭제 같은
+    // 관리 기능은 공지사항 탭(notice.html)에서 게시판 형태로 처리한다.
+    let noticePreviewById = new Map();
+
     function renderNoticePreviewItem(n) {
       return `
         <li class="notice-item">
-          <a class="notice-title-btn" href="notice.html?id=${encodeURIComponent(n.id)}">${escapeHtml(n.title || "(제목 없음)")}</a>
+          <button type="button" class="notice-title-btn" data-id="${n.id}">${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
             <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
           </div>
         </li>`;
+    }
+
+    function wireNoticePreviewButtons() {
+      document.querySelectorAll("#notice-preview .notice-title-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const n = noticePreviewById.get(btn.dataset.id);
+          if (n) openNoticeModal(n);
+        });
+      });
+    }
+
+    function openNoticeModal(n) {
+      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
+      document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
+      document.getElementById("notice-modal-meta").textContent = new Date(n.created_at).toLocaleString("ko-KR") + editedLabel;
+      document.getElementById("notice-modal-content").textContent = n.content;
+      const dialog = document.getElementById("notice-modal");
+      if (!dialog.open) dialog.showModal();
+    }
+
+    function setupNoticeModal() {
+      const dialog = document.getElementById("notice-modal");
+      document.getElementById("notice-modal-close-btn").addEventListener("click", () => dialog.close());
+      // 배경(backdrop) 클릭 시 닫기 — dialog 엘리먼트 자체를 클릭한 경우만(안쪽 내용 클릭은 버블링 안 됨).
+      dialog.addEventListener("click", (e) => {
+        if (e.target === dialog) dialog.close();
+      });
     }
 
     async function loadNoticePreview() {
@@ -165,7 +210,7 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, created_at")
+        .select("id, title, content, created_at, updated_at")
         .order("created_at", { ascending: false })
         .limit(NOTICE_PREVIEW_LIMIT);
 
@@ -177,12 +222,15 @@
         return;
       }
       if (!data || data.length === 0) {
+        noticePreviewById = new Map();
         emptyEl.hidden = false;
         listEl.innerHTML = "";
         return;
       }
       emptyEl.hidden = true;
+      noticePreviewById = new Map(data.map((n) => [String(n.id), n]));
       listEl.innerHTML = data.map((n) => renderNoticePreviewItem(n)).join("");
+      wireNoticePreviewButtons();
     }
 
     // 랭킹 한 줄을 그린다. 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) —
@@ -232,6 +280,7 @@
       renderSidebarUser();
       initSidebarToggle();
       initAdminNav();
+      setupNoticeModal();
       await Promise.all([loadBroadcastStatus(), loadNoticePreview(), loadRankingPreview()]);
     })();
   })();
