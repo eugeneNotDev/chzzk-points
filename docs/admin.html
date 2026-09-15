@@ -411,12 +411,14 @@
       }
     }
 
-    // 밴: 로그인 자체를 막고(oauth-callback) 랭킹에서도 뺌(public.ranking 뷰).
+    // 밴: 로그인 자체를 막고(oauth-callback) 랭킹에서도 뺌(public.ranking 뷰). 동시에 서버
+    // (admin/index.ts의 resetAccountHoldings)가 포인트·칭호 보유분을 전부 초기화함 — 밴을
+    // 나중에 풀어도 되돌아오지 않는 일회성 초기화라 확인 문구에 명시해둠.
     async function toggleBan(channelId, currentlyBanned) {
       const next = !currentlyBanned;
       const confirmMsg = next
-        ? "이 유저를 밴할까요? (재로그인이 막히고 랭킹에서도 빠져요)"
-        : "밴을 해제할까요?";
+        ? "이 유저를 밴할까요?\n재로그인이 막히고 랭킹에서도 빠지며, 보유 포인트와 칭호가 전부 초기화돼요.\n(나중에 밴을 풀어도 초기화된 내용은 되돌아오지 않아요)"
+        : "밴을 해제할까요? (포인트·칭호는 초기화된 상태 그대로 유지돼요)";
       if (!confirm(confirmMsg)) return;
       try {
         const res = await authFetch(ADMIN_URL, {

@@ -8,7 +8,10 @@
 // POST { action: "adjust-points", channelId: string, amount: number, reason?: string }
 //   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
 // POST { action: "set-ban", channelId: string, banned: boolean }
-//   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고)
+//   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고.
+//     banned=true로 새로 거는 순간 그 계정의 포인트/칭호 보유분을 전부 초기화함(resetAccountHoldings) —
+//     이후 밴을 풀어도 초기화된 상태 그대로 유지되고 되돌아오지 않음. banned=false(밴 해제)는
+//     초기화를 하지 않고 플래그만 내림.)
 // POST { action: "bulk-adjust-points", target: "all" | "selected", channelIds?: string[], amount: number, reason?: string }
 //   → { affected: number }  (points_ledger에 대상 전원 몫으로 한 줄씩 insert. amount는 음수 가능 — 일괄 차감.
 //     target="all"이면 서버가 banned=false && 관리자 계정 제외한 전체 유저를 대상으로 계산함(클라이언트가
@@ -129,8 +132,49 @@ async function adjustPoints(
   return balance;
 }
 
+// 밴 처리 시 계정이 보유한 것들을 전부 초기화함(요청사항: "밴을 하면 이후에 풀든 뭘 하든 해당
+// 계정은 초기화" — 즉 되돌아오지 않는 일회성 초기화). points_ledger는 잔액 계산의 근거라 행을
+// 지우지 않고, 대신 현재 잔액을 0으로 만드는 보정 행을 하나 추가함(감사 기록도 남음). 그 외
+// max_balance_reached(포인트 구간 칭호 자동 판정 기준)와 selected_title_id(상점 칭호 장착)는
+// 직접 0/null로 되돌리고, user_purchased_titles(구매한 칭호 보유 기록)는 행 자체를 지움 — 나중에
+// 밴이 풀려도 이 셋은 그대로 초기화된 채로 남음(0022_title_tiers.sql의 자동 배지 구조라, 다시
+// 포인트를 쌓아야만 구간 칭호가 재부여됨).
+async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, channelId: string) {
+  const { data: ledgerRows, error: ledgerError } = await admin
+    .from("points_ledger")
+    .select("amount")
+    .eq("channel_id", channelId);
+  if (ledgerError) throw new Error(`points_ledger 조회 실패: ${ledgerError.message}`);
+  const balance = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+
+  if (balance !== 0) {
+    const { error: insertError } = await admin.from("points_ledger").insert({
+      channel_id: channelId,
+      amount: -balance,
+      reason: "계정 정지 처리: 포인트 초기화",
+    });
+    if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
+  }
+
+  const { error: purchasedError } = await admin
+    .from("user_purchased_titles")
+    .delete()
+    .eq("channel_id", channelId);
+  if (purchasedError) throw new Error(`user_purchased_titles 삭제 실패: ${purchasedError.message}`);
+}
+
 async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: string, banned: boolean) {
-  const { error } = await admin.from("users").update({ banned }).eq("channel_id", channelId);
+  if (banned) {
+    await resetAccountHoldings(admin, channelId);
+  }
+  const { error } = await admin
+    .from("users")
+    .update(
+      banned
+        ? { banned: true, max_balance_reached: 0, selected_title_id: null }
+        : { banned: false },
+    )
+    .eq("channel_id", channelId);
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
 }
 
