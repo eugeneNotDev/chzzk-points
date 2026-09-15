@@ -18,7 +18,11 @@
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
 //   주는 기능이 생기면 그건 reason을 "채팅:"/"후원:" 접두사로 남기고 여기선 제외할 것 — 그런
 //   포인트는 양이 너무 많아서 개인 로그에 넣기엔 부적합하다고 판단함. 지금은 그 기능이 아직
-//   없어서 이 필터는 사실상 아무것도 걸러내지 않음.)
+//   없어서 이 필터는 사실상 아무것도 걸러내지 않음.
+//   users.reset_at이 세팅돼 있으면(과거에 밴당한 적 있음 — admin/index.ts의 setBan 참고) 그
+//   시각 이전 기록은 전부 걸러서 안 보여줌 — 밴 초기화 이후엔 유저 입장에서 로그도 완전히
+//   새로 시작한 것처럼 보이게 하려는 의도(요청사항). points_ledger 행 자체는 안 지우니 관리자
+//   쪽 로그(admin/index.ts)는 이 필터 없이 항상 전체를 봄.)
 // POST { isPublic?: boolean, selectedTitleId?: string | null } → 갱신 후 프로필 형태로 최신 상태 리턴
 //   (selectedTitleId: null이면 장착 해제. 문자열이면 그게 구매 전용 칭호이고(포인트 구간
 //   칭호는 자동이라 여기 못 넣음 — not_purchasable_title로 거부) 본인이 실제로 구매한 상태인지
@@ -60,12 +64,24 @@ async function listMyPointsLog(channelId: string, page: number) {
   const admin = getAdminClient();
   const offset = (page - 1) * MY_POINTS_LOG_PAGE_SIZE;
 
-  const { data: rows, error, count } = await admin
+  const { data: userRow, error: userError } = await admin
+    .from("users")
+    .select("reset_at")
+    .eq("channel_id", channelId)
+    .maybeSingle();
+  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+
+  let query = admin
     .from("points_ledger")
     .select("id, amount, reason, created_at", { count: "exact" })
     .eq("channel_id", channelId)
     .not("reason", "like", "채팅:%")
-    .not("reason", "like", "후원:%")
+    .not("reason", "like", "후원:%");
+  if (userRow?.reset_at) {
+    query = query.gt("created_at", userRow.reset_at);
+  }
+
+  const { data: rows, error, count } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + MY_POINTS_LOG_PAGE_SIZE - 1);
   if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);

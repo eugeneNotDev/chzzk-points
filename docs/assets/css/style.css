@@ -567,6 +567,21 @@ ul.notice-list, ol.notice-list {
 }
 .notice-title-btn:hover { color: var(--accent); background: none; }
 
+/* 제목 앞에 붙는 "NEW" 표시 — 사이드바 알림 점과 같은 기준(마지막으로 확인한 시각)으로 판정함.
+   글자 배지라 점(.notice-nav-badge)과 달리 목록에서 어떤 글이 새 글인지 바로 구분됨. */
+.notice-new-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 /* 텍스트만 있는 작은 버튼 (공지 수정/삭제 등). <button class="secondary">보다 더 가볍게. */
 .link-btn {
   background: none;

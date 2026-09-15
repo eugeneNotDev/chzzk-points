@@ -116,6 +116,14 @@
 
     // id(문자열) -> 공지 원본. 목록/모달을 다시 그릴 때 서버 재조회 없이 사용.
     let noticesById = new Map();
+
+    // "새 글" 표시 기준 시각 — 이 페이지가 실행되자마자(= 이번 방문에서 loadNotices()가 아직
+    // markNoticesSeen()을 부르기 전) 딱 한 번만 읽어서 고정해둠. loadNotices()는 글쓰기/수정/삭제
+    // 직후나 실시간 갱신 때마다 다시 불릴 수 있는데, 그때마다 새로 읽으면 markNoticesSeen()이 이미
+    // "방금"으로 갱신해놔서 새 글 표시가 매번 사라져버림 — 그래서 이번 페이지 방문(라우터가 이
+    // 스크립트를 다시 실행하는 시점) 기준으로 한 번 고정. 페이지를 벗어났다가 다시 들어오면
+    // 스크립트가 다시 실행되면서 새로 고정됨(그땐 직전 방문에서 이미 "확인함" 처리됐으니 정상).
+    const noticeListSeenBaseline = getNoticeLastSeenAt();
     // 지금 모달이 어떤 모드인지: null(닫힘) | "view" | "edit" | "create"
     let modalMode = null;
     let modalNoticeId = null;
@@ -137,6 +145,8 @@
     function renderNoticeRow(n) {
       const idStr = String(n.id);
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
+      const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
+      const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
       const actions = isAdmin()
         ? `
           <span class="notice-item-actions">
@@ -146,7 +156,7 @@
         : "";
       return `
         <li class="notice-item" data-id="${idStr}">
-          <button type="button" class="notice-title-btn" data-id="${idStr}">${escapeHtml(n.title || "(제목 없음)")}</button>
+          <button type="button" class="notice-title-btn" data-id="${idStr}">${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
             <time>${formatDate(n.created_at)}${editedLabel}</time>
             ${actions}

@@ -12,7 +12,11 @@
 //   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고.
 //     banned=true로 새로 거는 순간 그 계정의 포인트/칭호 보유분을 전부 초기화함(resetAccountHoldings) —
 //     이후 밴을 풀어도 초기화된 상태 그대로 유지되고 되돌아오지 않음. banned=false(밴 해제)는
-//     초기화를 하지 않고 플래그만 내림.)
+//     초기화를 하지 않고 플래그만 내림. 이때 users.reset_at도 같이 찍어두는데, 이건 points_ledger
+//     행 자체를 지우진 않지만(잔액 계산 근거 보존 — resetAccountHoldings 주석 참고) me/index.ts의
+//     마이페이지 개인 로그 조회가 이 시각 이전 기록은 걸러서 안 보여주는 기준값으로 씀 — 유저
+//     입장에선 로그까지 완전히 비워진 것처럼 보임. 관리자용 로그(list-points-log/get-user-detail)는
+//     감사 목적이라 이 필터를 적용하지 않고 항상 전체 기록을 보여줌.)
 // POST { action: "bulk-adjust-points", target: "all" | "selected", channelIds?: string[], amount: number, reason?: string }
 //   → { affected: number }  (points_ledger에 대상 전원 몫으로 한 줄씩 insert. amount는 음수 가능 — 일괄 차감.
 //     target="all"이면 서버가 banned=false && 관리자 계정 제외한 전체 유저를 대상으로 계산함(클라이언트가
@@ -149,7 +153,12 @@ async function adjustPoints(
 // 직접 0/null로 되돌리고, user_purchased_titles(구매한 칭호 보유 기록)는 행 자체를 지움 — 나중에
 // 밴이 풀려도 이 셋은 그대로 초기화된 채로 남음(0022_title_tiers.sql의 자동 배지 구조라, 다시
 // 포인트를 쌓아야만 구간 칭호가 재부여됨).
-async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, channelId: string) {
+// resetTimestamp: setBan에서 미리 계산해서 넘겨주는 시각(ISO 문자열) — 아래 보정 행의 created_at과
+// users.reset_at(호출부에서 세팅)을 정확히 같은 값으로 맞추기 위함. 각자 따로 now()를 부르면(DB
+// 트리거의 now()든 별도 insert/update 문의 now()든) 두 값이 미세하게 어긋날 수 있고, 그러면
+// me/index.ts가 "reset_at보다 이후"로 거르는 필터가 이 보정 행 자체를 걸러내지 못해 유저 로그에
+// "계정 정지 처리: 포인트 초기화" 행이 그대로 남아버림 — 그걸 막으려고 같은 값을 명시적으로 씀.
+async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, channelId: string, resetTimestamp: string) {
   const { data: ledgerRows, error: ledgerError } = await admin
     .from("points_ledger")
     .select("amount")
@@ -162,6 +171,7 @@ async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, ch
       channel_id: channelId,
       amount: -balance,
       reason: "계정 정지 처리: 포인트 초기화",
+      created_at: resetTimestamp,
     });
     if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
   }
@@ -175,16 +185,16 @@ async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, ch
 
 async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: string, banned: boolean) {
   if (banned) {
-    await resetAccountHoldings(admin, channelId);
+    const resetTimestamp = new Date().toISOString();
+    await resetAccountHoldings(admin, channelId, resetTimestamp);
+    const { error } = await admin
+      .from("users")
+      .update({ banned: true, max_balance_reached: 0, selected_title_id: null, reset_at: resetTimestamp })
+      .eq("channel_id", channelId);
+    if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
+    return;
   }
-  const { error } = await admin
-    .from("users")
-    .update(
-      banned
-        ? { banned: true, max_balance_reached: 0, selected_title_id: null }
-        : { banned: false },
-    )
-    .eq("channel_id", channelId);
+  const { error } = await admin.from("users").update({ banned: false }).eq("channel_id", channelId);
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
 }
 

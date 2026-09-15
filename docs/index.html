@@ -175,10 +175,17 @@
     // 관리 기능은 공지사항 탭(notice.html)에서 게시판 형태로 처리함.
     let noticePreviewById = new Map();
 
+    // 사이드바 알림 점과 같은 기준(NOTICE_LAST_SEEN_KEY)을 읽기만 해서(변경 안 함) 미리보기에도
+    // "새 글" 표시를 달아줌 — 스크립트가 실행되자마자(=initNoticeBadge()가 markNoticesSeen()을
+    // 부르기 전, 애초에 이 페이지에선 initNoticeBadge()가 값을 갱신하지도 않음) 한 번 읽어서 고정.
+    const noticeListSeenBaseline = getNoticeLastSeenAt();
+
     function renderNoticePreviewItem(n) {
+      const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
+      const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
       return `
         <li class="notice-item">
-          <button type="button" class="notice-title-btn" data-id="${n.id}">${escapeHtml(n.title || "(제목 없음)")}</button>
+          <button type="button" class="notice-title-btn" data-id="${n.id}">${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
             <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
           </div>
