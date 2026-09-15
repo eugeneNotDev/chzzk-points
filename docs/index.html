@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=36">
+<link rel="stylesheet" href="assets/css/style.css?v=37">
 </head>
 <body>
   <script>
@@ -120,7 +120,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=13"></script>
+  <script src="assets/js/chzzk-auth.js?v=14"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -250,17 +250,19 @@
     // 랭킹 한 줄 렌더링. 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴(뷰에서 처리) —
     // 본인 행도 예외 없이 그대로 보여줌. (전엔 본인 행만 로컬에 저장된 실제 채널명으로 덮어썼는데,
     // 그러면 비공개로 설정해도 본인 눈에는 계속 실명이 보여서 설정이 잘 적용됐는지 헷갈린다는
-    // 피드백이 있었음 — 그래서 본인도 남들과 똑같이 마스킹된 값을 그대로 보게 함.) 칭호 배지는
-    // ranking.html과 같은 renderTitleBadgesHtml(chzzk-auth.js)를 그대로 씀 — 별도 함수로 다시
-    // 만들면 나중에 한쪽만 고치고 잊어버리기 쉬워서(이번에 실제로 그랬음) 반드시 공용 함수로.
+    // 피드백이 있었음 — 그래서 본인도 남들과 똑같이 마스킹된 값을 그대로 보게 함.) 포인트 구간
+    // 칭호는 이름 색으로, 상점 구매 칭호는 배지로 — ranking.html과 같은 chzzk-auth.js 공용
+    // 함수(applyTierColorToName/renderShopTitleBadgeHtml)를 그대로 씀 — 별도로 다시 만들면
+    // 나중에 한쪽만 고치고 잊어버리기 쉬워서(이번에 실제로 그랬음) 반드시 공용 함수로.
     function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
       const isPrivate = row.is_public === false;
-      const titleBadges = renderTitleBadgesHtml(row.tier_title_name, row.tier_title_color, row.shop_title_name);
+      const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name);
+      const coloredName = applyTierColorToName(escapeHtml(row.channel_name || "(이름 없음)"), row.tier_title_color);
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${titleBadges}${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }

@@ -211,18 +211,19 @@ function escapeHtmlForAuth(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// 랭킹/마이페이지가 공통으로 쓰는 칭호 배지 HTML — 포인트 구간 칭호(자동, 색 있음)와 상점
-// 구매 칭호(장착, 기본 accent 색)를 "[구간][구매]" 형태로 이어붙임(0022_title_tiers.sql부터
-// 둘이 서로 다른 슬롯이라 각자 따로 넘김). 순서 고정: 구간 칭호가 항상 앞. 둘 다 없으면
-// 빈 문자열이라, 호출부에서 name 앞에 그냥 이어붙이면 됨(있을 때만 trailing space 포함).
-function renderTitleBadgesHtml(tierName, tierColor, shopName) {
+// 포인트 구간 칭호(브론즈~다이아)는 더 이상 "[브론즈]" 같은 텍스트 배지로 안 보여줌 — 포인트
+// 총합에 따라 구간이 갈리는 규칙 자체는 그대로 두고(0022_title_tiers.sql), 대신 랭킹/마이페이지에
+// 보이는 이름 텍스트 자체를 그 구간 색으로 칠하는 방식으로 바뀜(요청사항). 상점에서 "구매"한
+// 칭호는 지금까지처럼 "[칭호명]" 배지로 그대로 보여줌 — 둘은 성격이 달라서(자동 vs 직접 구매)
+// 구분을 유지함. 그래서 함수가 둘로 나뉨: 이름 텍스트에 구간 색을 입히는 쪽과, 구매 칭호
+// 배지를 만드는 쪽.
+function applyTierColorToName(escapedName, tierColor) {
   const safeColor = typeof tierColor === "string" && /^#[0-9a-fA-F]{3,8}$/.test(tierColor) ? tierColor : "";
-  const tierBadge = tierName
-    ? `<span class="title-badge"${safeColor ? ` style="color:${safeColor}"` : ""}>[${escapeHtmlForAuth(tierName)}]</span>`
-    : "";
-  const shopBadge = shopName ? `<span class="title-badge">[${escapeHtmlForAuth(shopName)}]</span>` : "";
-  const badges = tierBadge + shopBadge;
-  return badges ? `${badges} ` : "";
+  return safeColor ? `<span style="color:${safeColor}">${escapedName}</span>` : escapedName;
+}
+
+function renderShopTitleBadgeHtml(shopName) {
+  return shopName ? `<span class="title-badge">[${escapeHtmlForAuth(shopName)}]</span> ` : "";
 }
 
 // 사이드바 접기/펴기 토글 버튼 연결. localStorage에 상태를 저장해서 다른 페이지로 이동해도 유지됨.
@@ -386,6 +387,15 @@ function showShopSection(targetId) {
   const showTitle = targetId === "title-shop-section";
   generalEl.hidden = showTitle;
   titleEl.hidden = !showTitle;
+  // 두 섹션이 #global-status 하나를 공유해서, 일반 상점에서 "OOO 사용했어요!" 메시지가 뜬
+  // 채로 칭호 상점 탭으로 넘어가도(페이지 재실행 없이 이 함수만 호출되는 탭 전환이라) 그
+  // 메시지가 그대로 남아있던 버그가 있었음 — 지금 보고 있는 섹션과 무관한 안내라 헷갈림.
+  // 섹션을 바꿀 때마다 비워서 각 탭이 "깨끗한 상태"로 시작하게 함.
+  const statusEl = document.getElementById("global-status");
+  if (statusEl) {
+    statusEl.textContent = "";
+    statusEl.className = "status-msg";
+  }
 }
 
 // 토글 버튼 + 하위 링크 중 하나(targetId)를 즉시 활성 표시로 바꿈. 실제로 shop.html로
