@@ -928,9 +928,12 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .admin-stat-value {
   display: block;
-  font-size: 1.4rem;
+  /* 전체 발행 포인트처럼 자릿수가 계속 늘어나는 값이 있어서, .balance와 같은 이유로
+     clamp + word-break을 씀 — 타일 폭(최소 110px)을 넘기지 않고 알아서 줄어듦. */
+  font-size: clamp(1rem, 4vw, 1.4rem);
   font-weight: 700;
   color: var(--accent);
+  word-break: break-all;
 }
 .admin-stat-label {
   display: block;
