@@ -1,8 +1,8 @@
 -- 랭킹 동점자 처리: 포인트가 같으면(특히 신규 가입자 전원 0포인트) 가입이 빠른 사람이
--- 위로 오게 한다. u.created_at은 GROUP BY에만 추가하면 된다(channel_id가 users PK라
+-- 위로 오게 함. u.created_at은 GROUP BY에만 추가하면 됨(channel_id가 users PK라
 -- functional dependency로 SELECT 목록엔 안 넣어도 ORDER BY에서 쓸 수 있음) — 기존 view의
 -- 출력 컬럼(channel_id, channel_name, total_points, is_public) 순서/구성은 그대로 유지해야
--- CREATE OR REPLACE VIEW가 깨지지 않는다 (0005_ranking_mask_private.sql 참고).
+-- CREATE OR REPLACE VIEW가 깨지지 않음 (0005_ranking_mask_private.sql 참고).
 create or replace view public.ranking as
 select
   u.channel_id,

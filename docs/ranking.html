@@ -89,8 +89,8 @@
       return str.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
 
-    // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려온다(뷰에서 처리) — 본인 행도 예외 없이
-    // 그대로 보여준다 (본인 계정이 비공개 상태면 본인 눈에도 "비공개"로 보여야 설정이 잘
+    // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴(뷰에서 처리) — 본인 행도 예외 없이
+    // 그대로 보여줌 (본인 계정이 비공개 상태면 본인 눈에도 "비공개"로 보여야 설정이 잘
     // 적용됐는지 헷갈리지 않음).
     function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
@@ -142,9 +142,9 @@
       await loadRanking(supabase);
 
       // 실시간 갱신: points_ledger는 RLS로 막혀있어 직접 구독할 수 없어서, 그 대신 매
-      // insert마다 트리거가 채워주는 ranking_pings(공개 읽기 가능한 신호용 테이블)를 구독한다
+      // insert마다 트리거가 채워주는 ranking_pings(공개 읽기 가능한 신호용 테이블)를 구독함
       // (0019_admin_features.sql 참고). 관리자가 일괄 지급을 하면 짧은 시간에 ping이 여러 번
-      // 올 수 있어서 debounce로 묶어서 한 번만 다시 불러온다.
+      // 올 수 있어서 debounce로 묶어서 한 번만 다시 불러옴.
       let refetchTimer = null;
       const channel = supabase
         .channel("ranking_pings_page")

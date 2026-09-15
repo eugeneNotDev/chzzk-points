@@ -1,12 +1,12 @@
 -- 칭호(title) 시스템 1차(임시) 버전.
 --
--- 규칙: "지금까지 한 번이라도 도달한 최고 보유 포인트"를 기준으로 잠금 해제된다 — 즉 나중에
--- 상점에서 포인트를 쓰거나 관리자가 차감해서 잔액이 줄어도, 한 번 찍은 칭호는 계속 유지된다
+-- 규칙: "지금까지 한 번이라도 도달한 최고 보유 포인트"를 기준으로 잠금 해제됨 — 즉 나중에
+-- 상점에서 포인트를 쓰거나 관리자가 차감해서 잔액이 줄어도, 한 번 찍은 칭호는 계속 유지됨
 -- (업적/도전과제 방식). 마이페이지에서 잠금 해제된 칭호 중 하나를 "장착"할 수 있고, 장착한
--- 칭호는 랭킹에 "[칭호1] 이름" 형태로 붙어서 보인다.
+-- 칭호는 랭킹에 "[칭호1] 이름" 형태로 붙어서 보임.
 --
 -- 이름/필요 포인트/개수는 전부 임시값이고 나중에 디자인과 함께 바뀔 예정이라, shop_items와
--- 같은 패턴으로 테이블로 뺐다 — 배포 없이 Table Editor에서 이름/금액/순서를 바로 조정 가능.
+-- 같은 패턴으로 테이블로 뺐음 — 배포 없이 Table Editor에서 이름/금액/순서를 바로 조정 가능.
 
 create table if not exists public.titles (
   id text primary key,                 -- 소문자-하이픈 슬러그
@@ -18,7 +18,7 @@ create table if not exists public.titles (
 
 alter table public.titles enable row level security;
 
--- 상점 상품 목록과 같은 패턴 — 마이페이지가 Edge Function 없이 바로 조회해서 그린다.
+-- 상점 상품 목록과 같은 패턴 — 마이페이지가 Edge Function 없이 바로 조회해서 그림.
 create policy "titles_public_read" on public.titles
   for select
   using (true);
@@ -37,7 +37,7 @@ alter table public.users
   add column if not exists selected_title_id text references public.titles(id) on delete set null;
 
 -- 기존 유저들 백필: points_ledger를 id(=시간) 순으로 누적합을 구해서, 그 누적합의 최댓값을
--- "이제까지의 진짜 최고 보유 포인트"로 채워넣는다 (현재 잔액만 쓰면, 과거에 더 많이 모았다가
+-- "이제까지의 진짜 최고 보유 포인트"로 채워넣음 (현재 잔액만 쓰면, 과거에 더 많이 모았다가
 -- 상점에서 써서 지금은 줄어든 유저의 경우 실제보다 낮게 잡혀버림).
 update public.users u
 set max_balance_reached = sub.peak
@@ -52,8 +52,8 @@ from (
 where u.channel_id = sub.channel_id;
 
 -- points_ledger에 행이 추가될 때마다(적립이든 차감이든, 어느 함수가 넣었든 상관없이) 그 유저의
--- 현재 잔액을 다시 계산해서 max_balance_reached보다 크면 갱신한다. 이렇게 트리거로 처리해두면
--- 나중에 포인트를 주는 경로(채팅/후원 등)가 늘어나도 그쪽 코드를 따로 안 건드려도 된다.
+-- 현재 잔액을 다시 계산해서 max_balance_reached보다 크면 갱신함. 이렇게 트리거로 처리해두면
+-- 나중에 포인트를 주는 경로(채팅/후원 등)가 늘어나도 그쪽 코드를 따로 안 건드려도 됨.
 create or replace function public.sync_max_balance_reached() returns trigger as $$
 declare
   current_balance bigint;

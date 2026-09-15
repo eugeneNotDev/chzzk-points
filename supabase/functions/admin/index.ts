@@ -1,6 +1,6 @@
 // 관리자 전용 기능 (유저 검색/포인트 지급·차감/밴 처리) 한 함수에 몰아넣음.
 // Authorization: Bearer <세션토큰> 필수, session.channelId가 OWNER_CHANNEL_ID와
-// 일치해야만 허용 (아니면 403). 전부 POST + body.action으로 분기한다.
+// 일치해야만 허용 (아니면 403). 전부 POST + body.action으로 분기함.
 //
 // POST { action: "search-users", q?: string, page?: number }
 //   → { users: [{ channelId, channelName, isPublic, banned, balance }], page, pageSize, totalCount, totalPages }
@@ -18,27 +18,27 @@
 //   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
 //     (points_ledger 최근 기록(지급/차감/상점 사용/출석체크 등 전부), 페이지당 10개. q 있으면 그
 //     이름을 가진 유저 기록만, 없으면 전체 유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘
-//     했는지 훑어보는 용도. 최근 24시간 것만 보여준다 — 그 이상 지난 관리자 모니터링용 로그는
+//     했는지 훑어보는 용도. 최근 24시간 것만 보여줌 — 그 이상 지난 관리자 모니터링용 로그는
 //     화면에 굳이 안 보여줘도 된다고 판단(요청사항). 단, 이건 "화면 표시" 필터일 뿐 points_ledger
-//     자체에서 실제로 지우진 않는다 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를
-//     합산)라서 오래된 행을 진짜 삭제하면 유저 잔액이 깨진다. 마이페이지 개인 로그(me/index.ts)는
+//     자체에서 실제로 지우진 않음 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를
+//     합산)라서 오래된 행을 진짜 삭제하면 유저 잔액이 깨짐. 마이페이지 개인 로그(me/index.ts)는
 //     이 24시간 제한 없이 전체 기록을 그대로 보여줌.
-//     처리완료 체크는 여기 없음 — 상점 사용 처리는 아래 list-spend-log 전용 화면에서만 한다
+//     처리완료 체크는 여기 없음 — 상점 사용 처리는 아래 list-spend-log 전용 화면에서만 함
 //     (한 화면에 모든 종류 기록 + 체크박스가 섞여 있으니 오히려 헷갈린다는 피드백으로 분리함).
 // POST { action: "list-spend-log", q?: string, page?: number }
 //   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
-//     (points_ledger에서 상점 사용("포인트 상점 사용: ..." reason) 기록만 걸러서 보여준다 —
+//     (points_ledger에서 상점 사용("포인트 상점 사용: ..." reason) 기록만 걸러서 보여줌 —
 //     list-points-log와 달리 24시간 제한 없이 전체 기간. 예전에 처리해둔 것도 나중에 다시 찾아볼
 //     수 있어야 해서 기간을 안 자름. admin.html의 "상점 내역" 탭 전용 — 처리완료 체크박스는 여기
-//     항목에만 뜬다.)
+//     항목에만 뜸.)
 // POST { action: "set-processed", id: number, processed: boolean }
 //   → { id, processed }  (points_ledger 한 행의 처리완료 표시를 토글. 오버레이 상점 사용 알림을
 //     놓쳤을 때, 상점 내역에서 이미 처리한 건지 체크해두는 용도 — 0019_admin_features.sql 참고.
-//     어떤 행에든 걸 수 있는 범용 필드지만, 화면(admin.html)에서는 상점 내역 탭에서만 쓴다.)
+//     어떤 행에든 걸 수 있는 범용 필드지만, 화면(admin.html)에서는 상점 내역 탭에서만 씀.)
 // POST { action: "bulk-set-processed", ids: number[], processed: boolean }
 //   → { affected: number }  (points_ledger 여러 행의 처리완료 표시를 한 번에 토글 — 상점 내역
 //     탭에서 체크박스로 여러 항목을 고른 뒤 "일괄 처리완료로 표시" 같은 버튼을 누르면 여기로
-//     들어온다. set-processed와 같은 컬럼을 건드리지만 여러 id를 한 쿼리로 처리.)
+//     들어옴. set-processed와 같은 컬럼을 건드리지만 여러 id를 한 쿼리로 처리.)
 // POST { action: "get-stats" }
 //   → { userCount, bannedCount, totalPoints, todaySpendCount, todayAttendanceCount }
 //     (관리자 페이지 상단 요약 카드용 — 전체 가입자 수, 밴된 유저 수, 현재 전체 유저 잔액 합계,
@@ -219,7 +219,7 @@ async function getStats(admin: ReturnType<typeof getAdminClient>) {
 }
 
 // 유저 상세 모달은 팝업 안에 들어가는 목록이라 한 페이지에 10개씩 보여주면 스크롤이 길어져서
-// 5개로 줄였다 (요청사항) — 포인트 로그/상점 내역 탭은 페이지 전체를 쓰는 목록이라 그대로 10개.
+// 5개로 줄임 (요청사항) — 포인트 로그/상점 내역 탭은 페이지 전체를 쓰는 목록이라 그대로 10개.
 const USER_DETAIL_LOG_PAGE_SIZE = 5;
 
 async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId: string, page: number) {
@@ -284,7 +284,7 @@ async function listPointsLog(
 ) {
   let channelIdFilter: string[] | null = null;
   if (q && q.trim().length > 0) {
-    // 이름으로 먼저 유저를 찾고, 그 채널ID들의 기록만 본다 (points_ledger엔 이름이 없어서
+    // 이름으로 먼저 유저를 찾고, 그 채널ID들의 기록만 봄 (points_ledger엔 이름이 없어서
     // 역방향 조회 — 이름이 없는 유저는 검색으로는 못 찾음, channel_id 직접 검색은 아직 미지원).
     const { data: matchedUsers, error: userError } = await admin
       .from("users")
@@ -333,8 +333,8 @@ async function listPointsLog(
 
 const SPEND_LOG_PAGE_SIZE = 10;
 
-// listPointsLog와 거의 같지만 (1) 상점 사용 기록만 걸러내고 (2) 24시간 제한이 없다 — "상점 내역"
-// 탭은 처리완료 체크를 위한 전용 화면이라, 예전에 놓친 것도 뒤늦게 찾아서 체크할 수 있어야 한다.
+// listPointsLog와 거의 같지만 (1) 상점 사용 기록만 걸러내고 (2) 24시간 제한이 없음 — "상점 내역"
+// 탭은 처리완료 체크를 위한 전용 화면이라, 예전에 놓친 것도 뒤늦게 찾아서 체크할 수 있어야 함.
 async function listSpendLog(
   admin: ReturnType<typeof getAdminClient>,
   q: string | undefined,

@@ -1,4 +1,4 @@
-// 포인트 사용 엔드포인트. 프론트엔드(shop.html)의 "사용" 버튼이 이 함수를 호출한다
+// 포인트 사용 엔드포인트. 프론트엔드(shop.html)의 "사용" 버튼이 이 함수를 호출함
 // (Authorization: Bearer <세션토큰>).
 //
 // POST { itemId: string }
@@ -11,19 +11,19 @@
 //               구매한 경우. sold_out은 한정 수량(stock_limit)을 다 채운 경우 — 0021_shop_item_stock.sql)
 //
 // 상품 목록(shop_items)은 코드가 아니라 DB 테이블이라, 상품 추가/가격 변경/방송중 전용 토글/
-// 쿨타임은 전부 Supabase 테이블 편집기에서 바로 할 수 있다 (배포 불필요) — 0010_shop_items.sql,
+// 쿨타임은 전부 Supabase 테이블 편집기에서 바로 할 수 있음 (배포 불필요) — 0010_shop_items.sql,
 // 0013_shop_cooldown.sql 참고.
 //
 // 칭호 구매(0020_purchasable_titles.sql): shop_items.grants_title_id가 채워진 상품이면,
-// 정상 결제 후 user_purchased_titles에 기록해서 그 칭호를 영구 잠금해제한다(마이페이지
+// 정상 결제 후 user_purchased_titles에 기록해서 그 칭호를 영구 잠금해제함(마이페이지
 // 칭호 그리드가 이 테이블도 같이 봄 — me/index.ts 참고). 같은 칭호를 이미 샀으면 다시
-// 못 사게 미리 막는다. shop_items.show_on_overlay가 false인 상품은 spend_events에 기록을
-// 안 남겨서 오버레이(overlay.html)에 안 뜬다 — 칭호 구매처럼 방송 화면에 안 떠도 되는
+// 못 사게 미리 막음. shop_items.show_on_overlay가 false인 상품은 spend_events에 기록을
+// 안 남겨서 오버레이(overlay.html)에 안 뜸 — 칭호 구매처럼 방송 화면에 안 떠도 되는
 // 상품에 관리자가 체크를 꺼두는 용도.
 //
 // 동시성 참고:
-//   - 다른 유저끼리는 서로 영향이 없다. 잔액도 쿨타임도 전부 channel_id로 스코프된 조회/기록이라
-//     각자 자기 행만 보고 쓴다 — Postgres가 서로 다른 행에 대한 동시 트랜잭션을 알아서 처리해주므로
+//   - 다른 유저끼리는 서로 영향이 없음. 잔액도 쿨타임도 전부 channel_id로 스코프된 조회/기록이라
+//     각자 자기 행만 보고 씀 — Postgres가 서로 다른 행에 대한 동시 트랜잭션을 알아서 처리해주므로
 //     "다른 사람이 동시에 써서 꼬이는" 문제는 애초에 없음.
 //   - 같은 유저가 아주 짧은 간격(수십~수백ms)으로 연타하면, 쿨타임/잔액 체크가 두 요청 모두
 //     통과해버릴 이론적 여지는 여전히 있음(체크와 기록 사이에 완전한 원자성은 없음). 다만 이제
@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 칭호 부여 상품이면 이미 그 칭호를 산 적 있는지 미리 확인 — 중복 구매(포인트만 날리고
-    // 아무 효과 없는 구매)를 막는다.
+    // 아무 효과 없는 구매)를 막음.
     let titleName: string | null = null;
     if (item.grants_title_id) {
       const { data: title, error: titleError } = await admin
@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
       if (existing) return jsonResponse({ error: "already_owned" }, 400);
     }
 
-    // 한정 수량(재고) — 다 팔렸으면 상품을 지우지 않고 구매만 막는다(0021_shop_item_stock.sql).
+    // 한정 수량(재고) — 다 팔렸으면 상품을 지우지 않고 구매만 막음(0021_shop_item_stock.sql).
     if (item.stock_limit != null && item.sold_count >= item.stock_limit) {
       return jsonResponse({ error: "sold_out" }, 400);
     }
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
     if (balance < item.cost) return jsonResponse({ error: "insufficient_balance" }, 400);
 
     // reason은 관리자 포인트 로그/마이페이지 로그에 그대로 노출되니 상품 코드가 아니라
-    // 사람이 읽을 문구로 남긴다 (예전엔 "spend:water"처럼 코드로 남겨서 뭘 산건지 알아보기
+    // 사람이 읽을 문구로 남김 (예전엔 "spend:water"처럼 코드로 남겨서 뭘 산건지 알아보기
     // 힘들었음 — 0015_backfill_spend_reason_names.sql 참고).
     const { error: ledgerError } = await admin.from("points_ledger").insert({
       channel_id: session.channelId,
@@ -161,9 +161,9 @@ Deno.serve(async (req: Request) => {
     });
     if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
 
-    // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남긴다. (channel_id, title_id) 기본키라
+    // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. (channel_id, title_id) 기본키라
     // 동시에 두 요청이 들어와도(위에서 미리 막았지만 이론상 레이스는 남아있음) 두 번째는
-    // unique violation(23505)으로 막힌다 — 그건 "이미 부여됨"과 같은 결과라 에러로 안 보고 무시.
+    // unique violation(23505)으로 막힘 — 그건 "이미 부여됨"과 같은 결과라 에러로 안 보고 무시.
     if (item.grants_title_id) {
       const { error: titleGrantError } = await admin
         .from("user_purchased_titles")
@@ -173,10 +173,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 한정 수량 상품이면 판매 개수를 1 늘린다. 읽고-다시-쓰는 방식이라 아주 짧은 간격의
+    // 한정 수량 상품이면 판매 개수를 1 늘림. 읽고-다시-쓰는 방식이라 아주 짧은 간격의
     // 동시 요청에는 이론적 레이스가 남아있지만(파일 상단 "동시성 참고"와 같은 이유로 지금
     // 규모에선 감수), 위에서 재고 체크를 이미 통과한 뒤라 최악의 경우도 한두 개 초과 판매
-    // 정도라 실사용에 문제 없다.
+    // 정도라 실사용에 문제 없음.
     if (item.stock_limit != null) {
       const { error: stockUpdateError } = await admin
         .from("shop_items")
@@ -186,11 +186,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // 오버레이 표시용 이름 스냅샷 — 유저 이름은 세션 토큰의 channelName, 아이템 이름은 위에서
-    // 이미 조회해둔 item.name을 그대로 쓴다(둘 다 추가 조회 불필요). 아이템 이름도 스냅샷으로
+    // 이미 조회해둔 item.name을 그대로 씀(둘 다 추가 조회 불필요). 아이템 이름도 스냅샷으로
     // 남겨야 나중에 shop_items.name이 바뀌어도 과거 오버레이 로그가 안 틀어짐 — item_id(슬러그)
     // 를 그대로 보여주면 "OOO님이 temp1 사용!"처럼 사람이 못 알아보는 문제가 있었음
     // (0018_bugfixes.sql 참고). show_on_overlay가 false인 상품(칭호 구매 등)은 이 기록 자체를
-    // 안 남겨서 오버레이(overlay.html)에 안 뜨게 한다.
+    // 안 남겨서 오버레이(overlay.html)에 안 뜨게 함.
     if (item.show_on_overlay) {
       const { error: eventError } = await admin.from("spend_events").insert({
         channel_id: session.channelId,

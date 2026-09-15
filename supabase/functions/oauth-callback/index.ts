@@ -13,10 +13,10 @@
 //   토큰 엔드포인트: POST https://openapi.chzzk.naver.com/auth/v1/token
 //   유저 조회: GET https://openapi.chzzk.naver.com/open/v1/users/me (Authorization: Bearer <accessToken>)
 //
-// clientSecret은 이 함수의 환경변수로만 존재해야 한다 (Supabase 프로젝트 설정에서 등록).
+// clientSecret은 이 함수의 환경변수로만 존재해야 함 (Supabase 프로젝트 설정에서 등록).
 // 절대 응답 바디나 로그에 clientSecret을 남기지 말 것.
 //
-// verify_jwt는 supabase/config.toml에서 이 함수만 꺼져있다 (로그인 전이라 우리 세션 토큰이 아직 없음).
+// verify_jwt는 supabase/config.toml에서 이 함수만 꺼져있음 (로그인 전이라 우리 세션 토큰이 아직 없음).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -104,7 +104,7 @@ async function upsertUser(user: ChzzkUser): Promise<void> {
   }
 }
 
-// 관리자 페이지에서 밴된 유저인지 확인. 밴 상태면 로그인 자체를 막는다(세션 토큰 미발급).
+// 관리자 페이지에서 밴된 유저인지 확인. 밴 상태면 로그인 자체를 막음(세션 토큰 미발급).
 async function isBanned(channelId: string): Promise<boolean> {
   const admin = getAdminClient();
   const { data, error } = await admin

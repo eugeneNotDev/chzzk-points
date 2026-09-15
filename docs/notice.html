@@ -78,7 +78,7 @@
         <p id="notice-empty" class="empty-state" hidden>등록된 공지사항이 없어요.</p>
       </div>
 
-      <!-- 글 보기/글쓰기/수정을 전부 이 하나의 dialog로 처리한다 (모드에 따라 안쪽 뷰만 토글) —
+      <!-- 글 보기/글쓰기/수정을 전부 이 하나의 dialog로 처리함 (모드에 따라 안쪽 뷰만 토글) —
            네이버카페 게시글처럼 제목 누르면 팝업으로 내용이 뜨는 느낌. -->
       <dialog id="notice-modal" class="notice-modal">
         <div id="notice-modal-view">
@@ -109,7 +109,7 @@
   <script src="assets/js/chzzk-auth.js?v=11"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
-  // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
   (function () {
     let supabase;
     const NOTICE_LIMIT = 50;
@@ -133,7 +133,7 @@
       return new Date(iso).toLocaleString("ko-KR");
     }
 
-    // 목록 한 줄 — 제목만 보이는 게시판 스타일. 제목을 누르면 모달로 내용이 뜬다.
+    // 목록 한 줄 — 제목만 보이는 게시판 스타일. 제목을 누르면 모달로 내용이 뜸.
     function renderNoticeRow(n) {
       const idStr = String(n.id);
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
@@ -240,7 +240,7 @@
       statusEl.className = "status-msg";
       document.getElementById("notice-modal-view").hidden = true;
       document.getElementById("notice-modal-form").hidden = false;
-      // dialog가 화면에 붙은(open) 다음이라야 scrollHeight 계산이 정확해서, showModal 이후에도 한 번 더 맞춰준다.
+      // dialog가 화면에 붙은(open) 다음이라야 scrollHeight 계산이 정확해서, showModal 이후에도 한 번 더 맞춰줌.
       requestAnimationFrame(() => autoResizeTextarea(contentInput));
     }
 
@@ -277,7 +277,7 @@
       document.getElementById("notice-modal-edit-btn").addEventListener("click", () => openEditModal(modalNoticeId));
       document.getElementById("notice-modal-delete-btn").addEventListener("click", () => deleteNotice(modalNoticeId));
       document.getElementById("notice-modal-cancel-btn").addEventListener("click", () => {
-        // 기존 글을 고치다가 취소했으면 보기 화면으로, 새 글 작성 중 취소했으면 그냥 닫는다.
+        // 기존 글을 고치다가 취소했으면 보기 화면으로, 새 글 작성 중 취소했으면 그냥 닫음.
         if (modalMode === "edit" && modalNoticeId) {
           openViewModal(modalNoticeId);
         } else {
@@ -339,14 +339,14 @@
 
       await loadNotices();
 
-      // 메인 페이지 미리보기에서 특정 글로 바로 들어온 경우(notice.html?id=5) 해당 글 모달을 자동으로 연다.
+      // 메인 페이지 미리보기에서 특정 글로 바로 들어온 경우(notice.html?id=5) 해당 글 모달이 자동으로 열림.
       const targetId = new URLSearchParams(location.search).get("id");
       if (targetId && noticesById.has(targetId)) {
         openViewModal(targetId);
       }
 
       // 실시간 갱신: 다른 브라우저(관리자 등)에서 공지를 쓰거나 고치거나 지우면 새로고침 없이
-      // 목록에 바로 반영한다. notices 테이블은 이미 공개 읽기 정책이 있어서 바로 구독 가능
+      // 목록에 바로 반영함. notices 테이블은 이미 공개 읽기 정책이 있어서 바로 구독 가능
       // (0019_admin_features.sql에서 realtime publication에만 추가함).
       let refetchTimer = null;
       const channel = supabase

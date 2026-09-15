@@ -1,9 +1,9 @@
 -- (1) 랭킹에서 관리자(채널 주인) 계정 제외.
 --
 -- "유진 알파" 계정은 _shared/config.ts의 OWNER_CHANNEL_ID와 동일한 관리자 전용 계정이라
--- 랭킹에 같이 뜨면 이상하다 — 관리자가 스스로에게 포인트를 지급/차감하며 테스트하는 계정이
--- 시청자 랭킹에 섞여 나오는 걸 막는다. SQL view라 TS 상수를 직접 참조할 수 없어서 리터럴로
--- 하드코딩한다 — 나중에 OWNER_CHANNEL_ID가 바뀌면 (그럴 일은 거의 없지만) 여기도 같이 고칠 것.
+-- 랭킹에 같이 뜨면 이상함 — 관리자가 스스로에게 포인트를 지급/차감하며 테스트하는 계정이
+-- 시청자 랭킹에 섞여 나오는 걸 막음. SQL view라 TS 상수를 직접 참조할 수 없어서 리터럴로
+-- 하드코딩함 — 나중에 OWNER_CHANNEL_ID가 바뀌면 (그럴 일은 거의 없지만) 여기도 같이 고칠 것.
 create or replace view public.ranking as
 select
   u.channel_id,
@@ -24,8 +24,8 @@ grant select on public.ranking to anon, authenticated;
 -- (2) 임시 상점 상품 6개 채워넣기.
 --
 -- 이름/가격/설명 전부 임시값 — 나중에 실제 상품으로 교체할 때 코드/배포 없이 Table Editor에서
--- 행만 고치면 된다 (0010_shop_items.sql과 같은 이유). 기존 'water'(sort_order=1) 다음
--- 순서로 채워넣는다.
+-- 행만 고치면 됨 (0010_shop_items.sql과 같은 이유). 기존 'water'(sort_order=1) 다음
+-- 순서로 채워넣음.
 insert into public.shop_items (id, name, cost, description, requires_live, is_active, sort_order)
 values
   ('temp1', '상품1', 200, '임시 상품이에요. 나중에 실제 상품으로 교체될 예정이에요.', false, true, 2),

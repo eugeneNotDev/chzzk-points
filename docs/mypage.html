@@ -155,12 +155,12 @@
   <script src="assets/js/chzzk-auth.js?v=11"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
-  // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감싼다
+  // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감쌈
   // (안 그러면 두 번째 실행에서 함수 재선언 등으로 꼬일 수 있음 — index.html/ranking.html과 동일한 이유).
   (function () {
     let supabase;
     // /me가 마지막으로 내려준 프로필(balance, maxBalanceReached, selectedTitleId 등)과
-    // titles 테이블 목록을 여기 캐시해뒀다가, 칭호 그리드/장착 라벨을 다시 그릴 때 재사용한다
+    // titles 테이블 목록을 여기 캐시해뒀다가, 칭호 그리드/장착 라벨을 다시 그릴 때 재사용함
     // (shop.html의 shopItems/currentBalance와 같은 패턴).
     let currentProfile = null;
     let cachedTitles = [];
@@ -243,13 +243,13 @@
     }
 
     // titles 테이블은 상점의 shop_items와 같은 패턴 — Edge Function을 거치지 않고 마이페이지가
-    // anon으로 직접 조회한다(0016_titles.sql에서 전체 공개 읽기 정책을 열어둠). 딱 5줄짜리라
-    // 한 번만 가져오면 되고, 페이지 안에서 다시 새로고침될 일은 없다(이름/필요 포인트가 바뀌면
+    // anon으로 직접 조회함(0016_titles.sql에서 전체 공개 읽기 정책을 열어둠). 딱 5줄짜리라
+    // 한 번만 가져오면 되고, 페이지 안에서 다시 새로고침될 일은 없음(이름/필요 포인트가 바뀌면
     // 페이지를 새로 열면 됨).
-    // 칭호 상점 전용 칭호는 min_points가 이 값 이상이다(shop-items 함수의
+    // 칭호 상점 전용 칭호는 min_points가 이 값 이상임(shop-items 함수의
     // PURCHASE_ONLY_MIN_POINTS = 999,999,999,999 참고 — 실제 성취형 칭호 중 가장 큰 값이
     // 1,000,000이라 이 정도 문턱이면 안전하게 구분됨). renderTitlesGrid에서 "본인이 실제로
-    // 구매한 적 없는 구매 전용 칭호"를 걸러낼 때 쓴다 — 상점에 아직 그 상품이 남아있는지와
+    // 구매한 적 없는 구매 전용 칭호"를 걸러낼 때 씀 — 상점에 아직 그 상품이 남아있는지와
     // 무관하게, 내가 안 샀으면 마이페이지엔 아예 안 보이는 게 맞다는 피드백으로 이렇게 정리함
     // (그러면 상품을 지워도 별도 "고아 칭호" 처리를 신경 쓸 필요가 없어짐).
     const PURCHASE_ONLY_THRESHOLD = 1000000000;
@@ -274,17 +274,17 @@
       el.textContent = equipped ? equipped.name : "미장착";
     }
 
-    // 잠금해제 경로가 두 가지다 — (1) 포인트 달성(maxBalanceReached, 기존 방식) (2) 포인트
+    // 잠금해제 경로가 두 가지임 — (1) 포인트 달성(maxBalanceReached, 기존 방식) (2) 포인트
     // 상점에서 구매(currentProfile.purchasedTitleIds, 0020_purchasable_titles.sql로 추가).
-    // 둘 중 하나만 만족해도 잠금해제된 걸로 본다. 설명 문구는 실제로 어느 경로로 풀렸는지에
-    // 맞춰서 다르게 보여준다 — 구매로 얻은 칭호인데 "N포인트 달성 완료"라고 뜨면 헷갈리니까.
+    // 둘 중 하나만 만족해도 잠금해제된 걸로 봄. 설명 문구는 실제로 어느 경로로 풀렸는지에
+    // 맞춰서 다르게 보여줌 — 구매로 얻은 칭호인데 "N포인트 달성 완료"라고 뜨면 헷갈리니까.
     function renderTitlesGrid() {
       const gridEl = document.getElementById("titles-grid");
       if (!gridEl || !currentProfile) return;
       const purchasedTitleIds = new Set(currentProfile.purchasedTitleIds ?? []);
-      // 구매 전용 칭호(min_points가 문턱 이상)는 본인이 실제로 산 적 있을 때만 카드를 그린다.
-      // 상점에 그 상품이 아직 있는지는 상관없다 — 안 샀으면 마이페이지에 안 보이는 게 맞다는
-      // 피드백으로 이렇게 정리했다(예전엔 999,999,999,999P 도달 시 잠금해제처럼 의미 없는
+      // 구매 전용 칭호(min_points가 문턱 이상)는 본인이 실제로 산 적 있을 때만 카드를 그림.
+      // 상점에 그 상품이 아직 있는지는 상관없음 — 안 샀으면 마이페이지에 안 보이는 게 맞다는
+      // 피드백으로 이렇게 정리함(예전엔 999,999,999,999P 도달 시 잠금해제처럼 의미 없는
       // 카드가 남아있는 버그가 있었음 — 이 필터가 그 문제도 같이 해결됨).
       const visibleTitles = cachedTitles.filter((t) => {
         if (t.min_points < PURCHASE_ONLY_THRESHOLD) return true;
@@ -319,7 +319,7 @@
 
     // 이미 장착된 칭호를 다시 누르면 해제(null), 아니면 그 칭호로 장착 — 서버(me/index.ts)가
     // max_balance_reached로 잠금해제 여부를 다시 검증하니 여기 UI 상태를 신뢰 못 하게 조작해도
-    // 실제로 잠긴 칭호가 장착되진 않는다.
+    // 실제로 잠긴 칭호가 장착되진 않음.
     async function equipTitle(titleId) {
       const statusEl = document.getElementById("titles-status");
       statusEl.textContent = "";

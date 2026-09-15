@@ -1,41 +1,41 @@
 // 포인트 상점 상품 관리 (관리자 전용). notices/index.ts와 같은 패턴 — 지금까지는 상품
 // 추가/수정/삭제를 Supabase 테이블 편집기에서 직접 했는데(0010_shop_items.sql 참고),
 // 매번 대시보드 들어가기 번거로워서 포인트 상점 페이지(shop.html)에 관리자만 보이는
-// 인라인 수정 UI를 추가하며 이 함수를 새로 만들었다.
+// 인라인 수정 UI를 추가하며 이 함수를 새로 만듦.
 //
-// 상품은 두 종류다:
+// 상품은 두 종류임:
 //  - 일반 상품: 소모성. 쿨타임/방송중 전용 여부가 있음.
-//  - 칭호 상품(isTitleItem): 구매하면 titleName으로 지정한 문자열이 칭호로 영구 지급된다
+//  - 칭호 상품(isTitleItem): 구매하면 titleName으로 지정한 문자열이 칭호로 영구 지급됨
 //    (0020_purchasable_titles.sql). 기존에 있던 성취형 칭호(titles 테이블, 0016_titles.sql)
-//    중에서 "고르는" 게 아니라, 상품을 만들 때마다 전용 칭호를 titles 테이블에 새로 만든다 —
-//    titles.id를 상품 id와 그대로 맞춰서(1:1) 별도 매핑 없이 바로 찾을 수 있게 한다.
+//    중에서 "고르는" 게 아니라, 상품을 만들 때마다 전용 칭호를 titles 테이블에 새로 만듦 —
+//    titles.id를 상품 id와 그대로 맞춰서(1:1) 별도 매핑 없이 바로 찾을 수 있게 함.
 //    titles.min_points는 절대 못 찍을 만큼 큰 값(PURCHASE_ONLY_MIN_POINTS)을 넣어서 포인트
-//    달성으로는 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 만든다.
+//    달성으로는 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 만듦.
 //
 // GET                                    → 전체 상품 목록 (비활성화 포함, 가격 오름차순).
 //                                           칭호 상품이면 연결된 titles.name도 함께 embed해서
-//                                           내려준다(수정 모달에서 현재 칭호명을 바로 채워주려고 —
+//                                           내려줌(수정 모달에서 현재 칭호명을 바로 채워주려고 —
 //                                           grants_title_id → titles(id) FK 관계로 자동 조인됨).
 //                                           일반 유저는 shop_items 테이블을 anon 키로 직접 읽지만
 //                                           (is_active=true만 RLS로 보임), 관리자는 비활성 상품도
-//                                           관리해야 하니 이 함수로 전체를 내려준다.
+//                                           관리해야 하니 이 함수로 전체를 내려줌.
 // POST   { id, name, cost, description?, requiresLive?, cooldownSeconds?, showOnOverlay?,
 //          isTitleItem?, titleName?, stockLimit? }
 //                                        → 새 상품 추가 (id는 소문자-하이픈 슬러그, 이후 수정 불가)
 //   stockLimit: 한정 수량(양의 정수). 생략/null이면 무제한. 다 팔리면(sold_count가 이 값에
-//   도달) 상품이 지워지지 않고 "품절" 상태로만 표시된다(spend-points가 검사).
+//   도달) 상품이 지워지지 않고 "품절" 상태로만 표시됨(spend-points가 검사).
 //   isTitleItem: true면 titleName(필수, 지급할 칭호 문구)으로 titles 테이블에 전용 칭호를
-//   새로 만들고 이 상품에 연결한다(칭호 id = 상품 id). false/생략이면 그냥 소모성 상품이고
-//   requiresLive/cooldownSeconds가 그대로 적용된다(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
+//   새로 만들고 이 상품에 연결함(칭호 id = 상품 id). false/생략이면 그냥 소모성 상품이고
+//   requiresLive/cooldownSeconds가 그대로 적용됨(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
 //   한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념 자체가 안 맞음).
-//   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜬다(기본 true).
+//   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜸(기본 true).
 // PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?,
 //          isActive?, showOnOverlay?, titleName?, stockLimit? }
-//   stockLimit: null을 보내면 무제한으로 되돌린다.
+//   stockLimit: null을 보내면 무제한으로 되돌림.
 //                                        → 기존 상품 수정 (보낸 필드만 갱신)
 //   titleName: 이 상품이 칭호 상품(연결된 titles row가 있음)일 때만 유효 — 연결된 titles.name을
-//   갱신한다. 칭호 상품이 아닌데 titleName을 보내면 not_title_item으로 거부.
-// DELETE ?id=<item id>                   → 상품 삭제 (연결된 titles row는 안 지운다 — 이미 그
+//   갱신함. 칭호 상품이 아닌데 titleName을 보내면 not_title_item으로 거부.
+// DELETE ?id=<item id>                   → 상품 삭제 (연결된 titles row는 안 지움 — 이미 그
 //                                           칭호를 산 유저들의 잠금해제 기록이 날아가면 안 되니까.
 //                                           과거 구매 로그는 points_ledger.reason / spend_events.item_name에
 //                                           문구가 그대로 스냅샷 되어 있어서, 상품을 지워도 기존
@@ -65,11 +65,11 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 // 슬러그 형식: 소문자 영숫자 + 하이픈만 (points_ledger.reason에 그대로 안 들어가고
-// spend_events.item_id로 쓰이는 값이라 URL/코드에서 다루기 까다로운 문자는 막는다).
+// spend_events.item_id로 쓰이는 값이라 URL/코드에서 다루기 까다로운 문자는 막음).
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 // 칭호 상품 전용 칭호의 min_points — 절대 못 찍을 만큼 큰 값을 넣어서 포인트 달성으로는
-// 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 한다.
+// 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 함.
 const PURCHASE_ONLY_MIN_POINTS = 999999999999;
 
 Deno.serve(async (req: Request) => {
@@ -92,10 +92,10 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "GET") {
       // 정렬은 가격 오름차순 — 예전엔 sort_order를 관리자가 직접 입력했는데, "가격 낮은 순
-      // 정렬이면 굳이 따로 순서를 정할 필요 없다"는 피드백으로 가격 기준 자동 정렬로 바꿨다.
-      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 이제 안 쓴다.
+      // 정렬이면 굳이 따로 순서를 정할 필요 없음"이라는 피드백으로 가격 기준 자동 정렬로 바꿈.
+      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 이제 안 씀.
       // titles(name): grants_title_id가 있으면 연결된 칭호 이름을 같이 내려줘서, 수정 모달을
-      // 열 때 현재 칭호명을 바로 채워줄 수 있게 한다(FK 관계라 PostgREST가 자동으로 조인해줌).
+      // 열 때 현재 칭호명을 바로 채워줄 수 있게 함(FK 관계라 PostgREST가 자동으로 조인해줌).
       const { data, error } = await admin
         .from("shop_items")
         .select(
@@ -118,7 +118,7 @@ Deno.serve(async (req: Request) => {
       const isTitleItem = body.isTitleItem === true;
       const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
       // 칭호 상품은 한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념이 안 맞아서 항상 0/false로
-      // 강제한다 — 프론트도 이 상품 유형에서는 해당 입력칸 자체를 안 보여줌.
+      // 강제함 — 프론트도 이 상품 유형에서는 해당 입력칸 자체를 안 보여줌.
       const requiresLive = isTitleItem ? false : body.requiresLive === true;
       const cooldownSeconds = isTitleItem
         ? 0
@@ -126,7 +126,7 @@ Deno.serve(async (req: Request) => {
         ? Math.max(0, Math.trunc(Number(body.cooldownSeconds)))
         : 0;
       // 한정 수량(재고) — null/생략이면 무제한. 지금은 shop.html이 칭호 상품에서만 이 필드를
-      // 보내지만, 컬럼 자체는 범용이라 다른 상품 유형에서 와도 그냥 똑같이 처리한다.
+      // 보내지만, 컬럼 자체는 범용이라 다른 상품 유형에서 와도 그냥 똑같이 처리함.
       let stockLimit: number | null = null;
       if (body.stockLimit !== undefined && body.stockLimit !== null) {
         const n = Number(body.stockLimit);
@@ -143,8 +143,8 @@ Deno.serve(async (req: Request) => {
       if (!Number.isFinite(cost) || cost <= 0) return jsonResponse({ error: "invalid_cost" }, 400);
       if (isTitleItem && titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
 
-      // 칭호 상품이면 상품 row보다 먼저 전용 칭호를 titles 테이블에 만든다 — id를 상품 id와
-      // 그대로 맞춰서(1:1) 나중에 수정할 때 별도 매핑 조회 없이 바로 찾을 수 있게 한다.
+      // 칭호 상품이면 상품 row보다 먼저 전용 칭호를 titles 테이블에 만듦 — id를 상품 id와
+      // 그대로 맞춰서(1:1) 나중에 수정할 때 별도 매핑 조회 없이 바로 찾을 수 있게 함.
       if (isTitleItem) {
         const { data: maxSortRow } = await admin
           .from("titles")
@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
         if (titleInsertError) {
           // titles.id는 shop_items.id와 별개 PK 공간이지만, 예전에 지워진 칭호 상품과 같은
           // id를 다시 쓰려는 경우(그 titles row는 구매자 보호를 위해 안 지워지므로) 충돌할 수
-          // 있다 — 구분되는 에러로 알려준다.
+          // 있음 — 구분되는 에러로 알려줌.
           if (titleInsertError.code === "23505") return jsonResponse({ error: "title_id_conflict" }, 409);
           throw new Error(`titles insert 실패: ${titleInsertError.message}`);
         }
@@ -184,7 +184,7 @@ Deno.serve(async (req: Request) => {
         .single();
       if (error) {
         // 상품 insert가 실패했는데 칭호는 이미 만들어졌으면(바로 위에서) 고아 칭호가 남으니
-        // 되돌린다 — 이 titles row는 아직 아무도 구매/참조하지 않은 상태라 안전하게 지울 수 있음.
+        // 되돌림 — 이 titles row는 아직 아무도 구매/참조하지 않은 상태라 안전하게 지울 수 있음.
         if (isTitleItem) {
           await admin.from("titles").delete().eq("id", itemId);
         }
@@ -243,7 +243,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // titleName은 이 상품이 칭호 상품일 때만 의미가 있다 — 연결된 titles row의 이름을 갱신한다
+      // titleName은 이 상품이 칭호 상품일 때만 의미가 있음 — 연결된 titles row의 이름을 갱신함
       // (새 titles row를 만드는 게 아니라, POST 때 이미 만들어둔 걸 고쳐 쓰는 것).
       if (body.titleName !== undefined) {
         const { data: existing, error: existingError } = await admin
@@ -266,7 +266,7 @@ Deno.serve(async (req: Request) => {
 
       if (Object.keys(update).length === 0) {
         if (body.titleName === undefined) return jsonResponse({ error: "empty_update" }, 400);
-        // titleName만 왔으면 shop_items 자체는 고칠 게 없으니 현재 상태 그대로 다시 내려준다.
+        // titleName만 왔으면 shop_items 자체는 고칠 게 없으니 현재 상태 그대로 다시 내려줌.
         const { data, error } = await admin.from("shop_items").select().eq("id", id).single();
         if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
         return jsonResponse(data, 200);

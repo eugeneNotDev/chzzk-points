@@ -1,5 +1,5 @@
 // 공지사항 작성/수정/삭제 (관리자 전용). 목록 읽기는 프론트에서 anon 키로 notices 테이블을
-// 직접 조회하면 되니까(RLS가 전체 공개), 이 함수는 쓰기 계열(POST/PATCH/DELETE)만 처리한다.
+// 직접 조회하면 되니까(RLS가 전체 공개), 이 함수는 쓰기 계열(POST/PATCH/DELETE)만 처리함.
 //
 // POST   { title: string, content: string }                 → 새 공지 작성
 // PATCH  ?id=<notice id>  { title: string, content: string } → 기존 공지 수정

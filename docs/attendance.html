@@ -108,10 +108,10 @@
   <script src="assets/js/chzzk-auth.js?v=11"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
-  // 다른 페이지들과 같은 이유로 IIFE로 감싼다 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
   (function () {
     // 오늘(KST) 날짜 — 서버(attendance-check/index.ts의 kstDateString)와 같은 방식(Intl +
-    // 타임존 명시)으로 구해야 "오늘" 판정이 서버와 어긋나지 않는다.
+    // 타임존 명시)으로 구해야 "오늘" 판정이 서버와 어긋나지 않음.
     function kstDateString(date) {
       return new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Seoul",
@@ -124,7 +124,7 @@
     let todayYear, todayMonth, todayStr;
     let viewYear, viewMonth;
     // "오늘" 기준 출석 상태 — 어느 달을 보고 있든(달력 넘기기와 무관하게) 항상 오늘 기준으로
-    // 유지한다. 조회 중인 달이 이번 달일 때만 서버 응답으로 최신화(다른 달 조회 응답에는
+    // 유지함. 조회 중인 달이 이번 달일 때만 서버 응답으로 최신화(다른 달 조회 응답에는
     // checkedToday/isLive이 그 달 기준이 아니라서 그대로 쓰면 안 됨 — 항상 "오늘"에 대한 값이어야 함).
     let todayStatus = { isLive: false, checkedToday: false, balance: 0 };
 
@@ -182,7 +182,7 @@
       }
     }
 
-    // year/month 달의 출석 현황을 받아온다. 실패(로그아웃/밴 등)면 null — 호출부에서
+    // year/month 달의 출석 현황을 받아옴. 실패(로그아웃/밴 등)면 null — 호출부에서
     // authFetch가 이미 401/403 처리(로그아웃 등)를 했으니 여기선 화면 전환만 신경쓰면 됨.
     async function fetchMonth(year, month) {
       const res = await authFetch(`${ATTENDANCE_CHECK_URL}?year=${year}&month=${month}`);
@@ -201,7 +201,7 @@
         return;
       }
       renderCalendar(year, month, data.attendedDates);
-      // 조회한 달이 "오늘"이 속한 달일 때만 오늘 기준 상태를 이 응답으로 최신화한다
+      // 조회한 달이 "오늘"이 속한 달일 때만 오늘 기준 상태를 이 응답으로 최신화함
       // (다른 달을 보고 있을 땐 그 응답의 checkedToday/isLive는 그 달 기준이 아니라서 무시).
       if (year === todayYear && month === todayMonth) {
         todayStatus = { isLive: data.isLive, checkedToday: data.checkedToday, balance: data.balance };

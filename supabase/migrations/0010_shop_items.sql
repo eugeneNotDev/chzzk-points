@@ -1,6 +1,6 @@
 -- 포인트 상점 상품 목록. 코드/배포 없이 상품을 자주 바꿀 수 있어야 해서(가격/이름/설명 수정,
--- 방송 중 전용 여부 토글, on/off) 전부 이 테이블 데이터로 관리한다 — Supabase 대시보드에서
--- 테이블 편집기로 직접 행을 수정/추가하면 바로 반영된다 (git 커밋/배포 불필요).
+-- 방송 중 전용 여부 토글, on/off) 전부 이 테이블 데이터로 관리함 — Supabase 대시보드에서
+-- 테이블 편집기로 직접 행을 수정/추가하면 바로 반영됨 (git 커밋/배포 불필요).
 create table if not exists public.shop_items (
   id text primary key,                              -- 소문자-하이픈 슬러그 (spend_events.item_id로도 쓰임)
   name text not null,
@@ -14,7 +14,7 @@ create table if not exists public.shop_items (
 
 alter table public.shop_items enable row level security;
 
--- 활성화된 상품만 프론트(anon)가 직접 읽을 수 있다 (ranking view와 같은 패턴 —
+-- 활성화된 상품만 프론트(anon)가 직접 읽을 수 있음 (ranking view와 같은 패턴 —
 -- shop.html이 Edge Function 없이 바로 조회해서 그림).
 create policy "shop_items_public_read" on public.shop_items
   for select

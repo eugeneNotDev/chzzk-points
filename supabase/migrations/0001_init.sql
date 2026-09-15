@@ -1,4 +1,4 @@
--- 초기 스키마. channelId(치지직 채널 ID)를 유저 식별자로 사용한다.
+-- 초기 스키마. channelId(치지직 채널 ID)를 유저 식별자로 사용함.
 
 create table if not exists users (
   channel_id text primary key,
@@ -24,13 +24,13 @@ create table if not exists spend_events (
 
 -- RLS(Row Level Security)
 -- 이 프로젝트는 Supabase Auth를 쓰지 않고 자체 세션(치지직 OAuth)을 쓰기 때문에,
--- "본인 행만" 같은 정책을 anon 키로는 검증할 방법이 없다.
--- 그래서 원칙을 이렇게 잡는다:
---   - 프론트엔드(anon key, 브라우저)는 "공개해도 되는 것만" 읽을 수 있다 (아래 select 정책).
---   - 쓰기(insert/update/delete)는 전부 막는다 — anon용 정책을 아예 만들지 않음.
---     실제 쓰기는 Edge Function이 service_role 키로 수행하고, service_role은 RLS를 우회한다.
+-- "본인 행만" 같은 정책을 anon 키로는 검증할 방법이 없음.
+-- 그래서 원칙을 이렇게 잡음:
+--   - 프론트엔드(anon key, 브라우저)는 "공개해도 되는 것만" 읽을 수 있음 (아래 select 정책).
+--   - 쓰기(insert/update/delete)는 전부 막음 — anon용 정책을 아예 만들지 않음.
+--     실제 쓰기는 Edge Function이 service_role 키로 수행하고, service_role은 RLS를 우회함.
 --   - points_ledger는 원장 원본이라 아직 공개 정책 없음 (익명 조회 불가).
---     랭킹은 나중에 집계용 view를 따로 만들어서, 그 view에만 읽기 정책을 연다.
+--     랭킹은 나중에 집계용 view를 따로 만들어서, 그 view에만 읽기 정책을 열어둠.
 
 alter table users enable row level security;
 alter table points_ledger enable row level security;

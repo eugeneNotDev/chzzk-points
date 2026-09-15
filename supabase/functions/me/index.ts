@@ -1,16 +1,16 @@
 // 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그 + 칭호.
-// mypage.html, shop.html이 이 함수를 쓴다 (Authorization: Bearer <세션토큰> 필수).
+// mypage.html, shop.html이 이 함수를 씀 (Authorization: Bearer <세션토큰> 필수).
 //
 // GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, selectedTitleId,
 //          purchasedTitleIds, refreshedToken? }
 //   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트 — 칭호 잠금해제 판정 기준.
 //   points_ledger에 행이 추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
 //   칭호 목록 자체(이름/필요 포인트)는 이 함수가 아니라 마이페이지가 titles 테이블에서
-//   직접 anon으로 조회한다 — shop_items와 같은 패턴.
+//   직접 anon으로 조회함 — shop_items와 같은 패턴.
 //   purchasedTitleIds: 포인트 상점에서 "구매"로 잠금해제한 칭호 id 목록(0020_purchasable_titles.sql).
 //   maxBalanceReached 달성 여부와는 별개 경로 — 마이페이지가 칭호 잠금해제 판정할 때 이 두
-//   조건을 OR로 합친다. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서
-//   여기서 서비스 롤로 조회해 내려준다.)
+//   조건을 OR로 합침. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서
+//   여기서 서비스 롤로 조회해 내려줌.)
 // GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
 //   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
@@ -19,14 +19,14 @@
 //   없어서 이 필터는 사실상 아무것도 걸러내지 않음.)
 // POST { isPublic?: boolean, selectedTitleId?: string | null } → 갱신 후 프로필 형태로 최신 상태 리턴
 //   (selectedTitleId: null이면 장착 해제. 문자열이면 그 칭호가 실존하고 본인이 잠금해제한
-//   상태인지 서버에서 다시 검증한다 — 잠긴 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
+//   상태인지 서버에서 다시 검증함 — 잠긴 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
 //
-// 모든 응답(GET/POST 공통)에 refreshedToken이 실려올 수 있다 — 세션 토큰의 남은 유효기간이
-// 얼마 안 남았을 때만(_shared/session.ts의 shouldRefresh) 새 토큰을 같이 내려준다("슬라이딩
+// 모든 응답(GET/POST 공통)에 refreshedToken이 실려올 수 있음 — 세션 토큰의 남은 유효기간이
+// 얼마 안 남았을 때만(_shared/session.ts의 shouldRefresh) 새 토큰을 같이 내려줌("슬라이딩
 // 세션". 별도 리프레시 엔드포인트 없이, 이 페이지들이 어차피 주기적으로 /me를 부르는 걸
-// 이용함 — chzzk-auth.js의 authFetch가 이 필드를 보고 자동으로 localStorage를 갈아끼운다).
+// 이용함 — chzzk-auth.js의 authFetch가 이 필드를 보고 자동으로 localStorage를 갈아끼움).
 //
-// verify_jwt는 config.toml에서 꺼져있다 (우리 세션 토큰을 Authorization에 쓰기 때문).
+// verify_jwt는 config.toml에서 꺼져있음 (우리 세션 토큰을 Authorization에 쓰기 때문).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -77,7 +77,7 @@ async function listMyPointsLog(channelId: string, page: number) {
 // 칭호 장착/해제. titleId가 null이면 그냥 해제. 문자열이면 titles 테이블에 실존하는지 +
 // 본인이 그 칭호를 잠금해제했는지(= max_balance_reached가 min_points 이상이거나,
 // user_purchased_titles에 구매 기록이 있거나 — 0020_purchasable_titles.sql로 추가된
-// 두 번째 경로) 서버에서 다시 검증한 뒤에만 반영한다 — 프론트 검증만 믿고 넘어가면
+// 두 번째 경로) 서버에서 다시 검증한 뒤에만 반영함 — 프론트 검증만 믿고 넘어가면
 // 개발자도구로 잠긴 칭호를 강제로 장착하는 게 가능해지므로.
 async function setSelectedTitle(channelId: string, titleId: string | null) {
   const admin = getAdminClient();
@@ -174,9 +174,9 @@ Deno.serve(async (req: Request) => {
 
   try {
     // 로그인은 이미 했는데(토큰을 갖고 있는데) 그 사이 밴 당한 경우 — 매 /me 호출마다 다시
-    // 체크해서 강제로 걸러낸다. mypage.html/shop.html은 로그인 상태면 항상 /me를 먼저 부르고,
+    // 체크해서 강제로 걸러냄. mypage.html/shop.html은 로그인 상태면 항상 /me를 먼저 부르고,
     // 다른 페이지들도 verifySessionInBackground()로 /me를 한 번씩 백그라운드 호출하기 때문에
-    // (chzzk-auth.js 참고) 밴된 유저는 어느 페이지를 열든 곧 로그아웃 처리된다.
+    // (chzzk-auth.js 참고) 밴된 유저는 어느 페이지를 열든 곧 로그아웃 처리됨.
     // (로그인 자체를 막는 처리는 oauth-callback에 별도로 있음 — 거긴 아직 토큰이 없는 시점이라서.)
     const admin = getAdminClient();
     const { data: bannedCheck, error: bannedError } = await admin
@@ -192,7 +192,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // 슬라이딩 세션 — 남은 유효기간이 얼마 없을 때만 새 토큰을 같이 내려준다 (session.ts 참고).
+    // 슬라이딩 세션 — 남은 유효기간이 얼마 없을 때만 새 토큰을 같이 내려줌 (session.ts 참고).
     const refreshedToken = shouldRefresh(session)
       ? await issueSessionToken({ channelId: session.channelId, channelName: session.channelName })
       : undefined;

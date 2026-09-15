@@ -32,7 +32,7 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 // 주어진 시각을 "한국 시간(KST) 기준 YYYY-MM-DD" 문자열로. 해외 접속자가 있어도 서버 기준으로
-// 하루 경계가 항상 한국 자정이 되게 하려고 Intl로 타임존을 명시한다 (수동 시(時) 계산보다 안전함).
+// 하루 경계가 항상 한국 자정이 되게 하려고 Intl로 타임존을 명시함 (수동 시(時) 계산보다 안전함).
 function kstDateString(date: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -54,7 +54,7 @@ async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: s
   return (data ?? []).reduce((sum: number, row: { amount: number }) => sum + row.amount, 0);
 }
 
-// year(4자리)/month(1~12)의 출석한 날짜 목록을 "YYYY-MM-DD" 문자열 배열로.
+// year(4자리)/month(1~12)의 출석한 날짜 목록을 "YYYY-MM-DD" 문자열 배열로 반환함.
 async function getAttendedDates(
   admin: ReturnType<typeof getAdminClient>,
   channelId: string,
@@ -62,7 +62,7 @@ async function getAttendedDates(
   month: number,
 ): Promise<string[]> {
   const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
-  // 다음 달 1일 — Date.UTC는 달력 계산용으로만 쓰고(실제 타임존과 무관), month는 0-based라 그대로 month를 넘기면 다음 달이 됨.
+  // 다음 달 1일 — Date.UTC는 달력 계산용으로만 쓰고(실제 타임존과 무관), month는 0-based라 그대로 넘기면 다음 달이 됨.
   const nextMonth = new Date(Date.UTC(year, month, 1));
   const endStr = nextMonth.toISOString().slice(0, 10);
 
@@ -116,13 +116,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // POST — 오늘 출석체크 시도.
+    // POST — 오늘 출석체크 시도
     const live = await isChannelLive();
     if (!live) return jsonResponse({ error: "not_live" }, 400);
 
-    // attendance를 먼저 넣는다(포인트보다 먼저) — (channel_id, attended_on) unique 제약이
-    // "오늘 이미 체크했는지"를 동시성까지 안전하게 걸러주는 관문 역할을 하기 때문에, 여길 먼저
-    // 통과시켜야 중복 클릭/동시 요청에도 포인트가 두 번 지급되는 일이 없다.
+    // attendance를 먼저 넣음(포인트보다 먼저) — (channel_id, attended_on) unique 제약이
+    // "오늘 이미 체크했는지"를 동시성까지 안전하게 걸러주는 관문 역할이라서, 여길 먼저
+    // 통과시켜야 중복 클릭/동시 요청에도 포인트가 두 번 지급되는 일이 없음.
     const { error: insertError } = await admin
       .from("attendance")
       .insert({ channel_id: session.channelId, attended_on: todayStr });
