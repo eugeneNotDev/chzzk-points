@@ -458,11 +458,17 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 .balance-half .balance { margin: 0; }
 .balance-divider { width: 1px; background: var(--border); }
 .balance-title-placeholder { color: var(--muted); font-size: 1.1rem; margin: 0; }
+/* 세 칸(포인트/칭호/등급)일 때만 포인트 숫자를 칭호·등급 텍스트와 같은 크기로 줄임 —
+   원래 .balance 크기(clamp 1.4~2rem)를 그대로 두면 숫자 칸만 세로로 훨씬 높아져서
+   세 칸 값 줄이 나란히 안 맞고 어긋나 보임. shop.html처럼 칸 나눔 없이 혼자 쓰는
+   .balance-card-centered 쪽은 그대로 큰 글씨 유지(.balance 자체는 안 건드림). */
+.balance-split .balance { font-size: 1.1rem; font-weight: 700; word-break: break-all; }
 @media (max-width: 560px) {
   /* 세 칸이라 폭이 좁은 화면에선 더 빡빡해짐 — 양옆 여백만 줄여서 칭호/등급 이름이
      잘리지 않게 함 (글자 크기는 그대로 둬도 대부분의 칭호명이 짧아서 괜찮음). */
   .balance-half { padding: 4px 4px; }
-  .balance-title-placeholder { font-size: 1rem; }
+  .balance-title-placeholder,
+  .balance-split .balance { font-size: 1rem; }
 }
 
 /* 포인트 상점의 "현재 포인트" 박스는 (칭호 칸 없이) 통짜라서 그냥 박스 전체를 중앙 정렬. */
