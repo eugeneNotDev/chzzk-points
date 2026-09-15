@@ -29,6 +29,7 @@ const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
+const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
 
 // 로그인 버튼 onclick에 연결. 랜덤 state를 만들어 sessionStorage에 저장해두고
 // 치지직 인증 페이지(account-interlock)로 이동함. 콜백에서 이 state와 대조해서
@@ -249,6 +250,54 @@ function initAdminNav() {
   const el = document.getElementById("admin-nav-link");
   if (!el) return;
   el.hidden = !isAdmin();
+}
+
+// 사이드바 "공지사항" 링크에 새 글 알림 점(.notice-nav-badge)을 띄움. 서버에 유저별 열람
+// 기록을 두지 않고 localStorage에 "마지막으로 확인한 시각"만 남기는 가벼운 방식이라, 기기를
+// 바꾸면 다시 뜰 수 있음 — 공지사항처럼 가볍게 훑어보는 용도엔 그 정도로 충분하다고 판단함.
+// 이 기능을 막 배포한 시점엔 아무도 아직 "확인"한 적이 없어서 기존 공지 전체가 전부 새 글처럼
+// 떠버리는 걸 막기 위해, localStorage에 값이 아예 없는 최초 1회는 점을 띄우지 않고 조용히
+// 지금 최신 글 시각으로 기준값만 채워둠(그 다음부터 진짜 새 공지가 생기면 정상적으로 뜸).
+// index/notice/ranking/attendance/mypage/shop/admin html이 전부 사이드바 초기화 직후 이 함수를
+// 호출함 — supabase-client를 자체적으로 import함(같은 assets/js 디렉터리 기준 상대경로라
+// "./supabase-client.js" — 페이지 쪽 inline script가 쓰는 "./assets/js/supabase-client.js"와
+// 다름에 주의: 이 파일은 <script src>로 로드된 별도 스크립트라 동적 import 기준 경로가
+// chzzk-auth.js 자신의 위치이지 문서 위치가 아님).
+async function initNoticeBadge() {
+  try {
+    const { supabase } = await import("./supabase-client.js");
+    const { data, error } = await supabase
+      .from("notices")
+      .select("created_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return;
+
+    const lastSeen = localStorage.getItem(NOTICE_LAST_SEEN_KEY);
+    if (!lastSeen) {
+      localStorage.setItem(NOTICE_LAST_SEEN_KEY, data.created_at);
+      return;
+    }
+    setNoticeBadgeVisible(new Date(data.created_at) > new Date(lastSeen));
+  } catch {
+    // 배지는 있으면 좋은 부가기능이라 실패해도 조용히 무시함(페이지 핵심 기능엔 영향 없음).
+  }
+}
+
+function setNoticeBadgeVisible(visible) {
+  document.querySelectorAll(".notice-nav-badge").forEach((el) => {
+    el.hidden = !visible;
+  });
+}
+
+// notice.html이 목록을 불러온 직후 호출함 — 지금 시각을 "마지막으로 확인함" 기준으로 저장하고
+// 배지를 곧바로 숨김. 방금 불러온 목록엔 그 시점까지의 모든 공지가 들어있으니, 가장 최근 글의
+// created_at이 아니라 그냥 현재 시각을 기준으로 잡아도 됨 — 더 단순하고 서버-클라이언트 시계
+// 오차를 신경 쓸 필요도 없음.
+function markNoticesSeen() {
+  localStorage.setItem(NOTICE_LAST_SEEN_KEY, new Date().toISOString());
+  setNoticeBadgeVisible(false);
 }
 
 // 사이드바 "포인트 상점" 아코디언 그룹(펼치면 일반 상점/칭호 상점 하위 링크가 나오는 형태).

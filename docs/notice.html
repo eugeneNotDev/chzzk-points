@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=35">
+<link rel="stylesheet" href="assets/css/style.css?v=36">
 </head>
 <body>
   <script>
@@ -29,7 +29,7 @@
           <span class="label">홈</span>
         </a>
         <a href="notice.html" class="active">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg></span>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
           <span class="label">공지사항</span>
         </a>
         <a href="ranking.html">
@@ -106,7 +106,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=12"></script>
+  <script src="assets/js/chzzk-auth.js?v=13"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -188,6 +188,9 @@
         listEl.innerHTML = "";
         return;
       }
+      // 목록을 정상적으로 불러왔으면(비어있어도) 여기까지 다 본 걸로 쳐서 사이드바 알림 점을
+      // 끔 — 조회 자체가 실패했을 땐(위 error 분기) 안 함, 못 봤는데 본 걸로 칠 순 없으니.
+      markNoticesSeen();
       if (!data || data.length === 0) {
         noticesById = new Map();
         emptyEl.hidden = false;
@@ -332,6 +335,7 @@
       initSidebarToggle();
       initAdminNav();
       initShopNavGroup();
+      initNoticeBadge();
       verifySessionInBackground();
       setupModal();
 

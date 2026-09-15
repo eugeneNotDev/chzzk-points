@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=35">
+<link rel="stylesheet" href="assets/css/style.css?v=36">
 </head>
 <body>
   <script>
@@ -29,7 +29,7 @@
           <span class="label">홈</span>
         </a>
         <a href="notice.html">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg></span>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
           <span class="label">공지사항</span>
         </a>
         <a href="ranking.html">
@@ -212,7 +212,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=12"></script>
+  <script src="assets/js/chzzk-auth.js?v=13"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -459,11 +459,20 @@
     // 한 명만 보여주는 화면이라 채널명을 굳이 또 안 보여줌 — get-user-detail 응답의 log에는
     // channelName 필드 자체가 없어서(getUserDetail 참고), entry.channelName이 undefined인지로
     // "포인트 로그 탭(이름 있음)"과 "유저 상세 모달(이름 없음)"을 구분함.
+    // 관리자가 직접 지급/차감한 행(entry.adminAction)만 실행취소 버튼을 보여줌 — 출석체크/상점
+    // 사용/밴 초기화 등 다른 경로로 생긴 행은 애초에 대상이 아님(서버 admin/index.ts의
+    // undoAdjustment가 admin_action 컬럼으로 한 번 더 검증하니, 여기서 실수로 버튼을 보여줘도
+    // 실제로는 막힘). 이미 취소한 행(entry.undone)은 버튼 대신 "취소됨" 표시만 함.
     function renderLogRow(entry) {
       const positive = entry.amount > 0;
       const sign = positive ? "+" : "";
       const whoLine = entry.channelName !== undefined
         ? `<strong>${escapeHtml(entry.channelName || "(알 수 없음)")}</strong>`
+        : "";
+      const undoArea = entry.adminAction
+        ? (entry.undone
+            ? `<span class="points-log-undone-label">취소됨</span>`
+            : `<button type="button" class="link-btn points-log-undo-btn" data-id="${entry.id}">실행취소</button>`)
         : "";
       return `
         <div class="points-log-row">
@@ -473,7 +482,33 @@
           </div>
           <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
           <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
+          <div class="points-log-undo-area">${undoArea}</div>
         </div>`;
+    }
+
+    // container 안의 실행취소 버튼에 이벤트를 붙임 — 포인트 로그 탭(loadPointsLog)과 유저 상세
+    // 모달(loadUserDetail) 둘 다 renderLogRow를 재사용하니 이 함수도 같이 재사용함. onDone은
+    // 성공 후 그 화면을 새로고침하는 콜백 — 호출부마다 다르게 넘김(유저 상세 모달 쪽은 잔액이
+    // 바뀌니 뒤의 유저 목록도 같이 새로고침해야 해서).
+    function wireLogUndoButtons(container, onDone) {
+      container.querySelectorAll(".points-log-undo-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("이 지급/차감 내역을 취소할까요? 반대 방향으로 포인트가 다시 조정돼요.")) return;
+          const id = Number(btn.dataset.id);
+          btn.disabled = true;
+          try {
+            const res = await authFetch(ADMIN_URL, {
+              method: "POST",
+              body: JSON.stringify({ action: "undo-adjustment", id }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            await onDone();
+          } catch (err) {
+            alert("실행취소에 실패했어요.");
+            btn.disabled = false;
+          }
+        });
+      });
     }
 
     // 상점 내역 탭에서 여러 항목을 골라 한 번에 처리완료(또는 처리안함)로 바꿀 때 쓰는 선택
@@ -578,6 +613,7 @@
         }
         logEmptyEl.hidden = true;
         logListEl.innerHTML = data.entries.map(renderLogRow).join("");
+        wireLogUndoButtons(logListEl, () => loadPointsLog(logSearchInput.value, logCurrentPage));
         renderPagination(logPaginationEl, data.page, data.totalPages, (p) => loadPointsLog(logSearchInput.value, p));
       } catch (err) {
         logSearchStatus.textContent = "불러오기에 실패했어요.";
@@ -762,6 +798,10 @@
         }
         userDetailLogEmptyEl.hidden = true;
         userDetailLogListEl.innerHTML = data.log.map(renderLogRow).join("");
+        wireLogUndoButtons(userDetailLogListEl, async () => {
+          await loadUserDetail(channelId, page);
+          await searchUsers(searchInput.value); // 뒤의 유저 목록 잔액도 같이 갱신
+        });
         renderPagination(userDetailPaginationEl, data.page, data.totalPages, (p) => loadUserDetail(channelId, p));
       } catch (err) {
         userDetailNameEl.textContent = "불러오지 못했어요.";
@@ -839,6 +879,7 @@
     initSidebarToggle();
     initAdminNav();
     initShopNavGroup();
+    initNoticeBadge();
     verifySessionInBackground();
 
     if (!isAdmin()) {

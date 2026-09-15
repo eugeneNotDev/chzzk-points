@@ -6,7 +6,8 @@
 //   → { users: [{ channelId, channelName, isPublic, banned, balance }], page, pageSize, totalCount, totalPages }
 //     (channel_name ilike 검색, q 없으면 전체. 페이지당 10명 — list-points-log와 같은 페이지네이션 패턴.)
 // POST { action: "adjust-points", channelId: string, amount: number, reason?: string }
-//   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감)
+//   → { channelId, balance }  (points_ledger에 한 줄 추가. amount는 음수 가능 — 차감. admin_action=true로
+//     남아서 undo-adjustment로 나중에 취소할 수 있음.)
 // POST { action: "set-ban", channelId: string, banned: boolean }
 //   → { channelId, banned }  (밴 걸면 랭킹에서도 빠지고 재로그인도 막힘 — oauth-callback, public.ranking 참고.
 //     banned=true로 새로 거는 순간 그 계정의 포인트/칭호 보유분을 전부 초기화함(resetAccountHoldings) —
@@ -16,9 +17,18 @@
 //   → { affected: number }  (points_ledger에 대상 전원 몫으로 한 줄씩 insert. amount는 음수 가능 — 일괄 차감.
 //     target="all"이면 서버가 banned=false && 관리자 계정 제외한 전체 유저를 대상으로 계산함(클라이언트가
 //     보고 있는 검색 목록/페이지와 무관하게 진짜 전체). target="selected"면 channelIds에 담아 보낸 유저들만
-//     대상 — 관리자 화면에서 체크박스로 고른 유저 목록.)
+//     대상 — 관리자 화면에서 체크박스로 고른 유저 목록. 각 행 admin_action=true로 남아서 개별로
+//     undo-adjustment 취소 가능.)
+// POST { action: "undo-adjustment", id: number }
+//   → { id, undone: true } | { error: "not_found" | "not_undoable" | "already_undone" }
+//     (points_ledger의 한 행(adjust-points/bulk-adjust-points로 생긴 admin_action=true 행만 대상)을
+//     취소함 — 원래 행을 지우거나 고치지 않고, 반대 부호의 보정 행을 새로 추가하는 방식(reason:
+//     "실행취소: <원래 reason>", admin_action=false — 보정 행 자체는 다시 취소 대상이 아님).
+//     원래 행엔 undone=true를 세워서 중복 취소를 막음. 출석체크/상점 사용/밴 초기화 등 admin_action이
+//     아닌 행은 애초에 대상이 아니라서 "not_undoable"로 거절함 — 프론트에서 버튼 자체를 admin_action
+//     행에만 보여주지만(admin.html), 여기서도 한 번 더 확인함.)
 // POST { action: "list-points-log", q?: string, page?: number }
-//   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
+//   → { entries: [{ id, channelId, channelName, amount, reason, processed, adminAction, undone, createdAt }], page, pageSize, totalCount, totalPages }
 //     (points_ledger 최근 기록(지급/차감/상점 사용/출석체크 등 전부), 페이지당 10개. q 있으면 그
 //     이름을 가진 유저 기록만, 없으면 전체 유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘
 //     했는지 훑어보는 용도. 최근 24시간 것만 보여줌 — 그 이상 지난 관리자 모니터링용 로그는
@@ -48,8 +58,8 @@
 //     오늘(KST) 상점 사용 건수, 오늘(KST) 출석체크 인원.)
 // POST { action: "get-user-detail", channelId: string, page?: number }
 //   → { channelId, channelName, isPublic, banned, createdAt, maxBalanceReached, balance,
-//       attendanceCount, log: [{ id, amount, reason, processed, createdAt }], page, pageSize,
-//       totalCount, totalPages }
+//       attendanceCount, log: [{ id, amount, reason, processed, adminAction, undone, createdAt }],
+//       page, pageSize, totalCount, totalPages }
 //     (유저 한 명의 전체 내역 — list-points-log와 달리 24시간 제한 없이 전체 기간, 페이지당 10개.
 //     관리자 유저 목록에서 행을 클릭하면 뜨는 상세 모달용.)
 
@@ -120,7 +130,7 @@ async function adjustPoints(
 ) {
   const { error: insertError } = await admin
     .from("points_ledger")
-    .insert({ channel_id: channelId, amount, reason: reason || "관리자 지급/차감" });
+    .insert({ channel_id: channelId, amount, reason: reason || "관리자 지급/차감", admin_action: true });
   if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
 
   const { data: ledgerRows, error: ledgerError } = await admin
@@ -200,10 +210,40 @@ async function bulkAdjustPoints(
     channel_id: channelId,
     amount,
     reason: reason || "관리자 일괄 지급/차감",
+    admin_action: true,
   }));
   const { error } = await admin.from("points_ledger").insert(rows);
   if (error) throw new Error(`points_ledger 일괄 insert 실패: ${error.message}`);
   return channelIds.length;
+}
+
+// 관리자 지급/차감 실행취소. 원래 행을 지우거나 고치지 않고(잔액 계산 근거 보존 — resetAccountHoldings와
+// 같은 원칙) 반대 부호의 보정 행을 새로 추가하는 방식. admin_action=true인 행만 대상 — 텍스트(reason)
+// 매칭이 아니라 0024_admin_adjustment_undo.sql에서 추가한 컬럼으로 판정하므로, 관리자가 reason을
+// 자유 입력했어도 정확히 걸러짐. 이미 취소된 행(undone=true)은 다시 취소 못 하게 막음.
+async function undoAdjustment(admin: ReturnType<typeof getAdminClient>, id: number) {
+  const { data: row, error: rowError } = await admin
+    .from("points_ledger")
+    .select("id, channel_id, amount, reason, admin_action, undone")
+    .eq("id", id)
+    .maybeSingle();
+  if (rowError) throw new Error(`points_ledger 조회 실패: ${rowError.message}`);
+  if (!row) return { ok: false as const, error: "not_found" as const };
+  if (!row.admin_action) return { ok: false as const, error: "not_undoable" as const };
+  if (row.undone) return { ok: false as const, error: "already_undone" as const };
+
+  const { error: insertError } = await admin.from("points_ledger").insert({
+    channel_id: row.channel_id,
+    amount: -row.amount,
+    reason: `실행취소: ${row.reason}`,
+    admin_action: false,
+  });
+  if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
+
+  const { error: updateError } = await admin.from("points_ledger").update({ undone: true }).eq("id", id);
+  if (updateError) throw new Error(`undone 갱신 실패: ${updateError.message}`);
+
+  return { ok: true as const };
 }
 
 // 주어진 시각을 "한국 시간(KST) 기준 YYYY-MM-DD" 문자열로 (attendance-check/index.ts와 동일 —
@@ -285,7 +325,7 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
     admin.from("points_ledger").select("amount").eq("channel_id", channelId),
     admin
       .from("points_ledger")
-      .select("id, amount, reason, processed, created_at", { count: "exact" })
+      .select("id, amount, reason, processed, admin_action, undone, created_at", { count: "exact" })
       .eq("channel_id", channelId)
       .order("created_at", { ascending: false })
       .range(offset, offset + USER_DETAIL_LOG_PAGE_SIZE - 1),
@@ -301,6 +341,8 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
     amount: r.amount,
     reason: r.reason,
     processed: r.processed,
+    adminAction: r.admin_action,
+    undone: r.undone,
     createdAt: r.created_at,
   }));
 
@@ -344,7 +386,7 @@ async function listPointsLog(
 
   let query = admin
     .from("points_ledger")
-    .select("id, channel_id, amount, reason, processed, created_at", { count: "exact" })
+    .select("id, channel_id, amount, reason, processed, admin_action, undone, created_at", { count: "exact" })
     .gte("created_at", cutoffIso)
     .order("created_at", { ascending: false })
     .range(offset, offset + POINTS_LOG_PAGE_SIZE - 1);
@@ -369,6 +411,8 @@ async function listPointsLog(
     amount: r.amount,
     reason: r.reason,
     processed: r.processed,
+    adminAction: r.admin_action,
+    undone: r.undone,
     createdAt: r.created_at,
   }));
 
@@ -492,6 +536,14 @@ Deno.serve(async (req: Request) => {
 
       const affected = await bulkAdjustPoints(admin, channelIds, truncAmount, typeof reason === "string" ? reason : "");
       return jsonResponse({ affected }, 200);
+    }
+
+    if (body.action === "undo-adjustment") {
+      const { id } = body;
+      if (typeof id !== "number" || !Number.isFinite(id)) return jsonResponse({ error: "missing_id" }, 400);
+      const result = await undoAdjustment(admin, Math.trunc(id));
+      if (!result.ok) return jsonResponse({ error: result.error }, 400);
+      return jsonResponse({ id, undone: true }, 200);
     }
 
     if (body.action === "list-points-log") {
