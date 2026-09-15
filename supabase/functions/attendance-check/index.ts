@@ -7,6 +7,10 @@
 //   { attendedDates, checkedToday: true, isLive: true, balance }
 //
 // 밴된 유저는 다른 함수들과 동일하게 403 { error: "banned" }.
+//
+// users.reset_at이 세팅돼 있으면(과거에 밴당했다가 풀린 적 있음) 그 시각 이전 출석 기록은
+// attendedDates에서 걸러짐 — me/index.ts의 포인트 로그와 같은 이유(밴 해제 후엔 출석체크
+// 달력도 완전히 새로 시작한 것처럼 보이게 함). attendance 행 자체는 지우지 않음.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -48,6 +52,16 @@ async function isBanned(admin: ReturnType<typeof getAdminClient>, channelId: str
   return data?.banned === true;
 }
 
+// me/index.ts의 listMyPointsLog와 같은 이유 — users.reset_at이 세팅돼 있으면(과거에 밴당한
+// 적 있음, admin/index.ts의 setBan 참고) 그 시각 이전 출석 기록은 달력에서 안 보여줌. 밴
+// 해제 후엔 출석체크도 포인트 로그처럼 완전히 새로 시작한 것처럼 보이게 하려는 의도.
+// attendance 행 자체는 안 지움(관리자 쪽에서 필요하면 그대로 조회 가능).
+async function getResetAt(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<string | null> {
+  const { data, error } = await admin.from("users").select("reset_at").eq("channel_id", channelId).maybeSingle();
+  if (error) throw new Error(`reset_at 조회 실패: ${error.message}`);
+  return data?.reset_at ?? null;
+}
+
 async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
   const { data, error } = await admin.from("points_ledger").select("amount").eq("channel_id", channelId);
   if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
@@ -60,18 +74,24 @@ async function getAttendedDates(
   channelId: string,
   year: number,
   month: number,
+  resetAt: string | null,
 ): Promise<string[]> {
   const startStr = `${year}-${String(month).padStart(2, "0")}-01`;
   // 다음 달 1일 — Date.UTC는 달력 계산용으로만 쓰고(실제 타임존과 무관), month는 0-based라 그대로 넘기면 다음 달이 됨.
   const nextMonth = new Date(Date.UTC(year, month, 1));
   const endStr = nextMonth.toISOString().slice(0, 10);
 
-  const { data, error } = await admin
+  let query = admin
     .from("attendance")
     .select("attended_on")
     .eq("channel_id", channelId)
     .gte("attended_on", startStr)
     .lt("attended_on", endStr);
+  if (resetAt) {
+    query = query.gt("created_at", resetAt);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(`attendance 조회 실패: ${error.message}`);
   return (data ?? []).map((row: { attended_on: string }) => row.attended_on);
 }
@@ -91,6 +111,7 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
     if (await isBanned(admin, session.channelId)) return jsonResponse({ error: "banned" }, 403);
 
+    const resetAt = await getResetAt(admin, session.channelId);
     const todayStr = kstDateString(new Date());
     const [todayYear, todayMonth] = todayStr.split("-").map(Number);
 
@@ -100,7 +121,7 @@ Deno.serve(async (req: Request) => {
       const month = Number(url.searchParams.get("month")) || todayMonth;
 
       const [attendedDates, balance, isLive] = await Promise.all([
-        getAttendedDates(admin, session.channelId, year, month),
+        getAttendedDates(admin, session.channelId, year, month, resetAt),
         getBalance(admin, session.channelId),
         isChannelLive(),
       ]);
@@ -139,7 +160,7 @@ Deno.serve(async (req: Request) => {
     if (pointsError) throw new Error(`points_ledger insert 실패: ${pointsError.message}`);
 
     const [attendedDates, balance] = await Promise.all([
-      getAttendedDates(admin, session.channelId, todayYear, todayMonth),
+      getAttendedDates(admin, session.channelId, todayYear, todayMonth, resetAt),
       getBalance(admin, session.channelId),
     ]);
 
