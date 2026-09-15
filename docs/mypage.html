@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>마이페이지 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=37">
+<link rel="stylesheet" href="assets/css/style.css?v=38">
 </head>
 <body>
   <script>
@@ -87,6 +87,11 @@
             <div class="balance-half">
               <p class="muted">칭호</p>
               <p class="balance-title-placeholder" id="equipped-title-label">미장착</p>
+            </div>
+            <div class="balance-divider"></div>
+            <div class="balance-half">
+              <p class="muted">등급</p>
+              <p class="balance-title-placeholder" id="tier-title-label">없음</p>
             </div>
           </div>
         </div>
@@ -263,21 +268,22 @@
       cachedTitles = data ?? [];
     }
 
-    // 요약 카드에 포인트 구간 칭호(자동, /me가 내려주는 tierTitleName/Color)와 상점 구매
-    // 칭호(장착, selectedTitleId)를 같이 보여줌 — 랭킹 목록과 같은 chzzk-auth.js 공용 함수를
-    // 씀. 구간 칭호는 더 이상 "[브론즈]" 배지가 아니라 이름처럼 구간 색이 입혀진 텍스트로,
-    // 구매 칭호는 그대로 "[칭호명]" 배지로 보여줌. 여기는 랭킹처럼 실제 "이름"에 붙이는 게
-    // 아니라 별도 요약 라벨이라, applyTierColorToName에 구간 칭호명 자체를 넣어서 색만 입힘.
+    // 요약 카드에 상점 구매 칭호(장착, selectedTitleId)와 포인트 구간 칭호(자동, /me가
+    // 내려주는 tierTitleName/Color)를 "칭호"/"등급" 두 칸으로 나눠서 따로 보여줌 — 랭킹
+    // 목록과 같은 chzzk-auth.js 공용 함수를 씀. 구매 칭호를 장착 안 했으면 "미장착", 아직
+    // 어떤 구간에도 도달 못 했으면(포인트가 최소 구간 미만) "등급" 칸엔 "없음"을 보여줌.
     function renderEquippedTitleLabel() {
-      const el = document.getElementById("equipped-title-label");
-      if (!el || !currentProfile) return;
-      const equippedShop = cachedTitles.find((t) => t.id === currentProfile.selectedTitleId);
-      const shopBadge = renderShopTitleBadgeHtml(equippedShop?.name ?? null).trim();
-      const tierLabel = currentProfile.tierTitleName
-        ? applyTierColorToName(escapeHtml(currentProfile.tierTitleName), currentProfile.tierTitleColor)
-        : "";
-      const html = [tierLabel, shopBadge].filter(Boolean).join(" ");
-      el.innerHTML = html || "미보유";
+      const titleEl = document.getElementById("equipped-title-label");
+      if (titleEl && currentProfile) {
+        const equippedShop = cachedTitles.find((t) => t.id === currentProfile.selectedTitleId);
+        titleEl.innerHTML = equippedShop ? `<span class="title-badge">${escapeHtml(equippedShop.name)}</span>` : "미장착";
+      }
+      const tierEl = document.getElementById("tier-title-label");
+      if (tierEl && currentProfile) {
+        tierEl.innerHTML = currentProfile.tierTitleName
+          ? applyTierColorToName(escapeHtml(currentProfile.tierTitleName), currentProfile.tierTitleColor)
+          : "없음";
+      }
     }
 
     // 이제 이 목록엔 상점에서 구매한 칭호만 보임 — 포인트 구간 칭호(브론즈~다이아)는 자동

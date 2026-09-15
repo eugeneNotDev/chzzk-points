@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=37">
+<link rel="stylesheet" href="assets/css/style.css?v=38">
 </head>
 <body>
   <script>
@@ -172,7 +172,15 @@
 
     function wireNoticeRowButtons() {
       document.querySelectorAll(".notice-title-btn").forEach((btn) => {
-        btn.addEventListener("click", () => openViewModal(btn.dataset.id));
+        btn.addEventListener("click", () => {
+          openViewModal(btn.dataset.id);
+          // noticeListSeenBaseline은 이번 페이지 방문 동안 고정이라(위 주석 참고) 팝업을
+          // 열었다 닫아도 NEW 표시가 자동으로는 안 사라짐 — 그래서 실제로 클릭해서 읽은
+          // 이 글의 NEW만 화면에서 바로 지워줌(localStorage 기준 시각 자체는 안 건드림,
+          // 어차피 loadNotices() 시점에 markNoticesSeen()으로 이미 갱신돼 있음).
+          const tag = btn.querySelector(".notice-new-tag");
+          if (tag) tag.remove();
+        });
       });
       document.querySelectorAll(".notice-edit-btn").forEach((btn) => {
         btn.addEventListener("click", () => openEditModal(btn.dataset.id));

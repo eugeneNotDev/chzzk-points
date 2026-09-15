@@ -436,13 +436,12 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 }
 .balance .unit { font-size: 1rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
 
-/* 마이페이지 "현재 포인트" 박스 — 반으로 나눠서 왼쪽엔 포인트, 오른쪽엔 칭호 자리를 둠
-   (칭호 기능은 아직 없어서 지금은 "준비 중" 플레이스홀더만). grid로 폭을 1fr/auto/1fr로
-   딱 나눠서 두 칸이 항상 정확히 같은 폭이 되게 함(flex 50% 기반이면 divider 폭만큼 미세하게
-   안 맞을 수 있어서 grid로 바꿈). */
+/* 마이페이지 "현재 포인트" 박스 — 포인트/칭호(구매·장착)/등급(포인트 구간, 자동) 세 칸으로
+   나눔. grid로 폭을 1fr/auto/1fr/auto/1fr로 딱 나눠서 세 칸이 항상 정확히 같은 폭이 되게 함
+   (flex 기반이면 divider 폭만큼 미세하게 안 맞을 수 있어서 grid로 함). */
 .balance-split {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
   align-items: stretch;
 }
 .balance-half {
@@ -459,6 +458,12 @@ button.secondary:hover { border-color: var(--accent); color: var(--accent); back
 .balance-half .balance { margin: 0; }
 .balance-divider { width: 1px; background: var(--border); }
 .balance-title-placeholder { color: var(--muted); font-size: 1.1rem; margin: 0; }
+@media (max-width: 560px) {
+  /* 세 칸이라 폭이 좁은 화면에선 더 빡빡해짐 — 양옆 여백만 줄여서 칭호/등급 이름이
+     잘리지 않게 함 (글자 크기는 그대로 둬도 대부분의 칭호명이 짧아서 괜찮음). */
+  .balance-half { padding: 4px 4px; }
+  .balance-title-placeholder { font-size: 1rem; }
+}
 
 /* 포인트 상점의 "현재 포인트" 박스는 (칭호 칸 없이) 통짜라서 그냥 박스 전체를 중앙 정렬. */
 .balance-card-centered { text-align: center; }

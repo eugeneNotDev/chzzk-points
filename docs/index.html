@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=37">
+<link rel="stylesheet" href="assets/css/style.css?v=38">
 </head>
 <body>
   <script>
@@ -197,6 +197,10 @@
         btn.addEventListener("click", () => {
           const n = noticePreviewById.get(btn.dataset.id);
           if (n) openNoticeModal(n);
+          // notice.html과 같은 이유 — noticeListSeenBaseline이 이번 방문 동안 고정이라
+          // 팝업만 열었다 닫아선 NEW가 안 사라짐. 실제로 읽은 글의 NEW만 바로 지워줌.
+          const tag = btn.querySelector(".notice-new-tag");
+          if (tag) tag.remove();
         });
       });
     }
