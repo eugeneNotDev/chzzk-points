@@ -915,6 +915,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 #admin-bulk-selected-count { margin-top: 10px; margin-bottom: 0; }
 
 /* 관리자 페이지 상단 현황 요약 카드 */
+.admin-total-points { margin-bottom: 16px; }
 .admin-stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));

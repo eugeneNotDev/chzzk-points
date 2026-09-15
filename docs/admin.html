@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=40">
+<link rel="stylesheet" href="assets/css/style.css?v=41">
 </head>
 <body>
   <script>
@@ -79,10 +79,16 @@
           </button>
           <div class="collapse open" id="admin-stats-collapse">
             <div class="collapse-inner">
+              <!-- 전체 발행 포인트는 자릿수가 계속 늘어나는 값이라 다른 4개 타일과 같은 칸에
+                   욱여넣으면 계속 좁아 보여서, 마이페이지 "현재 포인트"와 같은 스타일로 위에
+                   따로 크게 뺐음(.balance-card-centered 재사용). -->
+              <div class="admin-total-points balance-card-centered">
+                <p class="muted">전체 발행 포인트</p>
+                <p class="balance"><span id="stat-total-points">-</span><span class="unit">P</span></p>
+              </div>
               <div class="admin-stats-grid" id="admin-stats-grid">
                 <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-user-count">-</span><span class="admin-stat-label">전체 가입자</span></div>
                 <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-banned-count">-</span><span class="admin-stat-label">밴된 유저</span></div>
-                <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-total-points">-</span><span class="admin-stat-label">전체 발행 포인트</span></div>
                 <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-today-spend">-</span><span class="admin-stat-label">오늘 상점 사용</span></div>
                 <div class="admin-stat-tile"><span class="admin-stat-value" id="stat-today-attendance">-</span><span class="admin-stat-label">오늘 출석체크</span></div>
               </div>
