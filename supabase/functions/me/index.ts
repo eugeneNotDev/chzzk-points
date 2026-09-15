@@ -1,16 +1,18 @@
 // 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그 + 칭호.
 // mypage.html, shop.html이 이 함수를 씀 (Authorization: Bearer <세션토큰> 필수).
 //
-// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, selectedTitleId,
-//          purchasedTitleIds, refreshedToken? }
-//   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트 — 칭호 잠금해제 판정 기준.
-//   points_ledger에 행이 추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
-//   칭호 목록 자체(이름/필요 포인트)는 이 함수가 아니라 마이페이지가 titles 테이블에서
-//   직접 anon으로 조회함 — shop_items와 같은 패턴.
-//   purchasedTitleIds: 포인트 상점에서 "구매"로 잠금해제한 칭호 id 목록(0020_purchasable_titles.sql).
-//   maxBalanceReached 달성 여부와는 별개 경로 — 마이페이지가 칭호 잠금해제 판정할 때 이 두
-//   조건을 OR로 합침. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서
-//   여기서 서비스 롤로 조회해 내려줌.)
+// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, tierTitleName,
+//          tierTitleColor, selectedTitleId, purchasedTitleIds, refreshedToken? }
+//   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트. points_ledger에 행이
+//   추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
+//   tierTitleName/tierTitleColor: 포인트 구간 칭호(브론즈~다이아) — maxBalanceReached 기준으로
+//   매번 자동 계산해서 내려줌(0022_title_tiers.sql). 저장된 선택값이 아니라 늘 최고 달성
+//   구간이 그대로 붙는 자동 배지라, 장착/해제 개념이 없음.
+//   selectedTitleId/purchasedTitleIds: 상점에서 "구매"로 잠금해제한 칭호 전용 — 이제
+//   selectedTitleId엔 구매 칭호만 들어갈 수 있음(0022_title_tiers.sql부터). 칭호 목록 자체
+//   (이름)는 이 함수가 아니라 마이페이지가 titles 테이블에서 직접 anon으로 조회함 — shop_items와
+//   같은 패턴. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서 여기서
+//   서비스 롤로 조회해 내려줌.)
 // GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
 //   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
@@ -18,8 +20,9 @@
 //   포인트는 양이 너무 많아서 개인 로그에 넣기엔 부적합하다고 판단함. 지금은 그 기능이 아직
 //   없어서 이 필터는 사실상 아무것도 걸러내지 않음.)
 // POST { isPublic?: boolean, selectedTitleId?: string | null } → 갱신 후 프로필 형태로 최신 상태 리턴
-//   (selectedTitleId: null이면 장착 해제. 문자열이면 그 칭호가 실존하고 본인이 잠금해제한
-//   상태인지 서버에서 다시 검증함 — 잠긴 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
+//   (selectedTitleId: null이면 장착 해제. 문자열이면 그게 구매 전용 칭호이고(포인트 구간
+//   칭호는 자동이라 여기 못 넣음 — not_purchasable_title로 거부) 본인이 실제로 구매한 상태인지
+//   서버에서 다시 검증함 — 안 산 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
 //
 // 모든 응답(GET/POST 공통)에 refreshedToken이 실려올 수 있음 — 세션 토큰의 남은 유효기간이
 // 얼마 안 남았을 때만(_shared/session.ts의 shouldRefresh) 새 토큰을 같이 내려줌("슬라이딩
@@ -49,6 +52,9 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 const MY_POINTS_LOG_PAGE_SIZE = 10;
+// 이 값 이상인 titles row는 구매 전용 칭호(shop-items 함수의 PURCHASE_ONLY_MIN_POINTS =
+// 999,999,999,999) — 포인트 구간 칭호는 전부 이보다 한참 작음(가장 큰 값이 1,000,000).
+const PURCHASE_ONLY_THRESHOLD = 1_000_000_000;
 
 async function listMyPointsLog(channelId: string, page: number) {
   const admin = getAdminClient();
@@ -74,11 +80,11 @@ async function listMyPointsLog(channelId: string, page: number) {
   return { entries, totalCount: count ?? 0 };
 }
 
-// 칭호 장착/해제. titleId가 null이면 그냥 해제. 문자열이면 titles 테이블에 실존하는지 +
-// 본인이 그 칭호를 잠금해제했는지(= max_balance_reached가 min_points 이상이거나,
-// user_purchased_titles에 구매 기록이 있거나 — 0020_purchasable_titles.sql로 추가된
-// 두 번째 경로) 서버에서 다시 검증한 뒤에만 반영함 — 프론트 검증만 믿고 넘어가면
-// 개발자도구로 잠긴 칭호를 강제로 장착하는 게 가능해지므로.
+// 칭호 장착/해제. titleId가 null이면 그냥 해제. 문자열이면 (1) titles 테이블에 실존하는지,
+// (2) 포인트 구간 칭호(브론즈~다이아)가 아니라 구매 전용 칭호인지(포인트 구간 칭호는
+// 0022_title_tiers.sql부터 자동으로 붙어서 수동 장착 대상이 아님), (3) 본인이 실제로 그
+// 칭호를 구매했는지(user_purchased_titles) 서버에서 순서대로 다시 검증한 뒤에만 반영함 —
+// 프론트 검증만 믿고 넘어가면 개발자도구로 안 산 칭호를 강제로 장착하는 게 가능해지므로.
 async function setSelectedTitle(channelId: string, titleId: string | null) {
   const admin = getAdminClient();
 
@@ -96,32 +102,37 @@ async function setSelectedTitle(channelId: string, titleId: string | null) {
   if (titleError) throw new Error(`titles 조회 실패: ${titleError.message}`);
   if (!title) return { ok: false as const, error: "title_not_found" as const };
 
-  const { data: user, error: userError } = await admin
-    .from("users")
-    .select("max_balance_reached")
-    .eq("channel_id", channelId)
-    .maybeSingle();
-  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+  if (title.min_points < PURCHASE_ONLY_THRESHOLD) {
+    return { ok: false as const, error: "not_purchasable_title" as const };
+  }
 
-  const achievedByBalance = Boolean(user) && user!.max_balance_reached >= title.min_points;
-  let achievedByPurchase = false;
-  if (!achievedByBalance) {
-    const { data: purchased, error: purchasedError } = await admin
-      .from("user_purchased_titles")
-      .select("title_id")
-      .eq("channel_id", channelId)
-      .eq("title_id", titleId)
-      .maybeSingle();
-    if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
-    achievedByPurchase = Boolean(purchased);
-  }
-  if (!achievedByBalance && !achievedByPurchase) {
-    return { ok: false as const, error: "title_locked" as const };
-  }
+  const { data: purchased, error: purchasedError } = await admin
+    .from("user_purchased_titles")
+    .select("title_id")
+    .eq("channel_id", channelId)
+    .eq("title_id", titleId)
+    .maybeSingle();
+  if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
+  if (!purchased) return { ok: false as const, error: "title_locked" as const };
 
   const { error } = await admin.from("users").update({ selected_title_id: titleId }).eq("channel_id", channelId);
   if (error) throw new Error(`selected_title_id 갱신 실패: ${error.message}`);
   return { ok: true as const };
+}
+
+// 포인트 구간 칭호(브론즈~다이아) 중 max_balance_reached로 도달한 가장 높은 구간 하나를
+// 찾음 — 저장된 선택값이 아니라 매번 다시 계산(랭킹 뷰의 tier 서브쿼리와 같은 로직).
+async function getTierTitle(admin: ReturnType<typeof getAdminClient>, maxBalanceReached: number) {
+  const { data, error } = await admin
+    .from("titles")
+    .select("name, color")
+    .lte("min_points", maxBalanceReached)
+    .lt("min_points", PURCHASE_ONLY_THRESHOLD)
+    .order("min_points", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`titles(구간 칭호) 조회 실패: ${error.message}`);
+  return data;
 }
 
 async function getProfile(channelId: string) {
@@ -148,6 +159,8 @@ async function getProfile(channelId: string) {
     .eq("channel_id", channelId);
   if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
 
+  const tierTitle = await getTierTitle(admin, user.max_balance_reached);
+
   return {
     channelId: user.channel_id,
     channelName: user.channel_name,
@@ -155,6 +168,8 @@ async function getProfile(channelId: string) {
     banned: user.banned,
     balance,
     maxBalanceReached: user.max_balance_reached,
+    tierTitleName: tierTitle?.name ?? null,
+    tierTitleColor: tierTitle?.color ?? null,
     selectedTitleId: user.selected_title_id,
     purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
   };

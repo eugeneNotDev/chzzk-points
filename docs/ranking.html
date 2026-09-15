@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=34">
+<link rel="stylesheet" href="assets/css/style.css?v=35">
 </head>
 <body>
   <script>
@@ -79,7 +79,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=11"></script>
+  <script src="assets/js/chzzk-auth.js?v=12"></script>
   <script src="assets/js/spa-router.js?v=5"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -91,15 +91,16 @@
 
     // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴(뷰에서 처리) — 본인 행도 예외 없이
     // 그대로 보여줌 (본인 계정이 비공개 상태면 본인 눈에도 "비공개"로 보여야 설정이 잘
-    // 적용됐는지 헷갈리지 않음).
+    // 적용됐는지 헷갈리지 않음). 칭호 배지는 포인트 구간(자동)/상점 구매(장착) 두 슬롯이라
+    // renderTitleBadgesHtml(chzzk-auth.js)로 같이 그림 — "[구간][구매] 이름" 순서.
     function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
       const isPrivate = row.is_public === false;
-      const titleBadge = row.title_name ? `<span class="title-badge">[${escapeHtml(row.title_name)}]</span> ` : "";
+      const titleBadges = renderTitleBadgesHtml(row.tier_title_name, row.tier_title_color, row.shop_title_name);
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${titleBadge}${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate ? " is-private" : ""}">${titleBadges}${escapeHtml(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -109,7 +110,7 @@
     async function loadRanking(supabase) {
       const { data, error } = await supabase
         .from("ranking")
-        .select("channel_id, channel_name, total_points, is_public, title_name")
+        .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name")
         .order("total_points", { ascending: false })
         .limit(RANKING_LIMIT);
 

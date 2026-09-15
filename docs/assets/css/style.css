@@ -676,8 +676,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .shop-item.sold-out { opacity: 0.65; }
 
 /* 상점 상품 관리자용 인라인 수정 UI (shop.html — 관리자로 로그인했을 때만 노출).
-   "+ 상품 추가"/"+ 칭호 상품 추가" 버튼은 각자 자기 섹션(일반 상점/칭호 상점) 안에 따로 둠.
-   비활성화 상품은 title-card.locked와 같은 패턴으로 흐리게 표시. */
+   "+ 상품 추가"/"+ 칭호 상품 추가" 버튼은 각자 자기 섹션(일반 상점/칭호 상점) 안에 따로 둠. */
 .shop-section-toolbar { margin: -4px 0 14px; display: flex; gap: 8px; flex-wrap: wrap; }
 .shop-item.inactive { opacity: 0.55; }
 .shop-item-admin-bar {
@@ -710,7 +709,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
    붙어버려 다른 필드 사이 간격(10px)이랑 안 맞았음 — 그 필드에 margin-top을 직접 줘서 맞춤. */
 #shop-item-titlename-row { margin-top: 10px; }
 
-/* 마이페이지 칭호 목록 (shop-grid/shop-item과 같은 레이아웃 패턴, 잠김/장착 상태만 추가). */
+/* 마이페이지 칭호 목록 — 이제 상점 구매 칭호만 보임(포인트 구간 칭호는 자동 배지라 목록에
+   안 나옴), 그래서 잠김 상태 없이 장착 상태만 있음. shop-grid/shop-item과 같은 레이아웃 패턴. */
 .titles-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -718,11 +718,12 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .title-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .title-card p.desc { color: var(--text-dim); font-size: 0.88rem; min-height: 2.4em; }
-.title-card.locked { opacity: 0.55; }
 .title-card.selected { border-color: var(--accent); }
 .title-card.selected h3 { color: var(--accent); }
 
-/* 랭킹 목록에서 장착된 칭호가 이름 앞에 "[칭호1]" 형태로 붙음. */
+/* 랭킹/마이페이지 요약 카드에서 이름 앞에 "[브론즈][상점칭호]" 형태로 붙는 배지. 포인트 구간
+   칭호는 renderTitleBadgesHtml(chzzk-auth.js)가 인라인 style="color:..."로 개별 색을 얹고,
+   상점 구매 칭호는 별도 지정이 없어서 여기 기본 accent 색을 그대로 씀. */
 .title-badge { color: var(--accent); font-weight: 600; }
 
 /* 칭호 카드 접기/펴기. 처음엔 <details>/<summary>로 했는데 브라우저 기본 동작이라 열고 닫을

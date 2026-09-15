@@ -210,6 +210,20 @@ function escapeHtmlForAuth(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// 랭킹/마이페이지가 공통으로 쓰는 칭호 배지 HTML — 포인트 구간 칭호(자동, 색 있음)와 상점
+// 구매 칭호(장착, 기본 accent 색)를 "[구간][구매]" 형태로 이어붙임(0022_title_tiers.sql부터
+// 둘이 서로 다른 슬롯이라 각자 따로 넘김). 순서 고정: 구간 칭호가 항상 앞. 둘 다 없으면
+// 빈 문자열이라, 호출부에서 name 앞에 그냥 이어붙이면 됨(있을 때만 trailing space 포함).
+function renderTitleBadgesHtml(tierName, tierColor, shopName) {
+  const safeColor = typeof tierColor === "string" && /^#[0-9a-fA-F]{3,8}$/.test(tierColor) ? tierColor : "";
+  const tierBadge = tierName
+    ? `<span class="title-badge"${safeColor ? ` style="color:${safeColor}"` : ""}>[${escapeHtmlForAuth(tierName)}]</span>`
+    : "";
+  const shopBadge = shopName ? `<span class="title-badge">[${escapeHtmlForAuth(shopName)}]</span>` : "";
+  const badges = tierBadge + shopBadge;
+  return badges ? `${badges} ` : "";
+}
+
 // 사이드바 접기/펴기 토글 버튼 연결. localStorage에 상태를 저장해서 다른 페이지로 이동해도 유지됨.
 // (각 페이지 <body> 맨 앞의 인라인 스크립트가 렌더링 시작 전에 미리 같은 클래스를 적용해두기 때문에,
 //  페이지를 열자마자 "펼쳐졌다가 순간적으로 접히는" 깜빡임이 없음.)
