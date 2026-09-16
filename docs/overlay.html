@@ -56,11 +56,16 @@
     // item_name: spend-points가 지급 시점 shop_items.name을 스냅샷으로 남긴 값(0018_bugfixes.sql).
     // 예전엔 이게 없어서 item_id(내부 슬러그, 예: "water"/"temp1")가 그대로 노출됐었음 — 혹시
     // 예전 이벤트라 item_name이 비어있는 경우를 대비해 item_id로 폴백.
+    // is_public: spend-points가 사용 시점 마이페이지 공개 설정을 같이 스냅샷으로 남긴 값
+    // (0029_spend_events_is_public.sql) — 비공개 유저면 이름 대신 "익명"으로 표시함(랭킹은
+    // 이미 비공개 처리가 있었는데 오버레이만 빠져있었던 걸 맞춤). is_public===false로 명시적일
+    // 때만 익명 처리하고, 이 컬럼이 생기기 전 과거 행(undefined)은 기존처럼 실명 그대로 둠.
     function renderToast(event) {
       const el = document.createElement("div");
       el.className = "toast";
       const itemLabel = event.item_name || event.item_id;
-      el.innerHTML = `<span class="who">${escapeHtml(event.channel_name || event.channel_id)}</span>님이 <b>${escapeHtml(itemLabel)}</b> 사용!`;
+      const whoLabel = event.is_public === false ? "익명" : (event.channel_name || event.channel_id);
+      el.innerHTML = `<span class="who">${escapeHtml(whoLabel)}</span>님이 <b>${escapeHtml(itemLabel)}</b> 사용!`;
       root.appendChild(el);
       playAlertSound();
       // 애니메이션 끝나면 DOM에서 제거 (누적 방지)

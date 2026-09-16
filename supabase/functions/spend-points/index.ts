@@ -51,10 +51,16 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-async function isBanned(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<boolean> {
-  const { data, error } = await admin.from("users").select("banned").eq("channel_id", channelId).maybeSingle();
-  if (error) throw new Error(`banned 조회 실패: ${error.message}`);
-  return data?.banned === true;
+// banned/is_public을 한 번에 같이 조회함 (둘 다 users 한 행에서 나오는 값이라 쿼리를 안 나눔).
+// is_public은 오버레이 표시용 spend_events 스냅샷에 씀 — 비공개 유저면 오버레이에 실명 대신
+// "익명"으로 뜨게 하려는 목적 (랭킹은 이미 비공개 처리가 있었는데 오버레이만 빠져있었음).
+async function getUserFlags(
+  admin: ReturnType<typeof getAdminClient>,
+  channelId: string,
+): Promise<{ banned: boolean; isPublic: boolean }> {
+  const { data, error } = await admin.from("users").select("banned, is_public").eq("channel_id", channelId).maybeSingle();
+  if (error) throw new Error(`유저 정보 조회 실패: ${error.message}`);
+  return { banned: data?.banned === true, isPublic: data?.is_public === true };
 }
 
 async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
@@ -93,7 +99,8 @@ Deno.serve(async (req: Request) => {
 
   try {
     const admin = getAdminClient();
-    if (await isBanned(admin, session.channelId)) return jsonResponse({ error: "banned" }, 403);
+    const { banned, isPublic } = await getUserFlags(admin, session.channelId);
+    if (banned) return jsonResponse({ error: "banned" }, 403);
 
     const body = await req.json().catch(() => ({}));
     const itemId = typeof body.itemId === "string" ? body.itemId : null;
@@ -197,6 +204,7 @@ Deno.serve(async (req: Request) => {
         channel_name: session.channelName,
         item_id: item.id,
         item_name: item.name,
+        is_public: isPublic,
       });
       if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
     }
