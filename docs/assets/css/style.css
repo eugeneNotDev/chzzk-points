@@ -1117,7 +1117,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 /* 투표(승부예측) — 치지직 승부예측 스타일: 항목마다 걸린 포인트 비율만큼 배경이 채워지는
    퍼센트 바 + 배당률 표기. .predict-option은 .card처럼 별도 박스가 아니라 카드 하나 안에서
    항목별로 쌓이는 행이라 padding/border-radius만 갖고 배경은 없음(바 자체가 배경 역할). */
-.predict-title { margin: 0 0 4px; font-size: 1.1rem; word-break: break-word; }
+.predict-title { margin: 0 0 4px; font-size: 1.1rem; font-family: var(--font-logo); word-break: break-word; }
 .predict-countdown {
   display: inline-flex;
   align-items: center;
@@ -1126,6 +1126,10 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   font-size: 0.85rem;
   margin-bottom: 14px;
 }
+/* [hidden] 속성이 있어도 .predict-countdown { display: inline-flex } 같은 클래스 선택자
+   규칙이 브라우저 기본 [hidden]{display:none} UA 규칙보다 우선 적용돼서 안 가려지는
+   문제 — .sidebar-nav a[hidden] 등과 같은 이유로 여기도 override 필요. */
+.predict-countdown[hidden] { display: none; }
 .predict-countdown.is-urgent { color: #ff8a8a; }
 .predict-status-banner {
   padding: 10px 14px;
@@ -1153,6 +1157,9 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .predict-option.is-winner { border-color: var(--accent); }
 .predict-option.is-loser { opacity: 0.6; }
 .predict-option.disabled { cursor: default; }
+/* 이미 베팅했거나 투표가 끝나서 선택 불가능한 항목은 마우스를 올려도 강조되면 안 됨
+   (클릭 리스너는 JS에서 이미 안 붙이지만, hover 강조는 별도 CSS라 따로 막아야 함). */
+.predict-option.disabled:hover { border-color: var(--border); }
 /* 걸린 포인트 비율만큼 채워지는 바 — 실제 색은 배경 위에 깔리는 레이어라 텍스트보다 아래(z-index 0),
    내용은 그 위(z-index 1)에 얹음. 폭은 JS가 인라인 style.width로 퍼센트를 직접 넣음. */
 .predict-option-bar {
@@ -1194,7 +1201,11 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   flex-wrap: wrap;
   margin-top: 4px;
 }
-.predict-bet-form input[type="number"] {
+/* 이미 베팅했거나(내 베팅 노트로 대체) 투표가 끝나면 hidden 처리하는데, 위의 class
+   선택자 display:flex 규칙이 기본 [hidden]{display:none} UA 규칙을 덮어써서 안 가려지던
+   문제 — .predict-countdown과 같은 이유로 override 추가. */
+.predict-bet-form[hidden] { display: none; }
+.predict-bet-form input {
   flex: 1 1 140px;
   min-width: 0;
   font: inherit;
@@ -1204,7 +1215,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   color: var(--text);
   padding: 10px 12px;
 }
-.predict-bet-form input[type="number"]:focus { outline: none; border-color: var(--accent); }
+.predict-bet-form input:focus { outline: none; border-color: var(--accent); }
 .predict-my-bet-note { margin-top: 10px; font-size: 0.85rem; color: var(--text-dim); }
 
 /* 투표 항목 추가/삭제(생성 모달) — 항목명 입력칸 + 2개 초과일 때만 보이는 삭제 X 버튼. */
