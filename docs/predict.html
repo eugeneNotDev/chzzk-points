@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>투표 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=43">
+<link rel="stylesheet" href="assets/css/style.css?v=44">
 </head>
 <body>
   <script>
@@ -99,7 +99,6 @@
             <div class="predict-option-list" id="predict-admin-option-list"></div>
             <button type="button" class="secondary" id="predict-admin-view-bets-btn" style="margin-top:14px;">참여자 보기</button>
             <div class="predict-admin-actions">
-              <select id="predict-resolve-select" class="admin-amount-input" style="width:auto;"></select>
               <button type="button" id="predict-resolve-btn">정산하기</button>
               <button type="button" class="secondary danger" id="predict-cancel-btn">투표 취소 (전액 환불)</button>
             </div>
@@ -166,6 +165,19 @@
         <div id="predict-bets-modal-pagination" class="pagination"></div>
         <div class="notice-modal-actions">
           <button type="button" class="secondary" id="predict-bets-modal-close-btn">닫기</button>
+        </div>
+      </dialog>
+
+      <!-- 정산 모달 (관리자 전용) — select 드롭다운 대신 옵션을 카드처럼 보여주고 골라서
+           확정하는 방식으로 변경. -->
+      <dialog id="predict-resolve-modal" class="notice-modal">
+        <h3>정산할 항목 선택</h3>
+        <p class="muted" id="predict-resolve-modal-title"></p>
+        <div class="predict-option-list" id="predict-resolve-option-list"></div>
+        <p class="status-msg" id="predict-resolve-modal-status"></p>
+        <div class="notice-modal-actions">
+          <button type="button" id="predict-resolve-confirm-btn" disabled>정산 확정</button>
+          <button type="button" class="secondary" id="predict-resolve-modal-cancel-btn">취소</button>
         </div>
       </dialog>
     </main>
@@ -402,6 +414,9 @@
     let currentAdminOptionLabels = new Map();
     let betsModalPage = 1;
     const BETS_PAGE_SIZE = 10;
+    // 정산 모달용 — 드롭다운 대신 옵션을 카드로 보여주고 고르게 함.
+    let currentAdminOptions = [];
+    let selectedResolveOptionId = null;
 
     function renderPagination(container, page, totalPages, onGoToPage) {
       if (totalPages <= 1) {
@@ -492,6 +507,7 @@
         currentAdminPredictionId = null;
         currentAdminBets = [];
         currentAdminOptionLabels = new Map();
+        currentAdminOptions = [];
         return;
       }
       currentAdminPredictionId = prediction.id;
@@ -517,13 +533,12 @@
 
       currentAdminBets = prediction.bets || [];
       currentAdminOptionLabels = new Map(prediction.options.map((o) => [o.id, o.label]));
+      currentAdminOptions = prediction.options;
       document.getElementById("predict-admin-view-bets-btn").textContent = `참여자 보기 (${currentAdminBets.length.toLocaleString("ko-KR")}명)`;
       // 팝업이 이미 열려있으면(정산/취소 전에 확인하면서 5초 폴링이 도는 동안) 그 자리에서
       // 최신 참여 내역으로 갱신함.
       if (document.getElementById("predict-bets-modal").open) renderBetsModalPage();
 
-      const resolveSelect = document.getElementById("predict-resolve-select");
-      resolveSelect.innerHTML = prediction.options.map((o) => `<option value="${o.id}">${escapeHtml(o.label)}</option>`).join("");
       const resolveBtn = document.getElementById("predict-resolve-btn");
       resolveBtn.disabled = !closed;
       resolveBtn.textContent = closed ? "정산하기" : "마감 후 정산 가능";
@@ -547,30 +562,75 @@
       }
     });
 
-    document.getElementById("predict-resolve-btn").addEventListener("click", async () => {
-      if (!currentAdminPredictionId) return;
-      const select = document.getElementById("predict-resolve-select");
-      const winningOptionId = Number(select.value);
-      if (!Number.isFinite(winningOptionId)) return;
-      const winningLabel = select.selectedOptions[0]?.textContent ?? "";
-      if (!confirm(`"${winningLabel}" 항목을 승자로 정산할까요? 되돌릴 수 없어요.`)) return;
-      const statusEl = document.getElementById("predict-admin-action-status");
-      statusEl.textContent = "정산 중...";
+    // 정산 모달 — 드롭다운 대신 옵션을 predict-option 카드처럼 보여주고 골라서 확정하는
+    // 방식(채팅 피드백: 기존 select+버튼 조합이 UI가 구려 보인다는 의견 반영).
+    const predictResolveModal = document.getElementById("predict-resolve-modal");
+
+    function openResolveModal() {
+      selectedResolveOptionId = null;
+      const listEl = document.getElementById("predict-resolve-option-list");
+      const confirmBtn = document.getElementById("predict-resolve-confirm-btn");
+      const statusEl = document.getElementById("predict-resolve-modal-status");
+      document.getElementById("predict-resolve-modal-title").textContent = document.getElementById("predict-admin-title").textContent;
+      statusEl.textContent = "";
       statusEl.className = "status-msg";
+      confirmBtn.disabled = true;
+      listEl.innerHTML = currentAdminOptions.map((opt) => `
+        <div class="predict-option" data-option-id="${opt.id}">
+          <div class="predict-option-content">
+            <span class="predict-option-label">${escapeHtml(opt.label)}</span>
+            <span class="predict-option-stats">
+              <span class="predict-option-percent">${opt.percent.toFixed(1)}%</span>
+              <span class="predict-option-multiplier">${opt.totalAmount.toLocaleString("ko-KR")}P</span>
+            </span>
+          </div>
+        </div>`).join("");
+      listEl.querySelectorAll(".predict-option").forEach((el) => {
+        el.addEventListener("click", () => {
+          selectedResolveOptionId = Number(el.dataset.optionId);
+          listEl.querySelectorAll(".predict-option").forEach((o) => {
+            o.classList.toggle("selected", Number(o.dataset.optionId) === selectedResolveOptionId);
+          });
+          confirmBtn.disabled = false;
+        });
+      });
+      if (!predictResolveModal.open) predictResolveModal.showModal();
+    }
+
+    document.getElementById("predict-resolve-btn").addEventListener("click", () => {
+      if (!currentAdminPredictionId) return;
+      openResolveModal();
+    });
+    document.getElementById("predict-resolve-modal-cancel-btn").addEventListener("click", () => predictResolveModal.close());
+    predictResolveModal.addEventListener("click", (e) => {
+      if (e.target === predictResolveModal) predictResolveModal.close();
+    });
+
+    document.getElementById("predict-resolve-confirm-btn").addEventListener("click", async () => {
+      if (!currentAdminPredictionId || selectedResolveOptionId == null) return;
+      const modalStatusEl = document.getElementById("predict-resolve-modal-status");
+      const confirmBtn = document.getElementById("predict-resolve-confirm-btn");
+      confirmBtn.disabled = true;
+      modalStatusEl.textContent = "정산 중...";
+      modalStatusEl.className = "status-msg";
+      const statusEl = document.getElementById("predict-admin-action-status");
       try {
-        const res = await authFetch(ADMIN_URL, { method: "POST", body: JSON.stringify({ action: "resolve-prediction", predictionId: currentAdminPredictionId, winningOptionId }) });
+        const res = await authFetch(ADMIN_URL, { method: "POST", body: JSON.stringify({ action: "resolve-prediction", predictionId: currentAdminPredictionId, winningOptionId: selectedResolveOptionId }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          statusEl.textContent = data.error === "not_closed_yet" ? "아직 마감 전이에요." : "정산에 실패했어요.";
-          statusEl.className = "status-msg error";
+          modalStatusEl.textContent = data.error === "not_closed_yet" ? "아직 마감 전이에요." : "정산에 실패했어요.";
+          modalStatusEl.className = "status-msg error";
+          confirmBtn.disabled = false;
           return;
         }
+        predictResolveModal.close();
         statusEl.textContent = "정산 완료했어요.";
         statusEl.className = "status-msg ok";
         await Promise.all([loadAdminStatus(), loadPrediction()]);
       } catch (err) {
-        statusEl.textContent = "정산에 실패했어요.";
-        statusEl.className = "status-msg error";
+        modalStatusEl.textContent = "정산에 실패했어요.";
+        modalStatusEl.className = "status-msg error";
+        confirmBtn.disabled = false;
       }
     });
 

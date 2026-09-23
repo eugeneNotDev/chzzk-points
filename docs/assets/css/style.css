@@ -1158,8 +1158,13 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .predict-option.is-loser { opacity: 0.6; }
 .predict-option.disabled { cursor: default; }
 /* 이미 베팅했거나 투표가 끝나서 선택 불가능한 항목은 마우스를 올려도 강조되면 안 됨
-   (클릭 리스너는 JS에서 이미 안 붙이지만, hover 강조는 별도 CSS라 따로 막아야 함). */
-.predict-option.disabled:hover { border-color: var(--border); }
+   (클릭 리스너는 JS에서 이미 안 붙이지만, hover 강조는 별도 CSS라 따로 막아야 함).
+   단, 내 선택(.selected)이나 당첨 항목(.is-winner)은 원래도 항상 accent 테두리인데
+   이 규칙이 class 2개(.predict-option.disabled) + :hover라 specificity가 더 높아서
+   hover 시 그 accent 테두리를 var(--border)로 덮어써버리는 문제가 있었음(테두리는
+   흐려지는데 .selected의 box-shadow 링은 그대로라 "테두리가 얇아지는" 것처럼 보임) —
+   :not()으로 그 두 케이스는 이 규칙에서 아예 제외해서 원래 accent 테두리가 유지되게 함. */
+.predict-option.disabled:not(.selected):not(.is-winner):hover { border-color: var(--border); }
 /* 걸린 포인트 비율만큼 채워지는 바 — 실제 색은 배경 위에 깔리는 레이어라 텍스트보다 아래(z-index 0),
    내용은 그 위(z-index 1)에 얹음. 폭은 JS가 인라인 style.width로 퍼센트를 직접 넣음. */
 .predict-option-bar {
