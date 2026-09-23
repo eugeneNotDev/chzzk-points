@@ -102,7 +102,7 @@
             <span class="dot"></span>
             <span id="live-status-text"></span>
           </div>
-          <button type="button" id="checkin-btn" class="attendance-checkin-btn">오늘 출석체크 (+10P)</button>
+          <button type="button" id="checkin-btn" class="attendance-checkin-btn">오늘 출석체크 (+50P)</button>
           <p id="checkin-status" class="status-msg"></p>
         </div>
       </div>
@@ -181,7 +181,7 @@
         btnEl.textContent = "방송 중에만 출석체크 할 수 있어요";
         btnEl.disabled = true;
       } else {
-        btnEl.textContent = "오늘 출석체크 (+10P)";
+        btnEl.textContent = "오늘 출석체크 (+50P)";
         btnEl.disabled = false;
       }
     }
@@ -250,7 +250,7 @@
           return;
         }
         todayStatus = { isLive: data.isLive, checkedToday: data.checkedToday, balance: data.balance };
-        statusEl.textContent = "출석체크 완료! +10P 지급됐어요.";
+        statusEl.textContent = "출석체크 완료! +50P 지급됐어요.";
         statusEl.classList.add("ok");
         if (viewYear === todayYear && viewMonth === todayMonth) {
           renderCalendar(viewYear, viewMonth, data.attendedDates);
