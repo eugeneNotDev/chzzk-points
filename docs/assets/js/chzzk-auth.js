@@ -19,6 +19,7 @@ const NOTICES_URL = `${FUNCTIONS_BASE_URL}/notices`;
 const BROADCAST_STATUS_URL = `${FUNCTIONS_BASE_URL}/broadcast-status`;
 const ADMIN_URL = `${FUNCTIONS_BASE_URL}/admin`;
 const SHOP_ITEMS_URL = `${FUNCTIONS_BASE_URL}/shop-items`;
+const PREDICTIONS_URL = `${FUNCTIONS_BASE_URL}/predictions`;
 // 공지사항 작성/수정/삭제, 관리자 페이지 등 "관리자만" 가능한 UI를 보여줄지 판단할 때 쓰는 값.
 // 방송/사이트 관리 전부 이 계정(유진 알파)으로 함 — 검머짐은 개발 중 로그인 테스트용 부계정이라
 // 여기 안 씀. 시크릿이 아니라 공개된 channelId라서 프론트에 그대로 둬도 됨

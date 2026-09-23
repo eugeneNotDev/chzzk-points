@@ -1113,3 +1113,150 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .attendance-day.is-attended.is-today { background: var(--accent); color: var(--accent-text); }
 .attendance-checkin-btn { width: 100%; margin-top: 12px; }
+
+/* 투표(승부예측) — 치지직 승부예측 스타일: 항목마다 걸린 포인트 비율만큼 배경이 채워지는
+   퍼센트 바 + 배당률 표기. .predict-option은 .card처럼 별도 박스가 아니라 카드 하나 안에서
+   항목별로 쌓이는 행이라 padding/border-radius만 갖고 배경은 없음(바 자체가 배경 역할). */
+.predict-title { margin: 0 0 4px; font-size: 1.1rem; word-break: break-word; }
+.predict-countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+.predict-countdown.is-urgent { color: #ff8a8a; }
+.predict-status-banner {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  margin-bottom: 14px;
+}
+.predict-status-banner.win { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+.predict-status-banner.lose { background: var(--danger-dim); color: #ff8a8a; }
+
+.predict-option-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.predict-option {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface-2);
+}
+.predict-option:hover { border-color: var(--accent); }
+.predict-option.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.predict-option.is-winner { border-color: var(--accent); }
+.predict-option.is-loser { opacity: 0.6; }
+.predict-option.disabled { cursor: default; }
+/* 걸린 포인트 비율만큼 채워지는 바 — 실제 색은 배경 위에 깔리는 레이어라 텍스트보다 아래(z-index 0),
+   내용은 그 위(z-index 1)에 얹음. 폭은 JS가 인라인 style.width로 퍼센트를 직접 넣음. */
+.predict-option-bar {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--accent-dim);
+  transition: width 0.3s ease;
+  z-index: 0;
+}
+.predict-option.is-winner .predict-option-bar { background: rgba(0, 229, 160, 0.28); }
+.predict-option-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.predict-option-label { font-weight: 600; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.predict-option-label .my-pick-badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.predict-option-stats { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; color: var(--text-dim); font-size: 0.85rem; }
+.predict-option-percent { font-weight: 700; color: var(--text); }
+.predict-option-multiplier { color: var(--muted); }
+
+.predict-bet-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.predict-bet-form input[type="number"] {
+  flex: 1 1 140px;
+  min-width: 0;
+  font: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 10px 12px;
+}
+.predict-bet-form input[type="number"]:focus { outline: none; border-color: var(--accent); }
+.predict-my-bet-note { margin-top: 10px; font-size: 0.85rem; color: var(--text-dim); }
+
+/* 투표 항목 추가/삭제(생성 모달) — 항목명 입력칸 + 2개 초과일 때만 보이는 삭제 X 버튼. */
+.predict-create-option-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.predict-create-option-row .notice-title-input { margin-bottom: 0; flex: 1 1 auto; }
+.predict-option-remove-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+}
+.predict-option-remove-btn:hover { border-color: var(--danger); color: #ff8a8a; background: transparent; }
+.predict-add-option-btn { width: 100%; margin-bottom: 10px; }
+
+.predict-duration-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.predict-duration-option {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.predict-duration-option input { display: none; }
+.predict-duration-option.selected { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+
+/* 관리자 투표 현황(admin.html "투표" 탭) — 개별 베팅 내역(비익명) 목록. points-log-row와
+   비슷한 who/amount 2단 구성을 재사용하되 who 칸에 선택한 항목명도 같이 보여줌. */
+.predict-admin-bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+.predict-admin-bet-row:last-child { border-bottom: none; }
+.predict-admin-bet-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.predict-admin-bet-option { color: var(--muted); font-size: 0.8rem; margin-left: 6px; }
+.predict-admin-bet-amount { flex-shrink: 0; font-weight: 700; white-space: nowrap; }
+.predict-admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.predict-admin-actions button.danger { border-color: var(--danger); color: #ff8a8a; }
+.predict-admin-actions button.danger:hover { border-color: var(--danger); color: #ff8a8a; background: transparent; }
