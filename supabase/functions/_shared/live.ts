@@ -13,7 +13,19 @@ export interface LiveInfo {
   liveTitle: string | null;
 }
 
-export async function getLiveInfo(): Promise<LiveInfo> {
+// broadcast-status는 로그인 없이도 누구나 호출 가능하고, attendance-check도 페이지 로드마다
+// GET으로 불러서, 이 함수를 호출할 때마다 매번 치지직 쪽으로 실제 요청을 보내면 누군가 짧은
+// 시간에 반복 호출했을 때(별 뜻 없이 새로고침을 연타하든, 악의적으로 스팸을 하든) 치지직
+// 비공식 엔드포인트에 부하가 몰릴 수 있음 — 명시적인 rate limit이 없는 대신, 실제 값이
+// 몇 초 안에 바뀔 일은 없으니 짧게 캐싱해서 호출 폭주가 와도 실제 외부 요청은 캐시 주기당
+// 최대 1번만 나가게 함. Edge Function 인스턴스는 warm start면 모듈 스코프 변수가 유지되고,
+// cold start면 그냥 캐시가 비어서 새로 요청하는 것뿐이라 안전함(여러 인스턴스 간 공유는
+// 안 되지만, 이 용도로는 그 정도로 충분함).
+const LIVE_INFO_CACHE_TTL_MS = 15_000;
+let cachedLiveInfo: LiveInfo | null = null;
+let cachedAt = 0;
+
+async function fetchLiveInfo(): Promise<LiveInfo> {
   try {
     const res = await fetch(LIVE_DETAIL_URL);
     if (!res.ok) {
@@ -29,6 +41,17 @@ export async function getLiveInfo(): Promise<LiveInfo> {
     // (출석체크 쪽에서는 이게 "방송 안 켜짐"으로 처리되어 출석체크가 막히는 정도의 영향만 있음).
     return { isLive: false, liveTitle: null };
   }
+}
+
+export async function getLiveInfo(): Promise<LiveInfo> {
+  const now = Date.now();
+  if (cachedLiveInfo && now - cachedAt < LIVE_INFO_CACHE_TTL_MS) {
+    return cachedLiveInfo;
+  }
+  const info = await fetchLiveInfo();
+  cachedLiveInfo = info;
+  cachedAt = now;
+  return info;
 }
 
 export async function isChannelLive(): Promise<boolean> {
