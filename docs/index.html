@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=47">
+<link rel="stylesheet" href="assets/css/style.css?v=48">
 </head>
 <body>
   <script>
@@ -227,6 +227,8 @@
       filesEl.hidden = fileListHtml.length === 0;
 
       const dialog = document.getElementById("notice-modal");
+      // 이미지가 있는 글이면 팝업을 넓혀서 크게 보여줌(style.css .has-images).
+      dialog.classList.toggle("has-images", galleryHtml.length > 0);
       if (!dialog.open) dialog.showModal();
     }
 

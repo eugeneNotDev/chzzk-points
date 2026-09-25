@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=47">
+<link rel="stylesheet" href="assets/css/style.css?v=48">
 </head>
 <body>
   <script>
@@ -441,6 +441,8 @@
       galleryEl.hidden = galleryHtml.length === 0;
       filesEl.innerHTML = fileListHtml;
       filesEl.hidden = fileListHtml.length === 0;
+      // 이미지가 있는 글이면 팝업을 넓혀서 네이버카페 본문처럼 크게 보여줌(style.css .has-images).
+      document.getElementById("notice-modal").classList.toggle("has-images", galleryHtml.length > 0);
 
       document.getElementById("notice-modal-admin-actions").hidden = !isAdmin();
       document.getElementById("notice-modal-view").hidden = false;
@@ -479,6 +481,8 @@
       document.getElementById("notice-image-input").value = "";
       document.getElementById("notice-file-input").value = "";
       renderAttachmentPreview();
+      // 글쓰기/수정 폼은 원래 폭으로(보기 모드에서 넓혀놨던 걸 되돌림).
+      document.getElementById("notice-modal").classList.remove("has-images");
       document.getElementById("notice-modal-view").hidden = true;
       document.getElementById("notice-modal-form").hidden = false;
       // dialog가 화면에 붙은(open) 다음이라야 scrollHeight 계산이 정확해서, showModal 이후에도 한 번 더 맞춰줌.
