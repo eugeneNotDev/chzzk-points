@@ -20,6 +20,11 @@ const BROADCAST_STATUS_URL = `${FUNCTIONS_BASE_URL}/broadcast-status`;
 const ADMIN_URL = `${FUNCTIONS_BASE_URL}/admin`;
 const SHOP_ITEMS_URL = `${FUNCTIONS_BASE_URL}/shop-items`;
 const PREDICTIONS_URL = `${FUNCTIONS_BASE_URL}/predictions`;
+// 공지사항 첨부파일(이미지/파일) Storage 버킷 — 공개 버킷이라 signed URL 없이 퍼블릭 URL로
+// 바로 접근 가능함 (0031_notice_attachments.sql, supabase/functions/notices 참고).
+// 업로드(쓰기)는 signed upload URL로만 하니 버킷 이름 자체는 시크릿이 아님.
+const NOTICE_ATTACHMENTS_BUCKET = "notice-attachments";
+const NOTICE_ATTACHMENTS_PUBLIC_BASE = `https://azowisiuyeohhfxxmewb.supabase.co/storage/v1/object/public/${NOTICE_ATTACHMENTS_BUCKET}`;
 // 공지사항 작성/수정/삭제, 관리자 페이지 등 "관리자만" 가능한 UI를 보여줄지 판단할 때 쓰는 값.
 // 방송/사이트 관리 전부 이 계정(유진 알파)으로 함 — 검머짐은 개발 중 로그인 테스트용 부계정이라
 // 여기 안 씀. 시크릿이 아니라 공개된 channelId라서 프론트에 그대로 둬도 됨
@@ -225,6 +230,60 @@ function applyTierColorToName(escapedName, tierColor) {
 
 function renderShopTitleBadgeHtml(shopName) {
   return shopName ? `<span class="title-badge">[${escapeHtmlForAuth(shopName)}]</span> ` : "";
+}
+
+// 공지사항 첨부파일 — storage_path("notices/xxxx-파일명")로 퍼블릭 URL을 만듦. 세그먼트별로
+// encodeURIComponent를 걸어야 파일명에 한글/공백이 섞여있어도(정책상 공백은 서버가 이미
+// "_"로 바꿔서 저장하지만, 한글은 그대로 저장함) 안전하게 URL에 들어감 — "/"까지 인코딩되면
+// 안 되니 세그먼트로 나눠서 각각 인코딩 후 다시 합침.
+function noticeAttachmentUrl(storagePath) {
+  const encoded = String(storagePath).split("/").map(encodeURIComponent).join("/");
+  return `${NOTICE_ATTACHMENTS_PUBLIC_BASE}/${encoded}`;
+}
+
+function formatNoticeFileSize(bytes) {
+  if (typeof bytes !== "number" || !Number.isFinite(bytes)) return "";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+}
+
+const NOTICE_FILE_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>`;
+const NOTICE_DOWNLOAD_ICON_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>`;
+
+// 공지 첨부파일을 이미지 갤러리 + 일반 파일 다운로드 목록 HTML로 렌더링함. notice.html의
+// 게시판 뷰, index.html의 미리보기 팝업이 이 함수를 그대로 씀(중복 방지 — 둘 다 보기 전용
+// 렌더링이라 완전히 같은 모양이면 됨). attachments는 notice_attachments 행 배열를 그대로
+// 받음 — anon 클라이언트로 테이블을 직접 조회한 결과라 컬럼명 그대로(snake_case)임:
+// kind/file_name/storage_path/mime_type/size_bytes (notices.created_at 등과 같은 이유,
+// Edge Function JSON 응답의 camelCase와는 다름 — 그쪽은 predictions/admin 함수 참고).
+// 반환값 { galleryHtml, fileListHtml } — 비어있으면 빈 문자열이라 호출부에서 hidden 처리하면 됨.
+function renderNoticeAttachmentsHtml(attachments) {
+  if (!attachments || attachments.length === 0) return { galleryHtml: "", fileListHtml: "" };
+  const images = attachments.filter((a) => a.kind === "image");
+  const files = attachments.filter((a) => a.kind === "file");
+
+  const galleryHtml = images.map((a) => {
+    const url = noticeAttachmentUrl(a.storage_path);
+    const name = escapeHtmlForAuth(a.file_name);
+    return `
+      <span class="notice-gallery-thumb">
+        <a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}" loading="lazy"></a>
+        <a class="notice-gallery-download-btn" href="${url}?download=${encodeURIComponent(a.file_name)}" title="다운로드" aria-label="다운로드">${NOTICE_DOWNLOAD_ICON_SVG}</a>
+      </span>`;
+  }).join("");
+
+  const fileListHtml = files.map((a) => {
+    const url = noticeAttachmentUrl(a.storage_path);
+    return `
+      <a class="notice-file-row" href="${url}?download=${encodeURIComponent(a.file_name)}">
+        <span class="notice-file-icon">${NOTICE_FILE_ICON_SVG}</span>
+        <span class="notice-file-name">${escapeHtmlForAuth(a.file_name)}</span>
+        <span class="notice-file-size">${formatNoticeFileSize(a.size_bytes)}</span>
+      </a>`;
+  }).join("");
+
+  return { galleryHtml, fileListHtml };
 }
 
 // 사이드바 접기/펴기 토글 버튼 연결. localStorage에 상태를 저장해서 다른 페이지로 이동해도 유지됨.

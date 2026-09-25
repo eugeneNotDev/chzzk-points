@@ -657,6 +657,131 @@ ul.notice-list, ol.notice-list {
   word-break: break-word;
   line-height: 1.6;
 }
+
+/* 공지 첨부파일 — 이미지는 갤러리(정사각형 썸네일 그리드), 그 외 문서는 다운로드 목록으로
+   따로 보여줌 (renderNoticeAttachmentsHtml, chzzk-auth.js 참고). 보기 전용 팝업(notice.html,
+   index.html 둘 다)에서 씀. */
+.notice-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+/* class 선택자로 display:grid를 주는 규칙이 기본 [hidden]{display:none} UA 규칙을 덮어써서
+   안 가려지는 문제 — predict.html에서 이미 여러 번 겪은 것과 같은 패턴이라 처음부터 같이 둠. */
+.notice-image-gallery[hidden] { display: none; }
+.notice-gallery-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.notice-gallery-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.notice-gallery-download-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.notice-gallery-download-btn svg { width: 14px; height: 14px; }
+.notice-gallery-thumb:hover .notice-gallery-download-btn,
+.notice-gallery-download-btn:focus-visible { opacity: 1; }
+
+.notice-file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.notice-file-list[hidden] { display: none; }
+.notice-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+.notice-file-row:hover { border-color: var(--accent); }
+.notice-file-icon { flex-shrink: 0; display: flex; color: var(--muted); }
+.notice-file-icon svg { width: 16px; height: 16px; }
+.notice-file-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-file-size { flex-shrink: 0; color: var(--muted); font-size: 0.78rem; }
+
+/* 글쓰기/수정 폼의 첨부파일 선택 영역 — 파일 input + 고른 파일 미리보기 그리드. */
+.notice-attachment-field { margin-bottom: 10px; }
+.notice-attachment-field-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.notice-attachment-hint { font-size: 0.76rem; }
+#notice-attachment-input { display: block; width: 100%; font-size: 0.85rem; color: var(--text-dim); }
+.notice-attachment-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.notice-attachment-preview-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.notice-attachment-preview-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.notice-attachment-preview-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  color: var(--muted);
+  text-align: center;
+}
+.notice-attachment-preview-file svg { width: 20px; height: 20px; }
+.notice-attachment-preview-file span {
+  font-size: 0.66rem;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notice-attachment-remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem;
+}
+.notice-attachment-remove-btn:hover { background: var(--danger); }
+
 .notice-modal-actions {
   display: flex;
   align-items: center;

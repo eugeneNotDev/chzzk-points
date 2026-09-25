@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=44">
+<link rel="stylesheet" href="assets/css/style.css?v=45">
 </head>
 <body>
   <script>
@@ -89,6 +89,8 @@
           <h3 id="notice-modal-title"></h3>
           <p class="muted" id="notice-modal-meta"></p>
           <p class="notice-modal-content" id="notice-modal-content"></p>
+          <div class="notice-image-gallery" id="notice-modal-gallery" hidden></div>
+          <div class="notice-file-list" id="notice-modal-files" hidden></div>
           <div class="notice-modal-actions">
             <span class="notice-modal-admin-actions" id="notice-modal-admin-actions" hidden>
               <button type="button" class="secondary" id="notice-modal-edit-btn">수정</button>
@@ -100,6 +102,14 @@
         <form id="notice-modal-form" hidden>
           <input type="text" id="notice-modal-title-input" class="notice-title-input" placeholder="제목" maxlength="80">
           <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6"></textarea>
+          <div class="notice-attachment-field">
+            <div class="notice-attachment-field-header">
+              <label class="field-label" for="notice-attachment-input">첨부파일</label>
+              <span class="muted notice-attachment-hint">이미지·문서 최대 10개</span>
+            </div>
+            <input type="file" id="notice-attachment-input" multiple accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.hwp,.hwpx,.zip,.txt,.csv">
+            <div class="notice-attachment-preview-grid" id="notice-attachment-preview-grid"></div>
+          </div>
           <p class="status-msg" id="notice-modal-status"></p>
           <div class="notice-form-actions">
             <button type="submit" id="notice-modal-submit-btn">등록</button>
@@ -110,7 +120,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=15"></script>
+  <script src="assets/js/chzzk-auth.js?v=16"></script>
   <script src="assets/js/spa-router.js?v=6"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -118,8 +128,22 @@
     let supabase;
     const NOTICE_LIMIT = 50;
 
+    // 첨부파일 — 서버(notices/index.ts)의 화이트리스트와 같은 목록을 클라이언트에도 둠
+    // (여기선 순전히 UX용 조기 피드백이고, 진짜 검증은 서버가 확장자 기준으로 다시 함).
+    const MAX_ATTACHMENTS = 10;
+    const NOTICE_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
+    const NOTICE_FILE_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx", "zip", "txt", "csv"]);
+    const MAX_IMAGE_LONG_EDGE = 1600;
+    const IMAGE_JPEG_QUALITY = 0.85;
+
     // id(문자열) -> 공지 원본. 목록/모달을 다시 그릴 때 서버 재조회 없이 사용.
     let noticesById = new Map();
+    // 글쓰기/수정 모달의 첨부파일 상태 — pendingFiles는 이번에 새로 고른(아직 업로드 안 한)
+    // File 객체들, keptAttachments는 수정 모드에서 기존 첨부파일 중 지우지 않고 유지하기로
+    // 한 것들(notice_attachments 행, snake_case). 제출 시점에 pendingFiles를 업로드하고
+    // keptAttachments와 합쳐서 최종 attachments로 보냄.
+    let pendingFiles = [];
+    let keptAttachments = [];
 
     // "새 글" 표시 기준 시각 — 이 페이지가 실행되자마자(= 이번 방문에서 loadNotices()가 아직
     // markNoticesSeen()을 부르기 전) 딱 한 번만 읽어서 고정해둠. loadNotices()는 글쓰기/수정/삭제
@@ -139,6 +163,118 @@
     function autoResizeTextarea(el) {
       el.style.height = "auto";
       el.style.height = `${el.scrollHeight}px`;
+    }
+
+    // --- 첨부파일 (글쓰기/수정 공통) ---------------------------------------------
+    function extensionOfClient(fileName) {
+      const dot = fileName.lastIndexOf(".");
+      return dot === -1 ? "" : fileName.slice(dot + 1).toLowerCase();
+    }
+
+    function totalAttachmentCount() {
+      return pendingFiles.length + keptAttachments.length;
+    }
+
+    // 기존 첨부파일(storage_path 있음, snake_case)이든 새로 업로드한 것(path 있음, camelCase)이든
+    // notices Edge Function이 기대하는 형식({path, fileName, mimeType, sizeBytes, kind})으로 맞춰줌.
+    function toApiAttachment(a) {
+      if (a.storage_path) {
+        return { path: a.storage_path, fileName: a.file_name, mimeType: a.mime_type, sizeBytes: a.size_bytes, kind: a.kind };
+      }
+      return { path: a.path, fileName: a.fileName, mimeType: a.mimeType, sizeBytes: a.sizeBytes, kind: a.kind };
+    }
+
+    // 이미지가 너무 크면(긴 변 1600px 초과, 또는 1.5MB 초과) 캔버스로 줄이고 JPEG로 압축함 —
+    // gif는 리사이즈하면 애니메이션이 깨지니 그대로 둠. 이미 충분히 작으면 원본 그대로 씀.
+    async function maybeCompressImage(file) {
+      if (extensionOfClient(file.name) === "gif") return file;
+      const bitmap = await createImageBitmap(file).catch(() => null);
+      if (!bitmap) return file;
+      const longEdge = Math.max(bitmap.width, bitmap.height);
+      if (longEdge <= MAX_IMAGE_LONG_EDGE && file.size <= 1.5 * 1024 * 1024) {
+        if (bitmap.close) bitmap.close();
+        return file;
+      }
+      const scale = Math.min(1, MAX_IMAGE_LONG_EDGE / longEdge);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      if (bitmap.close) bitmap.close();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", IMAGE_JPEG_QUALITY));
+      if (!blob) return file;
+      const newName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+      return new File([blob], newName, { type: "image/jpeg" });
+    }
+
+    function renderAttachmentPreview() {
+      const grid = document.getElementById("notice-attachment-preview-grid");
+      const keptHtml = keptAttachments.map((a, i) => {
+        const isImage = a.kind === "image";
+        const url = noticeAttachmentUrl(a.storage_path);
+        return `
+          <div class="notice-attachment-preview-item">
+            ${isImage
+              ? `<img src="${url}" alt="">`
+              : `<span class="notice-attachment-preview-file">${NOTICE_FILE_ICON_SVG}<span>${escapeHtml(a.file_name)}</span></span>`}
+            <button type="button" class="notice-attachment-remove-btn" data-kept-index="${i}" aria-label="제거">×</button>
+          </div>`;
+      }).join("");
+      const pendingHtml = pendingFiles.map((f, i) => {
+        const isImage = NOTICE_IMAGE_EXTENSIONS.has(extensionOfClient(f.name));
+        return `
+          <div class="notice-attachment-preview-item">
+            ${isImage
+              ? `<img src="${URL.createObjectURL(f)}" alt="">`
+              : `<span class="notice-attachment-preview-file">${NOTICE_FILE_ICON_SVG}<span>${escapeHtml(f.name)}</span></span>`}
+            <button type="button" class="notice-attachment-remove-btn" data-pending-index="${i}" aria-label="제거">×</button>
+          </div>`;
+      }).join("");
+      grid.innerHTML = keptHtml + pendingHtml;
+      grid.querySelectorAll(".notice-attachment-remove-btn[data-kept-index]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          keptAttachments.splice(Number(btn.dataset.keptIndex), 1);
+          renderAttachmentPreview();
+        });
+      });
+      grid.querySelectorAll(".notice-attachment-remove-btn[data-pending-index]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          pendingFiles.splice(Number(btn.dataset.pendingIndex), 1);
+          renderAttachmentPreview();
+        });
+      });
+    }
+
+    // pendingFiles를 실제로 업로드함: 1) 이미지는 먼저 리사이즈/압축 2) get-upload-urls로
+    // signed URL을 받음 3) Storage에 직접 업로드(anon 키 — signed URL 자체가 권한이라 RLS와 무관)
+    // 4) 업로드된 파일들을 attachments API 형식(camelCase)으로 돌려줌.
+    async function uploadPendingFiles() {
+      if (pendingFiles.length === 0) return [];
+      const preparedFiles = await Promise.all(pendingFiles.map(async (f) => {
+        return NOTICE_IMAGE_EXTENSIONS.has(extensionOfClient(f.name)) ? await maybeCompressImage(f) : f;
+      }));
+
+      const res = await authFetch(NOTICES_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "get-upload-urls",
+          files: preparedFiles.map((f) => ({ fileName: f.name, sizeBytes: f.size })),
+        }),
+      });
+      if (!res.ok) throw new Error("upload_urls_failed");
+      const { uploads } = await res.json();
+
+      const results = [];
+      for (let i = 0; i < uploads.length; i++) {
+        const u = uploads[i];
+        const file = preparedFiles[i];
+        const { error } = await supabase.storage.from(NOTICE_ATTACHMENTS_BUCKET).uploadToSignedUrl(u.path, u.token, file, {
+          contentType: file.type || "application/octet-stream",
+        });
+        if (error) throw new Error("upload_failed");
+        results.push({ path: u.path, fileName: u.fileName, mimeType: file.type || "application/octet-stream", sizeBytes: file.size, kind: u.kind });
+      }
+      return results;
     }
 
     function formatDate(iso) {
@@ -199,8 +335,9 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, content, created_at, updated_at")
+        .select("id, title, content, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
         .order("created_at", { ascending: false })
+        .order("sort_order", { referencedTable: "notice_attachments", ascending: true })
         .limit(NOTICE_LIMIT);
 
       if (error) {
@@ -233,6 +370,16 @@
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
       document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at) + editedLabel;
       document.getElementById("notice-modal-content").textContent = n.content;
+
+      const sortedAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+      const { galleryHtml, fileListHtml } = renderNoticeAttachmentsHtml(sortedAttachments);
+      const galleryEl = document.getElementById("notice-modal-gallery");
+      const filesEl = document.getElementById("notice-modal-files");
+      galleryEl.innerHTML = galleryHtml;
+      galleryEl.hidden = galleryHtml.length === 0;
+      filesEl.innerHTML = fileListHtml;
+      filesEl.hidden = fileListHtml.length === 0;
+
       document.getElementById("notice-modal-admin-actions").hidden = !isAdmin();
       document.getElementById("notice-modal-view").hidden = false;
       document.getElementById("notice-modal-form").hidden = true;
@@ -244,6 +391,8 @@
       if (!n) return;
       modalMode = "edit";
       modalNoticeId = id;
+      pendingFiles = [];
+      keptAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
       fillForm(n.title, n.content, "저장");
       showModal();
     }
@@ -251,6 +400,8 @@
     function openCreateModal() {
       modalMode = "create";
       modalNoticeId = null;
+      pendingFiles = [];
+      keptAttachments = [];
       fillForm("", "", "등록");
       showModal();
     }
@@ -263,6 +414,8 @@
       const statusEl = document.getElementById("notice-modal-status");
       statusEl.textContent = "";
       statusEl.className = "status-msg";
+      document.getElementById("notice-attachment-input").value = "";
+      renderAttachmentPreview();
       document.getElementById("notice-modal-view").hidden = true;
       document.getElementById("notice-modal-form").hidden = false;
       // dialog가 화면에 붙은(open) 다음이라야 scrollHeight 계산이 정확해서, showModal 이후에도 한 번 더 맞춰줌.
@@ -311,6 +464,27 @@
       });
       contentInput.addEventListener("input", () => autoResizeTextarea(contentInput));
 
+      document.getElementById("notice-attachment-input").addEventListener("change", (e) => {
+        const files = Array.from(e.target.files || []);
+        e.target.value = ""; // 같은 파일을 다시 선택할 수 있게 비움
+        const statusEl = document.getElementById("notice-modal-status");
+        for (const file of files) {
+          if (totalAttachmentCount() >= MAX_ATTACHMENTS) {
+            statusEl.textContent = `첨부파일은 최대 ${MAX_ATTACHMENTS}개까지예요.`;
+            statusEl.className = "status-msg error";
+            break;
+          }
+          const ext = extensionOfClient(file.name);
+          if (!NOTICE_IMAGE_EXTENSIONS.has(ext) && !NOTICE_FILE_EXTENSIONS.has(ext)) {
+            statusEl.textContent = `지원하지 않는 파일 형식이에요: ${file.name}`;
+            statusEl.className = "status-msg error";
+            continue;
+          }
+          pendingFiles.push(file);
+        }
+        renderAttachmentPreview();
+      });
+
       // 배경(backdrop) 클릭 시 닫기 — dialog 엘리먼트 자체를 클릭한 경우만(안쪽 내용 클릭은 버블링 안 됨).
       dialog.addEventListener("click", (e) => {
         if (e.target === dialog) closeModal();
@@ -332,14 +506,24 @@
           statusEl.className = "status-msg error";
           return;
         }
+        const submitBtn = document.getElementById("notice-modal-submit-btn");
+        submitBtn.disabled = true;
         statusEl.textContent = "";
         statusEl.className = "status-msg";
         try {
+          let uploadedAttachments = [];
+          if (pendingFiles.length > 0) {
+            statusEl.textContent = "첨부파일 업로드 중...";
+            uploadedAttachments = await uploadPendingFiles();
+          }
+          const attachments = [...keptAttachments.map(toApiAttachment), ...uploadedAttachments.map(toApiAttachment)];
+
           const isEdit = modalMode === "edit";
+          statusEl.textContent = isEdit ? "저장 중..." : "등록 중...";
           const url = isEdit ? `${NOTICES_URL}?id=${encodeURIComponent(modalNoticeId)}` : NOTICES_URL;
           const res = await authFetch(url, {
             method: isEdit ? "PATCH" : "POST",
-            body: JSON.stringify({ title, content }),
+            body: JSON.stringify({ title, content, attachments }),
           });
           if (!res.ok) throw new Error(String(res.status));
           closeModal();
@@ -347,6 +531,8 @@
         } catch (err) {
           statusEl.textContent = modalMode === "edit" ? "저장에 실패했어요." : "등록에 실패했어요.";
           statusEl.className = "status-msg error";
+        } finally {
+          submitBtn.disabled = false;
         }
       });
     }

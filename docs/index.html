@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=44">
+<link rel="stylesheet" href="assets/css/style.css?v=45">
 </head>
 <body>
   <script>
@@ -117,6 +117,8 @@
         <h3 id="notice-modal-title"></h3>
         <p class="muted" id="notice-modal-meta"></p>
         <p class="notice-modal-content" id="notice-modal-content"></p>
+        <div class="notice-image-gallery" id="notice-modal-gallery" hidden></div>
+        <div class="notice-file-list" id="notice-modal-files" hidden></div>
         <div class="notice-modal-actions">
           <button type="button" class="secondary" id="notice-modal-close-btn">닫기</button>
         </div>
@@ -124,7 +126,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=15"></script>
+  <script src="assets/js/chzzk-auth.js?v=16"></script>
   <script src="assets/js/spa-router.js?v=6"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -214,6 +216,16 @@
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
       document.getElementById("notice-modal-meta").textContent = new Date(n.created_at).toLocaleString("ko-KR") + editedLabel;
       document.getElementById("notice-modal-content").textContent = n.content;
+
+      const sortedAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
+      const { galleryHtml, fileListHtml } = renderNoticeAttachmentsHtml(sortedAttachments);
+      const galleryEl = document.getElementById("notice-modal-gallery");
+      const filesEl = document.getElementById("notice-modal-files");
+      galleryEl.innerHTML = galleryHtml;
+      galleryEl.hidden = galleryHtml.length === 0;
+      filesEl.innerHTML = fileListHtml;
+      filesEl.hidden = fileListHtml.length === 0;
+
       const dialog = document.getElementById("notice-modal");
       if (!dialog.open) dialog.showModal();
     }
@@ -232,8 +244,9 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, content, created_at, updated_at")
+        .select("id, title, content, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
         .order("created_at", { ascending: false })
+        .order("sort_order", { referencedTable: "notice_attachments", ascending: true })
         .limit(NOTICE_PREVIEW_LIMIT);
 
       if (error) {
