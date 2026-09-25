@@ -718,24 +718,42 @@ ul.notice-list, ol.notice-list {
 .notice-file-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notice-file-size { flex-shrink: 0; color: var(--muted); font-size: 0.78rem; }
 
-/* 글쓰기/수정 폼의 첨부파일 선택 영역 — 파일 input + 고른 파일 미리보기 그리드. */
+/* 글쓰기/수정 폼의 첨부파일 선택 영역 — 네이버카페처럼 "사진"과 "파일"을 서로 다른 그룹으로
+   나눔(notice-attachment-group 두 개). 실제 <input type=file>은 각 그룹당 하나씩 hidden으로
+   숨겨두고, 대신 JS(renderAttachmentPreview)가 그리는 점선 테두리 "추가" 타일/버튼(label
+   for=input id)로 엶 — 브라우저 기본 파일선택 버튼 대신 그리드/목록 안에 자연스럽게 들어가게. */
 .notice-attachment-field { margin-bottom: 10px; }
 .notice-attachment-field-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
-.notice-attachment-hint { font-size: 0.76rem; }
-#notice-attachment-input { display: block; width: 100%; font-size: 0.85rem; color: var(--text-dim); }
-.notice-attachment-preview-grid {
+.notice-attachment-hint {
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.notice-attachment-group { margin-bottom: 14px; }
+.notice-attachment-group:last-child { margin-bottom: 0; }
+.notice-attachment-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.notice-attachment-group-title svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+/* 사진 그룹 — 정사각형 썸네일 그리드 + 마지막 칸에 점선 "사진 추가" 타일. */
+.notice-photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 8px;
-  margin-top: 8px;
 }
-.notice-attachment-preview-item {
+.notice-photo-tile {
   position: relative;
   aspect-ratio: 1 / 1;
   border-radius: var(--radius-sm);
@@ -743,44 +761,90 @@ ul.notice-list, ol.notice-list {
   border: 1px solid var(--border);
   background: var(--surface-2);
 }
-.notice-attachment-preview-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.notice-attachment-preview-file {
+.notice-photo-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.notice-photo-add-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  width: 100%;
-  height: 100%;
-  padding: 4px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border);
   color: var(--muted);
-  text-align: center;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
-.notice-attachment-preview-file svg { width: 20px; height: 20px; }
-.notice-attachment-preview-file span {
-  font-size: 0.66rem;
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.notice-photo-add-tile:hover { border-color: var(--accent); color: var(--accent); }
+.notice-photo-add-tile svg { width: 18px; height: 18px; }
+
+/* 파일 그룹 — 아이콘+이름+용량 행 목록 + 맨 아래 점선 "파일 추가" 버튼(가로 폭 전체). */
+.notice-file-picker-list { display: flex; flex-direction: column; gap: 6px; }
+.notice-file-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.85rem;
 }
+.notice-file-picker-row svg { flex-shrink: 0; width: 16px; height: 16px; color: var(--muted); }
+.notice-file-picker-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-file-picker-size { flex-shrink: 0; color: var(--muted); font-size: 0.76rem; }
+.notice-file-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.notice-file-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+.notice-file-add-btn svg { width: 15px; height: 15px; }
+
+/* 삭제(×) 버튼 — 사진 타일 위에서는 우상단 원형 오버레이, 파일 행에서는 오른쪽에 나란히. */
 .notice-attachment-remove-btn {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 18px;
-  height: 18px;
+  flex-shrink: 0;
   padding: 0;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
   border-radius: 50%;
   font-size: 0.8rem;
+  cursor: pointer;
 }
-.notice-attachment-remove-btn:hover { background: var(--danger); }
+.notice-photo-tile .notice-attachment-remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+}
+.notice-photo-tile .notice-attachment-remove-btn:hover { background: var(--danger); }
+.notice-file-picker-row .notice-attachment-remove-btn {
+  width: 20px;
+  height: 20px;
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.notice-file-picker-row .notice-attachment-remove-btn:hover {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border-color: var(--danger);
+}
 
 .notice-modal-actions {
   display: flex;
