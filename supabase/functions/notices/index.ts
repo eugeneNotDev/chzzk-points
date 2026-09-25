@@ -6,8 +6,11 @@
 // POST body에 action이 있으면 그 action을 처리하고, 없으면 기존처럼 새 공지 작성으로 취급함.
 //
 // POST   { title, content, attachments? }                       → 새 공지 작성
-// POST   { action: "get-upload-urls", files: [{fileName, sizeBytes}] }
+// POST   { action: "get-upload-urls", files: [{fileName, sizeBytes, kind?}] }
 //                                                                 → 첨부파일 업로드용 signed URL 발급
+//                                                                   (kind는 선택 — "사진" 피커로 고른
+//                                                                   건 "image", "파일" 피커로 고른 건
+//                                                                   확장자가 이미지여도 "file"로 보냄)
 // PATCH  ?id=<notice id>  { title, content, attachments? }       → 기존 공지 수정(첨부파일도 통째로 교체)
 // DELETE ?id=<notice id>                                         → 공지 삭제(첨부파일 Storage 객체도 같이 정리)
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
@@ -208,9 +211,18 @@ async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, fil
     }
     const displayName = sanitizeDisplayName((f as { fileName: string }).fileName);
     const sizeBytes = (f as { sizeBytes: number }).sizeBytes;
+    const requestedKind = (f as { kind?: unknown }).kind;
 
-    const kind = classifyByExtension(displayName);
-    if (!kind) return jsonResponse({ error: "unsupported_file_type", fileName: displayName }, 400);
+    // 확장자가 화이트리스트에 있는지는 항상 서버가 판단(보안·용량한도용). 프론트가 "파일" 피커로
+    // 고른 이미지는 kind:"file"을 같이 보내서(=사진 피커가 아니라 다운로드용으로 골랐다는 의도) 그
+    // 의도를 따라줌 — 단, 확장자가 실제로 이미지가 아니면서 "image"를 요청하는 건 거부(문서를
+    // 갤러리에 넣을 순 없음). requestedKind가 없거나 이상하면 기존처럼 확장자 기준으로만 정함.
+    const extKind = classifyByExtension(displayName);
+    if (!extKind) return jsonResponse({ error: "unsupported_file_type", fileName: displayName }, 400);
+    if (requestedKind === "image" && extKind !== "image") {
+      return jsonResponse({ error: "kind_mismatch", fileName: displayName }, 400);
+    }
+    const kind: "image" | "file" = requestedKind === "image" || requestedKind === "file" ? requestedKind : extKind;
 
     const maxBytes = kind === "image" ? MAX_IMAGE_BYTES : MAX_FILE_BYTES;
     if (sizeBytes > maxBytes) return jsonResponse({ error: "file_too_large", fileName: displayName }, 400);
