@@ -99,9 +99,10 @@
             <button type="button" class="secondary" id="notice-modal-close-btn">닫기</button>
           </div>
         </div>
-        <form id="notice-modal-form" hidden>
-          <input type="text" id="notice-modal-title-input" class="notice-title-input" placeholder="제목" maxlength="80">
-          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6"></textarea>
+        <!-- autocomplete="off": 브라우저가 예전에 입력했던 제목들을 드롭다운으로 추천하는 걸 막음. -->
+        <form id="notice-modal-form" autocomplete="off" hidden>
+          <input type="text" id="notice-modal-title-input" class="notice-title-input" placeholder="제목" maxlength="80" autocomplete="off">
+          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
           <div class="notice-attachment-field">
             <div class="notice-attachment-field-header">
               <span class="field-label">첨부파일</span>
@@ -329,7 +330,10 @@
         const { error } = await supabase.storage.from(NOTICE_ATTACHMENTS_BUCKET).uploadToSignedUrl(u.path, u.token, file, {
           contentType: file.type || "application/octet-stream",
         });
-        if (error) throw new Error("upload_failed");
+        if (error) {
+          console.error("[notice] Storage 업로드 실패", u.path, error);
+          throw new Error("upload_failed");
+        }
         results.push({ path: u.path, fileName: u.fileName, mimeType: file.type || "application/octet-stream", sizeBytes: file.size, kind: u.kind });
       }
       return results;
@@ -602,7 +606,11 @@
           closeModal();
           await loadNotices();
         } catch (err) {
-          statusEl.textContent = modalMode === "edit" ? "저장에 실패했어요." : "등록에 실패했어요.";
+          // 원인을 콘솔에 남겨둠 — 화면엔 단순 메시지만 뜨니, 문제 생기면 F12 콘솔에서 바로 확인 가능하게.
+          console.error("[notice] 등록/수정 실패", err);
+          const base = modalMode === "edit" ? "저장에 실패했어요." : "등록에 실패했어요.";
+          const isUploadError = err && (err.message === "upload_failed" || err.message === "upload_urls_failed");
+          statusEl.textContent = isUploadError ? `${base} (첨부파일 업로드 오류)` : base;
           statusEl.className = "status-msg error";
         } finally {
           submitBtn.disabled = false;

@@ -85,13 +85,14 @@ function sanitizeDisplayName(fileName: string): string {
   return cleaned.length > 0 ? cleaned.slice(-200) : "file";
 }
 
-// Storage 경로에 실제로 들어가는 값 — 영문/숫자/한글/.-_ 만 허용(공백이나 특수문자가 URL에
-// 그대로 들어가면 일부 클라이언트에서 다운로드 파일명이 깨지는 경우가 있어서 미리 정리함).
-function sanitizeForPath(displayName: string): string {
+// Storage 객체 키 — Supabase Storage는 키에 한글 등 비ASCII 문자가 있으면 실제 업로드(PUT)를
+// 400(Invalid key)으로 거부함(signed URL 발급 단계는 통과해버려서 발견이 늦었음). 그래서 키에는
+// 원래 파일명을 아예 안 넣고 uuid + 확장자(화이트리스트라 항상 ASCII)만 씀. 화면에 보이는/다운로드
+// 되는 파일명은 notice_attachments.file_name에 원본 그대로 저장되고, 프론트가 ?download=<원본명>
+// 으로 넘겨서 받을 때도 원래 이름으로 저장됨.
+function buildStoragePath(displayName: string): string {
   const ext = extensionOf(displayName);
-  const base = ext ? displayName.slice(0, -(ext.length + 1)) : displayName;
-  const safeBase = base.replace(/[^a-zA-Z0-9가-힣._-]/g, "_").slice(0, 100) || "file";
-  return ext ? `${safeBase}.${ext}` : safeBase;
+  return `notices/${crypto.randomUUID()}.${ext}`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -227,7 +228,7 @@ async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, fil
     const maxBytes = kind === "image" ? MAX_IMAGE_BYTES : MAX_FILE_BYTES;
     if (sizeBytes > maxBytes) return jsonResponse({ error: "file_too_large", fileName: displayName }, 400);
 
-    const path = `notices/${crypto.randomUUID()}-${sanitizeForPath(displayName)}`;
+    const path = buildStoragePath(displayName);
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
     if (error) throw new Error(`signed upload url 발급 실패: ${error.message}`);
 
