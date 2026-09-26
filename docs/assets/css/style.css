@@ -1900,7 +1900,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
    색은 --badge-bg(기본색)/--badge-light(밝게)/--badge-dark(어둡게)/--badge-fg(글자)로 들어옴.
    새 디자인을 추가하려면 chzzk-auth.js의 TITLE_DESIGNS에 한 줄 + 여기 .title-badge--<id> 규칙. */
 .title-badge { position: relative; }
-.title-badge .tb-crown { width: 1.05em; height: 1.05em; margin-right: 0.18em; flex: 0 0 auto; }
+.title-badge .tb-icon { width: 1.05em; height: 1.05em; margin-right: 0.2em; flex: 0 0 auto; }
 
 /* 메탈 반짝: 칭호 색에서 뽑은 밝은/어두운 색으로 금속 광택 + 몇 초마다 빛줄기가 지나감.
    빛줄기는 배지 안에 깔린 .tb-sweep(배지 크기로 잘라줌) 안에서만 움직임 — 예전처럼 배지 자체에
@@ -1968,7 +1968,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background-clip: text;
   color: transparent;
 }
-.title-badge--glow .tb-crown { color: var(--badge-fg); }
+.title-badge--glow .tb-icon { color: var(--badge-fg); }
 @keyframes title-badge-spin { to { --tb-angle: 360deg; } }
 .title-badge--glow.title-badge--rainbow {
   background: #121417;
@@ -1984,7 +1984,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background-clip: text;
   animation: title-badge-rainbow 6s linear infinite;
 }
-.title-badge--glow.title-badge--rainbow .tb-crown { color: #ffd43b; }
+.title-badge--glow.title-badge--rainbow .tb-icon { color: #ffd43b; }
 
 /* 유리: 반투명 유리 안에 칭호 색이 비치는 느낌(정지). 글자색은 JS가 밝게 뽑아줌. */
 .title-badge--glass {
@@ -2015,8 +2015,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background-clip: text;
   color: transparent;
 }
-.title-badge--glow.title-badge--duo .tb-crown,
-.title-badge--glass.title-badge--duo .tb-crown { color: var(--badge-light); }
+.title-badge--glow.title-badge--duo .tb-icon,
+.title-badge--glass.title-badge--duo .tb-icon { color: var(--badge-light); }
 .title-badge--glass.title-badge--duo {
   background: linear-gradient(90deg, color-mix(in srgb, var(--badge-bg) 40%, transparent), color-mix(in srgb, var(--badge-bg2) 40%, transparent));
 }
@@ -2074,6 +2074,46 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-design-option.is-selected { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 1px var(--accent); }
 .title-design-sample { font-size: 0.95rem; display: inline-flex; }
 .title-extra-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+/* 아이콘 고르기: "아이콘 붙이기 ▾" 버튼 → 아래로 아이콘 격자가 펼쳐짐 */
+.title-icon-toggle,
+.title-icon-toggle:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.title-icon-toggle:hover { border-color: var(--muted); }
+.title-icon-toggle.has-icon { border-color: var(--accent); color: var(--text); }
+.title-icon-current { display: inline-flex; align-items: center; gap: 6px; }
+.title-icon-toggle .title-icon-glyph { width: 16px; height: 16px; }
+.title-icon-chevron { width: 14px; height: 14px; transition: transform 0.15s ease; }
+.title-icon-toggle.is-open .title-icon-chevron { transform: rotate(180deg); }
+.title-icon-panel { padding: 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.title-icon-panel[hidden] { display: none; }
+.title-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
+.title-icon-option,
+.title-icon-option:hover {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  color: var(--text-dim);
+}
+@media (hover: hover) { .title-icon-option:hover { border-color: var(--muted); color: var(--text); } }
+.title-icon-option.is-selected { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.title-icon-option .title-icon-glyph { width: 20px; height: 20px; }
+.title-icon-option--none { grid-column: span 2; font-size: 0.78rem; font-weight: 600; }
 .title-option-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; }
 .title-option-toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 
