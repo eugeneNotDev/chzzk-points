@@ -2187,3 +2187,128 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-grant-existing-option:hover { border-color: var(--muted); }
 .admin-grant-existing-option.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .admin-grant-existing-option .chip-meta { color: var(--muted); font-size: 0.75rem; }
+
+/* ── 룰렛 (roulette.html) ─────────────────────────────────────────────────────
+   가로 릴: 배율 카드들이 옆으로 지나가다 가운데 선에서 멈춤. 카드엔 배율만 크게. */
+.roulette-card { display: flex; flex-direction: column; gap: 18px; }
+.roulette-view {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0f1215;
+  box-shadow: inset 0 0 0 1px var(--border);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.roulette-strip { position: absolute; top: 15px; left: 0; display: flex; gap: 8px; will-change: transform; }
+.roulette-tile {
+  width: 88px;
+  height: 120px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 32%, #1a1d22), #16191d 72%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 70%, transparent), inset 0 -4px 0 var(--c);
+}
+.roulette-tile b { font-size: 1.45rem; font-weight: 800; color: #fff; letter-spacing: 0.01em; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); }
+.roulette-tile.is-jackpot {
+  background: linear-gradient(160deg, #fff3b0, #f2c230 35%, #b8860b 70%, #ffe27a);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6), inset 0 -4px 0 #8a6508, 0 0 14px rgba(242, 194, 48, 0.35);
+}
+.roulette-tile.is-jackpot b { color: #3a2a00; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+.roulette-tile.is-hit { animation: roulette-hit 0.9s ease 2; }
+@keyframes roulette-hit {
+  50% { box-shadow: inset 0 0 0 2px #fff, 0 0 20px var(--c), inset 0 -4px 0 var(--c); transform: scale(1.05); }
+}
+.roulette-marker {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  z-index: 2;
+  pointer-events: none;
+}
+.roulette-marker::before,
+.roulette-marker::after { content: ""; position: absolute; left: 50%; transform: translateX(-50%); border: 8px solid transparent; }
+.roulette-marker::before { top: 0; border-top-color: #fff; }
+.roulette-marker::after { bottom: 0; border-bottom-color: #fff; }
+
+.roulette-panel { display: flex; flex-direction: column; gap: 10px; }
+.roulette-balance { display: flex; justify-content: space-between; align-items: baseline; }
+.roulette-balance strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.roulette-bet-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; }
+.roulette-bet-field input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: 700 1.15rem system-ui, sans-serif;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.roulette-bet-field input:focus { outline: none; border-color: var(--accent); }
+.roulette-bet-field input.is-bad { border-color: var(--danger); }
+.roulette-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+@media (max-width: 560px) { .roulette-chips { grid-template-columns: repeat(3, 1fr); } }
+.roulette-chips .roulette-chip { padding: 8px 0; font-size: 0.82rem; font-weight: 600; min-width: 0; }
+.roulette-hint { margin: 0; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
+.roulette-hint.is-bad { color: #ff8a8a; }
+.roulette-spin-btn { padding: 14px; font-size: 1.05rem; font-weight: 800; border-radius: 12px; }
+.roulette-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--c, var(--border));
+  text-align: center;
+}
+.roulette-result strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.roulette-result .muted { font-size: 0.8rem; }
+.roulette-result.is-plus strong { color: var(--accent); }
+.roulette-result.is-minus strong { color: #ff8a8a; }
+.roulette-result.is-even strong { color: var(--text); }
+.roulette-result.is-error { color: #ff8a8a; font-size: 0.9rem; }
+.roulette-result.is-jackpot { box-shadow: 0 0 18px rgba(242, 194, 48, 0.35); }
+.roulette-result.is-jackpot strong { color: #f2c230; }
+
+.roulette-recent-title { margin: 0 0 10px; font-size: 1rem; }
+.roulette-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.roulette-recent li { display: grid; grid-template-columns: 52px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.roulette-recent li:last-child { border-bottom: 0; }
+.roulette-recent .roulette-recent-empty { display: block; text-align: center; padding: 18px 0; }
+.roulette-recent-mult {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: #fff;
+  background: color-mix(in srgb, var(--c) 45%, #1a1d22);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 75%, transparent);
+}
+.roulette-recent-bet { font-variant-numeric: tabular-nums; }
+.roulette-recent-time { font-size: 0.78rem; }
+.roulette-recent-net { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+.roulette-recent-net.is-plus { color: var(--accent); }
+.roulette-recent-net.is-minus { color: #ff8a8a; }
+.roulette-recent-net.is-even { color: var(--muted); }
+
+.roulette-lock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.roulette-lock[hidden] { display: none; }
+.roulette-lock svg { width: 36px; height: 36px; color: #cd7f32; }
+.roulette-lock p { margin: 0; font-size: 0.88rem; }
+.roulette-lock-progress { width: min(320px, 100%); height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+.roulette-lock-progress div { height: 100%; background: linear-gradient(90deg, #8a5a2b, #cd7f32); }

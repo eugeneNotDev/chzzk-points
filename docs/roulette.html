@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>룰렛 · 유진 팬보드</title>
+<link rel="stylesheet" href="assets/css/style.css?v=59">
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <img class="mark" src="assets/img/brand-mark.png" alt="유진 팬보드">
+          <span class="label">유진 팬보드</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
+          <span class="label">공지사항</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
+        <a href="predict.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="label">투표</span>
+        </a>
+        <a href="roulette.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21M5.6 5.6l4.6 4.6M13.8 13.8l4.6 4.6M18.4 5.6l-4.6 4.6M10.2 13.8l-4.6 4.6"/></svg></span>
+          <span class="label">룰렛</span>
+        </a>
+        <a href="attendance.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+          <span class="label">출석체크</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1 class="brand-heading">룰렛</h1>
+
+      <div id="loading-state" class="card">
+        <p class="skeleton skeleton-line" style="width:140px;height:20px;"></p>
+        <p class="skeleton skeleton-line" style="width:100%;height:160px;margin-top:14px;"></p>
+      </div>
+
+      <div id="logged-out" class="card" hidden>
+        <p>로그인하면 룰렛을 돌릴 수 있어요.</p>
+        <button onclick="spaNavigate('index.html')">홈으로 가서 로그인</button>
+      </div>
+
+      <div id="logged-in" hidden>
+        <div id="roulette-lock" class="card roulette-lock" hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 0 1 6 0v3z"/></svg>
+          <strong id="roulette-lock-title"></strong>
+          <p class="muted" id="roulette-lock-desc"></p>
+          <div class="roulette-lock-progress"><div id="roulette-lock-bar"></div></div>
+        </div>
+
+        <div class="card roulette-card">
+          <div class="roulette-view" id="roulette-view">
+            <div class="roulette-strip" id="roulette-strip"></div>
+            <div class="roulette-marker" aria-hidden="true"></div>
+          </div>
+
+          <div class="roulette-panel">
+            <div class="roulette-balance">
+              <span class="muted">보유 포인트</span>
+              <strong><span id="roulette-balance">0</span>P</strong>
+            </div>
+            <label class="roulette-bet-field">
+              <span class="muted">걸 포인트</span>
+              <input type="text" id="roulette-bet-input" inputmode="numeric" autocomplete="off" spellcheck="false" value="100" aria-label="걸 포인트">
+            </label>
+            <div class="roulette-chips">
+              <button type="button" class="secondary roulette-chip" data-add="100">+100</button>
+              <button type="button" class="secondary roulette-chip" data-add="1000">+1,000</button>
+              <button type="button" class="secondary roulette-chip" data-add="10000">+10,000</button>
+              <button type="button" class="secondary roulette-chip" data-set="half">절반</button>
+              <button type="button" class="secondary roulette-chip" data-set="max">최대</button>
+              <button type="button" class="secondary roulette-chip" data-set="reset">초기화</button>
+            </div>
+            <p class="roulette-hint" id="roulette-hint"></p>
+            <button type="button" id="roulette-spin-btn" class="roulette-spin-btn">돌리기</button>
+            <div class="roulette-result" id="roulette-result" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="roulette-recent-title">최근 기록</h2>
+          <ul class="roulette-recent" id="roulette-recent"></ul>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=23"></script>
+  <script src="assets/js/spa-router.js?v=9"></script>
+  <script>
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  //
+  // 가로 릴 룰렛: 결과는 서버(roulette 함수 → DB의 roulette_spin)가 정하고, 화면은 받은 결과 카드가
+  // 가운데 선에 멈추도록 옆으로 굴리는 연출만 함. 결과가 나오고 2초 뒤에 다시 돌릴 수 있음.
+  (function () {
+    const MIN_BET = 100;
+    const TILE_W = 88;
+    const TILE_GAP = 8;
+    const STEP = TILE_W + TILE_GAP;
+    const SPIN_MS = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1200 : 5200;
+    const AFTER_RESULT_WAIT_MS = 2000;
+    // 배율별 카드 색. 목록에 없는 배율이 테이블에 추가되면 5배 이상은 금색, 나머지는 회색.
+    const MULT_COLORS = { 0: "#e03141", 0.5: "#ff922b", 1: "#6b7480", 1.2: "#2fb574", 1.5: "#00a8e8", 2: "#8b5cf6", 3: "#ff6bb5", 5: "#f2c230" };
+    // 결과 말고 지나가는 카드들은 보기 좋게 섞기만 하는 용도(실제 확률 아님 — 실제 확률은 서버에만 있음).
+    const FILLER_WEIGHTS = { 0: 10, 0.5: 14, 1: 26, 1.2: 14, 1.5: 12, 2: 9, 3: 7, 5: 5 };
+
+    let state = null;          // GET 응답
+    let multipliers = [0, 0.5, 1, 1.2, 1.5, 2, 3, 5];
+    let tiles = [];            // 지금 릴에 깔린 배율들
+    let centerIdx = 0;         // 가운데 선에 있는 카드 번호
+    let centerJitter = 0;
+    let spinning = false;
+    let waitUntil = 0;         // 이 시각 전까지는 다시 못 돌림(결과 후 2초 / 서버 쿨타임)
+    const timers = [];
+
+    const fmt = (n) => Number(n).toLocaleString("ko-KR");
+    const multLabel = (m) => `x${Number(m)}`;
+    const colorOf = (m) => MULT_COLORS[m] || (m >= 5 ? "#f2c230" : "#6b7480");
+    const $ = (id) => document.getElementById(id);
+    function later(fn, ms) { const t = setTimeout(fn, ms); timers.push(t); return t; }
+
+    function fillerPick() {
+      const pool = multipliers.map((m) => [m, FILLER_WEIGHTS[m] ?? 8]);
+      let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0);
+      for (const [m, w] of pool) { r -= w; if (r < 0) return m; }
+      return pool[pool.length - 1][0];
+    }
+    function tileHtml(m) {
+      return `<div class="roulette-tile${m >= 5 ? " is-jackpot" : ""}" style="--c:${colorOf(m)}"><b>${multLabel(m)}</b></div>`;
+    }
+    function placeStrip(idx, jitter, animate) {
+      const strip = $("roulette-strip"), view = $("roulette-view");
+      if (!strip || !view) return;
+      const x = view.clientWidth / 2 - (idx * STEP + TILE_W / 2) + jitter;
+      strip.style.transition = animate ? `transform ${SPIN_MS}ms cubic-bezier(.08,.6,.1,1)` : "none";
+      strip.style.transform = `translateX(${x}px)`;
+    }
+    function renderTiles() { $("roulette-strip").innerHTML = tiles.map(tileHtml).join(""); }
+    function buildIdleStrip() {
+      tiles = Array.from({ length: 15 }, fillerPick);
+      centerIdx = 7;
+      centerJitter = 0;
+      renderTiles();
+      placeStrip(centerIdx, 0, false);
+    }
+
+    // ── 걸 포인트 입력 ──
+    function betValue() { return parseInt(String($("roulette-bet-input").value).replace(/[^0-9]/g, ""), 10) || 0; }
+    function setBet(v) { $("roulette-bet-input").value = v > 0 ? fmt(v) : ""; validate(); }
+    function balance() { return state ? state.balance : 0; }
+
+    function validate() {
+      const hint = $("roulette-hint"), btn = $("roulette-spin-btn"), input = $("roulette-bet-input");
+      if (!hint || !btn) return false;
+      const v = betValue();
+      let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요`;
+      let bad = false;
+      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 돌릴 수 있어요`; }
+      else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 돌릴 수 있어요`; }
+      else if (v < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 걸어야 해요`; }
+      else if (v > balance()) { bad = true; msg = "보유 포인트보다 많이 걸 수 없어요"; }
+      hint.textContent = msg;
+      hint.classList.toggle("is-bad", bad && !!state && state.eligible);
+      input.classList.toggle("is-bad", bad && !!state && state.eligible && v > 0);
+      const waiting = Date.now() < waitUntil;
+      btn.disabled = bad || spinning || waiting;
+      if (!spinning && !waiting) btn.textContent = "돌리기";
+      return !bad;
+    }
+
+    function renderBalance() {
+      $("roulette-balance").textContent = fmt(balance());
+    }
+    function syncGlobalBalance(v) {
+      // 모바일 상단바/더보기 시트의 포인트 표시도 같이 갱신(chzzk-auth.js가 캐시값을 씀).
+      try { localStorage.setItem(BALANCE_CACHE_KEY, String(v)); } catch {}
+      if (typeof renderMobileUser === "function") renderMobileUser();
+    }
+
+    function renderLock() {
+      const lock = $("roulette-lock");
+      if (state.eligible) { lock.hidden = true; return; }
+      const need = state.requiredPoints, have = state.maxBalanceReached;
+      $("roulette-lock-title").textContent = `${state.requiredTierName || "브론즈"} 등급부터 참여할 수 있어요`;
+      $("roulette-lock-desc").textContent = `최고 보유 포인트 기준이에요. 지금 ${fmt(have)}P · ${fmt(Math.max(0, need - have))}P 더 모으면 열려요.`;
+      $("roulette-lock-bar").style.width = `${Math.min(100, need > 0 ? (have / need) * 100 : 100)}%`;
+      lock.hidden = false;
+    }
+
+    function timeLabel(iso) {
+      return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+    }
+    function recentItemHtml(r) {
+      const net = r.payout - r.bet;
+      const cls = net > 0 ? "is-plus" : net < 0 ? "is-minus" : "is-even";
+      const sign = net > 0 ? "+" : net === 0 ? "±" : "";
+      return `<li>
+        <span class="roulette-recent-mult" style="--c:${colorOf(r.multiplier)}">${multLabel(r.multiplier)}</span>
+        <span class="roulette-recent-bet">${fmt(r.bet)}P</span>
+        <span class="roulette-recent-time muted">${timeLabel(r.createdAt)}</span>
+        <span class="roulette-recent-net ${cls}">${sign}${fmt(net)}P</span>
+      </li>`;
+    }
+    function renderRecent() {
+      const el = $("roulette-recent");
+      el.innerHTML = state.recent.length
+        ? state.recent.map(recentItemHtml).join("")
+        : `<li class="roulette-recent-empty muted">아직 돌린 기록이 없어요.</li>`;
+    }
+
+    function showResult(res, bet) {
+      const el = $("roulette-result");
+      const cls = res.net > 0 ? "is-plus" : res.net < 0 ? "is-minus" : "is-even";
+      const sign = res.net > 0 ? "+" : res.net === 0 ? "±" : "";
+      el.className = `roulette-result ${cls}${res.multiplier >= 5 ? " is-jackpot" : ""}`;
+      el.style.setProperty("--c", colorOf(res.multiplier));
+      el.innerHTML = `<strong>${multLabel(res.multiplier)} · ${sign}${fmt(res.net)}P</strong><span class="muted">${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
+      el.hidden = false;
+    }
+    function showError(msg) {
+      const el = $("roulette-result");
+      el.className = "roulette-result is-error";
+      el.style.removeProperty("--c");
+      el.innerHTML = `<span>${msg}</span>`;
+      el.hidden = false;
+    }
+
+    function startWait(ms) {
+      waitUntil = Date.now() + ms;
+      const btn = $("roulette-spin-btn");
+      if (btn) { btn.disabled = true; btn.textContent = "잠시만요…"; }
+      later(() => validate(), ms + 30);
+    }
+
+    async function spin() {
+      if (spinning || Date.now() < waitUntil || !validate()) return;
+      const bet = betValue();
+      spinning = true;
+      const btn = $("roulette-spin-btn");
+      btn.disabled = true;
+      btn.textContent = "돌아가는 중…";
+      $("roulette-result").hidden = true;
+
+      let res, data;
+      try {
+        res = await authFetch(ROULETTE_URL, { method: "POST", body: JSON.stringify({ bet }) });
+        data = await res.json().catch(() => ({}));
+      } catch (err) {
+        console.error("[roulette] 요청 실패", err);
+        data = { error: "network" };
+        res = { ok: false };
+      }
+      if (!$("roulette-strip")) return; // 그 사이 다른 페이지로 이동함
+      if (!res.ok) {
+        spinning = false;
+        if (data.error === "cooldown") {
+          showError(`너무 빨라요. ${data.retryAfterSeconds || 1}초 뒤에 다시 돌려주세요.`);
+          startWait((data.retryAfterSeconds || 1) * 1000);
+        } else if (data.error === "insufficient_balance") {
+          showError("포인트가 부족해요.");
+          await loadState();
+        } else if (data.error === "tier_required") {
+          await loadState();
+        } else if (data.error === "invalid_bet") {
+          showError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
+        } else if (data.error !== "banned" && res.status !== 401) {
+          showError("룰렛을 돌리지 못했어요. 다시 시도해주세요.");
+        }
+        validate();
+        return;
+      }
+
+      // 지금 보이는 카드들을 앞에 그대로 두고 뒤에 새 카드를 이어 붙인 뒤, 결과 카드까지 굴림
+      // (처음부터 새로 깔면 돌리는 순간 화면이 휙 바뀌어서 어색함).
+      const keepFrom = Math.max(0, centerIdx - 5);
+      const kept = tiles.slice(keepFrom, centerIdx + 6);
+      const startIdx = centerIdx - keepFrom;
+      const targetIdx = startIdx + 40 + Math.floor(Math.random() * 6);
+      tiles = kept.slice();
+      while (tiles.length < targetIdx + 6) tiles.push(fillerPick());
+      tiles[targetIdx] = data.multiplier;
+      renderTiles();
+      placeStrip(startIdx, centerJitter, false);
+      void $("roulette-strip").offsetWidth;
+      const jitter = Math.round((Math.random() - 0.5) * (TILE_W - 20));
+      placeStrip(targetIdx, jitter, true);
+      centerIdx = targetIdx;
+      centerJitter = jitter;
+
+      later(() => {
+        const strip = $("roulette-strip");
+        if (!strip) return;
+        strip.children[targetIdx]?.classList.add("is-hit");
+        state.balance = data.balance;
+        if (data.balance > state.maxBalanceReached) state.maxBalanceReached = data.balance;
+        state.recent.unshift({ bet, multiplier: data.multiplier, payout: data.payout, createdAt: new Date().toISOString() });
+        state.recent = state.recent.slice(0, 10);
+        renderBalance();
+        renderRecent();
+        syncGlobalBalance(data.balance);
+        showResult(data, bet);
+        spinning = false;
+        if (betValue() > balance()) setBet(Math.max(MIN_BET, Math.min(betValue(), balance())));
+        startWait(AFTER_RESULT_WAIT_MS);
+      }, SPIN_MS + 80);
+    }
+
+    async function loadState() {
+      const res = await authFetch(ROULETTE_URL);
+      if (!res.ok) return false;
+      state = await res.json();
+      if (Array.isArray(state.multipliers) && state.multipliers.length) multipliers = state.multipliers;
+      renderBalance();
+      renderLock();
+      renderRecent();
+      syncGlobalBalance(state.balance);
+      if (state.cooldownSeconds > 0) startWait(state.cooldownSeconds * 1000);
+      validate();
+      return true;
+    }
+
+    $("roulette-bet-input").addEventListener("input", () => { const v = betValue(); $("roulette-bet-input").value = v ? fmt(v) : ""; validate(); });
+    document.querySelectorAll(".roulette-chip").forEach((chip) => chip.addEventListener("click", () => {
+      let v = betValue();
+      if (chip.dataset.add) v += Number(chip.dataset.add);
+      else if (chip.dataset.set === "half") v = Math.max(MIN_BET, Math.floor(balance() / 2));
+      else if (chip.dataset.set === "max") v = Math.max(MIN_BET, balance());
+      else v = MIN_BET;
+      setBet(v);
+    }));
+    $("roulette-spin-btn").addEventListener("click", spin);
+    $("roulette-bet-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); spin(); } });
+
+    const onResize = () => { if (!spinning) placeStrip(centerIdx, centerJitter, false); };
+    window.addEventListener("resize", onResize);
+    window.__pageCleanup = () => {
+      window.removeEventListener("resize", onResize);
+      timers.forEach(clearTimeout);
+    };
+
+    renderSidebarUser();
+    initSidebarToggle();
+    initAdminNav();
+    initShopNavGroup();
+    initNoticeBadge();
+
+    (async () => {
+      if (!isLoggedIn()) {
+        $("loading-state").hidden = true;
+        $("logged-out").hidden = false;
+        return;
+      }
+      const ok = await loadState().catch((err) => { console.error("[roulette] 상태 조회 실패", err); return false; });
+      $("loading-state").hidden = true;
+      if (!ok) {
+        $("logged-out").hidden = false;
+        return;
+      }
+      $("logged-in").hidden = false;
+      buildIdleStrip();
+      validate();
+    })();
+  })();
+  </script>
+</body>
+</html>
