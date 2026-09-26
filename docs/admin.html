@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=50">
+<link rel="stylesheet" href="assets/css/style.css?v=51">
 </head>
 <body>
   <script>
@@ -113,7 +113,7 @@
               <h2>유저 검색</h2>
             </div>
             <div class="admin-search-row">
-              <input type="text" id="admin-search-input" placeholder="채널명으로 검색 (비워두면 최근 가입자 순으로 표시)">
+              <input type="text" id="admin-search-input" placeholder="채널명 검색 (비우면 전체)">
               <button type="button" id="admin-search-btn">검색</button>
             </div>
             <p id="admin-search-status" class="status-msg"></p>
@@ -162,7 +162,7 @@
             </div>
             <p class="muted">포인트 지급/차감/상점 사용/출석체크 등 모든 기록을 최근 24시간 기준 최신순으로 보여줘요. 상점 사용 처리완료 체크는 "상점 내역" 탭에서 해요.</p>
             <div class="admin-search-row">
-              <input type="text" id="log-search-input" placeholder="채널명으로 검색 (비워두면 전체 최신순)">
+              <input type="text" id="log-search-input" placeholder="채널명 검색 (비우면 전체)">
               <button type="button" id="log-search-btn">검색</button>
             </div>
             <p id="log-search-status" class="status-msg"></p>
@@ -182,7 +182,7 @@
             </div>
             <p class="muted">포인트 상점 사용 기록만 모아서 보여줘요(전체 기간). 오버레이 알림을 놓쳤을 때 여기서 처리완료로 체크해두세요.</p>
             <div class="admin-search-row">
-              <input type="text" id="spend-search-input" placeholder="채널명으로 검색 (비워두면 전체 최신순)">
+              <input type="text" id="spend-search-input" placeholder="채널명 검색 (비우면 전체)">
               <button type="button" id="spend-search-btn">검색</button>
             </div>
             <p id="spend-search-status" class="status-msg"></p>
@@ -195,8 +195,8 @@
                 현재 목록 전체 선택
               </label>
               <div class="admin-bulk-row">
-                <button type="button" class="secondary" id="spend-bulk-mark-processed" disabled>선택 항목 처리완료로 표시</button>
-                <button type="button" class="secondary" id="spend-bulk-mark-unprocessed" disabled>선택 항목 처리안함으로 표시</button>
+                <button type="button" class="secondary" id="spend-bulk-mark-processed" disabled>선택 항목 처리완료</button>
+                <button type="button" class="secondary" id="spend-bulk-mark-unprocessed" disabled>선택 항목 처리안함</button>
               </div>
               <p id="spend-bulk-selected-count" class="muted">선택된 항목: 0개</p>
             </div>

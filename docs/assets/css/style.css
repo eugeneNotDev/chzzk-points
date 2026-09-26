@@ -1643,3 +1643,45 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .predict-admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 .predict-admin-actions button.danger { border-color: var(--danger); color: #ff8a8a; }
 .predict-admin-actions button.danger:hover { border-color: var(--danger); color: #ff8a8a; background: transparent; }
+
+/* ============================================================================
+   폰 화면 다듬기 — 파일 맨 끝에 둬서 위쪽의 같은 우선순위 규칙들보다 나중에 적용되게 함.
+   ============================================================================ */
+@media (max-width: 720px) {
+  /* 홈 화면 제목("유진 팬보드")은 폰에선 상단바 로고와 겹쳐서 숨김. */
+  .home-heading { display: none; }
+}
+
+@media (max-width: 560px) {
+  /* 관리자 > 유저 행: 위쪽 줄 [☐ 이름/잔액], 아래 줄 [수량 입력(남는 폭 전부)][지급][차감][밴]. */
+  .admin-user-row { gap: 10px 12px; }
+  .admin-user-actions { flex: 1 1 100%; flex-wrap: nowrap; min-width: 0; }
+  /* 숫자 입력칸은 브라우저 기본 최소 폭(약 200px)이 있어서 그대로 두면 줄이 화면 밖으로 밀려남 —
+     기본 폭을 0으로 두고 남는 공간만큼 늘어나게 함. */
+  .admin-user-actions .admin-amount-input { flex: 1 1 auto; width: 0; min-width: 0; }
+  .admin-user-actions button { flex-shrink: 0; white-space: nowrap; padding: 10px 12px; }
+
+  /* 관리자 > 일괄 지급/차감, 상점 내역 일괄 처리: 버튼들을 2칸 격자로 가지런하게(수량 입력은 한 줄 통째로). */
+  .admin-bulk-row { display: grid; grid-template-columns: 1fr 1fr; }
+  .admin-bulk-row .admin-amount-input { grid-column: 1 / -1; width: 100%; }
+  .admin-bulk-row button { padding: 10px 8px; font-size: 0.88rem; }
+
+  /* 관리자 > 상점 내역 행: 5줄로 흩어지던 걸 2줄로.
+       [☐] 이름 / 사용 내역          -100P
+       [☐] 날짜·시간            ☑ 처리완료   */
+  #spend-log-list .points-log-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "sel who  amount"
+      "sel time done";
+    column-gap: 12px;
+    row-gap: 6px;
+    align-items: center;
+  }
+  #spend-log-list .admin-row-checkbox { grid-area: sel; }
+  #spend-log-list .points-log-who { grid-area: who; }
+  #spend-log-list .points-log-amount { grid-area: amount; width: auto; text-align: right; }
+  #spend-log-list .points-log-time { grid-area: time; width: auto; text-align: left; }
+  #spend-log-list .points-log-processed { grid-area: done; margin-top: 0; justify-self: end; font-size: 0.82rem; }
+}
