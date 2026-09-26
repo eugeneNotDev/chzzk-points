@@ -36,6 +36,9 @@ const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
 const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
+// 모바일 상단바 포인트 표시용 — /me 응답의 balance를 받을 때마다 갱신해두는 캐시(표시용일 뿐,
+// 실제 잔액 판단은 항상 서버가 함).
+const BALANCE_CACHE_KEY = "chzzk_points_balance_cache";
 
 // 로그인 버튼 onclick에 연결. 랜덤 state를 만들어 sessionStorage에 저장해두고
 // 치지직 인증 페이지(account-interlock)로 이동함. 콜백에서 이 state와 대조해서
@@ -127,6 +130,7 @@ function logout() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_ID_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_NAME_STORAGE_KEY);
+  localStorage.removeItem(BALANCE_CACHE_KEY);
 }
 
 // Edge Function 호출 공통 래퍼. 로그인 상태면 Authorization 헤더를 자동으로 붙여줌.
@@ -145,6 +149,9 @@ async function authFetch(url, options = {}) {
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+
+  const isMeProfileCall = String(url).startsWith(ME_URL) && !String(url).includes("action=");
+  if (isMeProfileCall) lastMeFetchAt = Date.now();
 
   const res = await fetch(url, { ...options, headers });
   if (res.status === 401) {
@@ -165,6 +172,11 @@ async function authFetch(url, options = {}) {
       if (typeof body.refreshedToken === "string" && body.refreshedToken) {
         localStorage.setItem(TOKEN_STORAGE_KEY, body.refreshedToken);
       }
+      // /me 프로필 응답이면 잔액을 캐싱해서 모바일 상단바 포인트 표시를 갱신함.
+      if (isMeProfileCall && typeof body.balance === "number") {
+        localStorage.setItem(BALANCE_CACHE_KEY, String(body.balance));
+        renderMobileUser();
+      }
     }).catch(() => {});
   }
   return res;
@@ -175,7 +187,17 @@ async function authFetch(url, options = {}) {
 // 없고, index.html/notice.html/ranking.html/admin.html처럼 /me를 안 쓰는 페이지에서 호출함.
 // (밴 감지 자체는 authFetch가 처리 — 여기선 그냥 그 authFetch를 한 번 트리거만 해주는 역할.)
 function verifySessionInBackground() {
+  refreshMeInBackground();
+}
+
+// /me를 백그라운드로 한 번 부름(밴 확인 + 모바일 상단바 잔액 갱신 겸용). 페이지를 옮길 때마다
+// 여러 곳에서 불려도 30초 안에 이미 /me를 불렀으면(페이지가 직접 부른 것 포함 — authFetch가
+// 시각을 기록함) 건너뜀.
+let lastMeFetchAt = 0;
+const ME_REFRESH_INTERVAL_MS = 30 * 1000;
+function refreshMeInBackground() {
   if (!isLoggedIn()) return;
+  if (Date.now() - lastMeFetchAt < ME_REFRESH_INTERVAL_MS) return;
   authFetch(ME_URL).catch(() => {});
 }
 
@@ -208,6 +230,11 @@ function renderSidebarUser() {
     `;
     document.getElementById("sidebar-login-btn").addEventListener("click", startLogin);
   }
+
+  // 모든 페이지가 페이지 스크립트 시작 시 이 함수를 부르므로, 모바일 상단바/더보기 시트의
+  // 로그인 상태 표시와 잔액 갱신도 여기서 같이 챙김.
+  renderMobileUser();
+  refreshMeInBackground();
 }
 
 const SIDEBAR_ICON_LOGOUT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>`;
@@ -493,3 +520,220 @@ function updateShopNavActiveState() {
     link.classList.toggle("active", link.dataset.shopAnchor === currentAnchor);
   });
 }
+
+// ============================================================================
+// 모바일 전용 상단바 + 하단 탭바 + "더보기" 시트
+// ----------------------------------------------------------------------------
+// 폰 폭(720px 이하)에서는 사이드바를 숨기고(style.css), 대신 이 세 가지를 보여줌.
+//   - 상단바: 로고 + (로그아웃 상태) 작은 로그인 버튼 / (로그인 상태) 포인트 + 프로필
+//   - 하단 탭바: 홈 · 공지 · 투표 · 출석 · 더보기
+//   - 더보기 시트: 내 정보 + 랭킹/일반 상점/칭호 상점/마이페이지/(관리자) + 로그아웃
+// 마크업을 8개 HTML에 복붙하지 않으려고 이 파일이 처음 로드될 때 한 번만 body에 끼워 넣음.
+// 라우터(spa-router.js)는 .main-content만 갈아끼우므로 이 요소들은 페이지를 옮겨도 그대로
+// 남아있고, 탭의 <a href>는 사이드바 링크와 똑같이 라우터가 가로채서 SPA로 이동함.
+// PC 폭에서는 CSS로 전부 숨겨져 있어서 기존 화면엔 아무 영향 없음.
+// ============================================================================
+
+const M_ICONS = {
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
+  notice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg>`,
+  predict: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>`,
+  attendance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
+  more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
+  ranking: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg>`,
+  shop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,
+  title: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9L12 3z"/></svg>`,
+  mypage: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>`,
+  admin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg>`,
+};
+
+// 하단 탭에 고정된 페이지들. 나머지 페이지(랭킹/상점/마이페이지/관리자)에 있을 땐 "더보기" 탭이 켜짐.
+const M_TAB_PAGES = ["index.html", "notice.html", "predict.html", "attendance.html"];
+
+function initMobileNav() {
+  // 사이드바가 있는 "사이트 페이지"에서만 — overlay.html(방송 오버레이) 같은 곳엔 안 붙임.
+  if (!document.querySelector(".sidebar")) return;
+  if (document.getElementById("m-topbar")) return;
+
+  const topbar = document.createElement("header");
+  topbar.id = "m-topbar";
+  topbar.className = "m-topbar";
+  topbar.innerHTML = `
+    <a href="index.html" class="m-brand">
+      <img src="assets/img/brand-mark.png" alt="">
+      <span>유진 팬보드</span>
+    </a>
+    <div class="m-topbar-user" id="m-topbar-user"></div>
+  `;
+
+  const tabbar = document.createElement("nav");
+  tabbar.id = "m-tabbar";
+  tabbar.className = "m-tabbar";
+  tabbar.setAttribute("aria-label", "메뉴");
+  tabbar.innerHTML = `
+    <a href="index.html" class="m-tab" data-page="index.html"><span class="m-tab-icon">${M_ICONS.home}</span><span>홈</span></a>
+    <a href="notice.html" class="m-tab" data-page="notice.html"><span class="m-tab-icon">${M_ICONS.notice}<span class="notice-nav-badge" hidden></span></span><span>공지</span></a>
+    <a href="predict.html" class="m-tab" data-page="predict.html"><span class="m-tab-icon">${M_ICONS.predict}</span><span>투표</span></a>
+    <a href="attendance.html" class="m-tab" data-page="attendance.html"><span class="m-tab-icon">${M_ICONS.attendance}</span><span>출석</span></a>
+    <button type="button" class="m-tab" id="m-more-btn"><span class="m-tab-icon">${M_ICONS.more}</span><span>더보기</span></button>
+  `;
+
+  const backdrop = document.createElement("div");
+  backdrop.id = "m-sheet-backdrop";
+  backdrop.className = "m-sheet-backdrop";
+  backdrop.hidden = true;
+
+  const sheet = document.createElement("div");
+  sheet.id = "m-sheet";
+  sheet.className = "m-sheet";
+  sheet.hidden = true;
+  sheet.setAttribute("role", "dialog");
+  sheet.setAttribute("aria-label", "더보기");
+  sheet.innerHTML = `
+    <div class="m-sheet-grabber"></div>
+    <div class="m-sheet-user" id="m-sheet-user"></div>
+    <div class="m-sheet-grid">
+      <a href="ranking.html" class="m-sheet-item" data-page="ranking.html">${M_ICONS.ranking}<span>랭킹</span></a>
+      <a href="shop.html#general-shop-section" class="m-sheet-item" data-shop-anchor="general-shop-section">${M_ICONS.shop}<span>일반 상점</span></a>
+      <a href="shop.html#title-shop-section" class="m-sheet-item" data-shop-anchor="title-shop-section">${M_ICONS.title}<span>칭호 상점</span></a>
+      <a href="mypage.html" class="m-sheet-item" data-page="mypage.html">${M_ICONS.mypage}<span>마이페이지</span></a>
+      <a href="admin.html" class="m-sheet-item" data-page="admin.html" id="m-sheet-admin" hidden>${M_ICONS.admin}<span>관리자</span></a>
+    </div>
+    <div class="m-sheet-footer" id="m-sheet-footer"></div>
+  `;
+
+  // 상단바는 sticky라 문서 맨 앞에 있어야 화면 위에 붙음(뒤에 두면 페이지 맨 아래에 깔림).
+  // 나머지는 fixed라 위치 상관없음.
+  document.body.prepend(topbar);
+  document.body.append(tabbar, backdrop, sheet);
+
+  document.getElementById("m-more-btn").addEventListener("click", () => {
+    if (sheet.hidden) openMobileSheet();
+    else closeMobileSheet();
+  });
+  backdrop.addEventListener("click", closeMobileSheet);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !sheet.hidden) closeMobileSheet();
+  });
+
+  // 시트 안 메뉴를 누르면 시트는 닫고 이동은 라우터에 맡김. 상점 두 개는 같은 shop.html 안에서
+  // 섹션만 바꾸는 특수 동작이 있어서(initShopNavGroup 참고) 숨겨진 사이드바의 같은 하위 링크를
+  // 대신 눌러서 그 로직을 그대로 재사용함.
+  sheet.querySelectorAll(".m-sheet-item").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      const anchor = item.dataset.shopAnchor;
+      if (anchor) {
+        e.preventDefault();
+        const sidebarLink = document.querySelector(`.sidebar-nav-sublink[data-shop-anchor="${anchor}"]`);
+        if (sidebarLink) sidebarLink.click();
+        else location.href = item.getAttribute("href");
+      }
+      closeMobileSheet();
+    });
+  });
+
+  // 뒤로가기로 페이지가 바뀌면 시트가 열린 채 남지 않게.
+  window.addEventListener("popstate", closeMobileSheet);
+
+  renderMobileUser();
+  updateMobileNavActive(currentPageNameForMobileNav());
+}
+
+function openMobileSheet() {
+  const sheet = document.getElementById("m-sheet");
+  const backdrop = document.getElementById("m-sheet-backdrop");
+  if (!sheet || !backdrop) return;
+  renderMobileUser();
+  sheet.hidden = false;
+  backdrop.hidden = false;
+  document.body.classList.add("m-sheet-open");
+  document.getElementById("m-more-btn")?.classList.add("open");
+}
+
+function closeMobileSheet() {
+  const sheet = document.getElementById("m-sheet");
+  const backdrop = document.getElementById("m-sheet-backdrop");
+  if (!sheet || !backdrop) return;
+  sheet.hidden = true;
+  backdrop.hidden = true;
+  document.body.classList.remove("m-sheet-open");
+  document.getElementById("m-more-btn")?.classList.remove("open");
+}
+
+function currentPageNameForMobileNav() {
+  const file = location.pathname.split("/").pop() || "index.html";
+  return file;
+}
+
+// 하단 탭/시트 메뉴의 현재 페이지 표시. spa-router.js가 페이지를 바꿀 때도 호출함.
+function updateMobileNavActive(pageName) {
+  const tabbar = document.getElementById("m-tabbar");
+  if (!tabbar) return;
+  const inTabs = M_TAB_PAGES.includes(pageName);
+  tabbar.querySelectorAll("a.m-tab").forEach((a) => {
+    a.classList.toggle("active", a.dataset.page === pageName);
+  });
+  document.getElementById("m-more-btn")?.classList.toggle("active", !inTabs);
+  document.querySelectorAll(".m-sheet-item").forEach((item) => {
+    const isShop = !!item.dataset.shopAnchor;
+    item.classList.toggle("active", isShop ? pageName === "shop.html" && location.hash.slice(1) === item.dataset.shopAnchor : item.dataset.page === pageName);
+  });
+  closeMobileSheet();
+}
+
+function formatPointsShort(n) {
+  return `${Number(n).toLocaleString("ko-KR")}P`;
+}
+
+// 상단바 오른쪽 + 시트 맨 위/맨 아래의 로그인 상태 표시. 로그인/로그아웃, 잔액 갱신 때마다 호출.
+function renderMobileUser() {
+  const topEl = document.getElementById("m-topbar-user");
+  const sheetUserEl = document.getElementById("m-sheet-user");
+  const footerEl = document.getElementById("m-sheet-footer");
+  const adminItem = document.getElementById("m-sheet-admin");
+  if (!topEl || !sheetUserEl || !footerEl) return;
+
+  if (adminItem) adminItem.hidden = !isAdmin();
+
+  if (!isLoggedIn()) {
+    topEl.innerHTML = `<button type="button" class="m-login-btn" id="m-login-btn">로그인</button>`;
+    document.getElementById("m-login-btn").addEventListener("click", startLogin);
+    sheetUserEl.innerHTML = `
+      <div class="m-sheet-user-text">
+        <div class="m-sheet-user-name">로그인하고 포인트를 모아보세요</div>
+        <div class="m-sheet-user-sub">방송 중 출석체크·투표로 포인트가 쌓여요</div>
+      </div>
+      <button type="button" class="m-sheet-login-btn" id="m-sheet-login-btn">치지직으로 로그인</button>
+    `;
+    document.getElementById("m-sheet-login-btn").addEventListener("click", startLogin);
+    footerEl.innerHTML = "";
+    return;
+  }
+
+  const name = getChannelName() || "(이름 없음)";
+  const initial = escapeHtmlForAuth(Array.from(name)[0] || "?");
+  const cached = localStorage.getItem(BALANCE_CACHE_KEY);
+  const pointsHtml = cached !== null ? `<span class="m-point-pill">${formatPointsShort(cached)}</span>` : "";
+
+  topEl.innerHTML = `
+    <a href="mypage.html" class="m-topbar-profile" aria-label="마이페이지">
+      ${pointsHtml}
+      <span class="m-avatar">${initial}</span>
+    </a>
+  `;
+  sheetUserEl.innerHTML = `
+    <span class="m-avatar m-avatar-lg">${initial}</span>
+    <div class="m-sheet-user-text">
+      <div class="m-sheet-user-name">${escapeHtmlForAuth(name)}님</div>
+      <div class="m-sheet-user-sub">내 포인트</div>
+    </div>
+    <span class="m-sheet-user-points">${cached !== null ? formatPointsShort(cached) : "-"}</span>
+  `;
+  footerEl.innerHTML = `<button type="button" class="m-sheet-logout-btn" id="m-sheet-logout-btn">로그아웃</button>`;
+  document.getElementById("m-sheet-logout-btn").addEventListener("click", () => {
+    logout();
+    location.href = "index.html";
+  });
+}
+
+initMobileNav();

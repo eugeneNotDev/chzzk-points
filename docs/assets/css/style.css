@@ -49,6 +49,12 @@
 
 * { box-sizing: border-box; }
 
+/* hidden 속성은 항상 이긴다 — 클래스 선택자로 display:flex/grid 등을 준 요소는 브라우저 기본
+   [hidden]{display:none}(우선순위가 제일 낮은 UA 규칙)을 덮어써서, JS로 hidden을 줘도 안
+   숨겨지는 버그가 이 프로젝트에서 반복됐음(투표 폼, 공지 팝업의 수정/삭제 버튼 등). 요소마다
+   .xxx[hidden] 예외를 다는 대신 여기서 한 번에 막음. */
+[hidden] { display: none !important; }
+
 /* 세로 스크롤바가 뜨고 안 뜨고에 따라(칭호 카드처럼 내용이 접혔다 펼쳐지면서 페이지 전체
    높이가 뷰포트를 넘었다 안 넘었다 할 때) 본문 폭이 스크롤바 두께만큼 늘었다 줄었다 하면서
    화면이 좌우로 살짝 튀는 걸 막음 — 스크롤이 실제로 필요 없을 때도 그 자리를 미리 비워둠. */
@@ -341,27 +347,179 @@ body.shop-nav-expanded .sidebar-nav-submenu { display: flex; }
   animation-duration: 0.18s;
 }
 
+/* ============================================================================
+   모바일 전용 레이아웃 (720px 이하) — 사이드바를 숨기고 상단바 + 하단 탭바 + 더보기 시트로
+   대체함. 마크업은 chzzk-auth.js의 initMobileNav()가 body에 끼워 넣음. PC 폭에선 전부 숨김.
+   ============================================================================ */
+.m-topbar, .m-tabbar, .m-sheet, .m-sheet-backdrop { display: none; }
+
 @media (max-width: 720px) {
   .app-shell { flex-direction: column; }
-  .sidebar {
-    width: auto;
-    height: auto;
-    position: static;
-    flex-direction: row;
+  .sidebar { display: none; }
+  /* 세로 flex 안에서 margin:0 auto를 받은 자식은 폭이 내용물만큼으로 줄어들어서(가운데로
+     좁게 몰리던 버그) 폭을 명시적으로 꽉 채움. 아래쪽은 고정 탭바에 안 가리게 여백. */
+  .main-content {
+    width: 100%;
+    padding: 16px 14px calc(84px + env(safe-area-inset-bottom));
+  }
+
+  /* 상단바 */
+  .m-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 10px 20px;
-    padding: 14px 16px;
+    gap: 10px;
+    height: 54px;
+    padding: 0 14px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
   }
-  .sidebar-nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
-  .sidebar-user {
-    margin-top: 0;
-    margin-left: auto;
-    padding-top: 0;
-    border-top: none;
+  .m-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    text-decoration: none;
+    font-family: var(--font-logo);
+    font-weight: 700;
+    font-size: 1.02rem;
   }
-  .sidebar-user button { width: auto; }
-  .sidebar-toggle-btn { display: none; }
+  .m-brand img { width: 30px; height: 30px; border-radius: 50%; }
+  .m-topbar-user { margin-left: auto; display: flex; align-items: center; }
+  .m-topbar-profile { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+  .m-point-pill {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .m-avatar {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .m-avatar-lg { width: 42px; height: 42px; font-size: 1rem; }
+  .m-login-btn { padding: 7px 14px; font-size: 0.85rem; }
+
+  /* 하단 탭바 */
+  .m-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    background: var(--sidebar-bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .m-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 60px;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .m-tab:hover { background: none; color: var(--text-dim); }
+  .m-tab.active, .m-tab.open { color: var(--accent); }
+  .m-tab-icon { position: relative; display: flex; }
+  .m-tab-icon svg { width: 23px; height: 23px; }
+  .m-tab .notice-nav-badge { top: -2px; right: -4px; }
+
+  /* 더보기 시트 */
+  body.m-sheet-open { overflow: hidden; }
+  .m-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .m-sheet {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 48;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 18px 18px 0 0;
+    padding: 8px 16px calc(76px + env(safe-area-inset-bottom));
+    animation: m-sheet-up 0.18s ease-out;
+  }
+  @keyframes m-sheet-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .m-sheet-grabber { width: 40px; height: 4px; border-radius: 4px; background: var(--border); margin: 0 auto 14px; }
+  .m-sheet-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 2px 2px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .m-sheet-user-text { flex: 1; min-width: 0; }
+  .m-sheet-user-name { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .m-sheet-user-sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  .m-sheet-user-points { font-weight: 800; font-size: 1.05rem; color: var(--accent); white-space: nowrap; }
+  .m-sheet-login-btn { padding: 8px 12px; font-size: 0.82rem; white-space: nowrap; }
+  .m-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 14px 0;
+  }
+  .m-sheet-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 14px 4px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    text-decoration: none;
+  }
+  .m-sheet-item svg { width: 22px; height: 22px; }
+  .m-sheet-item.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+  .m-sheet-footer:empty { display: none; }
+  .m-sheet-footer { border-top: 1px solid var(--border); padding-top: 6px; }
+  .m-sheet-logout-btn {
+    width: 100%;
+    background: none;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 10px;
+  }
+  .m-sheet-logout-btn:hover { background: none; color: var(--danger); }
 }
 
 button {

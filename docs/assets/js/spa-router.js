@@ -96,6 +96,8 @@ async function spaLoadPage(url, { pushState }) {
     document.querySelectorAll(".sidebar-nav a").forEach((a) => {
       a.classList.toggle("active", a.getAttribute("href") === pageName);
     });
+    // 모바일 하단 탭바도 같이 갱신(chzzk-auth.js의 initMobileNav 참고 — PC에선 숨겨져 있음).
+    if (typeof updateMobileNavActive === "function") updateMobileNavActive(pageName);
     spaRunScripts(doc);
     window.scrollTo({ top: 0 });
   };
