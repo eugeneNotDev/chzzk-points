@@ -172,13 +172,15 @@ Deno.serve(async (req: Request) => {
     const newBalance = await debitPoints(admin, session.channelId, item.cost, `포인트 상점 사용: ${item.name}`);
     if (newBalance === null) return jsonResponse({ error: "insufficient_balance" }, 400);
 
-    // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. (channel_id, title_id) 기본키라
+    // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. source를 "purchase"로 남겨두면 나중에
+    // 관리자가 회수했을 때 한정 수량 재고가 다시 1개 늘어남(0035_title_restock_on_revoke.sql).
+    // (channel_id, title_id) 기본키라
     // 동시에 두 요청이 들어와도(위에서 미리 막았지만 이론상 레이스는 남아있음) 두 번째는
     // unique violation(23505)으로 막힘 — 그건 "이미 부여됨"과 같은 결과라 에러로 안 보고 무시.
     if (item.grants_title_id) {
       const { error: titleGrantError } = await admin
         .from("user_purchased_titles")
-        .insert({ channel_id: session.channelId, title_id: item.grants_title_id });
+        .insert({ channel_id: session.channelId, title_id: item.grants_title_id, source: "purchase" });
       if (titleGrantError && titleGrantError.code !== "23505") {
         throw new Error(`user_purchased_titles insert 실패: ${titleGrantError.message}`);
       }

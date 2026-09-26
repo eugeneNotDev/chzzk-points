@@ -6,15 +6,16 @@
 // (attendance의 (channel_id, attended_on) unique 제약이 그대로 관문 역할을 함.)
 // 방송 시작 시각을 못 읽으면(치지직 응답에 없으면) 예전처럼 오늘 날짜로 기록함.
 //
-// 누적 출석 10번째마다 보너스 +50P(그 회차엔 기본 50P + 보너스 50P = 100P).
+// 1회 100P, 누적 출석 10번째마다 보너스 +100P(그 회차엔 기본 100P + 보너스 100P = 200P).
 //
 // GET  ?year=2026&month=9 → 그 달의 출석 현황 조회 (year/month 생략 시 이번 달, KST 기준)
-//   { attendedDates: ["2026-09-14", ...], checkedToday, isLive, balance, attendanceCount, bonusEvery }
+//   { attendedDates: ["2026-09-14", ...], checkedToday, isLive, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints }
 //   checkedToday: 방송 중이면 "이번 방송에 출석했는지", 아니면 "오늘 날짜로 출석 기록이 있는지".
 //   attendanceCount: 누적 출석 횟수(밴 초기화 이후만). sessionDate: 지금 출석하면 기록될 날짜.
 // POST {} → 출석체크 시도. 방송 중이 아니면 400 not_live, 이번 방송에 이미 했으면 400 already_checked.
-//   성공 시 attendance 테이블에 기록 + points_ledger에 +50P (10번째마다 보너스 +50P 한 줄 더).
-//   { attendedDates, checkedToday: true, isLive: true, balance, attendanceCount, bonusEvery, pointsEarned, bonus }
+//   성공 시 attendance 테이블에 기록 + points_ledger에 +100P (10번째마다 보너스 +100P 한 줄 더).
+//   { attendedDates, checkedToday: true, isLive: true, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints, pointsEarned, bonus }
+//   (pointsPerCheck/bonusPoints는 화면 문구용 — 금액을 바꿀 땐 아래 상수만 고치면 화면도 같이 바뀜)
 //
 // 밴된 유저는 다른 함수들과 동일하게 403 { error: "banned" }.
 //
@@ -27,10 +28,10 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { broadcastDateKst, getLiveInfo } from "../_shared/live.ts";
 
-const ATTENDANCE_POINTS = 50;
+const ATTENDANCE_POINTS = 100;
 // 누적 출석 이 횟수마다 보너스를 한 번 더 줌.
 const BONUS_EVERY = 10;
-const BONUS_POINTS = 50;
+const BONUS_POINTS = 100;
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -184,6 +185,8 @@ Deno.serve(async (req: Request) => {
           balance,
           attendanceCount,
           bonusEvery: BONUS_EVERY,
+          pointsPerCheck: ATTENDANCE_POINTS,
+          bonusPoints: BONUS_POINTS,
           sessionDate,
         },
         200,
@@ -231,6 +234,8 @@ Deno.serve(async (req: Request) => {
         balance,
         attendanceCount,
         bonusEvery: BONUS_EVERY,
+        pointsPerCheck: ATTENDANCE_POINTS,
+        bonusPoints: BONUS_POINTS,
         pointsEarned: ATTENDANCE_POINTS + bonus,
         bonus,
       },

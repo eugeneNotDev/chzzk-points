@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=60">
+<link rel="stylesheet" href="assets/css/style.css?v=61">
 </head>
 <body>
   <script>
@@ -171,8 +171,9 @@
           <!-- 한정 수량(재고) — 역시 칭호 상품 전용. 비워두면 무제한이고, 다 팔리면 상품이
                사라지는 게 아니라 "품절"로 바뀌면서 구매 버튼만 막힘. -->
           <div class="shop-item-field" id="shop-item-stock-row" hidden>
-            <label class="field-label" for="shop-item-stock-input">한정 수량 (비워두면 무제한)</label>
+            <label class="field-label" for="shop-item-stock-input" id="shop-item-stock-label">한정 수량 (비워두면 무제한)</label>
             <input type="number" id="shop-item-stock-input" class="admin-amount-input" min="1" placeholder="예: 10">
+            <p class="muted shop-item-stock-help" id="shop-item-stock-help" hidden></p>
           </div>
           <div class="admin-bulk-row" id="shop-item-checkbox-row">
             <label class="admin-checkbox-label" id="shop-item-live-row">
@@ -403,6 +404,9 @@
     let modalItemType = "regular";
     // 칭호 색 고르기 UI(chzzk-auth.js의 createTitleColorPicker) — 모달 처음 세팅할 때 한 번 만듦.
     let titleColorPicker = null;
+    // 수정 중인 상품이 지금까지 팔린 개수 — 수정 창의 재고 칸은 "남은 수량"을 보여주고, 저장할 때
+    // 서버가 쓰는 "전체 한정 수량"(= 팔린 개수 + 남은 수량)으로 바꿔서 보냄.
+    let modalSoldCount = 0;
 
     function openShopItemModal(mode, itemId, itemType) {
       modalMode = mode;
@@ -437,7 +441,14 @@
         cooldownInput.value = item?.cooldown_seconds ?? 0;
         titlenameInput.value = item?.titles?.name ?? "";
         titleColorPicker?.setColor(item?.titles?.color);
-        stockInput.value = item?.stock_limit ?? "";
+        // 재고 칸은 남은 수량(품절이면 0). 칭호를 회수하면 팔린 개수가 줄어서 재고가 다시 생김.
+        modalSoldCount = Number(item?.sold_count ?? 0);
+        stockInput.value = item?.stock_limit != null ? Math.max(0, item.stock_limit - modalSoldCount) : "";
+        stockInput.min = "0";
+        document.getElementById("shop-item-stock-label").textContent = "남은 수량 (비워두면 무제한)";
+        const stockHelp = document.getElementById("shop-item-stock-help");
+        stockHelp.textContent = `지금까지 ${modalSoldCount.toLocaleString("ko-KR")}개 팔렸어요. 품절된 상품도 여기 숫자를 늘리면 다시 팔 수 있어요.`;
+        stockHelp.hidden = modalSoldCount === 0 && item?.stock_limit == null;
         liveInput.checked = Boolean(item?.requires_live);
         overlayInput.checked = item?.show_on_overlay !== false;
         activeRow.hidden = false;
@@ -457,6 +468,10 @@
         titlenameInput.value = "";
         titleColorPicker?.setColor(DEFAULT_TITLE_COLOR);
         stockInput.value = "";
+        stockInput.min = "1";
+        modalSoldCount = 0;
+        document.getElementById("shop-item-stock-label").textContent = "한정 수량 (비워두면 무제한)";
+        document.getElementById("shop-item-stock-help").hidden = true;
         liveInput.checked = false;
         // 칭호 상품은 방송 화면에 굳이 안 떠도 되는 경우가 많아서 기본 꺼짐, 일반 상품은
         // 기존 동작 그대로 기본 켜짐.
@@ -574,9 +589,17 @@
 
           const stockRaw = document.getElementById("shop-item-stock-input").value.trim();
           if (stockRaw) {
-            const stockLimit = Number(stockRaw);
-            if (!Number.isInteger(stockLimit) || stockLimit <= 0) {
-              statusEl.textContent = "한정 수량은 1 이상의 정수로 입력해주세요.";
+            const entered = Number(stockRaw);
+            const isEdit = modalMode === "edit";
+            if (!Number.isInteger(entered) || entered < (isEdit ? 0 : 1)) {
+              statusEl.textContent = isEdit ? "남은 수량은 0 이상의 정수로 입력해주세요." : "한정 수량은 1 이상의 정수로 입력해주세요.";
+              statusEl.className = "status-msg error";
+              return;
+            }
+            // 수정 창에선 남은 수량을 입력받으니 서버에는 전체 한정 수량(팔린 개수 + 남은 수량)으로 보냄.
+            const stockLimit = isEdit ? modalSoldCount + entered : entered;
+            if (stockLimit <= 0) {
+              statusEl.textContent = "아직 안 팔린 상품은 남은 수량을 1 이상으로 해주세요(내리려면 판매 중지).";
               statusEl.className = "status-msg error";
               return;
             }

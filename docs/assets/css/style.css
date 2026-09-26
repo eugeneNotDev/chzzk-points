@@ -1822,6 +1822,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 
 /* ── 칭호 상점 카드: 상품명 아래에 실제로 받게 될 칭호 배지를 보여줌 ── */
 .shop-item-title-preview { margin: 2px 0 8px; font-size: 1rem; }
+.shop-item-stock-help { font-size: 0.78rem; margin: 2px 0 0; line-height: 1.5; }
 
 /* ── 관리자 상점: 판매 중지된 상품은 아래 접힌 영역으로 모아둠 ── */
 .shop-inactive-group {
