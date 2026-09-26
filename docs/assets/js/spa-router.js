@@ -103,7 +103,12 @@ async function spaLoadPage(url, { pushState }) {
   };
 
   if (document.startViewTransition) {
-    await document.startViewTransition(applyChanges).finished.catch(() => {});
+    const transition = document.startViewTransition(applyChanges);
+    // 탭이 백그라운드라 화면을 안 그리는 중이면 브라우저가 애니메이션만 건너뛰고(페이지 교체
+    // 자체는 정상 진행) ready를 reject하는데, 그걸 안 받아주면 콘솔에 "Uncaught (in promise)
+    // InvalidStateError"가 찍힘 — 무해하지만 지저분해서 조용히 받아줌.
+    transition.ready.catch(() => {});
+    await transition.finished.catch(() => {});
   } else {
     mainEl.classList.add("page-fade-out");
     await new Promise((resolve) => setTimeout(resolve, 120));
