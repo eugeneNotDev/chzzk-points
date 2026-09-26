@@ -1902,14 +1902,22 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-badge { position: relative; }
 .title-badge .tb-crown { width: 1.05em; height: 1.05em; margin-right: 0.18em; flex: 0 0 auto; }
 
-/* 메탈 반짝: 칭호 색에서 뽑은 밝은/어두운 색으로 금속 광택 + 몇 초마다 빛줄기가 지나감 */
+/* 메탈 반짝: 칭호 색에서 뽑은 밝은/어두운 색으로 금속 광택 + 몇 초마다 빛줄기가 지나감.
+   빛줄기는 배지 안에 깔린 .tb-sweep(배지 크기로 잘라줌) 안에서만 움직임 — 예전처럼 배지 자체에
+   overflow:hidden을 걸면 모서리에 튀어나오는 반짝이 별까지 잘려서 따로 뺌. */
 .title-badge--shine {
-  overflow: hidden;
   background: linear-gradient(135deg, var(--badge-light), var(--badge-bg) 42%, var(--badge-dark) 72%, var(--badge-light));
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.5);
 }
-.title-badge--shine::after {
+.title-badge .tb-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.title-badge .tb-sweep::after {
   content: "";
   position: absolute;
   top: -50%;
@@ -1919,7 +1927,6 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
   transform: rotate(20deg);
   animation: title-badge-sweep 2.8s ease-in-out infinite;
-  pointer-events: none;
 }
 @keyframes title-badge-sweep {
   0%, 55% { left: -60%; }
@@ -1979,9 +1986,71 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .title-badge--glow.title-badge--rainbow .tb-crown { color: #ffd43b; }
 
+/* 유리: 반투명 유리 안에 칭호 색이 비치는 느낌(정지). 글자색은 JS가 밝게 뽑아줌. */
+.title-badge--glass {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--badge-bg) 40%, transparent), color-mix(in srgb, var(--badge-bg) 14%, transparent));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px color-mix(in srgb, var(--badge-bg) 55%, transparent), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.title-badge--glass.title-badge--rainbow {
+  background: linear-gradient(90deg, rgba(255, 77, 90, 0.38), rgba(255, 146, 43, 0.34), rgba(255, 212, 59, 0.32), rgba(0, 229, 160, 0.32), rgba(93, 200, 255, 0.34), rgba(155, 107, 255, 0.38), rgba(255, 107, 181, 0.36), rgba(255, 77, 90, 0.38));
+  background-size: 200% 100%;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* ── 두 가지 색: 그라데이션(--duo) — 디자인마다 두 색을 같이 씀 ── */
+.title-badge--duo { background: linear-gradient(90deg, var(--badge-bg), var(--badge-bg2)); }
+.title-badge--duo:not(.title-badge--shine):not(.title-badge--glow):not(.title-badge--glass) { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.title-badge--shine.title-badge--duo {
+  background: linear-gradient(135deg, var(--badge-light), var(--badge-bg) 32%, var(--badge-bg2) 68%, var(--badge-light2));
+}
+.title-badge--glow.title-badge--duo {
+  --glow-ring: conic-gradient(from var(--tb-angle), var(--badge-bg), var(--badge-bg2), var(--badge-bg), var(--badge-bg2), var(--badge-bg));
+}
+.title-badge--glow.title-badge--duo .tb-text,
+.title-badge--glass.title-badge--duo .tb-text {
+  background: linear-gradient(90deg, var(--badge-light), var(--badge-light2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.title-badge--glow.title-badge--duo .tb-crown,
+.title-badge--glass.title-badge--duo .tb-crown { color: var(--badge-light); }
+.title-badge--glass.title-badge--duo {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--badge-bg) 40%, transparent), color-mix(in srgb, var(--badge-bg2) 40%, transparent));
+}
+
+/* ── 두 가지 색: 배경색 + 글자색(--ink) — 글자색(--badge-fg)은 JS가 두 번째 색으로 넣어줌 ── */
+.title-badge--glow.title-badge--ink .tb-text {
+  background: none;
+  color: var(--badge-fg);
+}
+
+/* ── 반짝이 별: 배지 모서리에서 작은 별이 번갈아 반짝(어느 디자인에나 같이 붙음) ── */
+.title-badge .tb-stars { position: absolute; inset: 0; pointer-events: none; }
+.title-badge .tb-star {
+  position: absolute;
+  width: 0.55em;
+  height: 0.55em;
+  color: #fff;
+  opacity: 0;
+  filter: drop-shadow(0 0 2px var(--badge-bg2, var(--badge-bg, #ffd43b)));
+  animation: title-badge-twinkle 2.2s ease-in-out infinite;
+}
+.title-badge .tb-star--1 { right: -0.28em; top: -0.3em; }
+.title-badge .tb-star--2 { left: -0.22em; bottom: -0.22em; width: 0.45em; height: 0.45em; animation-delay: 0.8s; }
+.title-badge .tb-star--3 { right: 32%; top: -0.34em; width: 0.38em; height: 0.38em; animation-delay: 1.5s; }
+.title-badge--rainbow .tb-star { filter: drop-shadow(0 0 2px #ff6bb5); }
+@keyframes title-badge-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .title-badge--shine::after { animation: none; display: none; }
+  .title-badge .tb-sweep { display: none; }
   .title-badge--glow::before, .title-badge--glow .tb-text { animation: none; }
+  .title-badge .tb-star { animation: none; opacity: 1; transform: scale(0.85) rotate(45deg); }
 }
 
 /* ── 칭호 꾸미기 UI: 디자인 선택 줄 ── */
@@ -2004,11 +2073,47 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-design-option:hover { border-color: var(--muted); }
 .title-design-option.is-selected { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 1px var(--accent); }
 .title-design-sample { font-size: 0.95rem; display: inline-flex; }
-.title-crown-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; margin-left: auto; }
-.title-crown-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
-@media (max-width: 560px) {
-  .title-crown-toggle { margin-left: 0; }
+.title-extra-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.title-option-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; }
+.title-option-toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+
+/* ── 칭호 꾸미기 UI: 색 줄(첫 번째/두 번째) + 두 가지 색 섞기 ── */
+.title-color-group { display: flex; flex-direction: column; gap: 8px; }
+.title-color-group[hidden] { display: none; }
+.title-color-group-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.title-color-group-label { font-size: 0.78rem; color: var(--muted); }
+.title-duo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-top: 2px; }
+.title-duo-bar .title-mix-options,
+.title-duo-bar .title-duo-swap { display: none; }
+.title-duo-bar.is-on .title-mix-options { display: flex; }
+.title-duo-bar.is-on .title-duo-swap { display: inline-flex; }
+.title-duo-note { display: none; font-size: 0.78rem; color: var(--muted); }
+.title-duo-bar.is-rainbow .title-duo-note { display: inline; }
+.title-duo-bar.is-rainbow .title-duo-toggle { opacity: 0.5; cursor: not-allowed; }
+.title-mix-options { gap: 4px; padding: 3px; border-radius: 9px; background: var(--bg); border: 1px solid var(--border); }
+.title-mix-option,
+.title-mix-option:hover {
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
+.title-mix-option.is-selected { background: var(--surface-2, rgba(255, 255, 255, 0.08)); color: var(--accent); }
+.title-duo-swap,
+.title-duo-swap:hover {
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.title-duo-swap:hover { border-color: var(--muted); }
 
 /* ── 관리자 칭호 지급: 새로 만들기 / 기존 칭호 탭 ── */
 .admin-grant-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
