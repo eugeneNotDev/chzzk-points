@@ -267,7 +267,9 @@ a {
   transition: transform 0.2s ease;
 }
 .sidebar-nav-toggle .chevron svg { width: 14px; height: 14px; }
-body.shop-nav-expanded .sidebar-nav-toggle .chevron { transform: rotate(180deg); }
+/* 그룹(포인트 상점 / 미니게임)마다 따로 펼침 — body 클래스로 기억해서 SPA 페이지 이동에도 유지됨. */
+body.shop-nav-expanded #shop-nav-toggle .chevron,
+body.game-nav-expanded #game-nav-toggle .chevron { transform: rotate(180deg); }
 
 .sidebar-nav-submenu {
   display: none;
@@ -275,7 +277,8 @@ body.shop-nav-expanded .sidebar-nav-toggle .chevron { transform: rotate(180deg);
   gap: 2px;
   padding: 2px 0 4px 44px;
 }
-body.shop-nav-expanded .sidebar-nav-submenu { display: flex; }
+body.shop-nav-expanded #shop-nav-submenu,
+body.game-nav-expanded #game-nav-submenu { display: flex; }
 .sidebar-nav-submenu a {
   display: block;
   color: var(--text-dim);
@@ -2275,11 +2278,11 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .roulette-marker::before { top: 0; border-top-color: #fff; }
 .roulette-marker::after { bottom: 0; border-bottom-color: #fff; }
 
-.roulette-panel { display: flex; flex-direction: column; gap: 10px; }
-.roulette-balance { display: flex; justify-content: space-between; align-items: baseline; }
-.roulette-balance strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
-.roulette-bet-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; }
-.roulette-bet-field input {
+.game-panel { display: flex; flex-direction: column; gap: 10px; }
+.game-balance { display: flex; justify-content: space-between; align-items: baseline; }
+.game-balance strong { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.game-bet-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; }
+.game-bet-field input {
   width: 100%;
   padding: 12px 14px;
   border-radius: 10px;
@@ -2290,15 +2293,15 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.roulette-bet-field input:focus { outline: none; border-color: var(--accent); }
-.roulette-bet-field input.is-bad { border-color: var(--danger); }
-.roulette-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-@media (max-width: 560px) { .roulette-chips { grid-template-columns: repeat(3, 1fr); } }
-.roulette-chips .roulette-chip { padding: 8px 0; font-size: 0.82rem; font-weight: 600; min-width: 0; }
-.roulette-hint { margin: 0; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
-.roulette-hint.is-bad { color: #ff8a8a; }
+.game-bet-field input:focus { outline: none; border-color: var(--accent); }
+.game-bet-field input.is-bad { border-color: var(--danger); }
+.game-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+@media (max-width: 560px) { .game-chips { grid-template-columns: repeat(3, 1fr); } }
+.game-chips .game-chip { padding: 8px 0; font-size: 0.82rem; font-weight: 600; min-width: 0; }
+.game-hint { margin: 0; font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
+.game-hint.is-bad { color: #ff8a8a; }
 .roulette-spin-btn { padding: 14px; font-size: 1.05rem; font-weight: 800; border-radius: 12px; }
-.roulette-result {
+.game-result {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2309,21 +2312,21 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   border: 1px solid var(--c, var(--border));
   text-align: center;
 }
-.roulette-result strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
-.roulette-result .muted { font-size: 0.8rem; }
-.roulette-result.is-plus strong { color: var(--accent); }
-.roulette-result.is-minus strong { color: #ff8a8a; }
-.roulette-result.is-even strong { color: var(--text); }
-.roulette-result.is-error { color: #ff8a8a; font-size: 0.9rem; }
-.roulette-result.is-jackpot { box-shadow: 0 0 18px rgba(242, 194, 48, 0.35); }
-.roulette-result.is-jackpot strong { color: #f2c230; }
+.game-result strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.game-result .muted { font-size: 0.8rem; }
+.game-result.is-plus strong { color: var(--accent); }
+.game-result.is-minus strong { color: #ff8a8a; }
+.game-result.is-even strong { color: var(--text); }
+.game-result.is-error { color: #ff8a8a; font-size: 0.9rem; }
+.game-result.is-jackpot { box-shadow: 0 0 18px rgba(242, 194, 48, 0.35); }
+.game-result.is-jackpot strong { color: #f2c230; }
 
-.roulette-recent-title { margin: 0 0 10px; font-size: 1rem; }
-.roulette-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.roulette-recent li { display: grid; grid-template-columns: 52px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
-.roulette-recent li:last-child { border-bottom: 0; }
-.roulette-recent .roulette-recent-empty { display: block; text-align: center; padding: 18px 0; }
-.roulette-recent-mult {
+.game-recent-title { margin: 0 0 10px; font-size: 1rem; }
+.game-recent { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.game-recent li { display: grid; grid-template-columns: 52px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.game-recent li:last-child { border-bottom: 0; }
+.game-recent .game-recent-empty { display: block; text-align: center; padding: 18px 0; }
+.game-recent-mult {
   justify-self: start;
   padding: 2px 8px;
   border-radius: 6px;
@@ -2333,16 +2336,85 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background: color-mix(in srgb, var(--c) 45%, #1a1d22);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 75%, transparent);
 }
-.roulette-recent-bet { font-variant-numeric: tabular-nums; }
-.roulette-recent-time { font-size: 0.78rem; }
-.roulette-recent-net { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
-.roulette-recent-net.is-plus { color: var(--accent); }
-.roulette-recent-net.is-minus { color: #ff8a8a; }
-.roulette-recent-net.is-even { color: var(--muted); }
+.game-recent-bet { font-variant-numeric: tabular-nums; }
+.game-recent-time { font-size: 0.78rem; }
+.game-recent-net { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+.game-recent-net.is-plus { color: var(--accent); }
+.game-recent-net.is-minus { color: #ff8a8a; }
+.game-recent-net.is-even { color: var(--muted); }
+/* 폰 폭에선 한 줄에 다 안 들어가서 시간을 아래 줄로 내림(결과 배지 · 내용 · 포인트 / 시간). */
+@media (max-width: 560px) {
+  .game-recent li { grid-template-columns: auto 1fr auto; row-gap: 2px; }
+  .game-recent-time { grid-column: 2; grid-row: 2; }
+  .game-recent-net { min-width: 0; }
+}
 
-.roulette-lock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
-.roulette-lock[hidden] { display: none; }
-.roulette-lock svg { width: 36px; height: 36px; color: #cd7f32; }
-.roulette-lock p { margin: 0; font-size: 0.88rem; }
-.roulette-lock-progress { width: min(320px, 100%); height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; }
-.roulette-lock-progress div { height: 100%; background: linear-gradient(90deg, #8a5a2b, #cd7f32); }
+.game-lock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+.game-lock[hidden] { display: none; }
+.game-lock svg { width: 36px; height: 36px; color: #cd7f32; }
+.game-lock p { margin: 0; font-size: 0.88rem; }
+.game-lock-progress { width: min(320px, 100%); height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+.game-lock-progress div { height: 100%; background: linear-gradient(90deg, #8a5a2b, #cd7f32); }
+
+/* ── 가위바위보 (rps.html) — 나 vs 상대 카드 + 손 고르는 버튼(누르면 바로 한 판).
+   베팅 칸/결과/최근 기록/잠금 안내는 룰렛과 같은 .game-* 스타일을 같이 씀. */
+.rps-card { display: flex; flex-direction: column; gap: 18px; }
+.rps-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 12px 14px;
+  border-radius: 14px;
+  background: #0f1215;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.rps-vs { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 6vw, 48px); }
+.rps-side { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rps-who { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.rps-hand {
+  width: clamp(96px, 26vw, 128px);
+  height: clamp(96px, 26vw, 128px);
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 2px var(--border);
+  color: var(--text-dim);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+}
+.rps-hand svg { width: 58%; height: 58%; }
+.rps-hand.is-me { color: var(--accent); }
+.rps-hand.is-shaking { animation: rps-shake 0.18s ease-in-out infinite alternate; }
+@keyframes rps-shake {
+  from { transform: translateY(-4px) rotate(-6deg); }
+  to { transform: translateY(4px) rotate(6deg); }
+}
+.rps-hand.is-win { box-shadow: inset 0 0 0 2px var(--accent), 0 0 22px rgba(0, 229, 160, 0.35); transform: scale(1.05); }
+.rps-hand.is-lose { box-shadow: inset 0 0 0 2px #e03141; opacity: 0.65; }
+.rps-vs-label { font-weight: 900; color: var(--muted); font-size: 1.05rem; }
+.rps-rule { margin: 0; font-size: 0.8rem; }
+.rps-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rps-pick,
+.rps-pick:hover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.rps-pick svg { width: 34px; height: 34px; color: var(--accent); }
+.rps-pick:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.rps-pick:disabled { opacity: 0.45; }
+.rps-pick:disabled svg { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .rps-hand.is-shaking { animation: none; }
+  .roulette-tile.is-hit { animation: none; box-shadow: inset 0 0 0 2px #fff, 0 0 20px var(--c), inset 0 -4px 0 var(--c); }
+}

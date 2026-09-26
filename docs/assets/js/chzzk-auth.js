@@ -21,6 +21,7 @@ const ADMIN_URL = `${FUNCTIONS_BASE_URL}/admin`;
 const SHOP_ITEMS_URL = `${FUNCTIONS_BASE_URL}/shop-items`;
 const PREDICTIONS_URL = `${FUNCTIONS_BASE_URL}/predictions`;
 const ROULETTE_URL = `${FUNCTIONS_BASE_URL}/roulette`;
+const RPS_URL = `${FUNCTIONS_BASE_URL}/rps`;
 // 공지사항 첨부파일(이미지/파일) Storage 버킷 — 공개 버킷이라 signed URL 없이 퍼블릭 URL로
 // 바로 접근 가능함 (0031_notice_attachments.sql, supabase/functions/notices 참고).
 // 업로드(쓰기)는 signed upload URL로만 하니 버킷 이름 자체는 시크릿이 아님.
@@ -954,6 +955,40 @@ function initShopNavGroup() {
   });
 
   updateShopNavActiveState();
+  // 모든 페이지가 이 함수를 부르니까 "미니게임" 그룹도 여기서 같이 챙김.
+  initGameNavGroup();
+}
+
+// "미니게임" 사이드바 그룹(룰렛/가위바위보). 하위 링크는 페이지가 따로라서(roulette.html, rps.html)
+// 일반 링크처럼 spa-router가 이동과 active 표시를 알아서 함 — 여기선 펼치기/접기와 그룹 버튼의
+// active 표시만 담당. 미니게임 페이지에 있으면 그룹을 자동으로 펼쳐둠.
+const MINIGAME_PAGES = ["roulette.html", "rps.html"];
+function isOnMinigamePage() {
+  // location은 spa-router가 스크립트 실행 뒤에 바꿔서 못 믿음 — 페이지에만 있는 표시로 판단(isOnShopPage와 같은 이유).
+  return document.querySelector("[data-minigame-page]") !== null;
+}
+function initGameNavGroup() {
+  const toggleBtn = document.getElementById("game-nav-toggle");
+  if (!toggleBtn) return;
+  if (toggleBtn.dataset.bound !== "1") {
+    toggleBtn.dataset.bound = "1";
+    toggleBtn.addEventListener("click", () => {
+      // 사이드바를 접은 상태에선 하위 메뉴가 안 보이니 바로 첫 게임(룰렛)으로 이동.
+      if (document.body.classList.contains("sidebar-collapsed")) {
+        if (isOnMinigamePage()) return; // 이미 게임 페이지면 그대로(진행 중인 판을 날리지 않게)
+        if (typeof spaNavigate === "function") spaNavigate(MINIGAME_PAGES[0]);
+        else location.href = MINIGAME_PAGES[0];
+        return;
+      }
+      document.body.classList.toggle("game-nav-expanded");
+      toggleBtn.setAttribute("aria-expanded", document.body.classList.contains("game-nav-expanded") ? "true" : "false");
+    });
+  }
+  const onGamePage = isOnMinigamePage();
+  toggleBtn.classList.toggle("active", onGamePage);
+  if (onGamePage) document.body.classList.add("game-nav-expanded");
+  toggleBtn.setAttribute("aria-controls", "game-nav-submenu");
+  toggleBtn.setAttribute("aria-expanded", document.body.classList.contains("game-nav-expanded") ? "true" : "false");
 }
 
 // 지금 보고 있는 페이지가 shop.html인지 판단. location.pathname/href는 spa-router.js가
@@ -1027,7 +1062,7 @@ function updateShopNavActiveState() {
 // 폰 폭(720px 이하)에서는 사이드바를 숨기고(style.css), 대신 이 세 가지를 보여줌.
 //   - 상단바: 로고 + (로그아웃 상태) 작은 로그인 버튼 / (로그인 상태) 포인트 + 프로필
 //   - 하단 탭바: 홈 · 공지 · 투표 · 출석 · 더보기
-//   - 더보기 시트: 내 정보 + 랭킹/룰렛/일반 상점/칭호 상점/마이페이지/(관리자) + 로그아웃
+//   - 더보기 시트: 내 정보 + 랭킹/룰렛/가위바위보/일반 상점/칭호 상점/마이페이지/(관리자) + 로그아웃
 // 마크업을 8개 HTML에 복붙하지 않으려고 이 파일이 처음 로드될 때 한 번만 body에 끼워 넣음.
 // 라우터(spa-router.js)는 .main-content만 갈아끼우므로 이 요소들은 페이지를 옮겨도 그대로
 // 남아있고, 탭의 <a href>는 사이드바 링크와 똑같이 라우터가 가로채서 SPA로 이동함.
@@ -1039,6 +1074,7 @@ const M_ICONS = {
   notice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg>`,
   predict: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>`,
   roulette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21M5.6 5.6l4.6 4.6M13.8 13.8l4.6 4.6M18.4 5.6l-4.6 4.6M10.2 13.8l-4.6 4.6"/></svg>`,
+  rps: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-7a1.5 1.5 0 0 1 3 0v7"/><path d="M14 11.5V7a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 10.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-4.9-2.6L4.2 15a1.6 1.6 0 0 1 2.6-1.9L8 14.5"/></svg>`,
   attendance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
   ranking: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg>`,
@@ -1096,6 +1132,7 @@ function initMobileNav() {
     <div class="m-sheet-grid">
       <a href="ranking.html" class="m-sheet-item" data-page="ranking.html">${M_ICONS.ranking}<span>랭킹</span></a>
       <a href="roulette.html" class="m-sheet-item" data-page="roulette.html">${M_ICONS.roulette}<span>룰렛</span></a>
+      <a href="rps.html" class="m-sheet-item" data-page="rps.html">${M_ICONS.rps}<span>가위바위보</span></a>
       <a href="shop.html#general-shop-section" class="m-sheet-item" data-shop-anchor="general-shop-section">${M_ICONS.shop}<span>일반 상점</span></a>
       <a href="shop.html#title-shop-section" class="m-sheet-item" data-shop-anchor="title-shop-section">${M_ICONS.title}<span>칭호 상점</span></a>
       <a href="mypage.html" class="m-sheet-item" data-page="mypage.html">${M_ICONS.mypage}<span>마이페이지</span></a>

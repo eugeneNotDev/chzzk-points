@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>룰렛 · 유진 팬보드</title>
+<title>가위바위보 · 유진 팬보드</title>
 <link rel="stylesheet" href="assets/css/style.css?v=62">
 </head>
 <body>
@@ -58,8 +58,8 @@
             <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
           </button>
           <div class="sidebar-nav-submenu" id="game-nav-submenu">
-            <a href="roulette.html" class="active">룰렛</a>
-            <a href="rps.html">가위바위보</a>
+            <a href="roulette.html">룰렛</a>
+            <a href="rps.html" class="active">가위바위보</a>
           </div>
         </div>
         <a href="attendance.html">
@@ -79,7 +79,14 @@
     </aside>
 
     <main class="main-content">
-      <h1 class="brand-heading" data-minigame-page>룰렛</h1>
+      <h1 class="brand-heading" data-minigame-page>가위바위보</h1>
+      <!-- 손 모양 아이콘: Phosphor Icons fill (MIT) — hand-fist(바위), hand-peace(가위), hand-palm(보).
+           라우터가 main 안쪽만 갈아끼워서 아이콘 정의도 main 안에 둠. -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <symbol id="rps-i-rock" viewBox="0 0 256 256"><path fill="currentColor" d="M232,120v8A104,104,0,0,1,127.63,232c-54-.19-98-42.06-103.12-94.78a4,4,0,0,1,5.56-4A35.94,35.94,0,0,0,72,122.59a35.92,35.92,0,0,0,53.94,2.33,40.36,40.36,0,0,0,12.87,13A47.94,47.94,0,0,0,120,176a8,8,0,0,0,8.67,8,8.21,8.21,0,0,0,7.33-8.26A32,32,0,0,1,168,144a8,8,0,0,0,8-8.53,8.18,8.18,0,0,0-8.25-7.47H160a24,24,0,0,1-24-24V88h64A32,32,0,0,1,232,120ZM44.73,120C55.57,119.6,64,110.37,64,99.52v-23C64,65.63,55.57,56.4,44.73,56A20,20,0,0,0,24,76v24A20,20,0,0,0,44.73,120Zm56,0c10.84-.39,19.27-9.62,19.27-20.47v-47c0-10.85-8.43-20.08-19.27-20.47A20,20,0,0,0,80,52v48A20,20,0,0,0,100.73,120ZM176,52a20,20,0,0,0-20.73-20C144.43,32.4,136,41.63,136,52.48V72h36a4,4,0,0,0,4-4Z"/></symbol>
+        <symbol id="rps-i-scissors" viewBox="0 0 256 256"><path fill="currentColor" d="M96.55,36.14a16,16,0,0,1,11-19.52c8.61-2.46,17.65,3,20,11.65l16,59.78a4,4,0,0,1-3.18,5A31.79,31.79,0,0,0,128,98c-.56.37-1.1.76-1.64,1.17-.33-.58-.67-1.16-1-1.72a31.74,31.74,0,0,0-14-11.72,3.94,3.94,0,0,1-2.25-2.62ZM80.4,176.65a16.17,16.17,0,0,0,3.23.33A16,16,0,0,0,86.8,145.3l-19.59-4a16,16,0,0,0-6.41,31.35Zm-19.6-53,34.64,7.07a16,16,0,1,0,6.4-31.35L67.21,92.33A16,16,0,0,0,48.33,104.8,16,16,0,0,0,60.8,123.68Zm102-28.16,23.55,4.81A4,4,0,0,0,191,97.44l16.42-61.3a16,16,0,0,0-30.91-8.28l-16.8,62.7A4,4,0,0,0,162.81,95.52Zm37.34,31.74a23.89,23.89,0,0,0-15.67-11L148.87,109a16,16,0,0,0-15.12,5,14,14,0,0,0-2.43,3.57,16,16,0,0,0,1.72,17,16.5,16.5,0,0,0,9.8,5.93l15.24,3.11a8.06,8.06,0,0,1,6.32,9.36,28,28,0,0,0,2.77,19,8.19,8.19,0,0,1-1.93,10.41,8,8,0,0,1-11.94-2.43,44,44,0,0,1-5.48-22.09L139.27,156A31.78,31.78,0,0,1,119,142.32c-.38-.57-.73-1.15-1.06-1.74a32.12,32.12,0,0,1-6.87,4A32,32,0,0,1,83.63,193a32.32,32.32,0,0,1-6.43-.65l-19.59-4h-.06a2.61,2.61,0,0,0-3,3.57A80.19,80.19,0,0,0,128,240h.61c43.77-.33,79.39-36.62,79.39-80.9v-3.34A55.72,55.72,0,0,0,200.15,127.26Z"/></symbol>
+        <symbol id="rps-i-paper" viewBox="0 0 256 256"><path fill="currentColor" d="M216,104v48a88,88,0,0,1-176,0V64a16,16,0,0,1,32,0v56a8,8,0,0,0,16,0V32a16,16,0,0,1,32,0v80a8,8,0,0,0,16,0V48a16,16,0,0,1,32,0v80.67A48.08,48.08,0,0,0,128,176a8,8,0,0,0,16,0,32,32,0,0,1,32-32,8,8,0,0,0,8-8V104a16,16,0,0,1,32,0Z"/></symbol>
+      </defs></svg>
 
       <div id="loading-state" class="card">
         <p class="skeleton skeleton-line" style="width:140px;height:20px;"></p>
@@ -87,7 +94,7 @@
       </div>
 
       <div id="logged-out" class="card" hidden>
-        <p>로그인하면 룰렛을 돌릴 수 있어요.</p>
+        <p>로그인하면 가위바위보를 할 수 있어요.</p>
         <button onclick="spaNavigate('index.html')">홈으로 가서 로그인</button>
       </div>
 
@@ -99,10 +106,14 @@
           <div class="game-lock-progress"><div id="game-lock-bar"></div></div>
         </div>
 
-        <div class="card roulette-card">
-          <div class="roulette-view" id="roulette-view">
-            <div class="roulette-strip" id="roulette-strip"></div>
-            <div class="roulette-marker" aria-hidden="true"></div>
+        <div class="card rps-card">
+          <div class="rps-stage">
+            <div class="rps-vs">
+              <div class="rps-side"><span class="rps-who">나</span><div class="rps-hand is-me" id="rps-me"><svg aria-hidden="true"><use href="#rps-i-rock"/></svg></div></div>
+              <span class="rps-vs-label">VS</span>
+              <div class="rps-side"><span class="rps-who">상대</span><div class="rps-hand" id="rps-cpu"><svg aria-hidden="true"><use href="#rps-i-rock"/></svg></div></div>
+            </div>
+            <p class="rps-rule muted" id="rps-rule">이기면 1.9배 · 비기면 그대로 · 지면 0</p>
           </div>
 
           <div class="game-panel">
@@ -112,7 +123,7 @@
             </div>
             <label class="game-bet-field">
               <span class="muted">걸 포인트</span>
-              <input type="text" id="roulette-bet-input" inputmode="numeric" autocomplete="off" spellcheck="false" value="100" aria-label="걸 포인트">
+              <input type="text" id="rps-bet-input" inputmode="numeric" autocomplete="off" spellcheck="false" value="100" aria-label="걸 포인트">
             </label>
             <div class="game-chips">
               <button type="button" class="secondary game-chip" data-add="100">+100</button>
@@ -123,7 +134,11 @@
               <button type="button" class="secondary game-chip" data-set="reset">초기화</button>
             </div>
             <p class="game-hint" id="game-hint"></p>
-            <button type="button" id="roulette-spin-btn" class="roulette-spin-btn">돌리기</button>
+            <div class="rps-picks" role="group" aria-label="낼 손">
+              <button type="button" class="rps-pick" data-hand="scissors"><svg aria-hidden="true"><use href="#rps-i-scissors"/></svg><span>가위</span></button>
+              <button type="button" class="rps-pick" data-hand="rock"><svg aria-hidden="true"><use href="#rps-i-rock"/></svg><span>바위</span></button>
+              <button type="button" class="rps-pick" data-hand="paper"><svg aria-hidden="true"><use href="#rps-i-paper"/></svg><span>보</span></button>
+            </div>
             <div class="game-result" id="game-result" role="status" aria-live="polite" hidden></div>
           </div>
         </div>
@@ -141,95 +156,60 @@
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
   //
-  // 가로 릴 룰렛: 결과는 서버(roulette 함수 → DB의 roulette_spin)가 정하고, 화면은 받은 결과 카드가
-  // 가운데 선에 멈추도록 옆으로 굴리는 연출만 함. 결과가 나오고 2초 뒤에 다시 돌릴 수 있음.
+  // 가위바위보: 손을 누르는 순간 바로 한 판 시작. 상대 손과 결과는 서버(rps 함수 → DB의 rps_play)가
+  // 정하고, 화면은 상대 손이 흔들리다 공개되는 연출만 함. 결과가 나오고 2초 뒤에 다시 할 수 있음.
   (function () {
     const MIN_BET = 100;
-    const TILE_W = 88;
-    const TILE_GAP = 8;
-    const STEP = TILE_W + TILE_GAP;
-    const SPIN_MS = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1200 : 5200;
+    const SHAKE_MIN_MS = matchMedia("(prefers-reduced-motion: reduce)").matches ? 300 : 1200;
     const AFTER_RESULT_WAIT_MS = 2000;
-    // 서버(roulette_spin)는 한 번 돌리고 5초 안에는 다시 못 돌리게 막음 — 화면 대기도 그보다 짧아지지 않게
-    // 맞춤(움직임 줄이기 설정이면 연출이 짧아서 2초만 기다리면 서버 쿨타임에 걸렸음).
-    const SERVER_COOLDOWN_MS = 5000;
+    // 서버(rps_play)는 한 판 하고 3초 안에는 다시 못 하게 막음 — 화면 대기도 그보다 짧아지지 않게 맞춤.
+    const SERVER_COOLDOWN_MS = 3000;
     const MAX_BET = 400000000; // 서버가 받는 최대(기술적 한계, 실제로 닿을 일 없음)
-    // 배율별 카드 색. 목록에 없는 배율이 테이블에 추가되면 5배 이상은 금색, 나머지는 회색.
-    const MULT_COLORS = { 0: "#e03141", 0.5: "#ff922b", 1: "#6b7480", 1.2: "#2fb574", 1.5: "#00a8e8", 2: "#8b5cf6", 3: "#ff6bb5", 5: "#f2c230" };
-    // 결과 말고 지나가는 카드들은 보기 좋게 섞기만 하는 용도(실제 확률 아님 — 실제 확률은 서버에만 있음).
-    const FILLER_WEIGHTS = { 0: 10, 0.5: 14, 1: 26, 1.2: 14, 1.5: 12, 2: 9, 3: 7, 5: 5 };
+    const HANDS = ["scissors", "rock", "paper"];
+    const HAND_KO = { scissors: "가위", rock: "바위", paper: "보" };
+    const RESULT_KO = { win: "이김", draw: "비김", lose: "짐" };
 
-    let state = null;          // GET 응답
-    let multipliers = [0, 0.5, 1, 1.2, 1.5, 2, 3, 5];
-    let tiles = [];            // 지금 릴에 깔린 배율들
-    let centerIdx = 0;         // 가운데 선에 있는 카드 번호
-    let centerJitter = 0;
-    let spinning = false;
-    let waitUntil = 0;         // 이 시각 전까지는 다시 못 돌림(결과 후 2초 / 서버 쿨타임)
+    let state = null;      // GET 응답
+    let playing = false;
+    let waitUntil = 0;     // 이 시각 전까지는 다시 못 함(결과 후 2초 / 서버 쿨타임)
     const timers = [];
     // 다른 페이지로 넘어가면 true — 요청/타이머가 끝난 뒤 이미 떠난 페이지(또는 다시 들어온 새 페이지)를
     // 건드리지 않게 막음.
     let disposed = false;
 
     const fmt = (n) => Number(n).toLocaleString("ko-KR");
-    const multLabel = (m) => `x${Number(m)}`;
-    const colorOf = (m) => MULT_COLORS[m] || (m >= 5 ? "#f2c230" : "#6b7480");
     const $ = (id) => document.getElementById(id);
     function later(fn, ms) { const t = setTimeout(() => { if (!disposed) fn(); }, ms); timers.push(t); return t; }
-
-    function fillerPick() {
-      const pool = multipliers.map((m) => [m, FILLER_WEIGHTS[m] ?? 8]);
-      let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0);
-      for (const [m, w] of pool) { r -= w; if (r < 0) return m; }
-      return pool[pool.length - 1][0];
-    }
-    function tileHtml(m) {
-      return `<div class="roulette-tile${m >= 5 ? " is-jackpot" : ""}" style="--c:${colorOf(m)}"><b>${multLabel(m)}</b></div>`;
-    }
-    function placeStrip(idx, jitter, animate) {
-      const strip = $("roulette-strip"), view = $("roulette-view");
-      if (!strip || !view) return;
-      const x = view.clientWidth / 2 - (idx * STEP + TILE_W / 2) + jitter;
-      strip.style.transition = animate ? `transform ${SPIN_MS}ms cubic-bezier(.08,.6,.1,1)` : "none";
-      strip.style.transform = `translateX(${x}px)`;
-    }
-    function renderTiles() { $("roulette-strip").innerHTML = tiles.map(tileHtml).join(""); }
-    function buildIdleStrip() {
-      tiles = Array.from({ length: 15 }, fillerPick);
-      centerIdx = 7;
-      centerJitter = 0;
-      renderTiles();
-      placeStrip(centerIdx, 0, false);
-    }
+    const sleep = (ms) => new Promise((resolve) => { const t = setTimeout(resolve, ms); timers.push(t); });
+    const pickButtons = () => Array.from(document.querySelectorAll(".rps-pick"));
+    function setHand(el, hand) { el?.querySelector("use")?.setAttribute("href", `#rps-i-${hand}`); }
 
     // ── 걸 포인트 입력 ──
-    function betValue() { return parseInt(String($("roulette-bet-input").value).replace(/[^0-9]/g, ""), 10) || 0; }
-    function setBet(v) { $("roulette-bet-input").value = v > 0 ? fmt(v) : ""; validate(); }
+    function betValue() { return parseInt(String($("rps-bet-input").value).replace(/[^0-9]/g, ""), 10) || 0; }
+    function setBet(v) { $("rps-bet-input").value = v > 0 ? fmt(v) : ""; validate(); }
     function balance() { return state ? state.balance : 0; }
 
     function validate() {
-      const hint = $("game-hint"), btn = $("roulette-spin-btn"), input = $("roulette-bet-input");
-      if (!hint || !btn) return false;
+      const hint = $("game-hint"), input = $("rps-bet-input");
+      if (!hint || !input) return false;
       const v = betValue();
-      let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요`;
+      let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요 · 손을 누르면 바로 시작돼요`;
       let bad = false;
-      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 돌릴 수 있어요`; }
-      else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 돌릴 수 있어요`; }
+      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요`; }
+      else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 할 수 있어요`; }
       else if (v < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 걸어야 해요`; }
       else if (v > balance()) { bad = true; msg = "보유 포인트보다 많이 걸 수 없어요"; }
       else if (v > MAX_BET) { bad = true; msg = `한 번에 ${fmt(MAX_BET)}P까지 걸 수 있어요`; }
+      const waiting = Date.now() < waitUntil;
+      if (!bad && waiting && !playing) msg = "잠시 후 다시 할 수 있어요";
       hint.textContent = msg;
       hint.classList.toggle("is-bad", bad && !!state && state.eligible);
       input.classList.toggle("is-bad", bad && !!state && state.eligible && v > 0);
-      const waiting = Date.now() < waitUntil;
-      btn.disabled = bad || spinning || waiting;
-      if (!spinning && !waiting) btn.textContent = "돌리기";
+      pickButtons().forEach((b) => { b.disabled = bad || playing || waiting; });
       return !bad;
     }
 
-    function renderBalance() {
-      $("game-balance").textContent = fmt(balance());
-    }
+    function renderBalance() { $("game-balance").textContent = fmt(balance()); }
     function syncGlobalBalance(v) {
       // 모바일 상단바/더보기 시트의 포인트 표시도 같이 갱신(chzzk-auth.js가 캐시값을 씀).
       try { localStorage.setItem(BALANCE_CACHE_KEY, String(v)); } catch {}
@@ -249,31 +229,31 @@
     function timeLabel(iso) {
       return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
     }
+    const RESULT_COLOR = { win: "#2fb574", draw: "#6b7480", lose: "#e03141" };
     function recentItemHtml(r) {
       const net = r.payout - r.bet;
       const cls = net > 0 ? "is-plus" : net < 0 ? "is-minus" : "is-even";
       const sign = net > 0 ? "+" : net === 0 ? "±" : "";
       return `<li>
-        <span class="game-recent-mult" style="--c:${colorOf(r.multiplier)}">${multLabel(r.multiplier)}</span>
-        <span class="game-recent-bet">${fmt(r.bet)}P</span>
+        <span class="game-recent-mult" style="--c:${RESULT_COLOR[r.result] || "#6b7480"}">${RESULT_KO[r.result] || "-"}</span>
+        <span class="game-recent-bet">${fmt(r.bet)}P · ${HAND_KO[r.playerHand] || "-"} vs ${HAND_KO[r.cpuHand] || "-"}</span>
         <span class="game-recent-time muted">${timeLabel(r.createdAt)}</span>
         <span class="game-recent-net ${cls}">${sign}${fmt(net)}P</span>
       </li>`;
     }
     function renderRecent() {
-      const el = $("game-recent");
-      el.innerHTML = state.recent.length
+      $("game-recent").innerHTML = state.recent.length
         ? state.recent.map(recentItemHtml).join("")
-        : `<li class="game-recent-empty muted">아직 돌린 기록이 없어요.</li>`;
+        : `<li class="game-recent-empty muted">아직 한 판도 안 했어요.</li>`;
     }
 
-    function showResult(res, bet) {
+    function showResult(res, bet, hand) {
       const el = $("game-result");
       const cls = res.net > 0 ? "is-plus" : res.net < 0 ? "is-minus" : "is-even";
       const sign = res.net > 0 ? "+" : res.net === 0 ? "±" : "";
-      el.className = `game-result ${cls}${res.multiplier >= 5 ? " is-jackpot" : ""}`;
-      el.style.setProperty("--c", colorOf(res.multiplier));
-      el.innerHTML = `<strong>${multLabel(res.multiplier)} · ${sign}${fmt(res.net)}P</strong><span class="muted">${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
+      el.className = `game-result ${cls}`;
+      el.style.setProperty("--c", RESULT_COLOR[res.result]);
+      el.innerHTML = `<strong>${RESULT_KO[res.result]} · ${sign}${fmt(res.net)}P</strong><span class="muted">나 ${HAND_KO[hand]} vs 상대 ${HAND_KO[res.cpuHand]} · ${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
       el.hidden = false;
     }
     function showError(msg) {
@@ -283,38 +263,53 @@
       el.innerHTML = `<span>${msg}</span>`;
       el.hidden = false;
     }
+    function resetHands() {
+      $("rps-me")?.classList.remove("is-win", "is-lose");
+      $("rps-cpu")?.classList.remove("is-win", "is-lose", "is-shaking");
+    }
 
     function startWait(ms) {
       waitUntil = Date.now() + ms;
-      const btn = $("roulette-spin-btn");
-      if (btn) { btn.disabled = true; btn.textContent = "잠시만요…"; }
+      validate();
       later(() => validate(), ms + 30);
     }
 
-    async function spin() {
-      if (spinning || Date.now() < waitUntil || !validate()) return;
+    async function play(hand) {
+      if (playing || Date.now() < waitUntil || !validate()) return;
       const bet = betValue();
-      const requestedAt = Date.now();
-      spinning = true;
-      const btn = $("roulette-spin-btn");
-      btn.disabled = true;
-      btn.textContent = "돌아가는 중…";
+      playing = true;
+      validate();
+      resetHands();
       $("game-result").hidden = true;
+      const me = $("rps-me"), cpu = $("rps-cpu");
+      setHand(me, hand);
+      cpu.classList.add("is-shaking");
+      // 서버 응답을 기다리는 동안 상대 손을 계속 바꿔가며 흔듦(최소 SHAKE_MIN_MS는 보여줌).
+      let k = 0;
+      const cycler = setInterval(() => setHand($("rps-cpu"), HANDS[k++ % 3]), 110);
+      timers.push(cycler);
+      const started = Date.now(); // 요청 보낸 시각(흔들기 최소 시간 + 서버 쿨타임 계산에 씀)
 
       let res, data;
       try {
-        res = await authFetch(ROULETTE_URL, { method: "POST", body: JSON.stringify({ bet }) });
+        res = await authFetch(RPS_URL, { method: "POST", body: JSON.stringify({ bet, hand }) });
         data = await res.json().catch(() => ({}));
       } catch (err) {
-        console.error("[roulette] 요청 실패", err);
+        console.error("[rps] 요청 실패", err);
         data = { error: "network" };
         res = { ok: false };
       }
-      if (disposed || !$("roulette-strip")) return; // 그 사이 다른 페이지로 이동함
+      const remain = SHAKE_MIN_MS - (Date.now() - started);
+      if (remain > 0) await sleep(remain);
+      clearInterval(cycler);
+      if (disposed || !$("rps-cpu")) return; // 그 사이 다른 페이지로 이동함
+      $("rps-cpu").classList.remove("is-shaking");
+
       if (!res.ok) {
-        spinning = false;
+        playing = false;
+        setHand($("rps-cpu"), "rock");
         if (data.error === "cooldown") {
-          showError(`너무 빨라요. ${data.retryAfterSeconds || 1}초 뒤에 다시 돌려주세요.`);
+          showError(`너무 빨라요. ${data.retryAfterSeconds || 1}초 뒤에 다시 해주세요.`);
           startWait((data.retryAfterSeconds || 1) * 1000);
         } else if (data.error === "insufficient_balance") {
           showError("포인트가 부족해요.");
@@ -328,45 +323,26 @@
         } else if (data.error === "invalid_bet") {
           showError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
         } else if (data.error !== "banned" && res.status !== 401) {
-          showError("룰렛을 돌리지 못했어요. 다시 시도해주세요.");
+          showError("가위바위보를 하지 못했어요. 다시 시도해주세요.");
         }
         validate();
         return;
       }
 
-      // 지금 보이는 카드들을 앞에 그대로 두고 뒤에 새 카드를 이어 붙인 뒤, 결과 카드까지 굴림
-      // (처음부터 새로 깔면 돌리는 순간 화면이 휙 바뀌어서 어색함).
-      const keepFrom = Math.max(0, centerIdx - 5);
-      const kept = tiles.slice(keepFrom, centerIdx + 6);
-      const startIdx = centerIdx - keepFrom;
-      const targetIdx = startIdx + 40 + Math.floor(Math.random() * 6);
-      tiles = kept.slice();
-      while (tiles.length < targetIdx + 6) tiles.push(fillerPick());
-      tiles[targetIdx] = data.multiplier;
-      renderTiles();
-      placeStrip(startIdx, centerJitter, false);
-      void $("roulette-strip").offsetWidth;
-      const jitter = Math.round((Math.random() - 0.5) * (TILE_W - 20));
-      placeStrip(targetIdx, jitter, true);
-      centerIdx = targetIdx;
-      centerJitter = jitter;
-
-      later(() => {
-        const strip = $("roulette-strip");
-        if (!strip) return;
-        strip.children[targetIdx]?.classList.add("is-hit");
-        state.balance = data.balance;
-        if (data.balance > state.maxBalanceReached) state.maxBalanceReached = data.balance;
-        state.recent.unshift({ bet, multiplier: data.multiplier, payout: data.payout, createdAt: new Date().toISOString() });
-        state.recent = state.recent.slice(0, 10);
-        renderBalance();
-        renderRecent();
-        syncGlobalBalance(data.balance);
-        showResult(data, bet);
-        spinning = false;
-        if (betValue() > balance()) setBet(Math.max(MIN_BET, Math.min(betValue(), balance())));
-        startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - requestedAt)));
-      }, SPIN_MS + 80);
+      setHand($("rps-cpu"), data.cpuHand);
+      if (data.result === "win") { $("rps-me").classList.add("is-win"); $("rps-cpu").classList.add("is-lose"); }
+      else if (data.result === "lose") { $("rps-me").classList.add("is-lose"); $("rps-cpu").classList.add("is-win"); }
+      state.balance = data.balance;
+      if (data.balance > state.maxBalanceReached) state.maxBalanceReached = data.balance;
+      state.recent.unshift({ bet, playerHand: hand, cpuHand: data.cpuHand, result: data.result, payout: data.payout, createdAt: new Date().toISOString() });
+      state.recent = state.recent.slice(0, 10);
+      renderBalance();
+      renderRecent();
+      syncGlobalBalance(data.balance);
+      showResult(data, bet, hand);
+      playing = false;
+      if (betValue() > balance()) setBet(Math.max(MIN_BET, Math.min(betValue(), balance())));
+      startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)));
     }
 
     // 에러 후 상태를 다시 받아올 때 — 이것까지 실패해도(네트워크 등) 버튼이 잠긴 채로 남지 않게 항상 다시 검사함.
@@ -381,11 +357,11 @@
     }
 
     async function loadState() {
-      const res = await authFetch(ROULETTE_URL);
+      const res = await authFetch(RPS_URL);
       if (!res.ok) return false;
       state = await res.json();
       if (!Array.isArray(state.recent)) state.recent = [];
-      if (Array.isArray(state.multipliers) && state.multipliers.length) multipliers = state.multipliers;
+      if (state.winMultiplier) $("rps-rule").textContent = `이기면 ${state.winMultiplier}배 · 비기면 그대로 · 지면 0`;
       renderBalance();
       renderLock();
       renderRecent();
@@ -395,7 +371,7 @@
       return true;
     }
 
-    $("roulette-bet-input").addEventListener("input", () => { const v = betValue(); $("roulette-bet-input").value = v ? fmt(v) : ""; validate(); });
+    $("rps-bet-input").addEventListener("input", () => { const v = betValue(); $("rps-bet-input").value = v ? fmt(v) : ""; validate(); });
     document.querySelectorAll(".game-chip").forEach((chip) => chip.addEventListener("click", () => {
       let v = betValue();
       if (chip.dataset.add) v += Number(chip.dataset.add);
@@ -404,15 +380,11 @@
       else v = MIN_BET;
       setBet(v);
     }));
-    $("roulette-spin-btn").addEventListener("click", spin);
-    $("roulette-bet-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); spin(); } });
+    pickButtons().forEach((btn) => btn.addEventListener("click", () => play(btn.dataset.hand)));
 
-    const onResize = () => { if (!spinning) placeStrip(centerIdx, centerJitter, false); };
-    window.addEventListener("resize", onResize);
     window.__pageCleanup = () => {
       disposed = true;
-      window.removeEventListener("resize", onResize);
-      timers.forEach(clearTimeout);
+      timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
     };
 
     renderSidebarUser();
@@ -427,14 +399,13 @@
         $("logged-out").hidden = false;
         return;
       }
-      const ok = await loadState().catch((err) => { console.error("[roulette] 상태 조회 실패", err); return false; });
+      const ok = await loadState().catch((err) => { console.error("[rps] 상태 조회 실패", err); return false; });
       $("loading-state").hidden = true;
       if (!ok) {
         $("logged-out").hidden = false;
         return;
       }
       $("logged-in").hidden = false;
-      buildIdleStrip();
       validate();
     })();
   })();
