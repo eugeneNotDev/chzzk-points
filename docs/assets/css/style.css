@@ -1347,11 +1347,15 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-user-detail-stat strong { display: block; font-size: 1.05rem; }
 .admin-user-detail-stat span { display: block; margin-top: 2px; font-size: 0.76rem; color: var(--muted); }
 
-/* 포인트 로그 행의 "처리완료" 체크박스 — 상점 사용 항목에만 붙음. */
-.points-log-processed { flex: 0 0 auto; white-space: nowrap; }
-@media (max-width: 560px) {
-  .points-log-processed { flex-basis: 100%; margin-top: 4px; }
-}
+/* 관리자 > 상점 내역 행 오른쪽의 처리 영역 — 처리 전엔 강조색 "처리 완료" 버튼(아직 할 일이
+   눈에 띄게), 처리 후엔 "✓ 처리됨" + 작은 "되돌리기" 링크. 처리된 행은 내용을 흐리게. */
+.spend-process-area { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.spend-process-btn { padding: 6px 14px; font-size: 0.82rem; }
+.spend-processed-badge { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
+.spend-unprocess-btn { font-size: 0.76rem; text-decoration: underline; text-underline-offset: 2px; }
+.points-log-row.is-processed .points-log-who,
+.points-log-row.is-processed .points-log-amount,
+.points-log-row.is-processed .points-log-time { opacity: 0.5; }
 .admin-amount-input {
   width: 90px;
   font: inherit;
@@ -1668,7 +1672,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 
   /* 관리자 > 상점 내역 행: 5줄로 흩어지던 걸 2줄로.
        [☐] 이름 / 사용 내역          -100P
-       [☐] 날짜·시간            ☑ 처리완료   */
+       [☐] 날짜·시간        [처리 완료]  */
   #spend-log-list .points-log-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1683,5 +1687,13 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   #spend-log-list .points-log-who { grid-area: who; }
   #spend-log-list .points-log-amount { grid-area: amount; width: auto; text-align: right; }
   #spend-log-list .points-log-time { grid-area: time; width: auto; text-align: left; }
-  #spend-log-list .points-log-processed { grid-area: done; margin-top: 0; justify-self: end; font-size: 0.82rem; }
+  #spend-log-list .spend-process-area { grid-area: done; justify-self: end; }
+
+  /* 투표 > 베팅 입력: 입력칸이 좁아 안내 문구가 잘려서, 폰에선 입력칸·버튼을 각각 한 줄씩. */
+  .predict-bet-form input,
+  .predict-bet-form button { flex: 1 1 100%; }
+  /* 투표 > 관리자 버튼들(참여자 보기/정산/취소): 폭이 제각각 들쭉날쭉해서 폰에선 전부 꽉 찬 폭으로. */
+  .predict-admin-actions { flex-direction: column; }
+  .predict-admin-actions > *,
+  #predict-admin-view-bets-btn { width: 100%; }
 }

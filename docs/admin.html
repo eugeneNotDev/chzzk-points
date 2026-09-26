@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=51">
+<link rel="stylesheet" href="assets/css/style.css?v=52">
 </head>
 <body>
   <script>
@@ -527,14 +527,15 @@
     const selectedSpendIds = new Set();
 
     // 상점 내역 탭 전용 — list-spend-log가 이미 상점 사용 기록만 걸러서 주기 때문에 모든 행에
-    // 처리완료 체크박스가 항상 뜸. 맨 앞의 선택 체크박스는 그 아래 처리완료 체크박스와는
-    // 별개 — 선택은 "일괄 처리" 버튼용이고, 처리완료 체크박스는 그 자리에서 바로 하나씩 토글.
+    // 처리 영역이 뜸. 맨 앞의 선택 체크박스는 "일괄 처리" 버튼용이고, 오른쪽 처리 영역은 그 자리에서
+    // 하나씩 처리하는 용도(예전엔 체크박스였는데 "체크 표시"보다 "버튼을 눌러 처리"하는 쪽이 조작이
+    // 명확하다는 피드백으로 버튼으로 바꿈). 처리된 행은 흐리게 보여서 남은 할 일이 눈에 띄게 함.
     function renderSpendLogRow(entry) {
       const positive = entry.amount > 0;
       const sign = positive ? "+" : "";
       const selected = selectedSpendIds.has(entry.id);
       return `
-        <div class="points-log-row" data-id="${entry.id}">
+        <div class="points-log-row${entry.processed ? " is-processed" : ""}" data-id="${entry.id}">
           <label class="admin-checkbox-label admin-row-checkbox">
             <input type="checkbox" class="spend-select-checkbox" data-id="${entry.id}" ${selected ? "checked" : ""}>
           </label>
@@ -544,36 +545,40 @@
           </div>
           <div class="points-log-amount ${positive ? "positive" : "negative"}">${sign}${entry.amount.toLocaleString("ko-KR")}P</div>
           <div class="points-log-time">${formatDateTime(entry.createdAt)}</div>
-          <label class="admin-checkbox-label points-log-processed">
-            <input type="checkbox" class="processed-checkbox" data-id="${entry.id}" ${entry.processed ? "checked" : ""}>
-            처리완료
-          </label>
+          <div class="spend-process-area">${renderSpendProcessArea(entry.id, entry.processed)}</div>
         </div>`;
     }
 
-    // container 안의 처리완료 체크박스에 이벤트를 붙임 — 상점 내역 탭 목록(renderSpendLogRow)
-    // 전용. 포인트 로그 탭/유저 상세 모달은 이제 처리완료 체크박스가 없어서 안 씀.
-    function wireProcessedCheckboxes(container) {
-      container.querySelectorAll(".processed-checkbox").forEach((cb) => {
-        cb.addEventListener("change", async (e) => {
-          const id = Number(cb.dataset.id);
-          const processed = e.target.checked;
-          cb.disabled = true;
-          try {
-            const res = await authFetch(ADMIN_URL, {
-              method: "POST",
-              body: JSON.stringify({ action: "set-processed", id, processed }),
-            });
-            if (!res.ok) throw new Error(String(res.status));
-          } catch (err) {
-            cb.checked = !processed; // 실패 시 원상복구
-            alert("처리완료 표시 변경에 실패했어요.");
-          } finally {
-            cb.disabled = false;
-          }
-        });
-      });
+    // 처리 전: "처리 완료" 버튼 / 처리 후: "✓ 처리됨" + 잘못 눌렀을 때를 위한 "되돌리기".
+    function renderSpendProcessArea(id, processed) {
+      return processed
+        ? `<span class="spend-processed-badge">✓ 처리됨</span><button type="button" class="link-btn spend-unprocess-btn" data-id="${id}">되돌리기</button>`
+        : `<button type="button" class="spend-process-btn" data-id="${id}">처리 완료</button>`;
     }
+
+    // 처리 완료 / 되돌리기 버튼 — 목록을 다시 그릴 때마다 리스너를 붙이지 않도록 목록 컨테이너에
+    // 한 번만 위임(delegation)으로 붙임. 성공하면 목록 전체를 다시 불러오지 않고 그 행만 바꿈.
+    document.getElementById("spend-log-list").addEventListener("click", async (e) => {
+      const btn = e.target.closest(".spend-process-btn, .spend-unprocess-btn");
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      const processed = btn.classList.contains("spend-process-btn");
+      if (!processed && !confirm("처리완료를 취소할까요?")) return;
+      const row = btn.closest(".points-log-row");
+      btn.disabled = true;
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "set-processed", id, processed }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        row.querySelector(".spend-process-area").innerHTML = renderSpendProcessArea(id, processed);
+        row.classList.toggle("is-processed", processed);
+      } catch (err) {
+        alert(processed ? "처리완료 표시에 실패했어요." : "되돌리기에 실패했어요.");
+        btn.disabled = false;
+      }
+    });
 
     // 페이지 번호 버튼을 그림 — 현재 페이지 기준 앞뒤 2개씩 + 처음/끝 페이지, 나머지는 "…"로 생략.
     // admin.html/mypage.html 둘 다 똑같이 쓰는 로직이라 살짝 중복이지만, 페이지 하나 분량이라
@@ -744,7 +749,6 @@
         }
         spendEmptyEl.hidden = true;
         spendListEl.innerHTML = data.entries.map(renderSpendLogRow).join("");
-        wireProcessedCheckboxes(spendListEl);
         wireSpendRowCheckboxes();
         renderPagination(spendPaginationEl, data.page, data.totalPages, (p) => loadSpendLog(spendSearchInput.value, p));
       } catch (err) {
