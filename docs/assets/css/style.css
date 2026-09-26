@@ -546,6 +546,8 @@ button {
   background: var(--accent);
   color: var(--accent-text);
   font-weight: 600;
+  /* 한글 버튼 글자가 좁은 칸에서 "가능"의 "능"만 따로 떨어지는 식으로 끊기지 않게 — 줄바꿈은 띄어쓰기에서만. */
+  word-break: keep-all;
 }
 button:hover { background: var(--accent-strong); }
 button:disabled {
@@ -1846,7 +1848,11 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .attendance-progress strong { color: var(--accent); }
 
 /* ── 관리자 유저 상세: 보유 칭호 + 칭호 지급 ── */
-.admin-user-titles { margin: 14px 0 6px; }
+/* 유저 상세 모달의 칭호 요약 줄 — 자세한 건 "칭호 관리" 버튼(별도 모달)에서. */
+.admin-user-titles-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 4px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border, rgba(255, 255, 255, 0.08)); }
+.admin-user-titles-row .admin-user-section-heading { margin: 0 0 4px; }
+.admin-user-titles-summary p { margin: 0; font-size: 0.85rem; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.admin-user-titles-row > button { flex: 0 0 auto; white-space: nowrap; }
 .admin-user-section-heading { margin: 16px 0 8px; font-size: 0.95rem; }
 .admin-user-title-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .admin-user-title-chip {
@@ -1943,7 +1949,10 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   isolation: isolate;
   background: #121417;
   box-shadow: 0 0 8px color-mix(in srgb, var(--badge-bg, #ffffff) 35%, transparent);
-  --glow-ring: conic-gradient(from var(--tb-angle), var(--badge-bg), var(--badge-light), var(--badge-bg), var(--badge-dark), var(--badge-bg));
+  /* 도는 테두리 색 목록. 각도(--tb-angle)는 아래 ::before에서 직접 써야 돌아감 — 여기서
+     conic-gradient(from var(--tb-angle), …)까지 만들어 넘기면 배지 자신의 0도로 계산된 채로
+     ::before에 물려줘서 테두리가 멈춰 있었음. */
+  --glow-stops: var(--badge-bg), var(--badge-light), var(--badge-bg), var(--badge-dark), var(--badge-bg);
 }
 .title-badge--glow::before {
   content: "";
@@ -1951,7 +1960,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   inset: -1.5px;
   border-radius: 6.5px;
   z-index: -2;
-  background: var(--glow-ring);
+  background: conic-gradient(from var(--tb-angle), var(--glow-stops));
   animation: title-badge-spin 3s linear infinite;
 }
 .title-badge--glow::after {
@@ -1975,7 +1984,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   animation: none;
   text-shadow: none;
   box-shadow: 0 0 8px rgba(155, 107, 255, 0.35);
-  --glow-ring: conic-gradient(from var(--tb-angle), #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  --glow-stops: #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a;
 }
 .title-badge--glow.title-badge--rainbow .tb-text {
   background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
@@ -2006,7 +2015,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   background: linear-gradient(135deg, var(--badge-light), var(--badge-bg) 32%, var(--badge-bg2) 68%, var(--badge-light2));
 }
 .title-badge--glow.title-badge--duo {
-  --glow-ring: conic-gradient(from var(--tb-angle), var(--badge-bg), var(--badge-bg2), var(--badge-bg), var(--badge-bg2), var(--badge-bg));
+  --glow-stops: var(--badge-bg), var(--badge-bg2), var(--badge-bg), var(--badge-bg2), var(--badge-bg);
 }
 .title-badge--glow.title-badge--duo .tb-text,
 .title-badge--glass.title-badge--duo .tb-text {
@@ -2114,6 +2123,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-icon-option.is-selected { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .title-icon-option .title-icon-glyph { width: 20px; height: 20px; }
 .title-icon-option--none { grid-column: span 2; font-size: 0.78rem; font-weight: 600; }
+.title-icon-group-label { grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; margin: 6px 0 -2px; }
+.title-icon-panel { max-height: 320px; overflow-y: auto; }
 .title-option-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; }
 .title-option-toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 
@@ -2169,7 +2180,29 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .admin-grant-tab.is-active,
 .admin-grant-tab.is-active:hover { background: var(--surface-2); color: var(--text); font-weight: 600; }
-.admin-grant-existing-help { font-size: 0.82rem; margin: 0 0 10px; line-height: 1.5; }
+.admin-grant-existing-help { font-size: 0.82rem; margin: 10px 0; line-height: 1.5; }
+/* 기존 칭호 주기 안의 상점 칭호 / 커스텀 칭호 탭 — 위 탭보다 한 단계 작은 밑줄형 */
+.admin-grant-subtabs { display: flex; gap: 14px; border-bottom: 1px solid var(--border); }
+.admin-grant-subtab,
+.admin-grant-subtab:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px;
+  margin-bottom: -1px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.admin-grant-subtab:hover { color: var(--text); }
+.admin-grant-subtab.is-active,
+.admin-grant-subtab.is-active:hover { color: var(--text); font-weight: 600; border-bottom-color: var(--accent); }
+.admin-grant-count { font-size: 0.72rem; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 7px; font-weight: 600; }
+.admin-grant-count:empty { display: none; }
+.admin-grant-subtab.is-active .admin-grant-count { color: var(--accent); }
 .admin-grant-existing-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 220px; overflow-y: auto; }
 .admin-grant-existing-option,
 .admin-grant-existing-option:hover {

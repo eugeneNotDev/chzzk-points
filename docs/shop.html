@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=59">
+<link rel="stylesheet" href="assets/css/style.css?v=60">
 </head>
 <body>
   <script>
@@ -200,7 +200,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=23"></script>
+  <script src="assets/js/chzzk-auth.js?v=24"></script>
   <script src="assets/js/spa-router.js?v=9"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감쌈
@@ -248,7 +248,7 @@
       else if (inactive) label = "판매 중지됨";
       else if (soldOut) label = "품절";
       else if (onCooldown) label = `${remaining}초 후 사용 가능`;
-      else if (liveBlocked) label = "방송 중에만 사용 가능";
+      else if (liveBlocked) label = "방송 중에만 가능";
       else if (!affordable) label = "잔액 부족";
       // 비활성화 배지는 별도 줄로 왼쪽에, 수정/삭제 버튼은 그 아래 줄에서 가운데 정렬 —
       // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
