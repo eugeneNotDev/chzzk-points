@@ -37,8 +37,8 @@
 //     이름을 가진 유저 기록만, 없으면 전체 유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘
 //     했는지 훑어보는 용도. 최근 24시간 것만 보여줌 — 그 이상 지난 관리자 모니터링용 로그는
 //     화면에 굳이 안 보여줘도 된다고 판단(요청사항). 단, 이건 "화면 표시" 필터일 뿐 points_ledger
-//     자체에서 실제로 지우진 않음 — 이 테이블은 잔액 계산의 근거(getBalance가 여기 전체를
-//     합산)라서 오래된 행을 진짜 삭제하면 유저 잔액이 깨짐. 마이페이지 개인 로그(me/index.ts)는
+//     자체에서 실제로 지우진 않음 — 이 테이블은 잔액 계산의 근거(users.balance가 이 기록으로
+//     맞춰짐)라서 오래된 행을 진짜 삭제하면 유저 잔액이 깨짐. 마이페이지 개인 로그(me/index.ts)는
 //     이 24시간 제한 없이 전체 기록을 그대로 보여줌.
 //     처리완료 체크는 여기 없음 — 상점 사용 처리는 아래 list-spend-log 전용 화면에서만 함
 //     (한 화면에 모든 종류 기록 + 체크박스가 섞여 있으니 오히려 헷갈린다는 피드백으로 분리함).
@@ -111,7 +111,7 @@ async function searchUsers(admin: ReturnType<typeof getAdminClient>, q: string |
   const offset = (page - 1) * ADMIN_USER_PAGE_SIZE;
   let query = admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned", { count: "exact" })
+    .select("channel_id, channel_name, is_public, banned, balance", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + ADMIN_USER_PAGE_SIZE - 1);
   if (q && q.trim().length > 0) {
@@ -121,24 +121,12 @@ async function searchUsers(admin: ReturnType<typeof getAdminClient>, q: string |
   if (error) throw new Error(`users 검색 실패: ${error.message}`);
   if (!users || users.length === 0) return { users: [], totalCount: count ?? 0 };
 
-  const channelIds = users.map((u) => u.channel_id);
-  const { data: ledgerRows, error: ledgerError } = await admin
-    .from("points_ledger")
-    .select("channel_id, amount")
-    .in("channel_id", channelIds);
-  if (ledgerError) throw new Error(`points_ledger 조회 실패: ${ledgerError.message}`);
-
-  const balanceByChannel = new Map<string, number>();
-  for (const row of ledgerRows ?? []) {
-    balanceByChannel.set(row.channel_id, (balanceByChannel.get(row.channel_id) ?? 0) + row.amount);
-  }
-
   const mapped = users.map((u) => ({
     channelId: u.channel_id,
     channelName: u.channel_name,
     isPublic: u.is_public,
     banned: u.banned,
-    balance: balanceByChannel.get(u.channel_id) ?? 0,
+    balance: Number(u.balance ?? 0),
   }));
   return { users: mapped, totalCount: count ?? 0 };
 }
@@ -153,14 +141,14 @@ async function adjustPoints(
     .from("points_ledger")
     .insert({ channel_id: channelId, amount, reason: reason || "관리자 지급/차감", admin_action: true });
   if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
+  return await getUserBalance(admin, channelId);
+}
 
-  const { data: ledgerRows, error: ledgerError } = await admin
-    .from("points_ledger")
-    .select("amount")
-    .eq("channel_id", channelId);
-  if (ledgerError) throw new Error(`points_ledger 조회 실패: ${ledgerError.message}`);
-  const balance = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
-  return balance;
+// 잔액은 users.balance(points_ledger 트리거가 자동 갱신 — 0032_users_balance.sql).
+async function getUserBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
+  const { data, error } = await admin.from("users").select("balance").eq("channel_id", channelId).maybeSingle();
+  if (error) throw new Error(`잔액 조회 실패: ${error.message}`);
+  return Number(data?.balance ?? 0);
 }
 
 // 밴 처리 시 계정이 보유한 것들을 전부 초기화함(요청사항: "밴을 하면 이후에 풀든 뭘 하든 해당
@@ -176,12 +164,7 @@ async function adjustPoints(
 // me/index.ts가 "reset_at보다 이후"로 거르는 필터가 이 보정 행 자체를 걸러내지 못해 유저 로그에
 // "계정 정지 처리: 포인트 초기화" 행이 그대로 남아버림 — 그걸 막으려고 같은 값을 명시적으로 씀.
 async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, channelId: string, resetTimestamp: string) {
-  const { data: ledgerRows, error: ledgerError } = await admin
-    .from("points_ledger")
-    .select("amount")
-    .eq("channel_id", channelId);
-  if (ledgerError) throw new Error(`points_ledger 조회 실패: ${ledgerError.message}`);
-  const balance = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+  const balance = await getUserBalance(admin, channelId);
 
   if (balance !== 0) {
     const { error: insertError } = await admin.from("points_ledger").insert({
@@ -304,13 +287,13 @@ async function getStats(admin: ReturnType<typeof getAdminClient>) {
   const [
     { count: userCount, error: userCountError },
     { count: bannedCount, error: bannedCountError },
-    { data: ledgerRows, error: ledgerError },
+    { data: totalPointsData, error: ledgerError },
     { count: todaySpendCount, error: spendCountError },
     { count: todayAttendanceCount, error: attendanceCountError },
   ] = await Promise.all([
     admin.from("users").select("*", { count: "exact", head: true }),
     admin.from("users").select("*", { count: "exact", head: true }).eq("banned", true),
-    admin.from("points_ledger").select("amount"),
+    admin.rpc("total_points_issued"),
     admin.from("spend_events").select("*", { count: "exact", head: true }).gte("created_at", todayStartIso),
     admin.from("attendance").select("*", { count: "exact", head: true }).eq("attended_on", todayStr),
   ]);
@@ -318,7 +301,7 @@ async function getStats(admin: ReturnType<typeof getAdminClient>) {
     if (e) throw new Error(`통계 조회 실패: ${e.message}`);
   }
 
-  const totalPoints = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+  const totalPoints = Number(totalPointsData ?? 0);
 
   return {
     userCount: userCount ?? 0,
@@ -336,7 +319,7 @@ const USER_DETAIL_LOG_PAGE_SIZE = 5;
 async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId: string, page: number) {
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, created_at, max_balance_reached")
+    .select("channel_id, channel_name, is_public, banned, created_at, max_balance_reached, balance")
     .eq("channel_id", channelId)
     .maybeSingle();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -345,11 +328,9 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
   const offset = (page - 1) * USER_DETAIL_LOG_PAGE_SIZE;
 
   const [
-    { data: balanceRows, error: balanceError },
     { data: logRows, error: logError, count: logTotalCount },
     { count: attendanceCount, error: attendanceError },
   ] = await Promise.all([
-    admin.from("points_ledger").select("amount").eq("channel_id", channelId),
     admin
       .from("points_ledger")
       .select("id, amount, reason, processed, admin_action, undone, created_at", { count: "exact" })
@@ -358,11 +339,10 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
       .range(offset, offset + USER_DETAIL_LOG_PAGE_SIZE - 1),
     admin.from("attendance").select("*", { count: "exact", head: true }).eq("channel_id", channelId),
   ]);
-  if (balanceError) throw new Error(`points_ledger 조회 실패: ${balanceError.message}`);
   if (logError) throw new Error(`points_ledger 조회 실패: ${logError.message}`);
   if (attendanceError) throw new Error(`attendance 조회 실패: ${attendanceError.message}`);
 
-  const balance = (balanceRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+  const balance = Number(user.balance ?? 0);
   const log = (logRows ?? []).map((r) => ({
     id: r.id,
     amount: r.amount,

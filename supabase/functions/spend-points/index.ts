@@ -25,10 +25,10 @@
 //   - 다른 유저끼리는 서로 영향이 없음. 잔액도 쿨타임도 전부 channel_id로 스코프된 조회/기록이라
 //     각자 자기 행만 보고 씀 — Postgres가 서로 다른 행에 대한 동시 트랜잭션을 알아서 처리해주므로
 //     "다른 사람이 동시에 써서 꼬이는" 문제는 애초에 없음.
-//   - 같은 유저가 아주 짧은 간격(수십~수백ms)으로 연타하면, 쿨타임/잔액 체크가 두 요청 모두
-//     통과해버릴 이론적 여지는 여전히 있음(체크와 기록 사이에 완전한 원자성은 없음). 다만 이제
-//     쿨타임이 생겨서 두 번째 요청부터는 대부분 걸러지고, 그 틈을 완전히 막으려면 postgres
-//     함수(RPC)로 "조회+기록"을 한 트랜잭션에 묶어야 함 — 지금 규모에선 과설계라 보류.
+//   - 같은 유저가 아주 짧은 간격으로 연타해도 잔액 이상은 절대 못 씀 — 잔액 확인과 차감을
+//     DB 함수 debit_points()가 유저 행을 잠근 채 한 번에 처리함(0032_users_balance.sql). 쿨타임
+//     체크 자체는 여전히 조회 후 기록이라 아주 짧은 연타에 쿨타임이 한 번 뚫릴 여지는 있지만,
+//     그래도 잔액 범위 안에서만 가능함.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -63,10 +63,20 @@ async function getUserFlags(
   return { banned: data?.banned === true, isPublic: data?.is_public === true };
 }
 
-async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
-  const { data, error } = await admin.from("points_ledger").select("amount").eq("channel_id", channelId);
-  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
-  return (data ?? []).reduce((sum: number, row: { amount: number }) => sum + row.amount, 0);
+// 잔액 확인 + 차감 기록을 DB에서 한 번에(0032_users_balance.sql의 debit_points). 잔액이 모자라면
+// null, 성공하면 차감 후 잔액.
+async function debitPoints(
+  admin: ReturnType<typeof getAdminClient>,
+  channelId: string,
+  amount: number,
+  reason: string,
+): Promise<number | null> {
+  const { data, error } = await admin.rpc("debit_points", { p_channel_id: channelId, p_amount: amount, p_reason: reason });
+  if (error) {
+    if (error.message.includes("insufficient_balance")) return null;
+    throw new Error(`debit_points 실패: ${error.message}`);
+  }
+  return Number(data);
 }
 
 // 이 유저가 이 상품을 마지막으로 쓴 뒤 몇 초가 지났는지. 한 번도 안 썼으면 null(쿨타임 없음과 동일하게 취급).
@@ -155,18 +165,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "sold_out" }, 400);
     }
 
-    const balance = await getBalance(admin, session.channelId);
-    if (balance < item.cost) return jsonResponse({ error: "insufficient_balance" }, 400);
-
     // reason은 관리자 포인트 로그/마이페이지 로그에 그대로 노출되니 상품 코드가 아니라
     // 사람이 읽을 문구로 남김 (예전엔 "spend:water"처럼 코드로 남겨서 뭘 산건지 알아보기
-    // 힘들었음 — 0015_backfill_spend_reason_names.sql 참고).
-    const { error: ledgerError } = await admin.from("points_ledger").insert({
-      channel_id: session.channelId,
-      amount: -item.cost,
-      reason: `포인트 상점 사용: ${item.name}`,
-    });
-    if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
+    // 힘들었음 — 0015_backfill_spend_reason_names.sql 참고). 차감이 제일 먼저라, 잔액이
+    // 모자라서 거절되면 아래 칭호 지급/재고/오버레이 기록은 아무것도 안 일어남.
+    const newBalance = await debitPoints(admin, session.channelId, item.cost, `포인트 상점 사용: ${item.name}`);
+    if (newBalance === null) return jsonResponse({ error: "insufficient_balance" }, 400);
 
     // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. (channel_id, title_id) 기본키라
     // 동시에 두 요청이 들어와도(위에서 미리 막았지만 이론상 레이스는 남아있음) 두 번째는
@@ -209,7 +213,6 @@ Deno.serve(async (req: Request) => {
       if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
     }
 
-    const newBalance = await getBalance(admin, session.channelId);
     return jsonResponse(
       {
         balance: newBalance,

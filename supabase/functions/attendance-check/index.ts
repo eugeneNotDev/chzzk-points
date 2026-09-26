@@ -3,7 +3,7 @@
 // GET  ?year=2026&month=9 → 그 달의 출석 현황 조회 (year/month 생략 시 이번 달, KST 기준)
 //   { attendedDates: ["2026-09-14", ...], checkedToday: boolean, isLive: boolean, balance }
 // POST {} → 오늘(KST) 출석체크 시도. 방송 중이 아니거나 오늘 이미 체크했으면 400.
-//   성공 시 attendance 테이블에 기록 + points_ledger에 +10P 기록.
+//   성공 시 attendance 테이블에 기록 + points_ledger에 +50P 기록.
 //   { attendedDates, checkedToday: true, isLive: true, balance }
 //
 // 밴된 유저는 다른 함수들과 동일하게 403 { error: "banned" }.
@@ -17,7 +17,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { isChannelLive } from "../_shared/live.ts";
 
-const ATTENDANCE_POINTS = 10;
+const ATTENDANCE_POINTS = 50;
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -62,10 +62,11 @@ async function getResetAt(admin: ReturnType<typeof getAdminClient>, channelId: s
   return data?.reset_at ?? null;
 }
 
+// 잔액은 users.balance(points_ledger 트리거가 자동 갱신 — 0032_users_balance.sql).
 async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
-  const { data, error } = await admin.from("points_ledger").select("amount").eq("channel_id", channelId);
-  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
-  return (data ?? []).reduce((sum: number, row: { amount: number }) => sum + row.amount, 0);
+  const { data, error } = await admin.from("users").select("balance").eq("channel_id", channelId).maybeSingle();
+  if (error) throw new Error(`잔액 조회 실패: ${error.message}`);
+  return Number(data?.balance ?? 0);
 }
 
 // year(4자리)/month(1~12)의 출석한 날짜 목록을 "YYYY-MM-DD" 문자열 배열로 반환함.

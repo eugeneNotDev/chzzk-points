@@ -156,18 +156,13 @@ async function getProfile(channelId: string) {
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id")
+    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
 
-  const { data: ledgerRows, error: ledgerError } = await admin
-    .from("points_ledger")
-    .select("amount")
-    .eq("channel_id", channelId);
-  if (ledgerError) throw new Error(`points_ledger 조회 실패: ${ledgerError.message}`);
-
-  const balance = (ledgerRows ?? []).reduce((sum, row) => sum + row.amount, 0);
+  // 잔액은 users.balance(points_ledger 트리거가 자동 갱신 — 0032_users_balance.sql).
+  const balance = Number(user.balance ?? 0);
 
   const { data: purchasedRows, error: purchasedError } = await admin
     .from("user_purchased_titles")

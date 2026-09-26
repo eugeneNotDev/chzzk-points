@@ -61,9 +61,9 @@ async function isBanned(admin: ReturnType<typeof getAdminClient>, channelId: str
 }
 
 async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
-  const { data, error } = await admin.from("points_ledger").select("amount").eq("channel_id", channelId);
-  if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
-  return (data ?? []).reduce((sum: number, row: { amount: number }) => sum + row.amount, 0);
+  const { data, error } = await admin.from("users").select("balance").eq("channel_id", channelId).maybeSingle();
+  if (error) throw new Error(`잔액 조회 실패: ${error.message}`);
+  return Number(data?.balance ?? 0);
 }
 
 interface PredictionRow {
@@ -210,15 +210,23 @@ Deno.serve(async (req: Request) => {
       throw new Error(`prediction_bets insert 실패: ${betInsertError.message}`);
     }
 
-    const { error: ledgerError } = await admin.from("points_ledger").insert({
-      channel_id: session.channelId,
-      amount: -amount,
-      reason: `투표 베팅: ${prediction.title} - ${option.label}`,
+    // 잔액 확인 + 차감을 DB에서 한 번에(0032_users_balance.sql의 debit_points) — 위의 잔액 체크는
+    // 빠른 안내용이고, 진짜 판정은 여기서 함. 여기서 거절되거나 실패하면 방금 넣은 베팅 행을
+    // 지워서 "포인트는 안 빠졌는데 베팅은 된" 상태가 안 남게 함.
+    const { data: debited, error: debitError } = await admin.rpc("debit_points", {
+      p_channel_id: session.channelId,
+      p_amount: amount,
+      p_reason: `투표 베팅: ${prediction.title} - ${option.label}`,
     });
-    if (ledgerError) throw new Error(`points_ledger insert 실패: ${ledgerError.message}`);
+    if (debitError) {
+      await admin.from("prediction_bets").delete().eq("prediction_id", predictionId).eq("channel_id", session.channelId);
+      if (debitError.message.includes("insufficient_balance")) {
+        return jsonResponse({ error: "insufficient_balance" }, 400);
+      }
+      throw new Error(`debit_points 실패: ${debitError.message}`);
+    }
 
-    const newBalance = await getBalance(admin, session.channelId);
-    return jsonResponse({ balance: newBalance, bet: { optionId, amount } }, 200);
+    return jsonResponse({ balance: Number(debited), bet: { optionId, amount } }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     return jsonResponse({ error: "prediction_failed" }, 500);
