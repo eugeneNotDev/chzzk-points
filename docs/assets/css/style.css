@@ -1149,7 +1149,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
    chzzk-auth.js가 --badge-bg/--badge-fg를 인라인으로 넣어줌). 글자색은 배경 밝기에 맞춰 흰/검 자동.
    포인트 구간 칭호(브론즈~다이아)는 배지가 아니라 이름 글자색으로 보여줌(applyTierColorToName). */
 .title-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 0.12em 0.55em;
   border-radius: 5px;
   background: var(--badge-bg, var(--accent));
@@ -1159,7 +1160,9 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0.01em;
-  vertical-align: 0.08em;
+  /* 가운데 정렬 — 예전엔 baseline 기준(0.08em)이었는데, 메탈 반짝처럼 overflow:hidden이 걸린
+     배지는 브라우저가 baseline을 배지 맨 아래로 잡아버려서 옆 글자보다 위로 떠 보였음. */
+  vertical-align: middle;
   white-space: nowrap;
 }
 
@@ -1897,7 +1900,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
    색은 --badge-bg(기본색)/--badge-light(밝게)/--badge-dark(어둡게)/--badge-fg(글자)로 들어옴.
    새 디자인을 추가하려면 chzzk-auth.js의 TITLE_DESIGNS에 한 줄 + 여기 .title-badge--<id> 규칙. */
 .title-badge { position: relative; }
-.title-badge .tb-crown { width: 1.05em; height: 1.05em; margin-right: 0.18em; vertical-align: -0.16em; }
+.title-badge .tb-crown { width: 1.05em; height: 1.05em; margin-right: 0.18em; flex: 0 0 auto; }
 
 /* 메탈 반짝: 칭호 색에서 뽑은 밝은/어두운 색으로 금속 광택 + 몇 초마다 빛줄기가 지나감 */
 .title-badge--shine {

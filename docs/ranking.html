@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=55">
+<link rel="stylesheet" href="assets/css/style.css?v=56">
 </head>
 <body>
   <script>
@@ -102,7 +102,9 @@
       const isMe = row.channel_id === myChannelId;
       const isPrivate = row.is_public === false;
       const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color);
-      const coloredName = applyTierColorToName(escapeHtml(row.channel_name || "(이름 없음)"), row.tier_title_color);
+      // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급 자체는
+      // 그대로 있고 마이페이지 "등급" 칸에서 보임.
+      const coloredName = escapeHtml(row.channel_name || "(이름 없음)");
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
