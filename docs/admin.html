@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=52">
+<link rel="stylesheet" href="assets/css/style.css?v=53">
 </head>
 <body>
   <script>
@@ -212,6 +212,30 @@
         <h3 id="user-detail-name"></h3>
         <p class="muted" id="user-detail-meta"></p>
         <div class="admin-user-detail-stats" id="user-detail-stats"></div>
+        <!-- 보유 칭호(상점 구매 + 관리자 지급) + 칭호 직접 지급. 지급한 칭호는 유저가 마이페이지
+             칭호 목록에서 직접 장착함. -->
+        <div class="admin-user-titles">
+          <h4 class="admin-user-section-heading">보유 칭호</h4>
+          <div class="admin-user-title-list" id="user-detail-titles"></div>
+          <p id="user-detail-titles-empty" class="muted" hidden>보유한 칭호가 없어요.</p>
+          <button type="button" class="secondary" id="user-detail-grant-open-btn" style="margin-top:10px;">+ 칭호 직접 지급</button>
+          <form id="user-detail-grant-form" class="admin-title-grant-form" autocomplete="off" hidden>
+            <div class="shop-item-field">
+              <label class="field-label" for="user-detail-grant-name">칭호명 (최대 20자)</label>
+              <input type="text" id="user-detail-grant-name" class="notice-title-input" maxlength="20" placeholder="예: 1호 팬">
+            </div>
+            <div class="shop-item-field">
+              <span class="field-label">칭호 색상</span>
+              <div id="user-detail-grant-color"></div>
+            </div>
+            <p class="status-msg" id="user-detail-grant-status"></p>
+            <div class="admin-title-grant-actions">
+              <button type="button" class="secondary" id="user-detail-grant-cancel-btn">취소</button>
+              <button type="submit" id="user-detail-grant-submit-btn">지급하기</button>
+            </div>
+          </form>
+        </div>
+        <h4 class="admin-user-section-heading">포인트 내역</h4>
         <div id="user-detail-log-list"></div>
         <p id="user-detail-log-empty" class="empty-state" hidden>내역이 없어요.</p>
         <div id="user-detail-pagination" class="pagination"></div>
@@ -222,7 +246,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=17"></script>
+  <script src="assets/js/chzzk-auth.js?v=18"></script>
   <script src="assets/js/spa-router.js?v=8"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -775,7 +799,106 @@
     const userDetailLogEmptyEl = document.getElementById("user-detail-log-empty");
     const userDetailPaginationEl = document.getElementById("user-detail-pagination");
 
+    // 보유 칭호 영역 + 칭호 직접 지급 폼 ------------------------------------------------
+    const userDetailTitlesEl = document.getElementById("user-detail-titles");
+    const userDetailTitlesEmptyEl = document.getElementById("user-detail-titles-empty");
+    const grantOpenBtn = document.getElementById("user-detail-grant-open-btn");
+    const grantForm = document.getElementById("user-detail-grant-form");
+    const grantNameInput = document.getElementById("user-detail-grant-name");
+    const grantStatusEl = document.getElementById("user-detail-grant-status");
+    const grantSubmitBtn = document.getElementById("user-detail-grant-submit-btn");
+    const grantColorPicker = createTitleColorPicker(document.getElementById("user-detail-grant-color"), {
+      initialColor: DEFAULT_TITLE_COLOR,
+      getPreviewName: () => grantNameInput.value,
+    });
+    grantNameInput.addEventListener("input", () => grantColorPicker.refreshPreview());
+    // 지금 상세 모달에 떠 있는 유저/페이지 — 지급/회수 후 같은 화면을 다시 불러올 때 씀.
+    let detailChannelId = null;
+    let detailPage = 1;
+
+    function resetGrantForm() {
+      grantForm.hidden = true;
+      grantOpenBtn.hidden = false;
+      grantNameInput.value = "";
+      grantColorPicker.setColor(DEFAULT_TITLE_COLOR);
+      grantStatusEl.textContent = "";
+      grantStatusEl.className = "status-msg";
+    }
+
+    function renderOwnedTitles(ownedTitles) {
+      const list = ownedTitles ?? [];
+      userDetailTitlesEmptyEl.hidden = list.length > 0;
+      userDetailTitlesEl.innerHTML = list.map((t) => `
+        <span class="admin-user-title-chip">
+          ${titleBadgeHtml(t.name, t.color)}
+          <span class="chip-meta">${t.kind === "custom" ? "관리자 지급" : "상점 구매"}${t.equipped ? " · 장착 중" : ""}</span>
+          <button type="button" class="secondary" data-revoke-title-id="${escapeHtml(t.id)}" data-title-name="${escapeHtml(t.name)}">회수</button>
+        </span>`).join("");
+      userDetailTitlesEl.querySelectorAll("button[data-revoke-title-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm(`"${btn.dataset.titleName}" 칭호를 이 유저에게서 회수할까요?`)) return;
+          btn.disabled = true;
+          try {
+            const res = await authFetch(ADMIN_URL, {
+              method: "POST",
+              body: JSON.stringify({ action: "revoke-title", channelId: detailChannelId, titleId: btn.dataset.revokeTitleId }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            await loadUserDetail(detailChannelId, detailPage);
+          } catch (err) {
+            console.error("[admin] 칭호 회수 실패", err);
+            alert("칭호를 회수하지 못했어요.");
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    grantOpenBtn.addEventListener("click", () => {
+      grantForm.hidden = false;
+      grantOpenBtn.hidden = true;
+      grantNameInput.focus();
+    });
+    document.getElementById("user-detail-grant-cancel-btn").addEventListener("click", resetGrantForm);
+    grantForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = grantNameInput.value.trim();
+      if (!name) {
+        grantStatusEl.textContent = "칭호명을 입력해주세요.";
+        grantStatusEl.className = "status-msg error";
+        return;
+      }
+      grantSubmitBtn.disabled = true;
+      grantStatusEl.textContent = "지급 중...";
+      grantStatusEl.className = "status-msg";
+      try {
+        const res = await authFetch(ADMIN_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "grant-custom-title", channelId: detailChannelId, name, color: grantColorPicker.getColor() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          grantStatusEl.textContent = data.error === "invalid_title_name" ? "칭호명은 1~20자로 입력해주세요."
+            : data.error === "invalid_title_color" ? "칭호 색상이 올바르지 않아요."
+            : "지급에 실패했어요.";
+          grantStatusEl.className = "status-msg error";
+          return;
+        }
+        resetGrantForm();
+        await loadUserDetail(detailChannelId, detailPage);
+      } catch (err) {
+        console.error("[admin] 칭호 지급 실패", err);
+        grantStatusEl.textContent = "지급에 실패했어요.";
+        grantStatusEl.className = "status-msg error";
+      } finally {
+        grantSubmitBtn.disabled = false;
+      }
+    });
+
     async function openUserDetailModal(channelId) {
+      resetGrantForm();
+      userDetailTitlesEl.innerHTML = "";
+      userDetailTitlesEmptyEl.hidden = true;
       userDetailNameEl.textContent = "불러오는 중...";
       userDetailMetaEl.textContent = "";
       userDetailStatsEl.innerHTML = "";
@@ -787,6 +910,8 @@
     }
 
     async function loadUserDetail(channelId, page) {
+      detailChannelId = channelId;
+      detailPage = page;
       try {
         const res = await authFetch(ADMIN_URL, {
           method: "POST",
@@ -803,6 +928,7 @@
           <div class="admin-user-detail-stat"><strong>${data.attendanceCount.toLocaleString("ko-KR")}회</strong><span>출석체크</span></div>
           <div class="admin-user-detail-stat"><strong>${data.isPublic ? "공개" : "비공개"}</strong><span>공개 설정</span></div>
         `;
+        renderOwnedTitles(data.ownedTitles);
 
         if (!data.log || data.log.length === 0) {
           userDetailLogListEl.innerHTML = "";

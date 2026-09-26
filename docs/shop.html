@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=52">
+<link rel="stylesheet" href="assets/css/style.css?v=53">
 </head>
 <body>
   <script>
@@ -96,6 +96,11 @@
           </div>
           <div class="shop-grid" id="shop-list"></div>
           <p id="shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
+          <!-- 관리자 전용: 판매 중지한 상품은 판매 중인 상품과 섞이지 않게 아래에 접어서 모아둠. -->
+          <details class="shop-inactive-group" id="shop-inactive-group" hidden>
+            <summary id="shop-inactive-summary"></summary>
+            <div class="shop-grid" id="shop-inactive-list"></div>
+          </details>
         </div>
 
         <!-- 칭호를 부여하는 상품(grants_title_id가 있는 상품)만 따로 모아 보여주는 섹션.
@@ -108,6 +113,10 @@
           </div>
           <div class="shop-grid" id="title-shop-list"></div>
           <p id="title-shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
+          <details class="shop-inactive-group" id="title-inactive-group" hidden>
+            <summary id="title-inactive-summary"></summary>
+            <div class="shop-grid" id="title-inactive-list"></div>
+          </details>
         </div>
 
         <p id="global-status" class="status-msg"></p>
@@ -119,7 +128,7 @@
            나면 뭘 의미하는지 안 보여서 각각 위에 작은 라벨을 고정으로 달아둠. -->
       <dialog id="shop-item-modal" class="notice-modal">
         <h3 id="shop-item-modal-title">상품 추가</h3>
-        <form id="shop-item-modal-form">
+        <form id="shop-item-modal-form" autocomplete="off">
           <div class="shop-item-field" id="shop-item-id-row">
             <label class="field-label" for="shop-item-id-input">상품 id (내부 식별용, 추가 후 수정 불가)</label>
             <input type="text" id="shop-item-id-input" class="notice-title-input" placeholder="예: water (영문 소문자/숫자/하이픈)" maxlength="64">
@@ -149,6 +158,12 @@
             <label class="field-label" for="shop-item-titlename-input">지급할 칭호명</label>
             <input type="text" id="shop-item-titlename-input" class="notice-title-input" placeholder="예: 네루" maxlength="40">
           </div>
+          <!-- 칭호 배지 색 — 동그라미 중에 고르거나 무지개 동그라미로 직접 고름. 아래 미리보기가
+               실제로 랭킹/마이페이지에 보일 모양 그대로임. -->
+          <div class="shop-item-field" id="shop-item-titlecolor-row" hidden>
+            <span class="field-label">칭호 색상</span>
+            <div id="shop-item-titlecolor-picker"></div>
+          </div>
           <!-- 한정 수량(재고) — 역시 칭호 상품 전용. 비워두면 무제한이고, 다 팔리면 상품이
                사라지는 게 아니라 "품절"로 바뀌면서 구매 버튼만 막힘. -->
           <div class="shop-item-field" id="shop-item-stock-row" hidden>
@@ -168,7 +183,7 @@
           <div class="admin-bulk-row">
             <label class="admin-checkbox-label" id="shop-item-active-row" hidden>
               <input type="checkbox" id="shop-item-active-input">
-              활성화(상점에 노출)
+              상점에 노출 (끄면 판매 중지)
             </label>
           </div>
           <p class="status-msg" id="shop-item-modal-status"></p>
@@ -181,7 +196,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=17"></script>
+  <script src="assets/js/chzzk-auth.js?v=18"></script>
   <script src="assets/js/spa-router.js?v=8"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감쌈
@@ -220,33 +235,48 @@
       const soldCount = item.sold_count ?? 0;
       const stockRemaining = stockLimit != null ? Math.max(0, stockLimit - soldCount) : null;
       const soldOut = stockLimit != null && stockRemaining <= 0;
-      const usable = !owned && !soldOut && !liveBlocked && affordable && !onCooldown;
       const inactive = admin && item.is_active === false;
+      // 판매 중지된 상품은 관리자 화면에만 보이는데, 서버가 어차피 구매를 막으니 버튼도 막아둠.
+      const usable = !owned && !soldOut && !liveBlocked && affordable && !onCooldown && !inactive;
+
       let label = isTitleItem ? "구매" : "사용";
       if (owned) label = "보유중";
+      else if (inactive) label = "판매 중지됨";
       else if (soldOut) label = "품절";
       else if (onCooldown) label = `${remaining}초 후 사용 가능`;
       else if (liveBlocked) label = "방송 중에만 사용 가능";
       else if (!affordable) label = "잔액 부족";
       // 비활성화 배지는 별도 줄로 왼쪽에, 수정/삭제 버튼은 그 아래 줄에서 가운데 정렬 —
       // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
+      // 관리자 버튼: 수정 / 판매 중지(또는 다시 판매) / 삭제. 판매 중지는 상점에서만 내리는 것(산
+      // 사람은 칭호 유지), 삭제는 완전히 지우는 것(칭호 상품이면 보유자한테서도 회수).
       const adminBar = admin ? `
         <div class="shop-item-admin-bar">
-          ${inactive ? '<span class="shop-item-inactive-badge">비활성화</span>' : ""}
+          ${inactive ? '<span class="shop-item-inactive-badge">판매 중지</span>' : ""}
           <div class="shop-item-admin-buttons">
             <button type="button" class="secondary shop-item-edit-btn" data-item-id="${escapeHtml(item.id)}">수정</button>
+            <button type="button" class="secondary shop-item-toggle-btn" data-item-id="${escapeHtml(item.id)}">${inactive ? "다시 판매" : "판매 중지"}</button>
             <button type="button" class="secondary shop-item-delete-btn" data-item-id="${escapeHtml(item.id)}">삭제</button>
           </div>
         </div>` : "";
+      // 칭호 상품은 상품명 아래에 실제로 받게 될 칭호 배지를 보여줌(색까지 그대로).
+      const titlePreview = isTitleItem
+        ? `<div class="shop-item-title-preview">${titleBadgeHtml(item.titles?.name ?? item.name, item.titles?.color)}</div>`
+        : "";
+      const ownerNote = admin && isTitleItem && Number.isFinite(item.owner_count)
+        ? `<p class="shop-item-owner-note">보유 ${item.owner_count.toLocaleString("ko-KR")}명</p>`
+        : "";
       const stockNote = stockLimit != null
         ? `<p class="muted stock-note">${soldOut ? "품절되었어요" : `한정 ${stockRemaining.toLocaleString("ko-KR")}개 남음`}</p>`
         : "";
       return `
         <div class="card shop-item${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}">
           <h3>${escapeHtml(item.name)}</h3>
+          ${titlePreview}
           <p class="desc">${escapeHtml(item.description || "")}</p>
           <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
           ${stockNote}
+          ${ownerNote}
           <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
           ${adminBar}
         </div>`;
@@ -263,32 +293,50 @@
         container.querySelectorAll(".shop-item-delete-btn").forEach((btn) => {
           btn.addEventListener("click", () => deleteShopItem(btn.dataset.itemId));
         });
+        container.querySelectorAll(".shop-item-toggle-btn").forEach((btn) => {
+          btn.addEventListener("click", () => toggleShopItemActive(btn.dataset.itemId, btn));
+        });
       }
     }
 
     // 일반 상품(shop-list)과 칭호 구매 상품(title-shop-list)을 grants_title_id 유무로 갈라서
-    // 각각 다른 그리드에 그림. 관리자 화면에서는 비활성화된 상품도 같이 받아와서 카드에
-    // "비활성화" 표시 + 수정/삭제 버튼을 얹음.
+    // 각각 다른 그리드에 그림. 관리자 화면에서는 판매 중지된 상품도 같이 받아오는데, 판매 중인
+    // 상품과 섞으면 상점이 난잡해져서 각 섹션 맨 아래 "판매 중지된 상품 N개" 접힘 영역에 따로 모음.
+    function renderSection({ items, admin, now, listId, emptyId, groupId, summaryId, inactiveListId }) {
+      const listEl = document.getElementById(listId);
+      const emptyEl = document.getElementById(emptyId);
+      const groupEl = document.getElementById(groupId);
+      const inactiveListEl = document.getElementById(inactiveListId);
+      const activeItems = items.filter((item) => item.is_active !== false);
+      const inactiveItems = admin ? items.filter((item) => item.is_active === false) : [];
+
+      listEl.innerHTML = activeItems.map((item) => renderItemCard(item, admin, now)).join("");
+      // 섹션 자체는 항상 띄워두고(사이드바 링크가 가리킬 대상이 항상 있어야 하니까), 판매 중인
+      // 상품이 하나도 없을 때만 그리드 대신 "상품 준비 중입니다." 안내를 보여줌.
+      emptyEl.hidden = activeItems.length > 0;
+      wireCardButtons(listEl, admin);
+
+      groupEl.hidden = inactiveItems.length === 0;
+      document.getElementById(summaryId).textContent = `판매 중지된 상품 ${inactiveItems.length}개`;
+      inactiveListEl.innerHTML = inactiveItems.map((item) => renderItemCard(item, admin, now)).join("");
+      wireCardButtons(inactiveListEl, admin);
+    }
+
     function renderShop() {
-      const listEl = document.getElementById("shop-list");
-      const titleListEl = document.getElementById("title-shop-list");
-      const listEmptyEl = document.getElementById("shop-list-empty");
-      const titleListEmptyEl = document.getElementById("title-shop-list-empty");
       const now = Date.now();
       const admin = isAdmin();
-
-      const regularItems = shopItems.filter((item) => !item.grants_title_id);
-      const titleItems = shopItems.filter((item) => item.grants_title_id);
-
-      listEl.innerHTML = regularItems.map((item) => renderItemCard(item, admin, now)).join("");
-      titleListEl.innerHTML = titleItems.map((item) => renderItemCard(item, admin, now)).join("");
-      // 섹션 자체는 항상 띄워두고(사이드바 "칭호 상점" 링크가 스크롤할 대상이 항상 있어야 하니까),
-      // 상품이 하나도 없을 때만 그리드 대신 "상품 준비 중입니다." 안내를 보여줌.
-      listEmptyEl.hidden = regularItems.length > 0;
-      titleListEmptyEl.hidden = titleItems.length > 0;
-
-      wireCardButtons(listEl, admin);
-      wireCardButtons(titleListEl, admin);
+      renderSection({
+        items: shopItems.filter((item) => !item.grants_title_id),
+        admin, now,
+        listId: "shop-list", emptyId: "shop-list-empty",
+        groupId: "shop-inactive-group", summaryId: "shop-inactive-summary", inactiveListId: "shop-inactive-list",
+      });
+      renderSection({
+        items: shopItems.filter((item) => item.grants_title_id),
+        admin, now,
+        listId: "title-shop-list", emptyId: "title-shop-list-empty",
+        groupId: "title-inactive-group", summaryId: "title-inactive-summary", inactiveListId: "title-inactive-list",
+      });
     }
 
     async function loadLiveStatus() {
@@ -317,13 +365,13 @@
           // 실패해도 아래로 흘러서 최소한 일반 유저 화면(활성 상품만)이라도 보여줌.
         }
       }
-      // 정렬은 가격 오름차순 — 예전엔 sort_order를 따로 입력받았는데, "가격 낮은 순 정렬이면
-      // 굳이 따로 순서를 정할 필요 없다"는 피드백으로 가격 기준 자동 정렬로 바꿈.
-      // grants_title_id도 같이 받아와야 일반 유저 화면에서도 칭호 상점 섹션을 나눠 그릴 수 있음.
+      // 정렬은 등록한 순서(먼저 추가한 상품이 앞, 새로 추가한 상품이 뒤) — shop-items 함수와 같음.
+      // grants_title_id도 같이 받아와야 일반 유저 화면에서도 칭호 상점 섹션을 나눠 그릴 수 있고,
+      // titles(name, color)는 칭호 상품 카드에 배지 미리보기를 그리는 데 씀.
       const { data, error } = await supabase
         .from("shop_items")
-        .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id, stock_limit, sold_count")
-        .order("cost", { ascending: true })
+        .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id, stock_limit, sold_count, titles(name, color)")
+        .order("created_at", { ascending: true })
         .order("id", { ascending: true });
       if (error) {
         console.error("[shop] 상품 목록 조회 실패", error);
@@ -341,6 +389,7 @@
       // (칭호 구매는 항상 showOnOverlay=false로 고정) 체크박스 줄 전체를 숨김.
       document.getElementById("shop-item-checkbox-row").hidden = itemType === "title";
       document.getElementById("shop-item-titlename-row").hidden = itemType !== "title";
+      document.getElementById("shop-item-titlecolor-row").hidden = itemType !== "title";
       document.getElementById("shop-item-stock-row").hidden = itemType !== "title";
     }
 
@@ -348,6 +397,8 @@
     let modalMode = null;
     let modalItemId = null;
     let modalItemType = "regular";
+    // 칭호 색 고르기 UI(chzzk-auth.js의 createTitleColorPicker) — 모달 처음 세팅할 때 한 번 만듦.
+    let titleColorPicker = null;
 
     function openShopItemModal(mode, itemId, itemType) {
       modalMode = mode;
@@ -381,6 +432,7 @@
         costInput.value = item?.cost ?? "";
         cooldownInput.value = item?.cooldown_seconds ?? 0;
         titlenameInput.value = item?.titles?.name ?? "";
+        titleColorPicker?.setColor(item?.titles?.color);
         stockInput.value = item?.stock_limit ?? "";
         liveInput.checked = Boolean(item?.requires_live);
         overlayInput.checked = item?.show_on_overlay !== false;
@@ -399,6 +451,7 @@
         costInput.value = "";
         cooldownInput.value = 0;
         titlenameInput.value = "";
+        titleColorPicker?.setColor(DEFAULT_TITLE_COLOR);
         stockInput.value = "";
         liveInput.checked = false;
         // 칭호 상품은 방송 화면에 굳이 안 떠도 되는 경우가 많아서 기본 꺼짐, 일반 상품은
@@ -410,15 +463,30 @@
       document.getElementById("shop-item-modal").showModal();
     }
 
+    // 완전 삭제. 칭호 상품이면 그 칭호를 가진 유저 전원에게서 회수됨(서버가 칭호 자체를 지움) —
+    // 산 사람은 그대로 두고 상점에서만 내리고 싶을 땐 "판매 중지"를 쓰라고 안내함.
     async function deleteShopItem(itemId) {
       const item = shopItems.find((it) => it.id === itemId);
-      const confirmMsg = item?.grants_title_id
-        ? `"${item?.name ?? itemId}" 상품을 삭제할까요? 이미 이 칭호를 산 유저는 계속 갖고 있어요.`
-        : `"${item?.name ?? itemId}" 상품을 삭제할까요? 과거 구매 로그(포인트 내역)에는 영향 없어요.`;
+      const label = item?.name ?? itemId;
+      let confirmMsg;
+      if (item?.grants_title_id) {
+        const owners = Number(item.owner_count) || 0;
+        confirmMsg = owners > 0
+          ? `"${label}" 상품을 완전히 삭제할까요?\n\n이 칭호를 가진 유저 ${owners}명에게서 칭호가 회수돼요(되돌릴 수 없음).\n산 사람은 그대로 두고 상점에서만 내리려면 취소하고 "판매 중지"를 눌러주세요.`
+          : `"${label}" 상품을 완전히 삭제할까요?\n\n아직 이 칭호를 가진 유저는 없어요.`;
+      } else {
+        confirmMsg = `"${label}" 상품을 완전히 삭제할까요?\n\n과거 구매 로그(포인트 내역)에는 영향 없어요. 잠깐 내리기만 하려면 "판매 중지"를 쓰세요.`;
+      }
       if (!confirm(confirmMsg)) return;
+      const statusEl = document.getElementById("global-status");
       try {
         const res = await authFetch(`${SHOP_ITEMS_URL}?id=${encodeURIComponent(itemId)}`, { method: "DELETE" });
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(String(res.status));
+        statusEl.className = "status-msg ok";
+        statusEl.textContent = data.revokedOwners > 0
+          ? `"${label}" 삭제 완료 — ${data.revokedOwners}명에게서 칭호를 회수했어요.`
+          : `"${label}" 삭제 완료.`;
         await loadShopItems();
         renderShop();
       } catch (err) {
@@ -427,7 +495,35 @@
       }
     }
 
+    // 판매 중지 ↔ 다시 판매. 판매 중지된 상품은 일반 유저 상점에서 안 보이고(이미 산 칭호는 유지),
+    // 관리자 화면에선 섹션 아래 "판매 중지된 상품" 접힘 영역으로 옮겨감.
+    async function toggleShopItemActive(itemId, btn) {
+      const item = shopItems.find((it) => it.id === itemId);
+      if (!item) return;
+      const nextActive = item.is_active === false;
+      btn.disabled = true;
+      try {
+        const res = await authFetch(`${SHOP_ITEMS_URL}?id=${encodeURIComponent(itemId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ isActive: nextActive }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        await loadShopItems();
+        renderShop();
+      } catch (err) {
+        console.error("[shop] 판매 상태 변경 실패", err);
+        alert("판매 상태를 바꾸지 못했어요.");
+        btn.disabled = false;
+      }
+    }
+
     function setupShopItemModal() {
+      const titlenameInput = document.getElementById("shop-item-titlename-input");
+      titleColorPicker = createTitleColorPicker(document.getElementById("shop-item-titlecolor-picker"), {
+        initialColor: DEFAULT_TITLE_COLOR,
+        getPreviewName: () => titlenameInput.value,
+      });
+      titlenameInput.addEventListener("input", () => titleColorPicker.refreshPreview());
       document.getElementById("shop-item-add-btn").addEventListener("click", () => openShopItemModal("add", null, "regular"));
       document.getElementById("title-item-add-btn").addEventListener("click", () => openShopItemModal("add", null, "title"));
       document.getElementById("shop-item-modal-cancel-btn").addEventListener("click", () => {
@@ -469,6 +565,7 @@
             return;
           }
           payload.titleName = titleName;
+          payload.titleColor = titleColorPicker ? titleColorPicker.getColor() : DEFAULT_TITLE_COLOR;
           payload.showOnOverlay = false;
 
           const stockRaw = document.getElementById("shop-item-stock-input").value.trim();
@@ -514,6 +611,7 @@
             if (data.error === "duplicate_id") statusEl.textContent = "이미 존재하는 상품 id예요.";
             else if (data.error === "invalid_id") statusEl.textContent = "상품 id 형식이 올바르지 않아요.";
             else if (data.error === "invalid_title_name") statusEl.textContent = "지급할 칭호명을 입력해주세요.";
+            else if (data.error === "invalid_title_color") statusEl.textContent = "칭호 색상이 올바르지 않아요.";
             else if (data.error === "title_id_conflict") statusEl.textContent = "이미 사용된 상품 id예요(연결된 칭호가 남아있어요). 다른 id를 써주세요.";
             else if (data.error === "not_title_item") statusEl.textContent = "칭호 상품이 아니라서 칭호명을 저장할 수 없어요.";
             else statusEl.textContent = "저장에 실패했어요.";

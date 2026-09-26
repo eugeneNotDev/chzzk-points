@@ -255,8 +255,107 @@ function applyTierColorToName(escapedName, tierColor) {
   return safeColor ? `<span style="color:${safeColor}">${escapedName}</span>` : escapedName;
 }
 
-function renderShopTitleBadgeHtml(shopName) {
-  return shopName ? `<span class="title-badge">[${escapeHtmlForAuth(shopName)}]</span> ` : "";
+// 상점/관리자 칭호는 칭호마다 고른 색으로 "꽉 찬 배지"(색 배경 + 흰/검 글자)로 보여줌.
+// 색은 titles.color("#rrggbb"), 없으면 기본 민트. 글자색은 배경 밝기를 보고 흰색/검은색 중
+// 더 잘 읽히는 쪽으로 자동으로 고름.
+const DEFAULT_TITLE_COLOR = "#00e5a0";
+const TITLE_COLOR_PRESETS = [
+  { name: "민트", value: "#00e5a0" },
+  { name: "하늘", value: "#5dc8ff" },
+  { name: "파랑", value: "#4c6ef5" },
+  { name: "보라", value: "#9b6bff" },
+  { name: "핑크", value: "#ff6bb5" },
+  { name: "빨강", value: "#ff4d5a" },
+  { name: "주황", value: "#ff922b" },
+  { name: "노랑", value: "#ffd43b" },
+  { name: "연두", value: "#94d82d" },
+  { name: "흰색", value: "#f1f3f5" },
+  { name: "회색", value: "#868e96" },
+  { name: "검정", value: "#1b1d21" },
+];
+
+function normalizeTitleColor(color) {
+  return typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : DEFAULT_TITLE_COLOR;
+}
+
+// WCAG 상대 휘도로 흰 글자 대비를 계산해서, 흰 글자로도 충분히 읽히면(대비 3 이상 — 굵은 작은
+// 글자 기준) 흰색, 아니면 검은색. 보라/파랑/빨강 같은 색에 흰 글자가 더 자연스러워서 흰색을 우선함.
+function titleBadgeTextColor(hex) {
+  const c = normalizeTitleColor(hex);
+  const channel = (i) => {
+    const v = parseInt(c.slice(i, i + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const lum = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+  const contrastWhite = 1.05 / (lum + 0.05);
+  return contrastWhite >= 3 ? "#ffffff" : "#111418";
+}
+
+function titleBadgeHtml(name, color) {
+  const bg = normalizeTitleColor(color);
+  return `<span class="title-badge" style="--badge-bg:${bg};--badge-fg:${titleBadgeTextColor(bg)}">${escapeHtmlForAuth(name)}</span>`;
+}
+
+// 랭킹/홈에서 이름 앞에 붙이는 장착 칭호(뒤에 한 칸 띄움).
+function renderShopTitleBadgeHtml(shopName, color) {
+  return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
+}
+
+// 칭호 색 고르기 UI — 상점 칭호 상품 추가/수정 모달, 관리자 칭호 지급 폼에서 같이 씀.
+// 자주 쓸 만한 색 12개를 동그라미로 늘어놓고, 마지막 무지개 동그라미를 누르면 원하는 색을
+// 직접 고를 수 있음. 아래에 실제 배지 모양 미리보기가 같이 바뀜.
+//   const picker = createTitleColorPicker(hostEl, { initialColor, getPreviewName: () => input.value });
+//   picker.getColor() / picker.setColor("#ff0000") / picker.refreshPreview()
+function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
+  let current = normalizeTitleColor(initialColor);
+  hostEl.innerHTML = `
+    <div class="title-color-picker">
+      <div class="title-color-swatches" role="radiogroup" aria-label="칭호 색상">
+        ${TITLE_COLOR_PRESETS.map((p) => `
+          <button type="button" class="title-color-swatch" role="radio" data-color="${p.value}"
+            style="--swatch:${p.value};--swatch-fg:${titleBadgeTextColor(p.value)}" title="${p.name}" aria-label="${p.name}"></button>`).join("")}
+        <label class="title-color-swatch title-color-custom" title="직접 고르기" aria-label="직접 고르기">
+          <input type="color" class="title-color-input" value="${current}">
+        </label>
+      </div>
+      <div class="title-color-preview">
+        <span class="title-color-preview-label">미리보기</span>
+        <span class="title-color-preview-badge"></span>
+        <span class="title-color-preview-name">닉네임</span>
+        <code class="title-color-hex"></code>
+      </div>
+    </div>`;
+  const swatches = Array.from(hostEl.querySelectorAll(".title-color-swatch[data-color]"));
+  const customLabel = hostEl.querySelector(".title-color-custom");
+  const customInput = hostEl.querySelector(".title-color-input");
+  const badgeSlot = hostEl.querySelector(".title-color-preview-badge");
+  const hexEl = hostEl.querySelector(".title-color-hex");
+
+  function render() {
+    const isPreset = swatches.some((b) => b.dataset.color === current);
+    swatches.forEach((b) => {
+      const on = b.dataset.color === current;
+      b.classList.toggle("is-selected", on);
+      b.setAttribute("aria-checked", on ? "true" : "false");
+    });
+    customLabel.classList.toggle("is-selected", !isPreset);
+    customLabel.style.setProperty("--swatch", isPreset ? "" : current);
+    customLabel.style.setProperty("--swatch-fg", titleBadgeTextColor(current));
+    customInput.value = current;
+    const name = (getPreviewName ? String(getPreviewName() || "") : "").trim() || "칭호";
+    badgeSlot.innerHTML = titleBadgeHtml(name, current);
+    hexEl.textContent = current;
+  }
+
+  swatches.forEach((b) => b.addEventListener("click", () => { current = b.dataset.color; render(); }));
+  customInput.addEventListener("input", () => { current = normalizeTitleColor(customInput.value); render(); });
+  render();
+
+  return {
+    getColor: () => current,
+    setColor: (c) => { current = normalizeTitleColor(c); render(); },
+    refreshPreview: render,
+  };
 }
 
 // 공지사항 첨부파일 — storage_path("notices/xxxx-파일명")로 퍼블릭 URL을 만듦. 세그먼트별로
@@ -737,3 +836,29 @@ function renderMobileUser() {
 }
 
 initMobileNav();
+
+// 입력칸 자동완성 끄기 — 브라우저가 예전에 입력했던 값(상품명, 제목 등)을 드롭다운으로 추천하는
+// 걸 사이트 전체에서 막음. 페이지마다 일일이 속성을 다는 대신 여기서 한 번에: 지금 있는 입력칸 +
+// 나중에 생기는 입력칸(SPA 페이지 전환, 모달/목록을 JS로 그리는 경우)까지 MutationObserver로 잡음.
+function disableAutocompleteIn(root) {
+  if (!root || !root.querySelectorAll) return;
+  const targets = root.matches && root.matches("input, textarea, form") ? [root] : [];
+  targets.push(...root.querySelectorAll("input, textarea, form"));
+  for (const el of targets) {
+    const type = (el.getAttribute("type") || "").toLowerCase();
+    if (["checkbox", "radio", "color", "hidden", "file", "range", "button", "submit"].includes(type)) continue;
+    if (el.getAttribute("autocomplete") !== "off") el.setAttribute("autocomplete", "off");
+  }
+}
+
+if (!window.__autocompleteOffObserver) {
+  disableAutocompleteIn(document);
+  window.__autocompleteOffObserver = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node.nodeType === 1) disableAutocompleteIn(node);
+      }
+    }
+  });
+  window.__autocompleteOffObserver.observe(document.documentElement, { childList: true, subtree: true });
+}

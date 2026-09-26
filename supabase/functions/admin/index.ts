@@ -63,9 +63,19 @@
 // POST { action: "get-user-detail", channelId: string, page?: number }
 //   → { channelId, channelName, isPublic, banned, createdAt, maxBalanceReached, balance,
 //       attendanceCount, log: [{ id, amount, reason, processed, adminAction, undone, createdAt }],
+//       ownedTitles: [{ id, name, color, kind, equipped }],
 //       page, pageSize, totalCount, totalPages }
 //     (유저 한 명의 전체 내역 — list-points-log와 달리 24시간 제한 없이 전체 기간, 페이지당 10개.
 //     관리자 유저 목록에서 행을 클릭하면 뜨는 상세 모달용.)
+// POST { action: "grant-custom-title", channelId: string, name: string, color: "#rrggbb" }
+//   → { title: { id, name, color, kind: "custom" } } | { error: "invalid_title_name" | "invalid_title_color" | "user_not_found" }
+//     (관리자가 특정 유저한테 칭호를 직접 줌 — 이름/색을 정해서 그 유저 전용 칭호를 새로 만들고
+//     보유 기록(user_purchased_titles)을 넣음. 유저가 마이페이지 칭호 목록에서 직접 장착함.)
+// POST { action: "revoke-title", channelId: string, titleId: string }
+//   → { revoked: true } | { error: "not_owned" }
+//     (그 유저에게서 칭호 하나를 회수 — 보유 기록을 지우고 장착 중이었으면 해제. 관리자가 준
+//     칭호(custom)는 더 이상 가진 사람이 없으면 칭호 자체도 지움. 상점 칭호는 상품이 남아있으니
+//     칭호는 그대로 두고 이 유저의 보유 기록만 지움.)
 // POST { action: "create-prediction", title: string, options: string[](2개 이상), durationMinutes: 5|10|15 }
 //   → { predictionId } | { error: "already_open" | "invalid_title" | "invalid_options" | "invalid_duration" }
 //     (진행 중(open)인 투표가 이미 있으면 already_open으로 거절 — "한 번에 하나만" 규칙을 여기서 지킴.)
@@ -176,11 +186,22 @@ async function resetAccountHoldings(admin: ReturnType<typeof getAdminClient>, ch
     if (insertError) throw new Error(`points_ledger insert 실패: ${insertError.message}`);
   }
 
+  const { data: ownedRows, error: ownedError } = await admin
+    .from("user_purchased_titles")
+    .select("title_id")
+    .eq("channel_id", channelId);
+  if (ownedError) throw new Error(`user_purchased_titles 조회 실패: ${ownedError.message}`);
+
   const { error: purchasedError } = await admin
     .from("user_purchased_titles")
     .delete()
     .eq("channel_id", channelId);
   if (purchasedError) throw new Error(`user_purchased_titles 삭제 실패: ${purchasedError.message}`);
+
+  // 관리자가 이 유저한테 줬던 칭호(custom)는 이제 주인이 없으니 칭호 자체도 정리함.
+  for (const row of ownedRows ?? []) {
+    await deleteCustomTitleIfUnowned(admin, row.title_id);
+  }
 }
 
 async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: string, banned: boolean) {
@@ -196,6 +217,80 @@ async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: strin
   }
   const { error } = await admin.from("users").update({ banned: false }).eq("channel_id", channelId);
   if (error) throw new Error(`banned 갱신 실패: ${error.message}`);
+}
+
+// --- 관리자 커스텀 칭호 ---
+// 칭호 id는 "custom-" + 랜덤 12자리(상점 상품 id와 안 겹치게 접두사를 붙임). min_points는 상점
+// 칭호와 같은 "못 찍는 큰 값" — 포인트로는 안 풀리고 보유 기록으로만 가짐(me/index.ts 장착 검증도
+// 그대로 통과함).
+const CUSTOM_TITLE_MIN_POINTS = 999999999999;
+const TITLE_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const TITLE_NAME_MAX = 20;
+
+async function grantCustomTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, name: string, color: string) {
+  const { data: user, error: userError } = await admin.from("users").select("channel_id").eq("channel_id", channelId).maybeSingle();
+  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+  if (!user) return { ok: false as const, error: "user_not_found" as const };
+
+  const { data: maxSortRow } = await admin
+    .from("titles")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const id = `custom-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`;
+  const title = { id, name, color: color.toLowerCase(), kind: "custom" };
+
+  const { error: titleError } = await admin.from("titles").insert({
+    ...title,
+    min_points: CUSTOM_TITLE_MIN_POINTS,
+    sort_order: (maxSortRow?.sort_order ?? 0) + 1,
+  });
+  if (titleError) throw new Error(`titles insert 실패: ${titleError.message}`);
+
+  const { error: ownError } = await admin.from("user_purchased_titles").insert({ channel_id: channelId, title_id: id });
+  if (ownError) {
+    await admin.from("titles").delete().eq("id", id);
+    throw new Error(`user_purchased_titles insert 실패: ${ownError.message}`);
+  }
+  return { ok: true as const, title };
+}
+
+// 관리자 칭호(custom)인데 가진 사람이 아무도 없으면 칭호 row 자체를 지움(쓰레기 데이터 안 남게).
+async function deleteCustomTitleIfUnowned(admin: ReturnType<typeof getAdminClient>, titleId: string) {
+  const { data: title, error: titleError } = await admin.from("titles").select("kind").eq("id", titleId).maybeSingle();
+  if (titleError) throw new Error(`titles 조회 실패: ${titleError.message}`);
+  if (!title || title.kind !== "custom") return;
+  const { count, error: countError } = await admin
+    .from("user_purchased_titles")
+    .select("*", { count: "exact", head: true })
+    .eq("title_id", titleId);
+  if (countError) throw new Error(`보유자 수 조회 실패: ${countError.message}`);
+  if ((count ?? 0) === 0) {
+    const { error } = await admin.from("titles").delete().eq("id", titleId);
+    if (error) throw new Error(`titles delete 실패: ${error.message}`);
+  }
+}
+
+async function revokeTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, titleId: string) {
+  const { data: removed, error: deleteError } = await admin
+    .from("user_purchased_titles")
+    .delete()
+    .eq("channel_id", channelId)
+    .eq("title_id", titleId)
+    .select("title_id");
+  if (deleteError) throw new Error(`user_purchased_titles 삭제 실패: ${deleteError.message}`);
+  if (!removed || removed.length === 0) return { ok: false as const, error: "not_owned" as const };
+
+  const { error: unequipError } = await admin
+    .from("users")
+    .update({ selected_title_id: null })
+    .eq("channel_id", channelId)
+    .eq("selected_title_id", titleId);
+  if (unequipError) throw new Error(`selected_title_id 해제 실패: ${unequipError.message}`);
+
+  await deleteCustomTitleIfUnowned(admin, titleId);
+  return { ok: true as const };
 }
 
 // target="all"용 — banned 유저와 관리자 계정(OWNER_CHANNEL_ID)은 제외한 전체 채널ID 목록.
@@ -319,7 +414,7 @@ const USER_DETAIL_LOG_PAGE_SIZE = 5;
 async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId: string, page: number) {
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, created_at, max_balance_reached, balance")
+    .select("channel_id, channel_name, is_public, banned, created_at, max_balance_reached, balance, selected_title_id")
     .eq("channel_id", channelId)
     .maybeSingle();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -330,6 +425,7 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
   const [
     { data: logRows, error: logError, count: logTotalCount },
     { count: attendanceCount, error: attendanceError },
+    { data: ownedRows, error: ownedError },
   ] = await Promise.all([
     admin
       .from("points_ledger")
@@ -338,9 +434,28 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
       .order("created_at", { ascending: false })
       .range(offset, offset + USER_DETAIL_LOG_PAGE_SIZE - 1),
     admin.from("attendance").select("*", { count: "exact", head: true }).eq("channel_id", channelId),
+    admin
+      .from("user_purchased_titles")
+      .select("title_id, purchased_at, titles(id, name, color, kind)")
+      .eq("channel_id", channelId)
+      .order("purchased_at", { ascending: true }),
   ]);
   if (logError) throw new Error(`points_ledger 조회 실패: ${logError.message}`);
   if (attendanceError) throw new Error(`attendance 조회 실패: ${attendanceError.message}`);
+  if (ownedError) throw new Error(`user_purchased_titles 조회 실패: ${ownedError.message}`);
+
+  // 보유 칭호(상점 구매 + 관리자 지급) — 상세 모달에서 보여주고 회수할 수 있게.
+  // deno-lint-ignore no-explicit-any
+  const ownedTitles = (ownedRows ?? []).map((r: any) => {
+    const t = Array.isArray(r.titles) ? r.titles[0] : r.titles;
+    return {
+      id: r.title_id,
+      name: t?.name ?? r.title_id,
+      color: t?.color ?? null,
+      kind: t?.kind ?? "shop",
+      equipped: user.selected_title_id === r.title_id,
+    };
+  });
 
   const balance = Number(user.balance ?? 0);
   const log = (logRows ?? []).map((r) => ({
@@ -363,6 +478,7 @@ async function getUserDetail(admin: ReturnType<typeof getAdminClient>, channelId
     balance,
     attendanceCount: attendanceCount ?? 0,
     log,
+    ownedTitles,
     logTotalCount: logTotalCount ?? 0,
   };
 }
@@ -848,6 +964,28 @@ Deno.serve(async (req: Request) => {
       if (!detail) return jsonResponse({ error: "user_not_found" }, 404);
       const totalPages = Math.max(Math.ceil(detail.logTotalCount / USER_DETAIL_LOG_PAGE_SIZE), 1);
       return jsonResponse({ ...detail, page, pageSize: USER_DETAIL_LOG_PAGE_SIZE, totalPages }, 200);
+    }
+
+    if (body.action === "grant-custom-title") {
+      const { channelId } = body;
+      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      const name = typeof body.name === "string" ? body.name.trim() : "";
+      if (name.length === 0 || name.length > TITLE_NAME_MAX) return jsonResponse({ error: "invalid_title_name" }, 400);
+      if (typeof body.color !== "string" || !TITLE_COLOR_PATTERN.test(body.color)) {
+        return jsonResponse({ error: "invalid_title_color" }, 400);
+      }
+      const result = await grantCustomTitle(admin, channelId, name, body.color);
+      if (!result.ok) return jsonResponse({ error: result.error }, 400);
+      return jsonResponse({ title: result.title }, 200);
+    }
+
+    if (body.action === "revoke-title") {
+      const { channelId, titleId } = body;
+      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      if (typeof titleId !== "string" || !titleId) return jsonResponse({ error: "missing_title_id" }, 400);
+      const result = await revokeTitle(admin, channelId, titleId);
+      if (!result.ok) return jsonResponse({ error: result.error }, 400);
+      return jsonResponse({ revoked: true }, 200);
     }
 
     if (body.action === "create-prediction") {

@@ -11,6 +11,10 @@ const LIVE_DETAIL_URL = `https://api.chzzk.naver.com/service/v2/channels/${OWNER
 export interface LiveInfo {
   isLive: boolean;
   liveTitle: string | null;
+  // 이번 방송이 시작된 시각. 치지직이 "2026-09-26 21:00:03"처럼 한국 시간 문자열로 줌.
+  // 출석체크가 "방송 1번에 출석 1번"을 지키려고 이 날짜를 씀(attendance-check 참고). 방송 중이
+  // 아니거나 값이 없으면 null.
+  openDate: string | null;
 }
 
 // broadcast-status는 로그인 없이도 누구나 호출 가능하고, attendance-check도 페이지 로드마다
@@ -34,12 +38,14 @@ async function fetchLiveInfo(): Promise<LiveInfo> {
     const body = await res.json();
     const isLive = body?.content?.status === "OPEN";
     const liveTitle = isLive ? body?.content?.liveTitle ?? null : null;
-    return { isLive, liveTitle };
+    const rawOpenDate = body?.content?.openDate;
+    const openDate = isLive && typeof rawOpenDate === "string" ? rawOpenDate : null;
+    return { isLive, liveTitle, openDate };
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     // 조회 실패해도 호출부가 깨지면 안 되니, "모름" 대신 방송 꺼짐으로 안전하게 취급함
     // (출석체크 쪽에서는 이게 "방송 안 켜짐"으로 처리되어 출석체크가 막히는 정도의 영향만 있음).
-    return { isLive: false, liveTitle: null };
+    return { isLive: false, liveTitle: null, openDate: null };
   }
 }
 
@@ -56,4 +62,13 @@ export async function getLiveInfo(): Promise<LiveInfo> {
 
 export async function isChannelLive(): Promise<boolean> {
   return (await getLiveInfo()).isLive;
+}
+
+// 지금 방송이 시작된 날짜(KST, "YYYY-MM-DD"). 21시에 켜서 새벽 1시에 끄면 자정이 넘어도 계속
+// 시작한 날짜가 나옴 — 출석을 이 날짜로 기록해서 방송 하나에 출석 한 번이 되게 함.
+// openDate를 못 읽으면 null(호출부가 오늘 날짜로 대신함).
+export function broadcastDateKst(info: LiveInfo): string | null {
+  if (!info.openDate) return null;
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(info.openDate);
+  return match ? match[1] : null;
 }

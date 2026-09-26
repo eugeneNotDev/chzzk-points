@@ -58,8 +58,17 @@
 /* 세로 스크롤바가 뜨고 안 뜨고에 따라(칭호 카드처럼 내용이 접혔다 펼쳐지면서 페이지 전체
    높이가 뷰포트를 넘었다 안 넘었다 할 때) 본문 폭이 스크롤바 두께만큼 늘었다 줄었다 하면서
    화면이 좌우로 살짝 튀는 걸 막음 — 스크롤이 실제로 필요 없을 때도 그 자리를 미리 비워둠. */
-html {
-  scrollbar-gutter: stable;
+/* 스크롤바는 전부 숨김(스크롤 자체는 그대로 됨) — 특히 폰 화면에서 오른쪽에 스크롤바가 보이는
+   게 거슬린다는 요청. 스크롤바가 아예 공간을 안 차지하니 예전에 쓰던 scrollbar-gutter(스크롤바
+   생겼다 없어질 때 화면이 좌우로 튀는 것 방지)도 필요 없어짐. */
+html, body, * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 body {
@@ -1105,7 +1114,8 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   font-size: 0.78rem;
   color: var(--muted);
 }
-.shop-item-admin-buttons { display: flex; justify-content: center; gap: 8px; }
+.shop-item-admin-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+.shop-item-admin-buttons button { padding: 6px 9px; font-size: 0.8rem; white-space: nowrap; }
 
 /* 상품 추가/수정 모달의 입력칸 — placeholder만으로는 값을 채우고 나면(특히 숫자 입력칸)
    뭘 의미하는지 안 보여서, 각 입력칸 위에 사라지지 않는 작은 라벨을 고정으로 둠. */
@@ -1135,12 +1145,23 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-card.selected { border-color: var(--accent); }
 .title-card.selected h3 { color: var(--accent); }
 
-/* 랭킹/마이페이지 요약 카드에서 이름 앞에 "[상점칭호]" 형태로 붙는 배지 — 상점에서 구매한
-   칭호 전용(renderShopTitleBadgeHtml, chzzk-auth.js). 별도 색 지정이 없어서 기본 accent 색을
-   그대로 씀. 포인트 구간 칭호(브론즈~다이아)는 더 이상 배지가 아니라 이름 텍스트 자체에
-   인라인 style="color:..."를 입히는 방식으로 바뀜(applyTierColorToName) — 이 클래스 대상이
-   아님. */
-.title-badge { color: var(--accent); font-weight: 600; }
+/* 상점/관리자 칭호 배지 — 칭호마다 고른 색으로 배경을 꽉 채운 작은 네모 배지(titleBadgeHtml,
+   chzzk-auth.js가 --badge-bg/--badge-fg를 인라인으로 넣어줌). 글자색은 배경 밝기에 맞춰 흰/검 자동.
+   포인트 구간 칭호(브론즈~다이아)는 배지가 아니라 이름 글자색으로 보여줌(applyTierColorToName). */
+.title-badge {
+  display: inline-block;
+  padding: 0.12em 0.55em;
+  border-radius: 5px;
+  background: var(--badge-bg, var(--accent));
+  color: var(--badge-fg, var(--accent-text));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 1px 2px rgba(0, 0, 0, 0.35);
+  font-size: 0.78em;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  vertical-align: 0.08em;
+  white-space: nowrap;
+}
 
 /* 칭호 카드 접기/펴기. 처음엔 <details>/<summary>로 했는데 브라우저 기본 동작이라 열고 닫을
    때 애니메이션 없이 뚝 끊기듯 전환돼서, 버튼 + 클래스 토글 + CSS 트랜지션 방식으로 바꿈.
@@ -1697,3 +1718,124 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   .predict-admin-actions > *,
   #predict-admin-view-bets-btn { width: 100%; }
 }
+
+/* ── 칭호 색 고르기 (createTitleColorPicker, chzzk-auth.js) ───────────────── */
+.title-color-picker { display: flex; flex-direction: column; gap: 10px; }
+.title-color-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.title-color-swatch {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: var(--swatch);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.title-color-swatch:hover { transform: scale(1.08); background: var(--swatch); }
+.title-color-custom:hover { background: conic-gradient(#ff4d5a, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a); }
+.title-color-custom.is-selected:hover { background: var(--swatch); }
+.title-color-swatch.is-selected {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
+}
+.title-color-swatch.is-selected::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--swatch-fg, #fff);
+}
+/* 직접 고르기 — 선택 전엔 무지개, 직접 고른 색이 있으면 그 색으로 채워짐. 실제 input[type=color]는
+   동그라미 전체를 덮는 투명 버튼 역할. */
+.title-color-custom {
+  background: conic-gradient(#ff4d5a, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  display: inline-block;
+  overflow: hidden;
+}
+.title-color-custom.is-selected { background: var(--swatch); }
+.title-color-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.title-color-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.title-color-preview-label { font-size: 0.78rem; color: var(--muted); margin-right: 2px; }
+.title-color-preview-name { font-weight: 600; }
+.title-color-hex { margin-left: auto; font-size: 0.78rem; color: var(--muted); }
+
+/* ── 칭호 상점 카드: 상품명 아래에 실제로 받게 될 칭호 배지를 보여줌 ── */
+.shop-item-title-preview { margin: 2px 0 8px; font-size: 1rem; }
+
+/* ── 관리자 상점: 판매 중지된 상품은 아래 접힌 영역으로 모아둠 ── */
+.shop-inactive-group {
+  margin-top: 18px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 12px;
+  padding: 0 14px;
+}
+.shop-inactive-group > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  list-style: none;
+}
+.shop-inactive-group > summary::-webkit-details-marker { display: none; }
+.shop-inactive-group > summary::before { content: "▸ "; }
+.shop-inactive-group[open] > summary::before { content: "▾ "; }
+.shop-inactive-group .shop-grid { padding-bottom: 14px; }
+.shop-item-owner-note { font-size: 0.8rem; color: var(--muted); margin: 0 0 8px; }
+
+/* ── 출석: 누적 출석/다음 보너스 안내 ── */
+.attendance-progress { margin: 10px 0 0; text-align: center; font-size: 0.88rem; color: var(--muted); }
+.attendance-progress strong { color: var(--accent); }
+
+/* ── 관리자 유저 상세: 보유 칭호 + 칭호 지급 ── */
+.admin-user-titles { margin: 14px 0 6px; }
+.admin-user-section-heading { margin: 16px 0 8px; font-size: 0.95rem; }
+.admin-user-title-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.admin-user-title-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  font-size: 0.85rem;
+}
+.admin-user-title-chip .chip-meta { color: var(--muted); font-size: 0.75rem; }
+.admin-user-title-chip button { padding: 2px 8px; font-size: 0.75rem; min-height: 0; }
+.admin-title-grant-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+}
+.admin-title-grant-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.title-card h3 .title-badge { font-size: 0.95rem; }
+.admin-title-grant-form .status-msg:empty { display: none; }

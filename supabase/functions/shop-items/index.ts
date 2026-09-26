@@ -12,15 +12,17 @@
 //    titles.min_points는 절대 못 찍을 만큼 큰 값(PURCHASE_ONLY_MIN_POINTS)을 넣어서 포인트
 //    달성으로는 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 만듦.
 //
-// GET                                    → 전체 상품 목록 (비활성화 포함, 가격 오름차순).
-//                                           칭호 상품이면 연결된 titles.name도 함께 embed해서
-//                                           내려줌(수정 모달에서 현재 칭호명을 바로 채워주려고 —
+// GET                                    → 전체 상품 목록 (판매 중지 포함, 등록한 순서대로).
+//                                           칭호 상품이면 연결된 titles의 name/color도 함께 embed해서
+//                                           내려줌(수정 모달에서 현재 칭호명/색을 바로 채워주려고 —
 //                                           grants_title_id → titles(id) FK 관계로 자동 조인됨).
+//                                           칭호 상품엔 owner_count(그 칭호를 가진 유저 수)도 붙임 —
+//                                           삭제할 때 "N명이 보유 중" 경고에 씀.
 //                                           일반 유저는 shop_items 테이블을 anon 키로 직접 읽지만
 //                                           (is_active=true만 RLS로 보임), 관리자는 비활성 상품도
 //                                           관리해야 하니 이 함수로 전체를 내려줌.
 // POST   { id, name, cost, description?, requiresLive?, cooldownSeconds?, showOnOverlay?,
-//          isTitleItem?, titleName?, stockLimit? }
+//          isTitleItem?, titleName?, titleColor?, stockLimit? }
 //                                        → 새 상품 추가 (id는 소문자-하이픈 슬러그, 이후 수정 불가)
 //   stockLimit: 한정 수량(양의 정수). 생략/null이면 무제한. 다 팔리면(sold_count가 이 값에
 //   도달) 상품이 지워지지 않고 "품절" 상태로만 표시됨(spend-points가 검사).
@@ -29,17 +31,23 @@
 //   requiresLive/cooldownSeconds가 그대로 적용됨(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
 //   한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념 자체가 안 맞음).
 //   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜸(기본 true).
+//   titleColor: 칭호 배지 색("#rrggbb"). 생략하면 기본 민트색.
 // PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?,
-//          isActive?, showOnOverlay?, titleName?, stockLimit? }
+//          isActive?, showOnOverlay?, titleName?, titleColor?, stockLimit? }
 //   stockLimit: null을 보내면 무제한으로 되돌림.
 //                                        → 기존 상품 수정 (보낸 필드만 갱신)
-//   titleName: 이 상품이 칭호 상품(연결된 titles row가 있음)일 때만 유효 — 연결된 titles.name을
-//   갱신함. 칭호 상품이 아닌데 titleName을 보내면 not_title_item으로 거부.
-// DELETE ?id=<item id>                   → 상품 삭제 (연결된 titles row는 안 지움 — 이미 그
-//                                           칭호를 산 유저들의 잠금해제 기록이 날아가면 안 되니까.
+//   titleName/titleColor: 이 상품이 칭호 상품(연결된 titles row가 있음)일 때만 유효 — 연결된
+//   titles.name/color를 갱신함. 칭호 상품이 아닌데 보내면 not_title_item으로 거부.
+//   isActive=false가 "판매 중지" — 상점에서만 사라지고, 이미 산 유저는 칭호를 계속 가짐.
+// DELETE ?id=<item id>                   → 상품 완전 삭제 → { ok, revokedOwners }
+//                                           칭호 상품이면 연결된 칭호(titles row)도 같이 지움 —
+//                                           그 칭호를 가진 유저 전원에게서 회수되고(보유 기록은
+//                                           FK cascade로, 장착 중이던 것도 FK set null로 풀림)
+//                                           revokedOwners에 회수된 인원을 돌려줌. 산 사람은 유지하고
+//                                           상점에서만 내리고 싶으면 삭제 대신 판매 중지(isActive=false).
 //                                           과거 구매 로그는 points_ledger.reason / spend_events.item_name에
 //                                           문구가 그대로 스냅샷 되어 있어서, 상품을 지워도 기존
-//                                           로그 표시엔 영향 없음)
+//                                           로그 표시엔 영향 없음
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
 //  일치해야만 허용 — 아니면 403)
 
@@ -72,6 +80,10 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 함.
 const PURCHASE_ONLY_MIN_POINTS = 999999999999;
 
+// 칭호 배지 색 — "#rrggbb"만 받음(화면에서 style 속성에 그대로 들어가는 값이라 형식을 엄격히 제한).
+const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+const DEFAULT_TITLE_COLOR = "#00e5a0";
+
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -91,20 +103,35 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
 
     if (req.method === "GET") {
-      // 정렬은 가격 오름차순 — 예전엔 sort_order를 관리자가 직접 입력했는데, "가격 낮은 순
-      // 정렬이면 굳이 따로 순서를 정할 필요 없음"이라는 피드백으로 가격 기준 자동 정렬로 바꿈.
-      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 이제 안 씀.
-      // titles(name): grants_title_id가 있으면 연결된 칭호 이름을 같이 내려줘서, 수정 모달을
-      // 열 때 현재 칭호명을 바로 채워줄 수 있게 함(FK 관계라 PostgREST가 자동으로 조인해줌).
+      // 정렬은 등록한 순서(먼저 추가한 게 앞, 새로 추가한 게 뒤) — 원래 가격 오름차순이었는데
+      // 가격이 같은 상품이 많으면 id 알파벳순으로 섞여 보여서, 추가한 순서 그대로 보이게 바꿈.
+      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 안 씀.
+      // titles(name, color): grants_title_id가 있으면 연결된 칭호 이름/색을 같이 내려줘서, 수정
+      // 모달을 열 때 바로 채워줄 수 있게 함(FK 관계라 PostgREST가 자동으로 조인해줌).
       const { data, error } = await admin
         .from("shop_items")
         .select(
-          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count, created_at, titles(name)",
+          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count, created_at, titles(name, color)",
         )
-        .order("cost", { ascending: true })
+        .order("created_at", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
-      return jsonResponse({ items: data ?? [] }, 200);
+
+      // 칭호 상품마다 보유자 수 — 칭호 상품은 많아야 수십 개라 개수만 세는 가벼운 쿼리를 병렬로.
+      const items = data ?? [];
+      const ownerCounts = await Promise.all(
+        items.map(async (item) => {
+          if (!item.grants_title_id) return null;
+          const { count, error: countError } = await admin
+            .from("user_purchased_titles")
+            .select("*", { count: "exact", head: true })
+            .eq("title_id", item.grants_title_id);
+          if (countError) throw new Error(`보유자 수 조회 실패: ${countError.message}`);
+          return count ?? 0;
+        }),
+      );
+      const withCounts = items.map((item, i) => (ownerCounts[i] === null ? item : { ...item, owner_count: ownerCounts[i] }));
+      return jsonResponse({ items: withCounts }, 200);
     }
 
     if (req.method === "POST") {
@@ -117,6 +144,7 @@ Deno.serve(async (req: Request) => {
       const showOnOverlay = body.showOnOverlay === undefined ? true : body.showOnOverlay === true;
       const isTitleItem = body.isTitleItem === true;
       const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
+      const titleColor = body.titleColor === undefined ? DEFAULT_TITLE_COLOR : body.titleColor;
       // 칭호 상품은 한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념이 안 맞아서 항상 0/false로
       // 강제함 — 프론트도 이 상품 유형에서는 해당 입력칸 자체를 안 보여줌.
       const requiresLive = isTitleItem ? false : body.requiresLive === true;
@@ -142,6 +170,9 @@ Deno.serve(async (req: Request) => {
       if (name.length === 0) return jsonResponse({ error: "empty_name" }, 400);
       if (!Number.isFinite(cost) || cost <= 0) return jsonResponse({ error: "invalid_cost" }, 400);
       if (isTitleItem && titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
+      if (isTitleItem && (typeof titleColor !== "string" || !COLOR_PATTERN.test(titleColor))) {
+        return jsonResponse({ error: "invalid_title_color" }, 400);
+      }
 
       // 칭호 상품이면 상품 row보다 먼저 전용 칭호를 titles 테이블에 만듦 — id를 상품 id와
       // 그대로 맞춰서(1:1) 나중에 수정할 때 별도 매핑 조회 없이 바로 찾을 수 있게 함.
@@ -156,11 +187,17 @@ Deno.serve(async (req: Request) => {
 
         const { error: titleInsertError } = await admin
           .from("titles")
-          .insert({ id: itemId, name: titleName, min_points: PURCHASE_ONLY_MIN_POINTS, sort_order: nextSortOrder });
+          .insert({
+            id: itemId,
+            name: titleName,
+            color: titleColor.toLowerCase(),
+            kind: "shop",
+            min_points: PURCHASE_ONLY_MIN_POINTS,
+            sort_order: nextSortOrder,
+          });
         if (titleInsertError) {
-          // titles.id는 shop_items.id와 별개 PK 공간이지만, 예전에 지워진 칭호 상품과 같은
-          // id를 다시 쓰려는 경우(그 titles row는 구매자 보호를 위해 안 지워지므로) 충돌할 수
-          // 있음 — 구분되는 에러로 알려줌.
+          // titles.id는 shop_items.id와 별개 PK 공간이라, 관리자가 직접 준 칭호 등과 id가
+          // 겹치면 충돌할 수 있음 — 구분되는 에러로 알려줌.
           if (titleInsertError.code === "23505") return jsonResponse({ error: "title_id_conflict" }, 409);
           throw new Error(`titles insert 실패: ${titleInsertError.message}`);
         }
@@ -243,9 +280,21 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      // titleName은 이 상품이 칭호 상품일 때만 의미가 있음 — 연결된 titles row의 이름을 갱신함
-      // (새 titles row를 만드는 게 아니라, POST 때 이미 만들어둔 걸 고쳐 쓰는 것).
+      // titleName/titleColor는 이 상품이 칭호 상품일 때만 의미가 있음 — 연결된 titles row의
+      // 이름/색을 갱신함(새 titles row를 만드는 게 아니라, POST 때 이미 만들어둔 걸 고쳐 쓰는 것).
+      const titleUpdate: Record<string, unknown> = {};
       if (body.titleName !== undefined) {
+        const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
+        if (titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
+        titleUpdate.name = titleName;
+      }
+      if (body.titleColor !== undefined) {
+        if (typeof body.titleColor !== "string" || !COLOR_PATTERN.test(body.titleColor)) {
+          return jsonResponse({ error: "invalid_title_color" }, 400);
+        }
+        titleUpdate.color = body.titleColor.toLowerCase();
+      }
+      if (Object.keys(titleUpdate).length > 0) {
         const { data: existing, error: existingError } = await admin
           .from("shop_items")
           .select("grants_title_id")
@@ -254,19 +303,16 @@ Deno.serve(async (req: Request) => {
         if (existingError) throw new Error(`shop_items 조회 실패: ${existingError.message}`);
         if (!existing?.grants_title_id) return jsonResponse({ error: "not_title_item" }, 400);
 
-        const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
-        if (titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
-
         const { error: titleUpdateError } = await admin
           .from("titles")
-          .update({ name: titleName })
+          .update(titleUpdate)
           .eq("id", existing.grants_title_id);
         if (titleUpdateError) throw new Error(`titles update 실패: ${titleUpdateError.message}`);
       }
 
       if (Object.keys(update).length === 0) {
-        if (body.titleName === undefined) return jsonResponse({ error: "empty_update" }, 400);
-        // titleName만 왔으면 shop_items 자체는 고칠 게 없으니 현재 상태 그대로 다시 내려줌.
+        if (Object.keys(titleUpdate).length === 0) return jsonResponse({ error: "empty_update" }, 400);
+        // 칭호 이름/색만 왔으면 shop_items 자체는 고칠 게 없으니 현재 상태 그대로 다시 내려줌.
         const { data, error } = await admin.from("shop_items").select().eq("id", id).single();
         if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
         return jsonResponse(data, 200);
@@ -277,11 +323,31 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(data, 200);
     }
 
-    // DELETE
+    // DELETE — 칭호 상품이면 연결된 칭호도 같이 지워서 보유자 전원에게서 회수함(헤더 주석 참고).
     if (!id) return jsonResponse({ error: "missing_id" }, 400);
+    const { data: target, error: targetError } = await admin
+      .from("shop_items")
+      .select("grants_title_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (targetError) throw new Error(`shop_items 조회 실패: ${targetError.message}`);
+    if (!target) return jsonResponse({ error: "not_found" }, 404);
+
     const { error } = await admin.from("shop_items").delete().eq("id", id);
     if (error) throw new Error(`shop_items delete 실패: ${error.message}`);
-    return jsonResponse({ ok: true }, 200);
+
+    let revokedOwners = 0;
+    if (target.grants_title_id) {
+      const { count, error: countError } = await admin
+        .from("user_purchased_titles")
+        .select("*", { count: "exact", head: true })
+        .eq("title_id", target.grants_title_id);
+      if (countError) throw new Error(`보유자 수 조회 실패: ${countError.message}`);
+      revokedOwners = count ?? 0;
+      const { error: titleDeleteError } = await admin.from("titles").delete().eq("id", target.grants_title_id);
+      if (titleDeleteError) throw new Error(`titles delete 실패: ${titleDeleteError.message}`);
+    }
+    return jsonResponse({ ok: true, revokedOwners }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     return jsonResponse({ error: "shop_item_failed" }, 500);

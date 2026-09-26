@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>출석체크 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=52">
+<link rel="stylesheet" href="assets/css/style.css?v=53">
 </head>
 <body>
   <script>
@@ -102,14 +102,15 @@
             <span class="dot"></span>
             <span id="live-status-text"></span>
           </div>
-          <button type="button" id="checkin-btn" class="attendance-checkin-btn">오늘 출석체크 (+50P)</button>
+          <button type="button" id="checkin-btn" class="attendance-checkin-btn">출석체크 (+50P)</button>
+          <p id="attendance-progress" class="attendance-progress" hidden></p>
           <p id="checkin-status" class="status-msg"></p>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=17"></script>
+  <script src="assets/js/chzzk-auth.js?v=18"></script>
   <script src="assets/js/spa-router.js?v=8"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -130,7 +131,19 @@
     // "오늘" 기준 출석 상태 — 어느 달을 보고 있든(달력 넘기기와 무관하게) 항상 오늘 기준으로
     // 유지함. 조회 중인 달이 이번 달일 때만 서버 응답으로 최신화(다른 달 조회 응답에는
     // checkedToday/isLive이 그 달 기준이 아니라서 그대로 쓰면 안 됨 — 항상 "오늘"에 대한 값이어야 함).
-    let todayStatus = { isLive: false, checkedToday: false, balance: 0 };
+    // attendanceCount/bonusEvery: 누적 출석 횟수와 보너스 주기(서버가 내려줌, 10번째마다 +50P).
+    // checkedToday는 방송 중이면 "이번 방송에 출석했는지"(서버가 방송 시작일 기준으로 판정).
+    let todayStatus = { isLive: false, checkedToday: false, balance: 0, attendanceCount: 0, bonusEvery: 10 };
+
+    function statusFromResponse(data) {
+      return {
+        isLive: data.isLive,
+        checkedToday: data.checkedToday,
+        balance: data.balance,
+        attendanceCount: data.attendanceCount ?? 0,
+        bonusEvery: data.bonusEvery ?? 10,
+      };
+    }
 
     function computeToday() {
       todayStr = kstDateString(new Date());
@@ -174,16 +187,29 @@
         textEl.textContent = "방송 종료";
       }
 
+      const every = todayStatus.bonusEvery || 10;
+      const count = todayStatus.attendanceCount || 0;
+      const nextIsBonus = (count + 1) % every === 0;
+
       if (todayStatus.checkedToday) {
-        btnEl.textContent = "오늘 출석 완료";
+        btnEl.textContent = todayStatus.isLive ? "이번 방송 출석 완료" : "오늘 출석 완료";
         btnEl.disabled = true;
       } else if (!todayStatus.isLive) {
         btnEl.textContent = "방송 중에만 출석체크 할 수 있어요";
         btnEl.disabled = true;
       } else {
-        btnEl.textContent = "오늘 출석체크 (+50P)";
+        btnEl.textContent = nextIsBonus ? `출석체크 (+100P, ${count + 1}번째 보너스!)` : "출석체크 (+50P)";
         btnEl.disabled = false;
       }
+
+      // 누적 출석/다음 보너스까지 남은 횟수 안내.
+      const progressEl = document.getElementById("attendance-progress");
+      const left = every - (count % every);
+      progressEl.innerHTML = `누적 출석 <strong>${count.toLocaleString("ko-KR")}회</strong> · `
+        + (left === 1 && !todayStatus.checkedToday
+          ? "다음 출석은 보너스 +50P!"
+          : `${every}번째 출석마다 보너스 +50P (다음 보너스까지 ${left}회)`);
+      progressEl.hidden = false;
     }
 
     // year/month 달의 출석 현황을 받아옴. 실패(로그아웃/밴 등)면 null — 호출부에서
@@ -208,7 +234,7 @@
       // 조회한 달이 "오늘"이 속한 달일 때만 오늘 기준 상태를 이 응답으로 최신화함
       // (다른 달을 보고 있을 땐 그 응답의 checkedToday/isLive는 그 달 기준이 아니라서 무시).
       if (year === todayYear && month === todayMonth) {
-        todayStatus = { isLive: data.isLive, checkedToday: data.checkedToday, balance: data.balance };
+        todayStatus = statusFromResponse(data);
         renderStatus();
       }
     }
@@ -239,7 +265,7 @@
             statusEl.classList.add("error");
             todayStatus.isLive = false;
           } else if (data.error === "already_checked") {
-            statusEl.textContent = "오늘은 이미 출석체크했어요.";
+            statusEl.textContent = "이번 방송은 이미 출석체크했어요.";
             statusEl.classList.add("error");
             todayStatus.checkedToday = true;
           } else if (data.error !== "banned") {
@@ -249,8 +275,10 @@
           renderStatus();
           return;
         }
-        todayStatus = { isLive: data.isLive, checkedToday: data.checkedToday, balance: data.balance };
-        statusEl.textContent = "출석체크 완료! +50P 지급됐어요.";
+        todayStatus = statusFromResponse(data);
+        statusEl.textContent = data.bonus > 0
+          ? `출석체크 완료! ${data.attendanceCount}번째 출석 보너스까지 +${(data.pointsEarned ?? 100).toLocaleString("ko-KR")}P 지급됐어요.`
+          : "출석체크 완료! +50P 지급됐어요.";
         statusEl.classList.add("ok");
         if (viewYear === todayYear && viewMonth === todayMonth) {
           renderCalendar(viewYear, viewMonth, data.attendedDates);
@@ -288,7 +316,7 @@
       document.getElementById("logged-in").hidden = false;
       viewYear = todayYear;
       viewMonth = todayMonth;
-      todayStatus = { isLive: data.isLive, checkedToday: data.checkedToday, balance: data.balance };
+      todayStatus = statusFromResponse(data);
       renderCalendar(viewYear, viewMonth, data.attendedDates);
       renderStatus();
     })();
