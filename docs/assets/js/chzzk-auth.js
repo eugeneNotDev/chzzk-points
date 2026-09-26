@@ -255,15 +255,17 @@ function applyTierColorToName(escapedName, tierColor) {
   return safeColor ? `<span style="color:${safeColor}">${escapedName}</span>` : escapedName;
 }
 
-// 상점/관리자 칭호는 칭호마다 고른 색으로 "꽉 찬 배지"(색 배경 + 흰/검 글자)로 보여줌.
-// titles.color에는 "#rrggbb" 같은 일반 색, 또는 특수 스타일 이름(지금은 "rainbow" — 무지개가
-// 흘러가는 배지)이 들어감. 없거나 모르는 값이면 기본 민트. 일반 색일 때 글자색은 배경 밝기를
-// 보고 흰색/검은색 중 잘 읽히는 쪽으로 자동으로 고름.
+// ── 칭호 배지 ────────────────────────────────────────────────────────────────
+// 상점/관리자 칭호는 "색 + 디자인 + 왕관" 조합으로 그려짐. DB엔 titles.color 한 칸에 이 조합을
+// 문자열 하나로 저장함(서버는 형식만 검사하고 그대로 저장 — 새 디자인을 추가해도 서버/DB는 안 바꿔도 됨):
+//   "#00e5a0"               단색 배지(기본)
+//   "rainbow"               무지개 배지
+//   "shine-ffd43b"          메탈 광택 + 반짝 스윕
+//   "shine-crown-ffd43b"    메탈 + 반짝 + 왕관
+//   "glow-rainbow"          빛나는 테두리(무지개)
+//   "crown-00e5a0"          단색 + 왕관
+// 즉 "[디자인-][crown-]색" — 색은 # 없는 6자리 hex 또는 rainbow. 모르는 값은 기본 민트 단색.
 const DEFAULT_TITLE_COLOR = "#00e5a0";
-// 특수 스타일 — 값 이름 → 배지에 붙는 CSS 클래스. 여기 없는 이름은 화면에서 기본색으로 보임.
-const TITLE_SPECIAL_STYLES = {
-  rainbow: { name: "무지개", className: "title-badge--rainbow" },
-};
 const TITLE_COLOR_PRESETS = [
   { name: "민트", value: "#00e5a0" },
   { name: "하늘", value: "#5dc8ff" },
@@ -277,17 +279,51 @@ const TITLE_COLOR_PRESETS = [
   { name: "흰색", value: "#f1f3f5" },
   { name: "회색", value: "#868e96" },
   { name: "검정", value: "#1b1d21" },
+  { name: "금", value: "#f2c230" },
+  { name: "은", value: "#c9d1d9" },
+  { name: "동", value: "#cd7f32" },
   { name: "무지개", value: "rainbow" },
 ];
+// 디자인 목록 — 색상 예시처럼 여기 한 줄 추가하고 CSS(.title-badge--<id>)만 만들면 선택지에 뜸.
+const TITLE_DESIGNS = [
+  { id: "basic", name: "기본" },
+  { id: "shine", name: "메탈 반짝" },
+  { id: "glow", name: "빛나는 테두리" },
+];
+const TITLE_DESIGN_IDS = new Set(TITLE_DESIGNS.map((d) => d.id));
 
-function isSpecialTitleStyle(value) {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(TITLE_SPECIAL_STYLES, value);
+// 저장된 값 → { color: "#rrggbb" | "rainbow", design, crown }
+function parseTitleStyle(value) {
+  const fallback = { color: DEFAULT_TITLE_COLOR, design: "basic", crown: false };
+  if (typeof value !== "string" || !value) return fallback;
+  const v = value.trim().toLowerCase();
+  if (/^#[0-9a-f]{6}$/.test(v)) return { color: v, design: "basic", crown: false };
+  if (v === "rainbow") return { color: "rainbow", design: "basic", crown: false };
+  const parts = v.split("-");
+  const last = parts.pop();
+  let color;
+  if (last === "rainbow") color = "rainbow";
+  else if (/^[0-9a-f]{6}$/.test(last)) color = `#${last}`;
+  else return fallback;
+  let design = "basic";
+  let crown = false;
+  for (const p of parts) {
+    if (p === "crown") crown = true;
+    else if (TITLE_DESIGN_IDS.has(p)) design = p;
+  }
+  return { color, design, crown };
 }
 
-// 저장/표시에 쓸 수 있는 값으로 정리 — 특수 스타일 이름은 그대로, 색은 "#rrggbb" 소문자로.
-function normalizeTitleColor(color) {
-  if (isSpecialTitleStyle(color)) return color;
-  return typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : DEFAULT_TITLE_COLOR;
+// { color, design, crown } → 저장할 값
+function composeTitleStyle({ color, design, crown }) {
+  const c = color === "rainbow" ? "rainbow" : (/^#[0-9a-fA-F]{6}$/.test(color || "") ? color.toLowerCase() : DEFAULT_TITLE_COLOR);
+  const d = TITLE_DESIGN_IDS.has(design) ? design : "basic";
+  if (d === "basic" && !crown) return c;
+  return [d !== "basic" ? d : null, crown ? "crown" : null, c === "rainbow" ? "rainbow" : c.slice(1)].filter(Boolean).join("-");
+}
+
+function normalizeTitleColor(value) {
+  return composeTitleStyle(parseTitleStyle(value));
 }
 
 // "#abc", "abc123", "#ABC123" 같이 사람이 대충 친 값을 "#rrggbb"로. 형식이 틀리면 null.
@@ -298,42 +334,43 @@ function parseHexColorInput(text) {
   return null;
 }
 
-// WCAG 상대 휘도로 흰 글자 대비를 계산해서, 흰 글자로도 충분히 읽히면(대비 3 이상 — 굵은 작은
-// 글자 기준) 흰색, 아니면 검은색. 보라/파랑/빨강 같은 색에 흰 글자가 더 자연스러워서 흰색을 우선함.
-function titleBadgeTextColor(value) {
-  if (isSpecialTitleStyle(value)) return "#ffffff";
-  const c = normalizeTitleColor(value);
+function hexLuminance(hex) {
   const channel = (i) => {
-    const v = parseInt(c.slice(i, i + 2), 16) / 255;
+    const v = parseInt(hex.slice(i, i + 2), 16) / 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   };
-  const lum = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-  const contrastWhite = 1.05 / (lum + 0.05);
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+// 두 색 섞기 — 메탈 광택용 밝은/어두운 색을 칭호 색에서 자동으로 뽑을 때 씀.
+function mixHex(hex, targetHex, t) {
+  const a = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const b = [1, 3, 5].map((i) => parseInt(targetHex.slice(i, i + 2), 16));
+  return `#${a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, "0")).join("")}`;
+}
+
+// 배지 글자색 — 흰 글자 대비가 3 이상이면(굵은 작은 글자 기준) 흰색, 아니면 검은색.
+function titleBadgeTextColor(value) {
+  const { color } = parseTitleStyle(value);
+  if (color === "rainbow") return "#ffffff";
+  const contrastWhite = 1.05 / (hexLuminance(color) + 0.05);
   return contrastWhite >= 3 ? "#ffffff" : "#111418";
 }
 
-function titleBadgeHtml(name, color) {
-  const value = normalizeTitleColor(color);
-  if (isSpecialTitleStyle(value)) {
-    return `<span class="title-badge ${TITLE_SPECIAL_STYLES[value].className}">${escapeHtmlForAuth(name)}</span>`;
-  }
-  return `<span class="title-badge" style="--badge-bg:${value};--badge-fg:${titleBadgeTextColor(value)}">${escapeHtmlForAuth(name)}</span>`;
-}
+const TITLE_CROWN_SVG = `<svg class="tb-crown" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/><circle cx="3" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="4" r="1.6" fill="currentColor"/><circle cx="21" cy="7" r="1.6" fill="currentColor"/></svg>`;
 
-// 어두운 카드 배경 위에 "글자색"으로 칭호 색을 쓸 때(상점 칭호 상품 카드의 상품명 등) 붙일
-// class/style. 무지개면 무지개 글자, 일반 색이면 그 색 — 단, 검정처럼 배경에 묻히는 어두운 색은
-// 읽을 수가 없어서 기본 글자색 그대로 둠(빈 값 반환).
-function titleAccentAttrs(color) {
-  const value = normalizeTitleColor(color);
-  if (value === "rainbow") return { className: "title-text--rainbow", style: "" };
-  if (isSpecialTitleStyle(value)) return { className: "", style: "" };
-  const channel = (i) => {
-    const v = parseInt(value.slice(i, i + 2), 16) / 255;
-    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-  };
-  const lum = 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
-  const contrastOnCard = (lum + 0.05) / (0.009 + 0.05); // 카드 배경(--surface #15181c) 기준
-  return contrastOnCard >= 3 ? { className: "", style: `--title-accent:${value}` } : { className: "", style: "" };
+function titleBadgeHtml(name, value) {
+  const { color, design, crown } = parseTitleStyle(value);
+  const classes = ["title-badge"];
+  if (design !== "basic") classes.push(`title-badge--${design}`);
+  if (color === "rainbow") classes.push("title-badge--rainbow");
+  if (crown) classes.push("title-badge--crowned");
+  let style = "";
+  if (color !== "rainbow") {
+    const fg = design === "glow" ? mixHex(color, "#ffffff", 0.35) : titleBadgeTextColor(color);
+    style = ` style="--badge-bg:${color};--badge-fg:${fg};--badge-light:${mixHex(color, "#ffffff", 0.55)};--badge-dark:${mixHex(color, "#000000", 0.32)}"`;
+  }
+  return `<span class="${classes.join(" ")}"${style}>${crown ? TITLE_CROWN_SVG : ""}<span class="tb-text">${escapeHtmlForAuth(name)}</span></span>`;
 }
 
 // 랭킹/홈에서 이름 앞에 붙이는 장착 칭호(뒤에 한 칸 띄움).
@@ -341,25 +378,37 @@ function renderShopTitleBadgeHtml(shopName, color) {
   return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
 }
 
-// 칭호 색 고르기 UI — 상점 칭호 상품 추가/수정 모달, 관리자 칭호 지급 폼에서 같이 씀.
-// 자주 쓸 만한 색 + 무지개(특수)를 동그라미로 늘어놓고, 마지막 "+" 동그라미를 누르면 색상표에서
-// 직접 고를 수 있음. 아래 HEX 칸에 "#00e5a0" 같은 코드를 바로 쳐도 됨. 미리보기는 실제 배지 모양.
+// 칭호 꾸미기 UI — 상점 칭호 상품 추가/수정 모달, 관리자 칭호 지급 폼에서 같이 씀.
+//  - 색: 예시 동그라미 중에 고르거나, "+" 동그라미(색상표)나 HEX 칸으로 직접 지정
+//  - 디자인: 기본 / 메탈 반짝 / 빛나는 테두리 (각 버튼에 지금 색으로 미리보기)
+//  - 왕관: 체크하면 글자 앞에 왕관
+// 아래 미리보기는 실제 배지 모양 그대로.
 //   const picker = createTitleColorPicker(hostEl, { initialColor, getPreviewName: () => input.value });
-//   picker.getColor() / picker.setColor("#ff0000") / picker.refreshPreview()
+//   picker.getColor() → 저장할 값 / picker.setColor(값) / picker.refreshPreview()
 function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
-  let current = normalizeTitleColor(initialColor);
-  // 색상표(input[type=color])는 일반 색만 다룰 수 있어서, 특수 스타일일 땐 마지막 일반 색을 기억해둠.
-  let lastHex = isSpecialTitleStyle(current) ? DEFAULT_TITLE_COLOR : current;
+  let state = parseTitleStyle(initialColor);
+  // 색상표(input[type=color])는 일반 색만 다룰 수 있어서, 무지개일 땐 마지막 일반 색을 기억해둠.
+  let lastHex = state.color === "rainbow" ? DEFAULT_TITLE_COLOR : state.color;
   hostEl.innerHTML = `
     <div class="title-color-picker">
       <div class="title-color-swatches" role="radiogroup" aria-label="칭호 색상">
         ${TITLE_COLOR_PRESETS.map((p) => `
-          <button type="button" class="title-color-swatch${isSpecialTitleStyle(p.value) ? ` title-color-swatch--${p.value}` : ""}" role="radio" data-color="${p.value}"
-            style="--swatch:${isSpecialTitleStyle(p.value) ? "transparent" : p.value};--swatch-fg:${titleBadgeTextColor(p.value)}" title="${p.name}" aria-label="${p.name}"></button>`).join("")}
+          <button type="button" class="title-color-swatch${p.value === "rainbow" ? " title-color-swatch--rainbow" : ""}" role="radio" data-color="${p.value}"
+            style="--swatch:${p.value === "rainbow" ? "transparent" : p.value};--swatch-fg:${titleBadgeTextColor(p.value)}" title="${p.name}" aria-label="${p.name}"></button>`).join("")}
         <label class="title-color-swatch title-color-custom" title="색상표에서 직접 고르기" aria-label="색상표에서 직접 고르기">
           <svg class="title-color-custom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           <input type="color" class="title-color-input" value="${lastHex}">
         </label>
+      </div>
+      <div class="title-design-row">
+        <span class="title-design-label">디자인</span>
+        <div class="title-design-options" role="radiogroup" aria-label="칭호 디자인">
+          ${TITLE_DESIGNS.map((d) => `
+            <button type="button" class="title-design-option" role="radio" data-design="${d.id}">
+              <span class="title-design-sample"></span><span class="title-design-name">${d.name}</span>
+            </button>`).join("")}
+        </div>
+        <label class="title-crown-toggle"><input type="checkbox" class="title-crown-input"> 왕관 붙이기</label>
       </div>
       <div class="title-color-preview">
         <span class="title-color-preview-label">미리보기</span>
@@ -374,26 +423,36 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   const swatches = Array.from(hostEl.querySelectorAll(".title-color-swatch[data-color]"));
   const customLabel = hostEl.querySelector(".title-color-custom");
   const customInput = hostEl.querySelector(".title-color-input");
+  const designButtons = Array.from(hostEl.querySelectorAll(".title-design-option"));
+  const crownInput = hostEl.querySelector(".title-crown-input");
   const badgeSlot = hostEl.querySelector(".title-color-preview-badge");
   const hexInput = hostEl.querySelector(".title-color-hex-input");
 
   function render({ keepHexInput = false } = {}) {
-    const special = isSpecialTitleStyle(current);
-    if (!special) lastHex = current;
-    const isPreset = swatches.some((b) => b.dataset.color === current);
+    const isRainbow = state.color === "rainbow";
+    if (!isRainbow) lastHex = state.color;
+    const isPreset = swatches.some((b) => b.dataset.color === state.color);
     swatches.forEach((b) => {
-      const on = b.dataset.color === current;
+      const on = b.dataset.color === state.color;
       b.classList.toggle("is-selected", on);
       b.setAttribute("aria-checked", on ? "true" : "false");
     });
     customLabel.classList.toggle("is-selected", !isPreset);
-    customLabel.style.setProperty("--swatch", isPreset ? "" : current);
-    customLabel.style.setProperty("--swatch-fg", titleBadgeTextColor(current));
+    customLabel.style.setProperty("--swatch", isPreset ? "" : state.color);
+    customLabel.style.setProperty("--swatch-fg", titleBadgeTextColor(state.color));
     customInput.value = lastHex;
+    designButtons.forEach((b) => {
+      const on = b.dataset.design === state.design;
+      b.classList.toggle("is-selected", on);
+      b.setAttribute("aria-checked", on ? "true" : "false");
+      b.querySelector(".title-design-sample").innerHTML =
+        titleBadgeHtml("가나", composeTitleStyle({ color: state.color, design: b.dataset.design, crown: state.crown }));
+    });
+    crownInput.checked = state.crown;
     const name = (getPreviewName ? String(getPreviewName() || "") : "").trim() || "칭호";
-    badgeSlot.innerHTML = titleBadgeHtml(name, current);
-    if (!keepHexInput) hexInput.value = special ? "" : current;
-    hexInput.placeholder = special ? TITLE_SPECIAL_STYLES[current].name : "#00e5a0";
+    badgeSlot.innerHTML = titleBadgeHtml(name, composeTitleStyle(state));
+    if (!keepHexInput) hexInput.value = isRainbow ? "" : state.color;
+    hexInput.placeholder = isRainbow ? "무지개" : "#00e5a0";
     hexInput.classList.remove("is-invalid");
   }
 
@@ -402,7 +461,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   hexInput.addEventListener("input", () => {
     const parsed = parseHexColorInput(hexInput.value);
     if (parsed && /^#?[0-9a-fA-F]{6}$/.test(hexInput.value.trim())) {
-      current = parsed;
+      state = { ...state, color: parsed };
       render({ keepHexInput: true });
     } else {
       hexInput.classList.toggle("is-invalid", hexInput.value.trim().length > 0);
@@ -410,20 +469,26 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   });
   hexInput.addEventListener("change", () => {
     const parsed = parseHexColorInput(hexInput.value);
-    if (parsed) current = parsed;
+    if (parsed) state = { ...state, color: parsed };
     render();
   });
   hexInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); hexInput.blur(); }
   });
 
-  swatches.forEach((b) => b.addEventListener("click", () => { current = b.dataset.color; render(); }));
-  customInput.addEventListener("input", () => { current = normalizeTitleColor(customInput.value); render(); });
+  swatches.forEach((b) => b.addEventListener("click", () => { state = { ...state, color: b.dataset.color }; render(); }));
+  customInput.addEventListener("input", () => {
+    const parsed = parseHexColorInput(customInput.value);
+    if (parsed) state = { ...state, color: parsed };
+    render();
+  });
+  designButtons.forEach((b) => b.addEventListener("click", () => { state = { ...state, design: b.dataset.design }; render(); }));
+  crownInput.addEventListener("change", () => { state = { ...state, crown: crownInput.checked }; render(); });
   render();
 
   return {
-    getColor: () => current,
-    setColor: (c) => { current = normalizeTitleColor(c); render(); },
+    getColor: () => composeTitleStyle(state),
+    setColor: (value) => { state = parseTitleStyle(value); render(); },
     refreshPreview: render,
   };
 }

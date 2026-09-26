@@ -71,6 +71,11 @@
 //   → { title: { id, name, color, kind: "custom" } } | { error: "invalid_title_name" | "invalid_title_color" | "user_not_found" }
 //     (관리자가 특정 유저한테 칭호를 직접 줌 — 이름/색을 정해서 그 유저 전용 칭호를 새로 만들고
 //     보유 기록(user_purchased_titles)을 넣음. 유저가 마이페이지 칭호 목록에서 직접 장착함.)
+// POST { action: "grant-title", channelId: string, titleId: string }
+//   → { granted: true } | { error: "title_not_found" | "not_grantable" | "already_owned" | "user_not_found" }
+//     (이미 있는 칭호(상점 칭호나 다른 유저한테 줬던 관리자 칭호)를 그대로 지급 — 테스트용이나, 구매가
+//     제대로 안 들어간 경우 수동으로 넣어줄 때. 포인트는 안 빠지고 상품 판매 수량도 안 바뀜. 포인트
+//     구간 칭호(브론즈~다이아)는 자동으로 붙는 거라 대상 아님(not_grantable).)
 // POST { action: "revoke-title", channelId: string, titleId: string }
 //   → { revoked: true } | { error: "not_owned" }
 //     (그 유저에게서 칭호 하나를 회수 — 보유 기록을 지우고 장착 중이었으면 해제. 관리자가 준
@@ -271,6 +276,24 @@ async function deleteCustomTitleIfUnowned(admin: ReturnType<typeof getAdminClien
     const { error } = await admin.from("titles").delete().eq("id", titleId);
     if (error) throw new Error(`titles delete 실패: ${error.message}`);
   }
+}
+
+async function grantExistingTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, titleId: string) {
+  const { data: user, error: userError } = await admin.from("users").select("channel_id").eq("channel_id", channelId).maybeSingle();
+  if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+  if (!user) return { ok: false as const, error: "user_not_found" as const };
+
+  const { data: title, error: titleError } = await admin.from("titles").select("id, kind").eq("id", titleId).maybeSingle();
+  if (titleError) throw new Error(`titles 조회 실패: ${titleError.message}`);
+  if (!title) return { ok: false as const, error: "title_not_found" as const };
+  if (title.kind === "tier") return { ok: false as const, error: "not_grantable" as const };
+
+  const { error: ownError } = await admin.from("user_purchased_titles").insert({ channel_id: channelId, title_id: titleId });
+  if (ownError) {
+    if (ownError.code === "23505") return { ok: false as const, error: "already_owned" as const };
+    throw new Error(`user_purchased_titles insert 실패: ${ownError.message}`);
+  }
+  return { ok: true as const };
 }
 
 async function revokeTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, titleId: string) {
@@ -978,6 +1001,15 @@ Deno.serve(async (req: Request) => {
       const result = await grantCustomTitle(admin, channelId, name, body.color);
       if (!result.ok) return jsonResponse({ error: result.error }, 400);
       return jsonResponse({ title: result.title }, 200);
+    }
+
+    if (body.action === "grant-title") {
+      const { channelId, titleId } = body;
+      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      if (typeof titleId !== "string" || !titleId) return jsonResponse({ error: "missing_title_id" }, 400);
+      const result = await grantExistingTitle(admin, channelId, titleId);
+      if (!result.ok) return jsonResponse({ error: result.error }, 400);
+      return jsonResponse({ granted: true }, 200);
     }
 
     if (body.action === "revoke-title") {

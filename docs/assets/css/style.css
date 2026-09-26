@@ -1888,20 +1888,154 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   .title-badge--rainbow { animation: none; }
 }
 
-/* 칭호 상품 카드: 상품명과 "보유중" 테두리를 그 칭호 색으로(titleAccentAttrs가 --title-accent를
-   넣어줌. 너무 어두운 색이면 안 넣어서 기본 글자색/테두리 그대로). 일반 상품은 기존 민트 그대로. */
-.shop-item.title-item h3 { color: var(--title-accent, var(--text)); }
-.shop-item.title-item.owned { border-color: var(--title-accent, var(--accent)); }
-.shop-item.title-item.owned h3 { color: var(--title-accent, var(--text)); }
-.title-text--rainbow,
-.shop-item.title-item h3.title-text--rainbow {
+/* 칭호 상품 카드의 상품명([네루] 등)은 칭호 색과 상관없이 흰색 고정(이미 산 카드도) — 칭호 색은
+   바로 아래 배지 미리보기로만 보여줌. */
+.shop-item.title-item h3,
+.shop-item.title-item.owned h3 { color: var(--text); }
+
+/* ── 칭호 디자인 옵션 (titleBadgeHtml이 붙이는 클래스) ─────────────────────────────
+   색은 --badge-bg(기본색)/--badge-light(밝게)/--badge-dark(어둡게)/--badge-fg(글자)로 들어옴.
+   새 디자인을 추가하려면 chzzk-auth.js의 TITLE_DESIGNS에 한 줄 + 여기 .title-badge--<id> 규칙. */
+.title-badge { position: relative; }
+.title-badge .tb-crown { width: 1.05em; height: 1.05em; margin-right: 0.18em; vertical-align: -0.16em; }
+
+/* 메탈 반짝: 칭호 색에서 뽑은 밝은/어두운 색으로 금속 광택 + 몇 초마다 빛줄기가 지나감 */
+.title-badge--shine {
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--badge-light), var(--badge-bg) 42%, var(--badge-dark) 72%, var(--badge-light));
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.title-badge--shine::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  transform: rotate(20deg);
+  animation: title-badge-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes title-badge-sweep {
+  0%, 55% { left: -60%; }
+  100% { left: 130%; }
+}
+.title-badge--shine.title-badge--rainbow {
+  background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background-size: 200% 100%;
+}
+
+/* 빛나는 테두리: 어두운 배지 + 칭호 색 테두리 빛이 빙글빙글 돌고 글자는 금속 느낌 */
+@property --tb-angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+.title-badge--glow {
+  isolation: isolate;
+  background: #121417;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--badge-bg, #ffffff) 35%, transparent);
+  --glow-ring: conic-gradient(from var(--tb-angle), var(--badge-bg), var(--badge-light), var(--badge-bg), var(--badge-dark), var(--badge-bg));
+}
+.title-badge--glow::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 6.5px;
+  z-index: -2;
+  background: var(--glow-ring);
+  animation: title-badge-spin 3s linear infinite;
+}
+.title-badge--glow::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 4px;
+  z-index: -1;
+  background: #121417;
+}
+.title-badge--glow .tb-text {
+  background: linear-gradient(180deg, var(--badge-light), var(--badge-fg) 55%, var(--badge-bg));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.title-badge--glow .tb-crown { color: var(--badge-fg); }
+@keyframes title-badge-spin { to { --tb-angle: 360deg; } }
+.title-badge--glow.title-badge--rainbow {
+  background: #121417;
+  animation: none;
+  text-shadow: none;
+  box-shadow: 0 0 8px rgba(155, 107, 255, 0.35);
+  --glow-ring: conic-gradient(from var(--tb-angle), #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+}
+.title-badge--glow.title-badge--rainbow .tb-text {
   background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
-  color: transparent;
   animation: title-badge-rainbow 6s linear infinite;
 }
+.title-badge--glow.title-badge--rainbow .tb-crown { color: #ffd43b; }
+
 @media (prefers-reduced-motion: reduce) {
-  .title-text--rainbow { animation: none; }
+  .title-badge--shine::after { animation: none; display: none; }
+  .title-badge--glow::before, .title-badge--glow .tb-text { animation: none; }
 }
+
+/* ── 칭호 꾸미기 UI: 디자인 선택 줄 ── */
+.title-design-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.title-design-label { font-size: 0.78rem; color: var(--muted); }
+.title-design-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.title-design-option,
+.title-design-option:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+.title-design-option:hover { border-color: var(--muted); }
+.title-design-option.is-selected { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 1px var(--accent); }
+.title-design-sample { font-size: 0.95rem; display: inline-flex; }
+.title-crown-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; margin-left: auto; }
+.title-crown-toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+@media (max-width: 560px) {
+  .title-crown-toggle { margin-left: 0; }
+}
+
+/* ── 관리자 칭호 지급: 새로 만들기 / 기존 칭호 탭 ── */
+.admin-grant-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.admin-grant-tab,
+.admin-grant-tab:hover {
+  flex: 1 1 0;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.admin-grant-tab.is-active,
+.admin-grant-tab.is-active:hover { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.admin-grant-existing-help { font-size: 0.82rem; margin: 0 0 10px; line-height: 1.5; }
+.admin-grant-existing-list { display: flex; flex-wrap: wrap; gap: 8px; max-height: 220px; overflow-y: auto; }
+.admin-grant-existing-option,
+.admin-grant-existing-option:hover {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+.admin-grant-existing-option:hover { border-color: var(--muted); }
+.admin-grant-existing-option.is-selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.admin-grant-existing-option .chip-meta { color: var(--muted); font-size: 0.75rem; }
