@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=53">
+<link rel="stylesheet" href="assets/css/style.css?v=54">
 </head>
 <body>
   <script>
@@ -196,7 +196,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=18"></script>
+  <script src="assets/js/chzzk-auth.js?v=19"></script>
   <script src="assets/js/spa-router.js?v=8"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감쌈
@@ -263,6 +263,8 @@
       const titlePreview = isTitleItem
         ? `<div class="shop-item-title-preview">${titleBadgeHtml(item.titles?.name ?? item.name, item.titles?.color)}</div>`
         : "";
+      // 칭호 상품은 상품명(+보유중 테두리)도 그 칭호 색으로 — 칭호 색을 바꾸면 같이 바뀜.
+      const accent = isTitleItem ? titleAccentAttrs(item.titles?.color) : { className: "", style: "" };
       const ownerNote = admin && isTitleItem && Number.isFinite(item.owner_count)
         ? `<p class="shop-item-owner-note">보유 ${item.owner_count.toLocaleString("ko-KR")}명</p>`
         : "";
@@ -270,8 +272,8 @@
         ? `<p class="muted stock-note">${soldOut ? "품절되었어요" : `한정 ${stockRemaining.toLocaleString("ko-KR")}개 남음`}</p>`
         : "";
       return `
-        <div class="card shop-item${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}">
-          <h3>${escapeHtml(item.name)}</h3>
+        <div class="card shop-item${isTitleItem ? " title-item" : ""}${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}"${accent.style ? ` style="${accent.style}"` : ""}>
+          <h3${accent.className ? ` class="${accent.className}"` : ""}>${escapeHtml(item.name)}</h3>
           ${titlePreview}
           <p class="desc">${escapeHtml(item.description || "")}</p>
           <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>

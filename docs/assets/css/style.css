@@ -1736,8 +1736,6 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .title-color-swatch:hover { transform: scale(1.08); background: var(--swatch); }
-.title-color-custom:hover { background: conic-gradient(#ff4d5a, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a); }
-.title-color-custom.is-selected:hover { background: var(--swatch); }
 .title-color-swatch.is-selected {
   box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
 }
@@ -1752,14 +1750,27 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
   border-radius: 50%;
   background: var(--swatch-fg, #fff);
 }
-/* 직접 고르기 — 선택 전엔 무지개, 직접 고른 색이 있으면 그 색으로 채워짐. 실제 input[type=color]는
-   동그라미 전체를 덮는 투명 버튼 역할. */
+/* 색상표에서 직접 고르기 — "+" 아이콘 동그라미. 직접 고른 색이 있으면 그 색으로 채워짐. 실제
+   input[type=color]는 동그라미 전체를 덮는 투명 버튼 역할. */
 .title-color-custom {
-  background: conic-gradient(#ff4d5a, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  background: transparent;
+  border: 2px dashed rgba(255, 255, 255, 0.28);
+  color: var(--muted);
 }
-.title-color-custom.is-selected { background: var(--swatch); }
+.title-color-custom:hover { background: rgba(255, 255, 255, 0.06); }
+.title-color-custom.is-selected { background: var(--swatch); border-style: solid; }
+.title-color-custom.is-selected:hover { background: var(--swatch); }
+.title-color-custom-icon { width: 15px; height: 15px; }
+.title-color-custom.is-selected .title-color-custom-icon { display: none; }
+/* 무지개(특수 스타일) 동그라미 */
+.title-color-swatch--rainbow,
+.title-color-swatch--rainbow:hover {
+  background: conic-gradient(#ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+}
 .title-color-input {
   position: absolute;
   inset: 0;
@@ -1782,7 +1793,27 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .title-color-preview-label { font-size: 0.78rem; color: var(--muted); margin-right: 2px; }
 .title-color-preview-name { font-weight: 600; }
-.title-color-hex { margin-left: auto; font-size: 0.78rem; color: var(--muted); }
+.title-color-hex-field {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.title-color-hex-input {
+  width: 92px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: 600 0.85rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-transform: lowercase;
+}
+.title-color-hex-input:focus { outline: none; border-color: var(--accent); }
+.title-color-hex-input.is-invalid { border-color: var(--danger); }
 
 /* ── 칭호 상점 카드: 상품명 아래에 실제로 받게 될 칭호 배지를 보여줌 ── */
 .shop-item-title-preview { margin: 2px 0 8px; font-size: 1rem; }
@@ -1839,3 +1870,38 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .admin-title-grant-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .title-card h3 .title-badge { font-size: 0.95rem; }
 .admin-title-grant-form .status-msg:empty { display: none; }
+
+/* 무지개 칭호(특수 스타일 "rainbow") — 무지개 그라데이션이 천천히 흘러감. 흰 글자 + 그림자로
+   어느 색 위에서도 읽히게. 움직임 줄이기 설정을 켠 기기에선 멈춰 있음. */
+.title-badge--rainbow {
+  background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background-size: 200% 100%;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  animation: title-badge-rainbow 6s linear infinite;
+}
+@keyframes title-badge-rainbow {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-badge--rainbow { animation: none; }
+}
+
+/* 칭호 상품 카드: 상품명과 "보유중" 테두리를 그 칭호 색으로(titleAccentAttrs가 --title-accent를
+   넣어줌. 너무 어두운 색이면 안 넣어서 기본 글자색/테두리 그대로). 일반 상품은 기존 민트 그대로. */
+.shop-item.title-item h3 { color: var(--title-accent, var(--text)); }
+.shop-item.title-item.owned { border-color: var(--title-accent, var(--accent)); }
+.shop-item.title-item.owned h3 { color: var(--title-accent, var(--text)); }
+.title-text--rainbow,
+.shop-item.title-item h3.title-text--rainbow {
+  background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-badge-rainbow 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-text--rainbow { animation: none; }
+}

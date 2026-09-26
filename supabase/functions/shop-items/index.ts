@@ -31,7 +31,7 @@
 //   requiresLive/cooldownSeconds가 그대로 적용됨(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
 //   한 번 사면 끝인 상품이라 쿨타임/방송중 제한 개념 자체가 안 맞음).
 //   showOnOverlay: false면 이 상품을 사용해도 overlay.html에 안 뜸(기본 true).
-//   titleColor: 칭호 배지 색("#rrggbb"). 생략하면 기본 민트색.
+//   titleColor: 칭호 배지 색("#rrggbb" 또는 "rainbow" 같은 특수 스타일 이름). 생략하면 기본 민트색.
 // PATCH  ?id=<item id>  { name?, cost?, description?, requiresLive?, cooldownSeconds?,
 //          isActive?, showOnOverlay?, titleName?, titleColor?, stockLimit? }
 //   stockLimit: null을 보내면 무제한으로 되돌림.
@@ -80,8 +80,11 @@ const ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 함.
 const PURCHASE_ONLY_MIN_POINTS = 999999999999;
 
-// 칭호 배지 색 — "#rrggbb"만 받음(화면에서 style 속성에 그대로 들어가는 값이라 형식을 엄격히 제한).
-const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+// 칭호 배지 색 — "#rrggbb" 또는 특수 스타일 이름(예: "rainbow", 소문자/숫자/하이픈만). 화면에
+// 그대로 들어가는 값이라 형식을 엄격히 제한함. 특수 스타일은 프론트(chzzk-auth.js의
+// TITLE_SPECIAL_STYLES)에 등록된 이름만 실제로 그려지고, 모르는 이름은 기본색으로 보임 — 그래서
+// 나중에 스타일을 추가해도 이 함수는 다시 배포할 필요 없음.
+const COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,31})$/;
 const DEFAULT_TITLE_COLOR = "#00e5a0";
 
 Deno.serve(async (req: Request) => {

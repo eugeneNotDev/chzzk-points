@@ -67,7 +67,7 @@
 //       page, pageSize, totalCount, totalPages }
 //     (유저 한 명의 전체 내역 — list-points-log와 달리 24시간 제한 없이 전체 기간, 페이지당 10개.
 //     관리자 유저 목록에서 행을 클릭하면 뜨는 상세 모달용.)
-// POST { action: "grant-custom-title", channelId: string, name: string, color: "#rrggbb" }
+// POST { action: "grant-custom-title", channelId: string, name: string, color: "#rrggbb" | "rainbow" 등 }
 //   → { title: { id, name, color, kind: "custom" } } | { error: "invalid_title_name" | "invalid_title_color" | "user_not_found" }
 //     (관리자가 특정 유저한테 칭호를 직접 줌 — 이름/색을 정해서 그 유저 전용 칭호를 새로 만들고
 //     보유 기록(user_purchased_titles)을 넣음. 유저가 마이페이지 칭호 목록에서 직접 장착함.)
@@ -224,7 +224,8 @@ async function setBan(admin: ReturnType<typeof getAdminClient>, channelId: strin
 // 칭호와 같은 "못 찍는 큰 값" — 포인트로는 안 풀리고 보유 기록으로만 가짐(me/index.ts 장착 검증도
 // 그대로 통과함).
 const CUSTOM_TITLE_MIN_POINTS = 999999999999;
-const TITLE_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+// "#rrggbb" 또는 특수 스타일 이름("rainbow" 등) — shop-items 함수의 COLOR_PATTERN과 같은 규칙.
+const TITLE_COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,31})$/;
 const TITLE_NAME_MAX = 20;
 
 async function grantCustomTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, name: string, color: string) {
