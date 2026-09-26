@@ -520,6 +520,12 @@ body.shop-nav-expanded .sidebar-nav-submenu { display: flex; }
     padding: 10px;
   }
   .m-sheet-logout-btn:hover { background: none; color: var(--danger); }
+
+  /* 공지 제목 버튼이 글자 높이(약 21px)밖에 안 돼서 손가락으로 누르기 작았음 — 위아래로 누르는
+     영역만 넓히고, 그만큼 음수 마진으로 상쇄해서 보이는 간격은 그대로 유지. */
+  /* (.notice-item을 앞에 붙여 우선순위를 올림 — 아래쪽의 기본 .notice-title-btn 규칙이 파일상
+     더 뒤에 있어서, 같은 우선순위면 그쪽 padding:0이 이겨버림) */
+  .notice-item .notice-title-btn { padding: 8px 0; margin: -8px 0 -4px; }
 }
 
 button {
@@ -864,6 +870,11 @@ ul.notice-list, ol.notice-list {
 .notice-gallery-download-btn svg { width: 16px; height: 16px; }
 .notice-gallery-thumb:hover .notice-gallery-download-btn,
 .notice-gallery-download-btn:focus-visible { opacity: 1; }
+/* 폰/태블릿처럼 마우스 올리기(hover)가 없는 기기에선 위 규칙이 영영 안 걸려서 다운로드 버튼이
+   안 보였음 — 터치 기기에선 항상 보이게. */
+@media (hover: none) {
+  .notice-gallery-download-btn { opacity: 1; }
+}
 
 .notice-file-list { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
 .notice-file-list[hidden] { display: none; }
