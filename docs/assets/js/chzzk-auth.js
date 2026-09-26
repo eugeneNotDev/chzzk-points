@@ -594,18 +594,25 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
       </div>
       <div class="title-extra-row">
         <span class="title-design-label">장식</span>
-        <button type="button" class="title-icon-toggle" aria-expanded="false">
+        <button type="button" class="title-icon-toggle" aria-haspopup="dialog">
           <span class="title-icon-current"></span>
-          <svg class="title-icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          <svg class="title-icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
         <label class="title-option-toggle"><input type="checkbox" class="title-star-input"> 반짝이 별</label>
       </div>
-      <div class="title-icon-panel" hidden>
+      <dialog class="title-icon-dialog" aria-label="아이콘 고르기">
+        <div class="title-icon-dialog-head">
+          <strong>아이콘 고르기</strong>
+          <span class="title-icon-dialog-preview"></span>
+          <button type="button" class="title-icon-dialog-close" aria-label="닫기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
         <div class="title-icon-grid" role="radiogroup" aria-label="아이콘">
           <button type="button" class="title-icon-option title-icon-option--none" role="radio" data-icon="" title="아이콘 없음" aria-label="아이콘 없음">없음</button>
           ${TITLE_ICONS.map((i, idx) => `${idx === 0 || TITLE_ICONS[idx - 1].group !== i.group ? `<span class="title-icon-group-label">${i.group}</span>` : ""}<button type="button" class="title-icon-option" role="radio" data-icon="${i.id}" title="${i.name}" aria-label="${i.name}">${titleIconSvg(i.id, "title-icon-glyph")}</button>`).join("")}
         </div>
-      </div>
+      </dialog>
       <div class="title-color-preview">
         <span class="title-color-preview-label">미리보기</span>
         <span class="title-color-preview-badge"></span>
@@ -626,7 +633,9 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   const designButtons = Array.from(hostEl.querySelectorAll(".title-design-option"));
   const iconToggle = hostEl.querySelector(".title-icon-toggle");
   const iconCurrent = hostEl.querySelector(".title-icon-current");
-  const iconPanel = hostEl.querySelector(".title-icon-panel");
+  // 아이콘 목록은 칸 안에 펼치면 창이 너무 길어져서 작은 창(모달)으로 띄움 — 상점/관리자 모달 위에 한 겹 더 뜸.
+  const iconDialog = hostEl.querySelector(".title-icon-dialog");
+  const iconDialogPreview = hostEl.querySelector(".title-icon-dialog-preview");
   const iconButtons = Array.from(hostEl.querySelectorAll(".title-icon-option"));
   const starInput = hostEl.querySelector(".title-star-input");
   const badgeSlot = hostEl.querySelector(".title-color-preview-badge");
@@ -695,6 +704,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
     starInput.checked = state.star;
     const name = (getPreviewName ? String(getPreviewName() || "") : "").trim() || "칭호";
     badgeSlot.innerHTML = titleBadgeHtml(name, composeTitleStyle(state));
+    iconDialogPreview.innerHTML = badgeSlot.innerHTML;
   }
 
   // HEX 칸: 올바른 코드가 되는 순간 바로 반영(입력 중인 글자는 건드리지 않음), 칸을 벗어날 때
@@ -737,11 +747,21 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   });
   designButtons.forEach((b) => b.addEventListener("click", () => { state = { ...state, design: b.dataset.design }; render(); }));
   iconToggle.addEventListener("click", () => {
-    iconPanel.hidden = !iconPanel.hidden;
-    iconToggle.setAttribute("aria-expanded", iconPanel.hidden ? "false" : "true");
-    iconToggle.classList.toggle("is-open", !iconPanel.hidden);
+    if (iconDialog.open) return;
+    iconDialog.showModal();
+    // 지금 고른 아이콘이 보이게(목록이 길어서 아래쪽 아이콘이면 스크롤).
+    iconDialog.querySelector(".title-icon-option.is-selected")?.scrollIntoView({ block: "nearest" });
   });
-  iconButtons.forEach((b) => b.addEventListener("click", () => { state = { ...state, icon: b.dataset.icon || null }; render(); }));
+  iconDialog.querySelector(".title-icon-dialog-close").addEventListener("click", () => iconDialog.close());
+  // 창 바깥(어두운 배경)을 누르면 닫힘.
+  iconDialog.addEventListener("click", (e) => { if (e.target === iconDialog) iconDialog.close(); });
+  // Esc로 닫을 때 뒤의 상점/관리자 모달까지 같이 닫히지 않게 이벤트를 여기서 멈춤.
+  iconDialog.addEventListener("cancel", (e) => { e.stopPropagation(); });
+  iconButtons.forEach((b) => b.addEventListener("click", () => {
+    state = { ...state, icon: b.dataset.icon || null };
+    render();
+    iconDialog.close();
+  }));
   starInput.addEventListener("change", () => { state = { ...state, star: starInput.checked }; render(); });
   render();
 
@@ -751,9 +771,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
       state = parseTitleStyle(value);
       lastHex = state.color === "rainbow" ? DEFAULT_TITLE_COLOR : state.color;
       lastHex2 = state.color2 || "#5dc8ff";
-      iconPanel.hidden = true;
-      iconToggle.classList.remove("is-open");
-      iconToggle.setAttribute("aria-expanded", "false");
+      if (iconDialog.open) iconDialog.close();
       render();
     },
     refreshPreview: render,

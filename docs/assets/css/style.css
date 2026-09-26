@@ -2087,7 +2087,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-design-option.is-selected { border-color: var(--accent); color: var(--text); box-shadow: 0 0 0 1px var(--accent); }
 .title-design-sample { font-size: 0.95rem; display: inline-flex; }
 .title-extra-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-/* 아이콘 고르기: "아이콘 붙이기 ▾" 버튼 → 아래로 아이콘 격자가 펼쳐짐 */
+/* 아이콘 고르기: "아이콘 붙이기 ›" 버튼 → 작은 창(모달)에 아이콘 격자. 고르면 바로 닫힘. */
 .title-icon-toggle,
 .title-icon-toggle:hover {
   display: inline-flex;
@@ -2105,10 +2105,46 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-icon-toggle.has-icon { border-color: var(--accent); color: var(--text); }
 .title-icon-current { display: inline-flex; align-items: center; gap: 6px; }
 .title-icon-toggle .title-icon-glyph { width: 16px; height: 16px; }
-.title-icon-chevron { width: 14px; height: 14px; transition: transform 0.15s ease; }
-.title-icon-toggle.is-open .title-icon-chevron { transform: rotate(180deg); }
-.title-icon-panel { padding: 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
-.title-icon-panel[hidden] { display: none; }
+.title-icon-chevron { width: 14px; height: 14px; }
+.title-icon-dialog {
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(560px, 80vh);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.title-icon-dialog[open] { display: flex; flex-direction: column; }
+.title-icon-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.title-icon-dialog-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.title-icon-dialog-head strong { font-size: 0.95rem; }
+.title-icon-dialog-preview { font-size: 0.95rem; display: inline-flex; }
+.title-icon-dialog-close,
+.title-icon-dialog-close:hover {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+.title-icon-dialog-close:hover { background: var(--surface-2); color: var(--text); }
+.title-icon-dialog-close svg { width: 18px; height: 18px; }
+.title-icon-dialog .title-icon-grid { padding: 12px 14px 16px; overflow-y: auto; }
 .title-icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
 .title-icon-option,
 .title-icon-option:hover {
@@ -2128,7 +2164,6 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .title-icon-option .title-icon-glyph { width: 20px; height: 20px; }
 .title-icon-option--none { grid-column: span 2; font-size: 0.78rem; font-weight: 600; }
 .title-icon-group-label { grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; margin: 6px 0 -2px; }
-.title-icon-panel { max-height: 320px; overflow-y: auto; }
 .title-option-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dim); cursor: pointer; }
 .title-option-toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 
