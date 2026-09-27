@@ -425,7 +425,6 @@
     // 목록 한 줄 — 제목만 보이는 게시판 스타일. 제목을 누르면 모달로 내용이 뜸.
     function renderNoticeRow(n) {
       const idStr = String(n.id);
-      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       // NEW — 올라온 지 3일 안 됐고 이 기기에서 아직 안 열어본 글(isNoticeNew, chzzk-auth.js).
       const isNew = isNoticeNew(n);
       const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
@@ -443,7 +442,7 @@
         <li class="notice-item${pinned ? " is-pinned" : ""}" data-id="${idStr}">
           <button type="button" class="notice-title-btn" data-id="${idStr}">${pinTag}${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
-            <time>${formatDate(n.created_at)}${editedLabel}</time>
+            <time>${formatDate(n.created_at)}</time>
             ${actions}
           </div>
         </li>`;
@@ -514,9 +513,8 @@
       modalMode = "view";
       modalNoticeId = id;
       markNoticeRead(id);
-      const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
-      document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at) + editedLabel;
+      document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at); // 수정 여부는 안 보여줌(요청사항)
       renderNoticeContent(document.getElementById("notice-modal-content"), n);
 
       const sortedAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
@@ -755,7 +753,7 @@
     }
 
     // 상단 고정/해제(목록의 "고정" 링크, 보기 팝업의 "고정" 버튼). 글 내용은 안 건드리는 별도
-    // 요청이라 "(수정됨)"도 안 붙음. 끝나면 목록을 다시 불러서 순서를 반영함.
+    // 요청이라 수정 시각(updated_at)도 안 바뀜. 끝나면 목록을 다시 불러서 순서를 반영함.
     async function togglePin(id, btn) {
       const n = noticesById.get(id);
       if (!n) return;
