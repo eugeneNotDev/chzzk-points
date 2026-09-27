@@ -145,7 +145,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=38"></script>
+  <script src="assets/js/chzzk-auth.js?v=39"></script>
   <script src="assets/js/spa-router.js?v=12"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -200,13 +200,9 @@
     // 관리 기능은 공지사항 탭(notice.html)에서 게시판 형태로 처리함.
     let noticePreviewById = new Map();
 
-    // 사이드바 알림 점과 같은 기준(NOTICE_LAST_SEEN_KEY)을 읽기만 해서(변경 안 함) 미리보기에도
-    // "새 글" 표시를 달아줌 — 스크립트가 실행되자마자(=initNoticeBadge()가 markNoticesSeen()을
-    // 부르기 전, 애초에 이 페이지에선 initNoticeBadge()가 값을 갱신하지도 않음) 한 번 읽어서 고정.
-    const noticeListSeenBaseline = getNoticeLastSeenAt();
-
+    // "NEW" 표시 — 올라온 지 3일 안 됐고 이 기기에서 아직 안 열어본 글(isNoticeNew, chzzk-auth.js).
     function renderNoticePreviewItem(n) {
-      const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
+      const isNew = isNoticeNew(n);
       const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
       const pinTag = n.pinned_at ? noticePinTagHtml() : "";
       return `
@@ -223,8 +219,7 @@
         btn.addEventListener("click", () => {
           const n = noticePreviewById.get(btn.dataset.id);
           if (n) openNoticeModal(n);
-          // notice.html과 같은 이유 — noticeListSeenBaseline이 이번 방문 동안 고정이라
-          // 팝업만 열었다 닫아선 NEW가 안 사라짐. 실제로 읽은 글의 NEW만 바로 지워줌.
+          // 열어본 글은 NEW를 바로 지움(열어봤다는 기록은 openNoticeModal에서 남김).
           const tag = btn.querySelector(".notice-new-tag");
           if (tag) tag.remove();
         });
@@ -232,6 +227,7 @@
     }
 
     function openNoticeModal(n) {
+      markNoticeRead(n.id);
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
       document.getElementById("notice-modal-meta").textContent = new Date(n.created_at).toLocaleString("ko-KR") + editedLabel;

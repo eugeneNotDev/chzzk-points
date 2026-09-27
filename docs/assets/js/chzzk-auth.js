@@ -54,6 +54,11 @@ const PROFILE_IMAGE_STORAGE_KEY = "chzzk_points_profile_image";
 const RANK_KEY_STORAGE_KEY = "chzzk_points_rank_key";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
 const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
+// 공지 제목 앞 "NEW" 표시 — 사이드바 알림 점과 별개로, 글마다 "이 기기에서 열어봤는지"로 판단함.
+// 올라온 지 NOTICE_NEW_WINDOW_MS 안 된 글 중 아직 안 열어본 글에만 붙고, 그 글을 열어보면 사라짐.
+// (예전엔 공지사항 탭에 한 번 들어가기만 해도 전부 "본 걸로" 쳐서, 다른 탭으로 옮기면 NEW가 바로 없어졌음.)
+const NOTICE_READ_IDS_KEY = "chzzk_points_notice_read_ids";
+const NOTICE_NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3일
 // 모바일 상단바 포인트 표시용 — /me 응답의 balance를 받을 때마다 갱신해두는 캐시(표시용일 뿐,
 // 실제 잔액 판단은 항상 서버가 함).
 const BALANCE_CACHE_KEY = "chzzk_points_balance_cache";
@@ -1102,6 +1107,35 @@ function getNoticeLastSeenAt() {
     return localStorage.getItem(NOTICE_LAST_SEEN_KEY);
   } catch {
     return null;
+  }
+}
+
+// 이 기기에서 열어본 공지 id 목록(최근 100개까지만 보관).
+function getReadNoticeIds() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(NOTICE_READ_IDS_KEY) || "[]");
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+// 공지 제목 앞에 NEW를 붙일지 — 올라온 지 3일 안 됐고, 이 기기에서 아직 안 열어본 글.
+function isNoticeNew(notice) {
+  if (!notice || !notice.created_at) return false;
+  const age = Date.now() - new Date(notice.created_at).getTime();
+  if (!(age >= 0 && age < NOTICE_NEW_WINDOW_MS)) return false;
+  return !getReadNoticeIds().has(String(notice.id));
+}
+
+// 공지를 열어봤을 때(팝업) 호출 — 그 글의 NEW를 없앰.
+function markNoticeRead(id) {
+  try {
+    const ids = [...getReadNoticeIds()].filter((x) => x !== String(id));
+    ids.push(String(id));
+    localStorage.setItem(NOTICE_READ_IDS_KEY, JSON.stringify(ids.slice(-100)));
+  } catch {
+    // 저장이 막힌 브라우저면 NEW가 안 사라질 뿐 — 기능엔 영향 없음.
   }
 }
 

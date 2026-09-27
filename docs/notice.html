@@ -228,7 +228,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=38"></script>
+  <script src="assets/js/chzzk-auth.js?v=39"></script>
   <script src="assets/js/spa-router.js?v=12"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -257,13 +257,6 @@
     let pendingFiles = [];
     let keptAttachments = [];
 
-    // "새 글" 표시 기준 시각 — 이 페이지가 실행되자마자(= 이번 방문에서 loadNotices()가 아직
-    // markNoticesSeen()을 부르기 전) 딱 한 번만 읽어서 고정해둠. loadNotices()는 글쓰기/수정/삭제
-    // 직후나 실시간 갱신 때마다 다시 불릴 수 있는데, 그때마다 새로 읽으면 markNoticesSeen()이 이미
-    // "방금"으로 갱신해놔서 새 글 표시가 매번 사라져버림 — 그래서 이번 페이지 방문(라우터가 이
-    // 스크립트를 다시 실행하는 시점) 기준으로 한 번 고정. 페이지를 벗어났다가 다시 들어오면
-    // 스크립트가 다시 실행되면서 새로 고정됨(그땐 직전 방문에서 이미 "확인함" 처리됐으니 정상).
-    const noticeListSeenBaseline = getNoticeLastSeenAt();
     // 지금 모달이 어떤 모드인지: null(닫힘) | "view" | "edit" | "create"
     let modalMode = null;
     let modalNoticeId = null;
@@ -433,7 +426,8 @@
     function renderNoticeRow(n) {
       const idStr = String(n.id);
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
-      const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
+      // NEW — 올라온 지 3일 안 됐고 이 기기에서 아직 안 열어본 글(isNoticeNew, chzzk-auth.js).
+      const isNew = isNoticeNew(n);
       const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
       const pinned = !!n.pinned_at;
       const pinTag = pinned ? noticePinTagHtml() : "";
@@ -465,10 +459,7 @@
       document.querySelectorAll(".notice-title-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           openViewModal(btn.dataset.id);
-          // noticeListSeenBaseline은 이번 페이지 방문 동안 고정이라(위 주석 참고) 팝업을
-          // 열었다 닫아도 NEW 표시가 자동으로는 안 사라짐 — 그래서 실제로 클릭해서 읽은
-          // 이 글의 NEW만 화면에서 바로 지워줌(localStorage 기준 시각 자체는 안 건드림,
-          // 어차피 loadNotices() 시점에 markNoticesSeen()으로 이미 갱신돼 있음).
+          // 열어본 글은 NEW를 바로 지움(열어봤다는 기록은 openViewModal에서 남김).
           const tag = btn.querySelector(".notice-new-tag");
           if (tag) tag.remove();
         });
@@ -522,6 +513,7 @@
       if (!n) return;
       modalMode = "view";
       modalNoticeId = id;
+      markNoticeRead(id);
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
       document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at) + editedLabel;
