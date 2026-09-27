@@ -39,6 +39,17 @@ async function spaFetchPage(url) {
   return html;
 }
 
+// 페이지가 불러오는 공용 JS/CSS 주소(버전 숫자 포함) 목록 — 배포로 버전이 바뀌었는지 비교하는 용도.
+function spaAssetSignature(doc) {
+  const urls = [
+    ...Array.from(doc.querySelectorAll("script[src]"), (el) => el.getAttribute("src")),
+    ...Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'), (el) => el.getAttribute("href")),
+  ];
+  // 모든 페이지가 같이 쓰는 공용 파일만 비교 — 화면에서 필요할 때 따로 끼워 넣는 스크립트(공지 HTML 필터
+  // purify.min.js 등)는 페이지를 옮겨다니는 동안 생겼다 말았다 해서 빼야 함.
+  return urls.filter((u) => /(chzzk-auth\.js|spa-router\.js|style\.css)\?/.test(u)).sort().join("|");
+}
+
 // fetch로 받아온 문서에서 <body> 바로 아래 <script>들을 찾아 다시 실행함.
 // src가 있는 외부 스크립트(chzzk-auth.js, spa-router.js 등)는 이미 로드돼 있으니 건너뜀.
 function spaRunScripts(doc) {
@@ -86,6 +97,13 @@ async function spaLoadPage(url, { pushState }) {
   const doc = new DOMParser().parseFromString(html, "text/html");
   const newMain = doc.querySelector(".main-content");
   if (!newMain) {
+    location.href = url;
+    return;
+  }
+  // 사이트를 새로 배포한 뒤, 예전에 열어둔 탭에서 링크를 누르면 "새 페이지 HTML + 예전에 받아둔 공용 JS/CSS"가
+  // 섞여서 새 페이지 스크립트가 예전 chzzk-auth.js에 없는 함수를 부르다 멈춤(공지/랭킹이 로딩 상태로 굳음).
+  // 받아온 페이지가 불러오는 공용 파일 버전(?v=)이 지금 떠 있는 것과 다르면 SPA 전환 대신 새로 불러옴.
+  if (spaAssetSignature(doc) !== spaAssetSignature(document)) {
     location.href = url;
     return;
   }
