@@ -796,7 +796,7 @@ ul.notice-list, ol.notice-list {
   vertical-align: middle;
 }
 
-/* 상단 고정 공지 — 제목 앞 "고정" 표시 + 줄 배경을 살짝 깔아서 일반 글과 구분(0042_notice_pin.sql). */
+/* 상단 고정 공지 — 제목 앞 "고정" 표시만 붙임(줄 배경 하이라이트는 없음, 0042_notice_pin.sql). */
 .notice-pin-tag {
   display: inline-flex;
   align-items: center;
@@ -811,17 +811,6 @@ ul.notice-list, ol.notice-list {
   vertical-align: middle;
   line-height: 1.4;
 }
-.notice-item.is-pinned {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  margin: 0 -12px;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-.notice-item.is-pinned:first-child { border-top-left-radius: 8px; border-top-right-radius: 8px; }
-.notice-item.is-pinned:last-child,
-.notice-item.is-pinned:has(+ .notice-item:not(.is-pinned)) { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
-/* 고정글 묶음과 일반 글 사이 경계선을 조금 더 진하게. */
-.notice-item.is-pinned + .notice-item:not(.is-pinned) { border-top: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
 .notice-form-toggles { display: inline-flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
 /* 텍스트만 있는 작은 버튼 (공지 수정/삭제 등). <button class="secondary">보다 더 가볍게. */
