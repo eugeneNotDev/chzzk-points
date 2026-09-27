@@ -9,7 +9,8 @@
 //   4) 이후 authFetch()로 다른 Edge Function 호출 시 Authorization 헤더에 자동으로 붙음
 
 const CHZZK_CLIENT_ID = "30d0a593-bc56-4239-ac79-3db1e0bf1202";
-const CHZZK_REDIRECT_URI = "https://eugeneNotDev.github.io/chzzk-points/";
+// 사이트 주소(커스텀 도메인). 치지직 개발자센터의 "로그인 리디렉션 URL"과 글자 하나까지 똑같아야 로그인이 됨.
+const CHZZK_REDIRECT_URI = "https://eugene4lpha.com/";
 const FUNCTIONS_BASE_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1";
 const OAUTH_CALLBACK_URL = `${FUNCTIONS_BASE_URL}/oauth-callback`;
 const ME_URL = `${FUNCTIONS_BASE_URL}/me`;

@@ -7,7 +7,10 @@
 // (OPTIONS preflight는 200이 떠도, 그 다음 본 요청이 아예 안 나가는 식으로 조용히 실패함).
 // 환경변수(ALLOWED_ORIGIN)로 덮어쓸 수 있게 해서, 로컬에서 http://localhost:xxxx로 띄워놓고
 // 테스트할 때 Supabase 프로젝트 환경변수만 잠깐 바꿔서 쓸 수 있음 (기본값은 실제 배포 도메인).
-const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugenenotdev.github.io";
+// 사이트는 커스텀 도메인(eugene4lpha.com)으로 서비스함 — 예전 eugenenotdev.github.io 주소는 GitHub가 새 주소로
+// 넘겨줘서 요청은 항상 새 주소에서 옴. 운영 값은 Supabase의 Edge Function 시크릿 ALLOWED_ORIGIN으로도 넣어둠
+// (시크릿은 저장 즉시 모든 함수에 적용돼서, 주소를 바꿀 때 함수들을 전부 다시 배포할 필요가 없음).
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugene4lpha.com";
 
 export const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,

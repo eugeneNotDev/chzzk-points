@@ -85,7 +85,7 @@ chzzk-points/
 
 ## 배포
 
-프론트는 `main`에 push하면 GitHub Pages에 자동 반영됨. CSS/JS를 고치면 캐시 때문에 안 바뀌어 보일 수 있어서, HTML에서 불러오는 `style.css?v=N`, `chzzk-auth.js?v=N` 같은 버전 숫자를 같이 올려줘야 함.
+프론트는 `main`에 push하면 GitHub Pages에 자동 반영됨. 사이트 주소는 커스텀 도메인 `https://eugene4lpha.com/`(`docs/CNAME`, DNS는 호스팅케이알에서 GitHub Pages로 연결). 주소를 바꿀 땐 세 군데를 같이 바꿔야 함: `chzzk-auth.js`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터의 로그인 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`. CSS/JS를 고치면 캐시 때문에 안 바뀌어 보일 수 있어서, HTML에서 불러오는 `style.css?v=N`, `chzzk-auth.js?v=N` 같은 버전 숫자를 같이 올려줘야 함.
 
 백엔드는 Supabase CLI 기준:
 
@@ -103,7 +103,7 @@ Edge Function 환경변수(Supabase 대시보드에서 등록):
 | --- | --- |
 | `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET` | 치지직 OAuth |
 | `SESSION_JWT_SECRET` | 세션 토큰 서명 키 (긴 랜덤 문자열) |
-| `ALLOWED_ORIGIN` | CORS 허용 도메인 (생략하면 GitHub Pages 주소) |
+| `ALLOWED_ORIGIN` | CORS 허용 도메인 (`https://eugene4lpha.com`, 생략해도 같은 값) |
 
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`는 Supabase가 알아서 넣어줌. 로컬 개발용 예시는 `.env.example` 참고.
 
