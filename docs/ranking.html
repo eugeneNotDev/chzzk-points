@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=71">
+<link rel="stylesheet" href="assets/css/style.css?v=72">
 </head>
 <body>
   <script>
@@ -95,7 +95,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=36"></script>
+  <script src="assets/js/chzzk-auth.js?v=37"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -112,8 +112,8 @@
     // (renderShopTitleBadgeHtml) — 둘 다 chzzk-auth.js 공용 함수.
     // 단, 관리자 화면은 예외 — 비공개 유저도 실제 이름·칭호로 내려오고(admin_view), 이름 앞에 "비공개"
     // 표시만 붙음(rankingPrivateTagHtml). 한눈에 전체 순위를 보려는 용도.
-    function renderRankingRow(row, i, myChannelId) {
-      const isMe = row.channel_id === myChannelId;
+    function renderRankingRow(row, i) {
+      const isMe = isMyRankingRow(row);
       const isPrivate = row.is_public === false;
       const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color);
       // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급 자체는
@@ -146,8 +146,7 @@
         emptyEl.hidden = false;
         listEl.innerHTML = "";
       } else {
-        const myChannelId = typeof getChannelId === "function" ? getChannelId() : null;
-        listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
+        listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i)).join("");
       }
     }
 
@@ -175,9 +174,14 @@
         })
         .subscribe();
 
+      // 비공개 상태 본인 줄 "(나)" 표시용 값(rankKey)이 /me로 막 도착했으면 다시 그림(chzzk-auth.js).
+      const onRankKey = () => loadRanking(supabase);
+      window.addEventListener("chzzk:rankkey", onRankKey);
+
       window.__pageCleanup = () => {
         clearTimeout(refetchTimer);
         supabase.removeChannel(channel);
+        window.removeEventListener("chzzk:rankkey", onRankKey);
       };
     })();
   })();

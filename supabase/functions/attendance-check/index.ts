@@ -23,7 +23,7 @@
 // attendedDates와 누적 횟수에서 빠짐 — me/index.ts의 포인트 로그와 같은 이유(밴 해제 후엔 출석체크
 // 달력도 완전히 새로 시작한 것처럼 보이게 함). attendance 행 자체는 지우지 않음.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { broadcastDateKst, getLiveInfo } from "../_shared/live.ts";

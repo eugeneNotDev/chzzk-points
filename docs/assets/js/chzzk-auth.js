@@ -49,6 +49,9 @@ const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
 // 치지직 프로필 이미지 주소(로그인 응답과 /me 응답으로 갱신). 없으면(기본 프사) 이름 첫 글자로 대신 보여줌.
 const PROFILE_IMAGE_STORAGE_KEY = "chzzk_points_profile_image";
+// 공개 랭킹에서 비공개 유저 행은 channel_id 대신 이 본인 전용 무작위 값이 내려옴(0044_privacy_hardening.sql).
+// /me 응답의 rankKey를 저장해뒀다가 랭킹에서 본인 줄("(나)")을 찾을 때만 씀 — isMyRankingRow() 참고.
+const RANK_KEY_STORAGE_KEY = "chzzk_points_rank_key";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
 const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
 // 모바일 상단바 포인트 표시용 — /me 응답의 balance를 받을 때마다 갱신해두는 캐시(표시용일 뿐,
@@ -148,6 +151,7 @@ function logout() {
   localStorage.removeItem(CHANNEL_NAME_STORAGE_KEY);
   localStorage.removeItem(BALANCE_CACHE_KEY);
   localStorage.removeItem(PROFILE_IMAGE_STORAGE_KEY);
+  localStorage.removeItem(RANK_KEY_STORAGE_KEY);
 }
 
 // 프로필 이미지 주소를 저장(null이면 지움). 바뀌었으면 true.
@@ -239,6 +243,11 @@ async function authFetch(url, options = {}) {
         const imageChanged = "profileImageUrl" in body && saveProfileImage(body.profileImageUrl);
         if (imageChanged) renderSidebarUser();
         else renderMobileUser();
+        // 랭킹 본인 줄 표시용 값 — 처음 받았거나 바뀌었으면 랭킹 화면이 다시 그리도록 알림.
+        if (typeof body.rankKey === "string" && body.rankKey !== localStorage.getItem(RANK_KEY_STORAGE_KEY)) {
+          localStorage.setItem(RANK_KEY_STORAGE_KEY, body.rankKey);
+          window.dispatchEvent(new Event("chzzk:rankkey"));
+        }
       }
     }).catch(() => {});
   }
@@ -626,6 +635,15 @@ async function fetchRankingRows(supabase, limit) {
     .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color")
     .order("total_points", { ascending: false })
     .limit(limit);
+}
+
+// 랭킹 한 줄이 로그인한 본인인지. 공개 상태면 channel_id가 그대로 오고, 비공개 상태면 channel_id 칸에
+// 본인 전용 무작위 값(rankKey — /me가 알려줌)이 대신 옴. 관리자 화면(admin_view)은 진짜 channel_id.
+function isMyRankingRow(row) {
+  if (!isLoggedIn() || !row || !row.channel_id) return false;
+  if (row.channel_id === getChannelId()) return true;
+  const rankKey = localStorage.getItem(RANK_KEY_STORAGE_KEY);
+  return !!rankKey && row.channel_id === rankKey;
 }
 
 // 관리자 화면에서만: 비공개 유저 행 이름 앞에 붙는 작은 "비공개" 표시. 그 외엔 빈 문자열.

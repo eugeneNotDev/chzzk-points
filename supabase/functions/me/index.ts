@@ -2,7 +2,9 @@
 // mypage.html, shop.html이 이 함수를 씀 (Authorization: Bearer <세션토큰> 필수).
 //
 // GET  → { channelId, channelName, profileImageUrl, isPublic, balance, maxBalanceReached, tierTitleName,
-//          tierTitleColor, selectedTitleId, purchasedTitleIds, refreshedToken? }
+//          tierTitleColor, selectedTitleId, purchasedTitleIds, rankKey, refreshedToken? }
+//   (rankKey: 공개 랭킹에서 비공개 유저 행의 channel_id 칸에 대신 들어가는 본인 전용 무작위 값 —
+//   랭킹 화면이 비공개 상태의 본인 줄에 "(나)"를 붙일 때만 씀. 0044_privacy_hardening.sql 참고.)
 //   (profileImageUrl: 치지직 프로필 이미지 주소, 없으면 null. 마지막 확인 후 PROFILE_IMAGE_REFRESH_MS가
 //   지났으면 이 요청 때 치지직에 다시 물어봐서 갱신함 — 치지직에서 프사를 바꿔도 몇 시간 안에 반영되게.
 //   0041_user_profile_image.sql, _shared/chzzk.ts 참고.)
@@ -38,7 +40,7 @@
 //
 // verify_jwt는 config.toml에서 꺼져있음 (우리 세션 토큰을 Authorization에 쓰기 때문).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession, issueSessionToken, shouldRefresh } from "../_shared/session.ts";
 import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";
@@ -161,7 +163,7 @@ async function getProfile(channelId: string) {
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance, profile_image_url, profile_image_checked_at")
+    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance, profile_image_url, profile_image_checked_at, rank_key")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -204,6 +206,7 @@ async function getProfile(channelId: string) {
     tierTitleColor: tierTitle?.color ?? null,
     selectedTitleId: user.selected_title_id,
     purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
+    rankKey: user.rank_key ?? null,
   };
 }
 

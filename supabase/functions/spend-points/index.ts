@@ -30,7 +30,7 @@
 //     체크 자체는 여전히 조회 후 기록이라 아주 짧은 연타에 쿨타임이 한 번 뚫릴 여지는 있지만,
 //     그래도 잔액 범위 안에서만 가능함.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { isChannelLive } from "../_shared/live.ts";

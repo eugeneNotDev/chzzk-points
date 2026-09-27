@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=71">
+<link rel="stylesheet" href="assets/css/style.css?v=72">
 </head>
 <body>
   <script>
@@ -145,7 +145,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=36"></script>
+  <script src="assets/js/chzzk-auth.js?v=37"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -303,8 +303,9 @@
     // 칭호는 이름 색으로, 상점 구매 칭호는 배지로 — ranking.html과 같은 chzzk-auth.js 공용
     // 함수(applyTierColorToName/renderShopTitleBadgeHtml)를 그대로 씀 — 별도로 다시 만들면
     // 나중에 한쪽만 고치고 잊어버리기 쉬워서(이번에 실제로 그랬음) 반드시 공용 함수로.
-    function renderRankingRow(row, i, myChannelId) {
-      const isMe = row.channel_id === myChannelId;
+    function renderRankingRow(row, i) {
+      // 본인 줄인지 — 비공개 상태면 channel_id 대신 본인 전용 값(rankKey)으로 맞춤(isMyRankingRow, chzzk-auth.js).
+      const isMe = isMyRankingRow(row);
       const isPrivate = row.is_public === false;
       const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color);
       // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급 자체는
@@ -337,8 +338,7 @@
         return;
       }
       emptyEl.hidden = true;
-      const myChannelId = getChannelId();
-      listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i, myChannelId)).join("");
+      listEl.innerHTML = data.map((row, i) => renderRankingRow(row, i)).join("");
     }
 
     (async () => {
@@ -380,11 +380,18 @@
         })
         .subscribe();
 
+      // 비공개 상태 본인 줄 "(나)" 표시용 값(rankKey)이 /me로 막 도착했으면 랭킹 미리보기를 다시 그림.
+      const onRankKey = () => {
+        if (document.getElementById("ranking-preview")) loadRankingPreview();
+      };
+      window.addEventListener("chzzk:rankkey", onRankKey);
+
       window.__pageCleanup = () => {
         clearTimeout(noticeRefetchTimer);
         clearTimeout(rankingRefetchTimer);
         supabase.removeChannel(noticeChannel);
         supabase.removeChannel(rankingChannel);
+        window.removeEventListener("chzzk:rankkey", onRankKey);
       };
     })();
   })();

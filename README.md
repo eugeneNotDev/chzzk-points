@@ -77,7 +77,8 @@ chzzk-points/
 
 - **시크릿은 프론트에 절대 안 둠.** 치지직 `clientSecret`, Supabase `service_role` 키, 세션 서명 키는 전부 Edge Function 환경변수에만 있음. `docs/`에 들어가는 건 공개돼도 되는 URL이랑 anon key뿐임
 - **로그인은 쿠키가 아니라 토큰 방식.** 프론트(GitHub Pages)랑 API(Supabase)가 도메인이 달라서, 크로스 도메인 쿠키 대신 자체 발급한 JWT를 `localStorage`에 두고 `Authorization: Bearer`로 보냄. 7일 만료이고 자주 들어오는 유저는 자동 연장됨
-- **읽기는 프론트에서 직접, 쓰기는 Edge Function으로.** 랭킹·공지·상품 목록처럼 공개 데이터는 anon key로 바로 읽고, 포인트가 움직이거나 관리자 권한이 필요한 건 전부 Edge Function을 거침. 테이블 쓰기 권한은 RLS로 막혀 있음
+- **읽기는 프론트에서 직접, 쓰기는 Edge Function으로.** 랭킹·공지·상품 목록처럼 공개 데이터는 anon key로 바로 읽고, 포인트가 움직이거나 관리자 권한이 필요한 건 전부 Edge Function을 거침. 브라우저(anon)에는 테이블 쓰기 권한 자체가 없고(RLS로도 한 번 더 막힘), 공개 정책이 없는 서버 전용 테이블은 읽기 권한도 없음. 새 테이블/함수를 만들어도 기본으로 브라우저엔 쓰기·실행 권한이 안 붙음(0044)
+- **비공개 설정은 서버에서 가림.** 비공개 유저는 공개 랭킹에서 이름·칭호뿐 아니라 치지직 채널 ID도 안 나감(채널 ID 대신 유저마다 무작위 값 `rank_key`가 들어가고, 본인 줄 "(나)" 표시는 `/me`가 본인에게만 알려주는 값으로 맞춤). 오버레이는 상점 사용 원본 기록(`spend_events`, 서버 전용) 대신 표시용 이름만 담긴 `overlay_events`를 구독함(비공개면 이름이 아예 안 담겨서 "익명")
 - **포인트는 기록이 기준, 잔액은 따라옴.** 모든 포인트 변동은 `points_ledger`에 +/- 기록으로 쌓고, `users.balance`는 그 합계를 트리거가 자동으로 맞춰주는 칸임. `balance`를 직접 고치는 건 DB에서 막아둠 (포인트 조정은 관리자 페이지 = 기록 추가로만). 실행취소도 기록을 지우지 않고 반대 기록을 추가하는 방식
 - **포인트 쓰는 건 DB 함수 하나로.** 미니게임은 `roulette_spin()`/`rps_play()`/`odd_even_play()`가 자격 확인·결과 뽑기·기록까지 한 번에 처리하고, 상점 구매, 투표 베팅은 `debit_points()`가 유저 행을 잠근 채로 잔액 확인 + 차감을 한 번에 처리함. 버튼을 연타해도 가진 것 이상은 못 씀
 - **첨부파일은 Storage에 직접 업로드.** Edge Function이 업로드용 signed URL만 발급해주고 파일은 브라우저가 Storage로 바로 올림. 저장 경로는 영문(uuid)만 쓰고 원래 파일명은 DB에 따로 둠 (Storage가 한글 경로를 안 받음)
@@ -103,7 +104,7 @@ Edge Function 환경변수(Supabase 대시보드에서 등록):
 | 이름 | 용도 |
 | --- | --- |
 | `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET` | 치지직 OAuth |
-| `SESSION_JWT_SECRET` | 세션 토큰 서명 키 (긴 랜덤 문자열) |
+| `SESSION_JWT_SECRET` | 세션 토큰 서명 키 (긴 랜덤 문자열). 관리자 로그인이 남 손에 넘어간 것 같으면 이 값을 새로 바꾸면 모든 로그인이 즉시 끊김(다들 다시 로그인하면 됨) |
 | `ALLOWED_ORIGIN` | CORS 허용 도메인 (`https://eugene4lpha.com`, 생략해도 같은 값) |
 
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`는 Supabase가 알아서 넣어줌. 로컬 개발용 예시는 `.env.example` 참고.
@@ -115,5 +116,12 @@ Edge Function 환경변수(Supabase 대시보드에서 등록):
 ## 아이콘 출처
 
 칭호 아이콘은 무료 라이선스 아이콘을 씀: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0, Lorc·Delapouite 외). 어떤 아이콘이 어디 건지는 `docs/assets/js/chzzk-auth.js`의 `TITLE_ICONS` 위 주석 참고.
+
+## 외부 라이브러리
+
+사이트는 외부 CDN에서 스크립트를 받지 않고 `docs/assets/js/`에 사본을 직접 둠(로그인 토큰이 브라우저에 있어서, CDN이 뚫리거나 예고 없이 바뀌어도 영향 없게).
+
+- `supabase.min.js` — [supabase-js](https://github.com/supabase/supabase-js) 2.117.2 (MIT). 버전 올릴 땐 `npm i @supabase/supabase-js@<버전> esbuild` 후 `export { createClient } from "@supabase/supabase-js";` 한 줄짜리 파일을 `esbuild --bundle --format=esm --minify --platform=browser`로 묶어서 교체(맨 위 주석의 버전도 같이). Edge Function 쪽 import(`esm.sh/@supabase/supabase-js@2.117.2`)도 같은 버전으로 고정해둠 — 배포할 때 그 버전으로 묶여서 올라감
+- `purify.min.js` — 아래 참고
 
 공지 HTML을 걸러내는 데 [DOMPurify](https://github.com/cure53/DOMPurify) (Apache-2.0 / MPL-2.0, Cure53)를 `docs/assets/js/purify.min.js`로 그대로 넣어서 씀.

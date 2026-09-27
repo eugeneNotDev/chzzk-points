@@ -34,7 +34,7 @@
 // (진짜 검증은 서버가 확장자로 따로 하니, 클라이언트가 kind를 잘못 보내도 화면 표시만
 // 어색해질 뿐 보안 문제는 없음 — 아래 classifyByExtension 참고)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";

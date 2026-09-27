@@ -19,7 +19,7 @@
 //
 // verify_jwt는 supabase/config.toml에서 이 함수만 꺼져있음 (로그인 전이라 우리 세션 토큰이 아직 없음).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { issueSessionToken } from "../_shared/session.ts";
 import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";

@@ -57,7 +57,7 @@
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
 //  일치해야만 허용 — 아니면 403)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";

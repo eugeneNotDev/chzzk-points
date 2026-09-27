@@ -11,7 +11,7 @@
 // 카드와 결과는 DB 함수 odd_even_play()가 유저 행을 잠근 채로 뽑고 포인트 기록까지 한 번에 처리함
 // (0039_odd_even.sql). 맞히면 1.9배, 틀리면 0.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 

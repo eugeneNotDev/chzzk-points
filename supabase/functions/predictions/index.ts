@@ -32,7 +32,7 @@
 // 나면 두 번째 요청은 그 시점에 unique violation(23505)으로 막힘(포인트 차감 전에 막히므로 이중
 // 차감 자체가 발생하지 않음 — attendance-check의 "attendance 먼저 insert" 패턴과 같은 원리).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 

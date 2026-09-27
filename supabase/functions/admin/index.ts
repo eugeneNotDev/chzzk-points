@@ -99,7 +99,7 @@
 //     (가장 최근 투표 1건 — 관리자 화면용이라 predictions 함수(유저용 GET)와 달리 개별 베팅 내역까지
 //     그대로 보여줌(요청사항: 관리자에게는 비익명).)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";

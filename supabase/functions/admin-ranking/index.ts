@@ -7,7 +7,7 @@
 //   (public.ranking 뷰와 같은 모양·같은 순서 — 화면이 같은 코드로 그릴 수 있게)
 // Authorization: Bearer <세션토큰> 필수, 관리자(OWNER_CHANNEL_ID)가 아니면 403.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
