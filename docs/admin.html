@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=74">
+<link rel="stylesheet" href="assets/css/style.css?v=75">
 </head>
 <body>
   <script>
@@ -117,6 +117,7 @@
           <button type="button" class="admin-tab-btn active" data-tab="users">유저 관리</button>
           <button type="button" class="admin-tab-btn" data-tab="log">포인트 로그</button>
           <button type="button" class="admin-tab-btn" data-tab="spend">상점 내역</button>
+          <button type="button" class="admin-tab-btn" data-tab="donation">후원 적립<span class="admin-tab-count" id="donation-pending-count" hidden></span></button>
         </div>
 
         <div id="admin-tab-users" class="admin-tab-panel">
@@ -215,6 +216,31 @@
             <div id="spend-log-list"></div>
             <p id="spend-log-empty" class="empty-state" hidden>기록이 없어요.</p>
             <div id="spend-log-pagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <!-- 후원 적립 — 방송 PC 프로그램(tools/donation-relay)이 넘겨준 후원 기록. 1만 치즈 이상은 10% 자동 적립,
+             익명은 여기서 리모컨을 보고 유저를 골라 적립(0046_donation_points.sql, admin-donations 함수). -->
+        <div id="admin-tab-donation" class="admin-tab-panel" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h2>후원 적립</h2>
+              <button type="button" class="secondary" id="donation-refresh-btn">새로고침</button>
+            </div>
+            <p class="muted">1만 치즈 이상 후원은 금액의 10%가 자동으로 적립돼요. 익명 후원은 아래 목록에서 리모컨을 보고 누군지 골라 적립해 주세요.</p>
+            <p id="donation-link-status" class="status-msg"></p>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2>익명 후원 확인 대기</h2></div>
+            <div id="donation-pending-list"></div>
+            <p id="donation-pending-empty" class="empty-state" hidden>확인할 익명 후원이 없어요.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2>최근 처리 기록</h2></div>
+            <div id="donation-recent-list"></div>
+            <p id="donation-recent-empty" class="empty-state" hidden>아직 후원 기록이 없어요.</p>
           </div>
         </div>
       </div>
@@ -1184,6 +1210,7 @@
       users: document.getElementById("admin-tab-users"),
       log: document.getElementById("admin-tab-log"),
       spend: document.getElementById("admin-tab-spend"),
+      donation: document.getElementById("admin-tab-donation"),
     };
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1198,8 +1225,150 @@
           spendLogLoaded = true;
           loadSpendLog("", 1);
         }
+        if (tab === "donation") loadDonations();
       });
     });
+
+    // 후원 적립 탭 ------------------------------------------------------------
+    const ADMIN_DONATIONS_URL = `${FUNCTIONS_BASE_URL}/admin-donations`;
+    const DONATION_STATUS_LABEL = {
+      credited: "자동 적립",
+      anonymous_credited: "익명 → 적립",
+      dismissed: "익명 · 적립 안 함",
+      below_min: "1만 치즈 미만",
+      not_member: "미가입자",
+    };
+    const donationPendingEl = document.getElementById("donation-pending-list");
+
+    async function loadDonations() {
+      const linkEl = document.getElementById("donation-link-status");
+      try {
+        const res = await authFetch(ADMIN_DONATIONS_URL);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        renderDonationLink(data.link || {});
+        renderDonationPending(data.pending || []);
+        renderDonationRecent(data.recent || []);
+      } catch (err) {
+        console.error("[admin] 후원 기록 조회 실패", err);
+        linkEl.textContent = "후원 기록을 불러오지 못했어요.";
+        linkEl.className = "status-msg error";
+      }
+    }
+
+    function renderDonationLink(link) {
+      const el = document.getElementById("donation-link-status");
+      const staleMs = 25 * 24 * 60 * 60 * 1000;
+      if (!link.tokenSaved) {
+        el.textContent = "후원 연동 준비가 안 됐어요 — 사이트에서 로그아웃했다가 유진 알파 계정으로 다시 로그인해 주세요.";
+        el.className = "status-msg error";
+      } else if (link.tokenUpdatedAt && Date.now() - new Date(link.tokenUpdatedAt).getTime() > staleMs) {
+        el.textContent = "치지직 로그인 정보가 곧 만료돼요(30일) — 사이트에 한 번 다시 로그인해 주세요.";
+        el.className = "status-msg error";
+      } else {
+        const last = link.lastDonationAt ? ` · 마지막 후원 기록 ${formatDateTime(link.lastDonationAt)}` : "";
+        el.textContent = `후원 연동 준비됨 — 방송할 때 PC에서 후원 연동 프로그램을 켜두세요${last}`;
+        el.className = "status-msg ok";
+      }
+    }
+
+    function renderDonationPending(list) {
+      const countEl = document.getElementById("donation-pending-count");
+      countEl.textContent = list.length ? String(list.length) : "";
+      countEl.hidden = list.length === 0;
+      document.getElementById("donation-pending-empty").hidden = list.length > 0;
+      donationPendingEl.innerHTML = list.map((d) => `
+        <div class="donation-row" data-id="${d.id}">
+          <div class="donation-row-head">
+            <strong>${d.amount.toLocaleString("ko-KR")}치즈 → ${d.points.toLocaleString("ko-KR")}P</strong>
+            <span class="muted">${d.donationType === "VIDEO" ? "영상 후원 · " : ""}${formatDateTime(d.createdAt)}</span>
+          </div>
+          ${d.message ? `<p class="donation-message">"${escapeHtml(d.message)}"</p>` : ""}
+          <div class="donation-assign">
+            <input type="text" class="donation-user-input" placeholder="리모컨에 뜬 닉네임 검색">
+            <button type="button" class="secondary donation-find-btn">찾기</button>
+            <button type="button" class="link-btn donation-dismiss-btn">적립 안 함</button>
+          </div>
+          <div class="donation-user-results"></div>
+        </div>`).join("");
+    }
+
+    function renderDonationRecent(list) {
+      document.getElementById("donation-recent-empty").hidden = list.length > 0;
+      document.getElementById("donation-recent-list").innerHTML = list.map((d) => {
+        const who = d.channelName || d.nickname || "익명";
+        const points = `<span class="points-log-amount positive">${d.points > 0 ? `+${d.points.toLocaleString("ko-KR")}P` : ""}</span>`;
+        return `
+          <div class="points-log-row${d.points > 0 ? "" : " is-processed"}">
+            <div class="points-log-who">
+              <strong>${escapeHtml(who)}</strong>
+              <span class="points-log-reason">${escapeHtml(DONATION_STATUS_LABEL[d.status] || d.status)} · ${d.amount.toLocaleString("ko-KR")}치즈</span>
+            </div>
+            ${points}
+            <div class="points-log-time">${formatDateTime(d.createdAt)}</div>
+          </div>`;
+      }).join("");
+    }
+
+    donationPendingEl.addEventListener("click", async (e) => {
+      const row = e.target.closest(".donation-row");
+      if (!row) return;
+      const id = Number(row.dataset.id);
+
+      if (e.target.closest(".donation-find-btn")) {
+        const q = row.querySelector(".donation-user-input").value.trim();
+        const resultsEl = row.querySelector(".donation-user-results");
+        if (!q) { resultsEl.textContent = "닉네임을 입력해 주세요."; return; }
+        resultsEl.textContent = "찾는 중...";
+        try {
+          const res = await authFetch(ADMIN_URL, { method: "POST", body: JSON.stringify({ action: "search-users", q, page: 1 }) });
+          if (!res.ok) throw new Error(String(res.status));
+          const users = ((await res.json()).users || []).filter((u) => !u.banned).slice(0, 6);
+          resultsEl.innerHTML = users.length
+            ? users.map((u) => `<button type="button" class="secondary donation-pick-btn" data-channel-id="${escapeHtml(u.channelId)}" data-name="${escapeHtml(u.channelName || "")}">${escapeHtml(u.channelName || "(이름 없음)")}</button>`).join("")
+            : "일치하는 가입자가 없어요.";
+        } catch (err) {
+          resultsEl.textContent = "검색에 실패했어요.";
+        }
+        return;
+      }
+
+      const pick = e.target.closest(".donation-pick-btn");
+      if (pick) {
+        const points = row.querySelector("strong").textContent.split("→")[1]?.trim() || "";
+        if (!confirm(`${pick.dataset.name}님에게 ${points}를 적립할까요?`)) return;
+        pick.disabled = true;
+        try {
+          const res = await authFetch(ADMIN_DONATIONS_URL, { method: "POST", body: JSON.stringify({ action: "assign", id, channelId: pick.dataset.channelId }) });
+          if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || String(res.status));
+          await loadDonations();
+        } catch (err) {
+          alert(err.message === "not_pending" ? "이미 처리된 후원이에요." : "적립에 실패했어요.");
+          await loadDonations();
+        }
+        return;
+      }
+
+      if (e.target.closest(".donation-dismiss-btn")) {
+        if (!confirm("이 익명 후원은 적립하지 않고 목록에서 뺄까요?")) return;
+        try {
+          const res = await authFetch(ADMIN_DONATIONS_URL, { method: "POST", body: JSON.stringify({ action: "dismiss", id }) });
+          if (!res.ok) throw new Error(String(res.status));
+        } catch (err) {
+          alert("처리에 실패했어요.");
+        }
+        await loadDonations();
+      }
+    });
+    donationPendingEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target.classList.contains("donation-user-input")) {
+        e.preventDefault();
+        e.target.closest(".donation-row").querySelector(".donation-find-btn").click();
+      }
+    });
+    document.getElementById("donation-refresh-btn").addEventListener("click", loadDonations);
+    // 탭 이름 옆 숫자(확인 대기 익명 후원 수)를 처음부터 보여주려고 페이지 열 때 한 번 불러둠.
+    loadDonations();
 
     // 일괄 지급/차감 카드 접기/펴기 — 칭호 카드(mypage.html)와 같은 방식, 기본 닫힘.
     document.getElementById("admin-bulk-toggle").addEventListener("click", () => {

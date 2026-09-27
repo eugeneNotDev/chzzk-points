@@ -2816,3 +2816,48 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
   .oe-flip { transition-duration: 0.01s; }
   .roulette-tile.is-hit { animation: none; box-shadow: inset 0 0 0 2px #fff, 0 0 20px var(--c), inset 0 -4px 0 var(--c); }
 }
+
+/* 관리자 "후원 적립" 탭 — 탭 이름 옆 확인 대기 숫자, 익명 후원 한 건씩 유저를 골라 적립하는 행. */
+.admin-tab-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.admin-tab-count[hidden] { display: none; }
+.donation-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.donation-row:last-child { border-bottom: none; }
+.donation-row-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.donation-row-head strong { color: var(--accent); }
+.donation-row-head .muted { font-size: 0.8rem; }
+.donation-message {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.donation-assign { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.donation-assign .donation-user-input { flex: 1 1 180px; min-width: 0; }
+.donation-assign button { white-space: nowrap; }
+.donation-user-results { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 0.85rem; color: var(--muted); }
+.donation-user-results:empty { display: none; }
+.donation-assign .donation-user-input {
+  font: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 8px 12px;
+}
+.donation-assign .donation-user-input:focus { outline: none; border-color: var(--accent); }
+#donation-recent-list .points-log-time { flex: 0 0 auto; width: auto; }

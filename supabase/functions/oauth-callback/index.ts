@@ -8,6 +8,9 @@
 //      → GET /open/v1/users/me 로 channelId/channelName 확보
 //      → 채널 정보 조회(Client 인증)로 프로필 이미지 주소 확보(실패해도 로그인은 진행 — _shared/chzzk.ts)
 //      → users 테이블에 upsert (service_role 클라이언트, RLS 우회)
+//      → 로그인한 사람이 채널 주인(유진 알파)이면 치지직 토큰을 streamer_tokens에 저장
+//        (후원 자동 적립용 — donation-relay 함수가 이걸로 후원 알림 세션을 엶. 0046_donation_points.sql)
+//        시청자 토큰은 저장하지 않음.
 //      → 세션 토큰 발급해서 리턴
 //
 // 참고: 치지직 오픈 API 응답은 전부 { code, message, content: {...} } 래퍼 구조.
@@ -23,6 +26,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { issueSessionToken } from "../_shared/session.ts";
 import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";
+import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const CHZZK_TOKEN_URL = "https://openapi.chzzk.naver.com/auth/v1/token";
 const CHZZK_USER_ME_URL = "https://openapi.chzzk.naver.com/open/v1/users/me";
@@ -33,7 +37,13 @@ interface ChzzkUser {
 }
 
 // code로 치지직 액세스 토큰 교환
-async function exchangeCodeForToken(code: string, state: string): Promise<{ accessToken: string }> {
+interface ChzzkTokens {
+  accessToken: string;
+  refreshToken: string | null;
+  expiresIn: number;
+}
+
+async function exchangeCodeForToken(code: string, state: string): Promise<ChzzkTokens> {
   const clientId = Deno.env.get("CHZZK_CLIENT_ID");
   const clientSecret = Deno.env.get("CHZZK_CLIENT_SECRET");
   if (!clientId || !clientSecret) {
@@ -61,7 +71,26 @@ async function exchangeCodeForToken(code: string, state: string): Promise<{ acce
   if (typeof accessToken !== "string") {
     throw new Error("치지직 토큰 응답에 accessToken이 없습니다.");
   }
-  return { accessToken };
+  const refreshToken = typeof body?.content?.refreshToken === "string" ? body.content.refreshToken : null;
+  const expiresIn = Number(body?.content?.expiresIn ?? 86400);
+  return { accessToken, refreshToken, expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 86400 };
+}
+
+// 채널 주인 토큰 저장(후원 자동 적립용). 실패해도 로그인 자체는 계속 진행함(로그만 남김).
+async function saveStreamerTokens(channelId: string, tokens: ChzzkTokens): Promise<void> {
+  if (!tokens.refreshToken) return;
+  const admin = getAdminClient();
+  const { error } = await admin.from("streamer_tokens").upsert(
+    {
+      channel_id: channelId,
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      expires_at: new Date(Date.now() + tokens.expiresIn * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "channel_id" },
+  );
+  if (error) console.error(`streamer_tokens 저장 실패: ${error.message}`);
 }
 
 // GET /open/v1/users/me 로 channelId, channelName 조회
@@ -143,8 +172,9 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { accessToken } = await exchangeCodeForToken(code, state);
-    const user = await fetchChzzkUser(accessToken);
+    const tokens = await exchangeCodeForToken(code, state);
+    const user = await fetchChzzkUser(tokens.accessToken);
+    if (user.channelId === OWNER_CHANNEL_ID) await saveStreamerTokens(user.channelId, tokens);
     const fetchedImage = await fetchChzzkChannelImage(user.channelId);
     await upsertUser(user, fetchedImage);
 

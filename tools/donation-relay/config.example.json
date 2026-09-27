@@ -1,0 +1,4 @@
+{
+  "relayUrl": "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/donation-relay",
+  "relaySecret": "여기에-중계-비밀번호"
+}

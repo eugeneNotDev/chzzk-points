@@ -13,3 +13,8 @@ supabase/.temp
 # 에디터
 .vscode/
 .idea/
+
+# 후원 연동 프로그램 (중계 비밀번호, 받은 패키지, 못 보낸 후원 임시 저장)
+tools/donation-relay/config.json
+tools/donation-relay/node_modules/
+tools/donation-relay/pending.json

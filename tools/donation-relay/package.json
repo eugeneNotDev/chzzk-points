@@ -1,0 +1,16 @@
+{
+  "name": "chzzk-donation-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "치지직 후원 알림을 받아 유진 팬보드 서버로 넘겨주는 방송 PC용 프로그램",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "socket.io-client": "2.0.3"
+  }
+}
