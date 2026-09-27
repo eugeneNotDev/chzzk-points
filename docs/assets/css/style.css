@@ -2528,7 +2528,115 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .rps-pick:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .rps-pick:disabled { opacity: 0.45; }
 .rps-pick:disabled svg { color: var(--muted); }
+/* ── 홀짝 (oddeven.html) — 카드 한 장이 섞였다가 뒤집힘 + 홀/짝 버튼(누르면 바로 한 판).
+   홀은 분홍, 짝은 파랑으로 색을 고정해서 결과가 색으로 바로 읽히게 함.
+   베팅 칸/결과/최근 기록/잠금 안내는 룰렛·가위바위보와 같은 .game-* 스타일을 같이 씀. */
+.oe-card { display: flex; flex-direction: column; gap: 18px; --oe-odd: #ff7b8f; --oe-even: #5cb6ff; }
+.oe-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 12px 14px;
+  border-radius: 14px;
+  background: #0f1215;
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+}
+.oe-deck { position: relative; width: 128px; height: 180px; perspective: 900px; }
+.oe-ghost { position: absolute; inset: 0; border-radius: 14px; background: #1f2a33; box-shadow: inset 0 0 0 1px #2e3b46; }
+.oe-deck.is-shuffling .oe-ghost-l { animation: oe-fan-l 0.9s ease-in-out infinite; }
+.oe-deck.is-shuffling .oe-ghost-r { animation: oe-fan-r 0.9s ease-in-out infinite; }
+@keyframes oe-fan-l { 0%, 100% { transform: none; } 30%, 60% { transform: translateX(-66px) rotate(-14deg); } }
+@keyframes oe-fan-r { 0%, 100% { transform: none; } 30%, 60% { transform: translateX(66px) rotate(14deg); } }
+.oe-flip { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.3, 0.8, 0.3, 1.15); }
+.oe-flip.is-open { transform: rotateY(180deg); }
+.oe-flip.is-quick { transition-duration: 0.25s; }
+.oe-side { position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.oe-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, #102a22 0 8px, #0c1f19 8px 16px);
+  box-shadow: inset 0 0 0 5px #0c0e11, inset 0 0 0 6px var(--accent), 0 10px 26px rgba(0, 0, 0, 0.5);
+}
+.oe-back b {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c0e11;
+  box-shadow: 0 0 0 2px var(--accent);
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+.oe-front {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #fdfdfd, #e7e9ec);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  color: #1d2126;
+}
+.oe-front.is-red { color: #e2334a; }
+.oe-num { font-size: 3.8rem; font-weight: 900; line-height: 1; }
+.oe-front > svg { width: 26px; height: 26px; margin-top: 6px; }
+.oe-corner { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 800; font-size: 0.95rem; line-height: 1; }
+.oe-corner svg { width: 12px; height: 12px; }
+.oe-corner.is-tl { top: 9px; left: 10px; }
+.oe-corner.is-br { bottom: 9px; right: 10px; transform: rotate(180deg); }
+.oe-reveal { margin: 4px 0 0; min-height: 1.5em; font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.oe-reveal .is-odd { color: var(--oe-odd); }
+.oe-reveal .is-even { color: var(--oe-even); }
+.oe-rule { margin: 0; font-size: 0.8rem; }
+.oe-picks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.oe-pick,
+.oe-pick:hover {
+  position: relative;
+  padding: 14px 0;
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 900;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  transition: box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.oe-pick.is-odd { color: var(--oe-odd); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--oe-odd) 45%, transparent); }
+.oe-pick.is-even { color: var(--oe-even); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--oe-even) 45%, transparent); }
+.oe-pick.is-odd:hover:not(:disabled),
+.oe-pick.is-odd.is-chosen { background: color-mix(in srgb, var(--oe-odd) 12%, var(--surface-2)); box-shadow: inset 0 0 0 2px var(--oe-odd); }
+.oe-pick.is-even:hover:not(:disabled),
+.oe-pick.is-even.is-chosen { background: color-mix(in srgb, var(--oe-even) 12%, var(--surface-2)); box-shadow: inset 0 0 0 2px var(--oe-even); }
+.oe-pick.is-odd.is-hit { background: color-mix(in srgb, var(--oe-odd) 22%, var(--surface-2)); box-shadow: inset 0 0 0 2px var(--oe-odd), 0 0 22px color-mix(in srgb, var(--oe-odd) 40%, transparent); }
+.oe-pick.is-even.is-hit { background: color-mix(in srgb, var(--oe-even) 22%, var(--surface-2)); box-shadow: inset 0 0 0 2px var(--oe-even), 0 0 22px color-mix(in srgb, var(--oe-even) 40%, transparent); }
+/* 전역 button:disabled(회색 배경/글자)를 덮어서 색은 유지하고 흐리게만 — 고른 쪽·맞은 쪽은 또렷하게. */
+.oe-pick:disabled { cursor: not-allowed; font-weight: 900; }
+.oe-pick.is-odd:disabled { color: var(--oe-odd); }
+.oe-pick.is-even:disabled { color: var(--oe-even); }
+.oe-pick:disabled:not(.is-chosen):not(.is-hit) { opacity: 0.45; background: var(--surface-2); }
+.oe-pick-mine {
+  display: none;
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.oe-pick.is-chosen .oe-pick-mine { display: inline; }
+
 @media (prefers-reduced-motion: reduce) {
   .rps-hand.is-shaking { animation: none; }
+  .oe-deck.is-shuffling .oe-ghost { animation: none; }
+  .oe-flip { transition-duration: 0.01s; }
   .roulette-tile.is-hit { animation: none; box-shadow: inset 0 0 0 2px #fff, 0 0 20px var(--c), inset 0 -4px 0 var(--c); }
 }

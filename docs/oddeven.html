@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>룰렛 · 유진 팬보드</title>
+<title>홀짝 · 유진 팬보드</title>
 <link rel="stylesheet" href="assets/css/style.css?v=65">
 </head>
 <body>
@@ -58,9 +58,9 @@
             <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
           </button>
           <div class="sidebar-nav-submenu" id="game-nav-submenu">
-            <a href="roulette.html" class="active">룰렛</a>
+            <a href="roulette.html">룰렛</a>
             <a href="rps.html">가위바위보</a>
-            <a href="oddeven.html">홀짝</a>
+            <a href="oddeven.html" class="active">홀짝</a>
           </div>
         </div>
         <a href="attendance.html">
@@ -80,7 +80,15 @@
     </aside>
 
     <main class="main-content">
-      <h1 class="brand-heading" data-minigame-page>룰렛</h1>
+      <h1 class="brand-heading" data-minigame-page>홀짝</h1>
+      <!-- 카드 무늬 아이콘: Phosphor Icons fill (MIT) — spade/heart/diamond/club.
+           라우터가 main 안쪽만 갈아끼워서 아이콘 정의도 main 안에 둠. -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <symbol id="oe-s-spade" viewBox="0 0 256 256"><path fill="currentColor" d="M232 136a56 56 0 0 1-83.4 48.82l11.06 36.88A8 8 0 0 1 152 232h-48a8 8 0 0 1-7.66-10.3l11.06-36.88A56 56 0 0 1 24 136c0-32 17.65-62.84 51-89.27a234 234 0 0 1 49.89-30.11a7.93 7.93 0 0 1 6.16 0A234 234 0 0 1 181 46.73C214.35 73.16 232 104 232 136"/></symbol>
+        <symbol id="oe-s-heart" viewBox="0 0 256 256"><path fill="currentColor" d="M240 102c0 70-103.79 126.66-108.21 129a8 8 0 0 1-7.58 0C119.79 228.66 16 172 16 102a62.07 62.07 0 0 1 62-62c20.65 0 38.73 8.88 50 23.89C139.27 48.88 157.35 40 178 40a62.07 62.07 0 0 1 62 62"/></symbol>
+        <symbol id="oe-s-diamond" viewBox="0 0 256 256"><path fill="currentColor" d="M240 128a15.85 15.85 0 0 1-4.67 11.28l-96.05 96.06a16 16 0 0 1-22.56 0l-96-96.06a16 16 0 0 1 0-22.56l96.05-96.06a16 16 0 0 1 22.56 0l96.05 96.06A15.85 15.85 0 0 1 240 128"/></symbol>
+        <symbol id="oe-s-club" viewBox="0 0 256 256"><path fill="currentColor" d="M240 144a56 56 0 0 1-84.81 48h-4.44l8.91 29.7A8 8 0 0 1 152 232h-48a8 8 0 0 1-7.66-10.3l8.91-29.7h-4.44A56 56 0 1 1 72 88h2.33a56 56 0 1 1 107.34 0H184a56.06 56.06 0 0 1 56 56"/></symbol>
+      </defs></svg>
 
       <div id="loading-state" class="card">
         <p class="skeleton skeleton-line" style="width:140px;height:20px;"></p>
@@ -88,7 +96,7 @@
       </div>
 
       <div id="logged-out" class="card" hidden>
-        <p>로그인하면 룰렛을 돌릴 수 있어요.</p>
+        <p>로그인하면 홀짝을 할 수 있어요.</p>
         <button onclick="spaNavigate('index.html')">홈으로 가서 로그인</button>
       </div>
 
@@ -100,10 +108,17 @@
           <div class="game-lock-progress"><div id="game-lock-bar"></div></div>
         </div>
 
-        <div class="card roulette-card">
-          <div class="roulette-view" id="roulette-view">
-            <div class="roulette-strip" id="roulette-strip"></div>
-            <div class="roulette-marker" aria-hidden="true"></div>
+        <div class="card oe-card">
+          <div class="oe-stage">
+            <div class="oe-deck" id="oe-deck">
+              <div class="oe-ghost oe-ghost-l"></div><div class="oe-ghost oe-ghost-r"></div>
+              <div class="oe-flip" id="oe-flip">
+                <div class="oe-side oe-back"><b>?</b></div>
+                <div class="oe-side oe-front" id="oe-front"></div>
+              </div>
+            </div>
+            <p class="oe-reveal" id="oe-reveal"></p>
+            <p class="oe-rule muted" id="oe-rule">A~10 카드 한 장 · 맞히면 1.9배 · 틀리면 0</p>
           </div>
 
           <div class="game-panel">
@@ -113,7 +128,7 @@
             </div>
             <label class="game-bet-field">
               <span class="muted">걸 포인트</span>
-              <input type="text" id="roulette-bet-input" inputmode="numeric" autocomplete="off" spellcheck="false" value="100" aria-label="걸 포인트">
+              <input type="text" id="oe-bet-input" inputmode="numeric" autocomplete="off" spellcheck="false" value="100" aria-label="걸 포인트">
             </label>
             <div class="game-chips">
               <button type="button" class="secondary game-chip" data-add="100">+100</button>
@@ -124,7 +139,10 @@
               <button type="button" class="secondary game-chip" data-set="reset">초기화</button>
             </div>
             <p class="game-hint" id="game-hint"></p>
-            <button type="button" id="roulette-spin-btn" class="roulette-spin-btn">돌리기</button>
+            <div class="oe-picks" role="group" aria-label="홀 또는 짝">
+              <button type="button" class="oe-pick is-odd" data-pick="odd"><span class="oe-pick-mine">내 선택</span>홀</button>
+              <button type="button" class="oe-pick is-even" data-pick="even"><span class="oe-pick-mine">내 선택</span>짝</button>
+            </div>
             <div class="game-result" id="game-result" role="status" aria-live="polite" hidden></div>
           </div>
         </div>
@@ -142,95 +160,65 @@
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
   //
-  // 가로 릴 룰렛: 결과는 서버(roulette 함수 → DB의 roulette_spin)가 정하고, 화면은 받은 결과 카드가
-  // 가운데 선에 멈추도록 옆으로 굴리는 연출만 함. 결과가 나오고 2초 뒤에 다시 돌릴 수 있음.
+  // 홀짝: 홀이나 짝을 누르는 순간 바로 한 판 시작. 카드(A=1 ~ 10)와 결과는 서버(odd-even 함수 → DB의
+  // odd_even_play)가 정하고, 화면은 카드가 섞였다가 뒤집히는 연출만 함. 카드 무늬(♠♥♦♣)는 보기용으로
+  // 화면에서 아무거나 고름(결과와 상관없음). 결과가 나오고 2초 뒤에 다시 할 수 있음.
   (function () {
     const MIN_BET = 100;
-    const TILE_W = 88;
-    const TILE_GAP = 8;
-    const STEP = TILE_W + TILE_GAP;
-    const SPIN_MS = matchMedia("(prefers-reduced-motion: reduce)").matches ? 1200 : 5200;
+    const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const SHUFFLE_MIN_MS = REDUCED_MOTION ? 250 : 950; // 섞는 연출 최소 시간(서버 응답이 빨라도 이만큼은 보여줌)
+    const FLIP_MS = REDUCED_MOTION ? 50 : 720;         // 카드 뒤집히는 시간(CSS .oe-flip transition과 맞춤)
     const AFTER_RESULT_WAIT_MS = 2000;
-    // 서버(roulette_spin)는 한 번 돌리고 5초 안에는 다시 못 돌리게 막음 — 화면 대기도 그보다 짧아지지 않게
-    // 맞춤(움직임 줄이기 설정이면 연출이 짧아서 2초만 기다리면 서버 쿨타임에 걸렸음).
-    const SERVER_COOLDOWN_MS = 5000;
+    // 서버(odd_even_play)는 한 판 하고 3초 안에는 다시 못 하게 막음 — 화면 대기도 그보다 짧아지지 않게 맞춤.
+    const SERVER_COOLDOWN_MS = 3000;
     const MAX_BET = 400000000; // 서버가 받는 최대(기술적 한계, 실제로 닿을 일 없음)
-    // 배율별 카드 색. 목록에 없는 배율이 테이블에 추가되면 5배 이상은 금색, 나머지는 회색.
-    const MULT_COLORS = { 0: "#e03141", 0.5: "#ff922b", 1: "#6b7480", 1.2: "#2fb574", 1.5: "#00a8e8", 2: "#8b5cf6", 3: "#ff6bb5", 5: "#f2c230" };
-    // 결과 말고 지나가는 카드들은 보기 좋게 섞기만 하는 용도(실제 확률 아님 — 실제 확률은 서버에만 있음).
-    const FILLER_WEIGHTS = { 0: 10, 0.5: 14, 1: 26, 1.2: 14, 1.5: 12, 2: 9, 3: 7, 5: 5 };
+    const PICK_KO = { odd: "홀", even: "짝" };
+    const RESULT_KO = { win: "맞힘", lose: "틀림" };
+    const RESULT_COLOR = { win: "#2fb574", lose: "#e03141" };
+    const SUITS = [["spade", false], ["heart", true], ["diamond", true], ["club", false]];
 
-    let state = null;          // GET 응답
-    let multipliers = [0, 0.5, 1, 1.2, 1.5, 2, 3, 5];
-    let tiles = [];            // 지금 릴에 깔린 배율들
-    let centerIdx = 0;         // 가운데 선에 있는 카드 번호
-    let centerJitter = 0;
-    let spinning = false;
-    let waitUntil = 0;         // 이 시각 전까지는 다시 못 돌림(결과 후 2초 / 서버 쿨타임)
+    let state = null;      // GET 응답
+    let playing = false;
+    let waitUntil = 0;     // 이 시각 전까지는 다시 못 함(결과 후 2초 / 서버 쿨타임)
     const timers = [];
     // 다른 페이지로 넘어가면 true — 요청/타이머가 끝난 뒤 이미 떠난 페이지(또는 다시 들어온 새 페이지)를
     // 건드리지 않게 막음.
     let disposed = false;
 
     const fmt = (n) => Number(n).toLocaleString("ko-KR");
-    const multLabel = (m) => `x${Number(m)}`;
-    const colorOf = (m) => MULT_COLORS[m] || (m >= 5 ? "#f2c230" : "#6b7480");
     const $ = (id) => document.getElementById(id);
     function later(fn, ms) { const t = setTimeout(() => { if (!disposed) fn(); }, ms); timers.push(t); return t; }
-
-    function fillerPick() {
-      const pool = multipliers.map((m) => [m, FILLER_WEIGHTS[m] ?? 8]);
-      let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0);
-      for (const [m, w] of pool) { r -= w; if (r < 0) return m; }
-      return pool[pool.length - 1][0];
-    }
-    function tileHtml(m) {
-      return `<div class="roulette-tile${m >= 5 ? " is-jackpot" : ""}" style="--c:${colorOf(m)}"><b>${multLabel(m)}</b></div>`;
-    }
-    function placeStrip(idx, jitter, animate) {
-      const strip = $("roulette-strip"), view = $("roulette-view");
-      if (!strip || !view) return;
-      const x = view.clientWidth / 2 - (idx * STEP + TILE_W / 2) + jitter;
-      strip.style.transition = animate ? `transform ${SPIN_MS}ms cubic-bezier(.08,.6,.1,1)` : "none";
-      strip.style.transform = `translateX(${x}px)`;
-    }
-    function renderTiles() { $("roulette-strip").innerHTML = tiles.map(tileHtml).join(""); }
-    function buildIdleStrip() {
-      tiles = Array.from({ length: 15 }, fillerPick);
-      centerIdx = 7;
-      centerJitter = 0;
-      renderTiles();
-      placeStrip(centerIdx, 0, false);
-    }
+    const sleep = (ms) => new Promise((resolve) => { const t = setTimeout(resolve, ms); timers.push(t); });
+    const pickButtons = () => Array.from(document.querySelectorAll(".oe-pick"));
+    const cardLabel = (n) => (n === 1 ? "A" : String(n));
+    const parityOf = (n) => (n % 2 === 1 ? "odd" : "even");
 
     // ── 걸 포인트 입력 ──
-    function betValue() { return parseInt(String($("roulette-bet-input").value).replace(/[^0-9]/g, ""), 10) || 0; }
-    function setBet(v) { $("roulette-bet-input").value = v > 0 ? fmt(v) : ""; validate(); }
+    function betValue() { return parseInt(String($("oe-bet-input").value).replace(/[^0-9]/g, ""), 10) || 0; }
+    function setBet(v) { $("oe-bet-input").value = v > 0 ? fmt(v) : ""; validate(); }
     function balance() { return state ? state.balance : 0; }
 
     function validate() {
-      const hint = $("game-hint"), btn = $("roulette-spin-btn"), input = $("roulette-bet-input");
-      if (!hint || !btn) return false;
+      const hint = $("game-hint"), input = $("oe-bet-input");
+      if (!hint || !input) return false;
       const v = betValue();
-      let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요`;
+      let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요 · 홀이나 짝을 누르면 바로 시작돼요`;
       let bad = false;
-      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 돌릴 수 있어요`; }
-      else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 돌릴 수 있어요`; }
+      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요`; }
+      else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 할 수 있어요`; }
       else if (v < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 걸어야 해요`; }
       else if (v > balance()) { bad = true; msg = "보유 포인트보다 많이 걸 수 없어요"; }
       else if (v > MAX_BET) { bad = true; msg = `한 번에 ${fmt(MAX_BET)}P까지 걸 수 있어요`; }
+      const waiting = Date.now() < waitUntil;
+      if (!bad && waiting && !playing) msg = "잠시 후 다시 할 수 있어요";
       hint.textContent = msg;
       hint.classList.toggle("is-bad", bad && !!state && state.eligible);
       input.classList.toggle("is-bad", bad && !!state && state.eligible && v > 0);
-      const waiting = Date.now() < waitUntil;
-      btn.disabled = bad || spinning || waiting;
-      if (!spinning && !waiting) btn.textContent = "돌리기";
+      pickButtons().forEach((b) => { b.disabled = bad || playing || waiting; });
       return !bad;
     }
 
-    function renderBalance() {
-      $("game-balance").textContent = fmt(balance());
-    }
+    function renderBalance() { $("game-balance").textContent = fmt(balance()); }
     function syncGlobalBalance(v) {
       // 모바일 상단바/더보기 시트의 포인트 표시도 같이 갱신(chzzk-auth.js가 캐시값을 씀).
       try { localStorage.setItem(BALANCE_CACHE_KEY, String(v)); } catch {}
@@ -255,26 +243,25 @@
       const cls = net > 0 ? "is-plus" : net < 0 ? "is-minus" : "is-even";
       const sign = net > 0 ? "+" : net === 0 ? "±" : "";
       return `<li>
-        <span class="game-recent-mult" style="--c:${colorOf(r.multiplier)}">${multLabel(r.multiplier)}</span>
-        <span class="game-recent-bet">${fmt(r.bet)}P</span>
+        <span class="game-recent-mult" style="--c:${RESULT_COLOR[r.result] || "#6b7480"}">${RESULT_KO[r.result] || "-"}</span>
+        <span class="game-recent-bet">${fmt(r.bet)}P · ${PICK_KO[r.pick] || "-"} 선택 · 카드 ${cardLabel(r.card)}(${PICK_KO[parityOf(r.card)]})</span>
         <span class="game-recent-time muted">${timeLabel(r.createdAt)}</span>
         <span class="game-recent-net ${cls}">${sign}${fmt(net)}P</span>
       </li>`;
     }
     function renderRecent() {
-      const el = $("game-recent");
-      el.innerHTML = state.recent.length
+      $("game-recent").innerHTML = state.recent.length
         ? state.recent.map(recentItemHtml).join("")
-        : `<li class="game-recent-empty muted">아직 돌린 기록이 없어요.</li>`;
+        : `<li class="game-recent-empty muted">아직 한 판도 안 했어요.</li>`;
     }
 
-    function showResult(res, bet) {
+    function showResult(res, bet, pick) {
       const el = $("game-result");
-      const cls = res.net > 0 ? "is-plus" : res.net < 0 ? "is-minus" : "is-even";
-      const sign = res.net > 0 ? "+" : res.net === 0 ? "±" : "";
-      el.className = `game-result ${cls}${res.multiplier >= 5 ? " is-jackpot" : ""}`;
-      el.style.setProperty("--c", colorOf(res.multiplier));
-      el.innerHTML = `<strong>${multLabel(res.multiplier)} · ${sign}${fmt(res.net)}P</strong><span class="muted">${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
+      const cls = res.net > 0 ? "is-plus" : "is-minus";
+      const sign = res.net > 0 ? "+" : "";
+      el.className = `game-result ${cls}`;
+      el.style.setProperty("--c", RESULT_COLOR[res.result]);
+      el.innerHTML = `<strong>${RESULT_KO[res.result]} · ${sign}${fmt(res.net)}P</strong><span class="muted">${PICK_KO[pick]} 선택 · 카드 ${cardLabel(res.card)} · ${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
       el.hidden = false;
     }
     function showError(msg) {
@@ -285,37 +272,71 @@
       el.hidden = false;
     }
 
-    function startWait(ms) {
-      waitUntil = Date.now() + ms;
-      const btn = $("roulette-spin-btn");
-      if (btn) { btn.disabled = true; btn.textContent = "잠시만요…"; }
-      later(() => validate(), ms + 30);
+    // ── 카드 연출 ──
+    function renderFront(card) {
+      const [suit, red] = SUITS[Math.floor(Math.random() * SUITS.length)];
+      const label = cardLabel(card);
+      const icon = `<svg aria-hidden="true"><use href="#oe-s-${suit}"/></svg>`;
+      const front = $("oe-front");
+      front.className = `oe-side oe-front${red ? " is-red" : ""}`;
+      front.innerHTML = `<span class="oe-corner is-tl">${label}${icon}</span><span class="oe-num">${label}</span>${icon}<span class="oe-corner is-br">${label}${icon}</span>`;
+    }
+    async function closeCard() {
+      const flip = $("oe-flip");
+      if (!flip || !flip.classList.contains("is-open")) return;
+      flip.classList.add("is-quick");
+      flip.classList.remove("is-open");
+      await sleep(REDUCED_MOTION ? 30 : 260);
+      $("oe-flip")?.classList.remove("is-quick");
+    }
+    function clearMarks() {
+      pickButtons().forEach((b) => b.classList.remove("is-chosen", "is-hit"));
+      const reveal = $("oe-reveal");
+      if (reveal) reveal.innerHTML = "";
     }
 
-    async function spin() {
-      if (spinning || Date.now() < waitUntil || !validate()) return;
+    function startWait(ms) {
+      waitUntil = Date.now() + ms;
+      validate();
+      later(() => {
+        validate();
+        pickButtons().forEach((b) => b.classList.remove("is-chosen"));
+      }, ms + 30);
+    }
+
+    async function play(pick) {
+      if (playing || Date.now() < waitUntil || !validate()) return;
       const bet = betValue();
-      const requestedAt = Date.now();
-      spinning = true;
-      const btn = $("roulette-spin-btn");
-      btn.disabled = true;
-      btn.textContent = "돌아가는 중…";
+      playing = true;
+      validate();
+      clearMarks();
+      pickButtons().forEach((b) => b.classList.toggle("is-chosen", b.dataset.pick === pick));
       $("game-result").hidden = true;
+      await closeCard();
+      if (disposed) return;
+      // 서버 응답을 기다리는 동안 카드를 계속 섞음(최소 SHUFFLE_MIN_MS는 보여줌).
+      $("oe-deck").classList.add("is-shuffling");
+      const started = Date.now(); // 요청 보낸 시각(섞기 최소 시간 + 서버 쿨타임 계산에 씀)
 
       let res, data;
       try {
-        res = await authFetch(ROULETTE_URL, { method: "POST", body: JSON.stringify({ bet }) });
+        res = await authFetch(ODD_EVEN_URL, { method: "POST", body: JSON.stringify({ bet, pick }) });
         data = await res.json().catch(() => ({}));
       } catch (err) {
-        console.error("[roulette] 요청 실패", err);
+        console.error("[odd-even] 요청 실패", err);
         data = { error: "network" };
         res = { ok: false };
       }
-      if (disposed || !$("roulette-strip")) return; // 그 사이 다른 페이지로 이동함
+      const remain = SHUFFLE_MIN_MS - (Date.now() - started);
+      if (remain > 0) await sleep(remain);
+      if (disposed || !$("oe-deck")) return; // 그 사이 다른 페이지로 이동함
+      $("oe-deck").classList.remove("is-shuffling");
+
       if (!res.ok) {
-        spinning = false;
+        playing = false;
+        pickButtons().forEach((b) => b.classList.remove("is-chosen"));
         if (data.error === "cooldown") {
-          showError(`너무 빨라요. ${data.retryAfterSeconds || 1}초 뒤에 다시 돌려주세요.`);
+          showError(`너무 빨라요. ${data.retryAfterSeconds || 1}초 뒤에 다시 해주세요.`);
           startWait((data.retryAfterSeconds || 1) * 1000);
         } else if (data.error === "insufficient_balance") {
           showError("포인트가 부족해요.");
@@ -329,45 +350,31 @@
         } else if (data.error === "invalid_bet") {
           showError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
         } else if (data.error !== "banned" && res.status !== 401) {
-          showError("룰렛을 돌리지 못했어요. 다시 시도해주세요.");
+          showError("홀짝을 하지 못했어요. 다시 시도해주세요.");
         }
         validate();
         return;
       }
 
-      // 지금 보이는 카드들을 앞에 그대로 두고 뒤에 새 카드를 이어 붙인 뒤, 결과 카드까지 굴림
-      // (처음부터 새로 깔면 돌리는 순간 화면이 휙 바뀌어서 어색함).
-      const keepFrom = Math.max(0, centerIdx - 5);
-      const kept = tiles.slice(keepFrom, centerIdx + 6);
-      const startIdx = centerIdx - keepFrom;
-      const targetIdx = startIdx + 40 + Math.floor(Math.random() * 6);
-      tiles = kept.slice();
-      while (tiles.length < targetIdx + 6) tiles.push(fillerPick());
-      tiles[targetIdx] = data.multiplier;
-      renderTiles();
-      placeStrip(startIdx, centerJitter, false);
-      void $("roulette-strip").offsetWidth;
-      const jitter = Math.round((Math.random() - 0.5) * (TILE_W - 20));
-      placeStrip(targetIdx, jitter, true);
-      centerIdx = targetIdx;
-      centerJitter = jitter;
+      renderFront(data.card);
+      $("oe-flip").classList.add("is-open");
+      await sleep(FLIP_MS);
+      if (disposed || !$("oe-flip")) return;
 
-      later(() => {
-        const strip = $("roulette-strip");
-        if (!strip) return;
-        strip.children[targetIdx]?.classList.add("is-hit");
-        state.balance = data.balance;
-        if (data.balance > state.maxBalanceReached) state.maxBalanceReached = data.balance;
-        state.recent.unshift({ bet, multiplier: data.multiplier, payout: data.payout, createdAt: new Date().toISOString() });
-        state.recent = state.recent.slice(0, 10);
-        renderBalance();
-        renderRecent();
-        syncGlobalBalance(data.balance);
-        showResult(data, bet);
-        spinning = false;
-        if (betValue() > balance()) setBet(Math.max(MIN_BET, Math.min(betValue(), balance())));
-        startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - requestedAt)));
-      }, SPIN_MS + 80);
+      const parity = parityOf(data.card);
+      $("oe-reveal").innerHTML = `${cardLabel(data.card)} → <span class="is-${parity}">${PICK_KO[parity]}</span>`;
+      pickButtons().forEach((b) => b.classList.toggle("is-hit", b.dataset.pick === parity));
+      state.balance = data.balance;
+      if (data.balance > state.maxBalanceReached) state.maxBalanceReached = data.balance;
+      state.recent.unshift({ bet, pick, card: data.card, result: data.result, payout: data.payout, createdAt: new Date().toISOString() });
+      state.recent = state.recent.slice(0, 10);
+      renderBalance();
+      renderRecent();
+      syncGlobalBalance(data.balance);
+      showResult(data, bet, pick);
+      playing = false;
+      if (betValue() > balance()) setBet(Math.max(MIN_BET, Math.min(betValue(), balance())));
+      startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)));
     }
 
     // 에러 후 상태를 다시 받아올 때 — 이것까지 실패해도(네트워크 등) 버튼이 잠긴 채로 남지 않게 항상 다시 검사함.
@@ -382,11 +389,11 @@
     }
 
     async function loadState() {
-      const res = await authFetch(ROULETTE_URL);
+      const res = await authFetch(ODD_EVEN_URL);
       if (!res.ok) return false;
       state = await res.json();
       if (!Array.isArray(state.recent)) state.recent = [];
-      if (Array.isArray(state.multipliers) && state.multipliers.length) multipliers = state.multipliers;
+      if (state.winMultiplier) $("oe-rule").textContent = `A~10 카드 한 장 · 맞히면 ${state.winMultiplier}배 · 틀리면 0`;
       renderBalance();
       renderLock();
       renderRecent();
@@ -396,7 +403,7 @@
       return true;
     }
 
-    $("roulette-bet-input").addEventListener("input", () => { const v = betValue(); $("roulette-bet-input").value = v ? fmt(v) : ""; validate(); });
+    $("oe-bet-input").addEventListener("input", () => { const v = betValue(); $("oe-bet-input").value = v ? fmt(v) : ""; validate(); });
     document.querySelectorAll(".game-chip").forEach((chip) => chip.addEventListener("click", () => {
       let v = betValue();
       if (chip.dataset.add) v += Number(chip.dataset.add);
@@ -405,15 +412,11 @@
       else v = MIN_BET;
       setBet(v);
     }));
-    $("roulette-spin-btn").addEventListener("click", spin);
-    $("roulette-bet-input").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); spin(); } });
+    pickButtons().forEach((btn) => btn.addEventListener("click", () => play(btn.dataset.pick)));
 
-    const onResize = () => { if (!spinning) placeStrip(centerIdx, centerJitter, false); };
-    window.addEventListener("resize", onResize);
     window.__pageCleanup = () => {
       disposed = true;
-      window.removeEventListener("resize", onResize);
-      timers.forEach(clearTimeout);
+      timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
     };
 
     renderSidebarUser();
@@ -428,14 +431,13 @@
         $("logged-out").hidden = false;
         return;
       }
-      const ok = await loadState().catch((err) => { console.error("[roulette] 상태 조회 실패", err); return false; });
+      const ok = await loadState().catch((err) => { console.error("[odd-even] 상태 조회 실패", err); return false; });
       $("loading-state").hidden = true;
       if (!ok) {
         $("logged-out").hidden = false;
         return;
       }
       $("logged-in").hidden = false;
-      buildIdleStrip();
       validate();
     })();
   })();
