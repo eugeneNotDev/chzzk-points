@@ -1,3 +1,10 @@
+// http로 들어오면 https로 바로 넘김 — GitHub Pages의 "HTTPS 강제 적용"이 켜지기 전엔 예전 주소
+// (eugenenotdev.github.io)에서 넘어온 방문자가 http://eugene4lpha.com 으로 떨어지는데, 서버(Supabase)는
+// https 주소에서 온 요청만 받고 치지직 로그인도 https 주소로만 돌아와서 http에선 아무것도 안 됨.
+if (location.protocol === "http:" && /(^|\.)eugene4lpha\.com$/.test(location.hostname)) {
+  location.replace("https://eugene4lpha.com" + location.pathname + location.search + location.hash);
+}
+
 // 치지직 로그인 흐름 + 세션 토큰 관리.
 // index.html, mypage.html, ranking.html, shop.html이 전부 이 파일을 <script>로 불러와 씀.
 //
