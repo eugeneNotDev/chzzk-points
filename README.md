@@ -110,4 +110,4 @@ Edge Function 환경변수(Supabase 대시보드에서 등록):
 
 ## 아이콘 출처
 
-칭호 아이콘은 무료 라이선스 아이콘을 씀: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0, Lorc·Delapouite 외), [EmojiOne 흑백](https://github.com/EmojiTwo/emojitwo) (CC BY 4.0, 늑대 얼굴). 어떤 아이콘이 어디 건지는 `docs/assets/js/chzzk-auth.js`의 `TITLE_ICONS` 위 주석 참고.
+칭호 아이콘은 무료 라이선스 아이콘을 씀: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0, Lorc·Delapouite 외). 어떤 아이콘이 어디 건지는 `docs/assets/js/chzzk-auth.js`의 `TITLE_ICONS` 위 주석 참고.

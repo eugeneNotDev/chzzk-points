@@ -12,7 +12,8 @@
 //    titles.min_points는 절대 못 찍을 만큼 큰 값(PURCHASE_ONLY_MIN_POINTS)을 넣어서 포인트
 //    달성으로는 잠금해제가 안 되고 오직 구매(user_purchased_titles)로만 풀리게 만듦.
 //
-// GET                                    → 전체 상품 목록 (판매 중지 포함, 등록한 순서대로).
+// GET                                    → 전체 상품 목록 (판매 중지 포함, 관리자가 정한 순서대로 —
+//                                           sort_order 오름차순, 같으면 등록 순서).
 //                                           칭호 상품이면 연결된 titles의 name/color도 함께 embed해서
 //                                           내려줌(수정 모달에서 현재 칭호명/색을 바로 채워주려고 —
 //                                           grants_title_id → titles(id) FK 관계로 자동 조인됨).
@@ -26,6 +27,7 @@
 //                                        → 새 상품 추가 (id는 소문자-하이픈 슬러그, 이후 수정 불가)
 //   stockLimit: 한정 수량(양의 정수). 생략/null이면 무제한. 다 팔리면(sold_count가 이 값에
 //   도달) 상품이 지워지지 않고 "품절" 상태로만 표시됨(spend-points가 검사).
+//   새 상품은 맨 뒤 순서로 들어감(sortOrder를 따로 보내면 그 값).
 //   isTitleItem: true면 titleName(필수, 지급할 칭호 문구)으로 titles 테이블에 전용 칭호를
 //   새로 만들고 이 상품에 연결함(칭호 id = 상품 id). false/생략이면 그냥 소모성 상품이고
 //   requiresLive/cooldownSeconds가 그대로 적용됨(칭호 상품은 둘 다 항상 false/0으로 저장됨 —
@@ -39,6 +41,10 @@
 //   titleName/titleColor: 이 상품이 칭호 상품(연결된 titles row가 있음)일 때만 유효 — 연결된
 //   titles.name/color를 갱신함. 칭호 상품이 아닌데 보내면 not_title_item으로 거부.
 //   isActive=false가 "판매 중지" — 상점에서만 사라지고, 이미 산 유저는 칭호를 계속 가짐.
+// PATCH  ?action=reorder  { ids: string[] } → 한 탭(일반/칭호)의 상품 순서 저장 → { ok }
+//   ids는 그 탭 상품 id 전부(판매 중지 포함)를 원하는 순서대로. 400 invalid_order(형식이 틀리거나 다른 탭
+//   상품이 섞임) / 409 stale_order(그 사이 상품이 추가/삭제됨 — 새로고침 후 다시). DB 함수
+//   reorder_shop_items()가 한 번에 처리함(0038_shop_item_order.sql).
 // DELETE ?id=<item id>                   → 상품 완전 삭제 → { ok, revokedOwners }
 //                                           칭호 상품이면 연결된 칭호(titles row)도 같이 지움 —
 //                                           그 칭호를 가진 유저 전원에게서 회수되고(보유 기록은
@@ -106,16 +112,16 @@ Deno.serve(async (req: Request) => {
     const admin = getAdminClient();
 
     if (req.method === "GET") {
-      // 정렬은 등록한 순서(먼저 추가한 게 앞, 새로 추가한 게 뒤) — 원래 가격 오름차순이었는데
-      // 가격이 같은 상품이 많으면 id 알파벳순으로 섞여 보여서, 추가한 순서 그대로 보이게 바꿈.
-      // sort_order 컬럼 자체는 남겨뒀지만(0010_shop_items.sql) 안 씀.
+      // 정렬은 관리자가 상점 페이지에서 드래그로 정한 순서(sort_order), 같으면 등록 순서.
+      // 일반 유저 화면(shop.html이 anon으로 직접 조회)도 같은 기준으로 정렬함.
       // titles(name, color): grants_title_id가 있으면 연결된 칭호 이름/색을 같이 내려줘서, 수정
       // 모달을 열 때 바로 채워줄 수 있게 함(FK 관계라 PostgREST가 자동으로 조인해줌).
       const { data, error } = await admin
         .from("shop_items")
         .select(
-          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count, created_at, titles(name, color)",
+          "id, name, cost, description, requires_live, is_active, cooldown_seconds, grants_title_id, show_on_overlay, stock_limit, sold_count, sort_order, created_at, titles(name, color)",
         )
+        .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
       if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
@@ -143,7 +149,7 @@ Deno.serve(async (req: Request) => {
       const name = typeof body.name === "string" ? body.name.trim() : "";
       const cost = Number(body.cost);
       const description = typeof body.description === "string" ? body.description.trim() : "";
-      const sortOrder = Number.isFinite(Number(body.sortOrder)) ? Math.trunc(Number(body.sortOrder)) : 0;
+      const sortOrderInput = body.sortOrder === undefined || body.sortOrder === null ? Number.NaN : Number(body.sortOrder);
       const showOnOverlay = body.showOnOverlay === undefined ? true : body.showOnOverlay === true;
       const isTitleItem = body.isTitleItem === true;
       const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
@@ -175,6 +181,21 @@ Deno.serve(async (req: Request) => {
       if (isTitleItem && titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
       if (isTitleItem && (typeof titleColor !== "string" || !COLOR_PATTERN.test(titleColor))) {
         return jsonResponse({ error: "invalid_title_color" }, 400);
+      }
+
+      // 새 상품은 맨 뒤로 — 지금 제일 큰 순서 번호 + 1 (두 탭 통틀어 최댓값이라 어느 탭이든 맨 뒤가 됨).
+      let sortOrder: number;
+      if (Number.isFinite(sortOrderInput)) {
+        sortOrder = Math.trunc(sortOrderInput);
+      } else {
+        const { data: maxItemRow, error: maxItemError } = await admin
+          .from("shop_items")
+          .select("sort_order")
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (maxItemError) throw new Error(`shop_items 순서 조회 실패: ${maxItemError.message}`);
+        sortOrder = (maxItemRow?.sort_order ?? 0) + 1;
       }
 
       // 칭호 상품이면 상품 row보다 먼저 전용 칭호를 titles 테이블에 만듦 — id를 상품 id와
@@ -232,6 +253,22 @@ Deno.serve(async (req: Request) => {
         throw new Error(`shop_items insert 실패: ${error.message}`);
       }
       return jsonResponse(data, 200);
+    }
+
+    if (req.method === "PATCH" && url.searchParams.get("action") === "reorder") {
+      const body = await req.json().catch(() => ({}));
+      const ids = Array.isArray(body.ids) ? body.ids : null;
+      if (!ids || ids.length === 0 || ids.length > 500 || !ids.every((x: unknown) => typeof x === "string" && ID_PATTERN.test(x))) {
+        return jsonResponse({ error: "invalid_order" }, 400);
+      }
+      const { error } = await admin.rpc("reorder_shop_items", { p_ids: ids });
+      if (error) {
+        const msg = error.message || "";
+        if (msg.includes("stale_order")) return jsonResponse({ error: "stale_order" }, 409);
+        if (msg.includes("invalid_order")) return jsonResponse({ error: "invalid_order" }, 400);
+        throw new Error(`reorder_shop_items 실패: ${msg}`);
+      }
+      return jsonResponse({ ok: true }, 200);
     }
 
     if (req.method === "PATCH") {

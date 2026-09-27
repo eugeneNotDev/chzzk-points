@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>포인트 상점 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=63">
+<link rel="stylesheet" href="assets/css/style.css?v=64">
 </head>
 <body>
   <script>
@@ -104,6 +104,12 @@
         <div id="general-shop-section">
           <div class="shop-section-toolbar" id="shop-item-toolbar" hidden>
             <button type="button" class="secondary" id="shop-item-add-btn">+ 상품 추가</button>
+            <button type="button" class="secondary shop-reorder-btn" data-reorder-start="general">순서 변경</button>
+            <div class="shop-reorder-bar" data-reorder-bar="general" hidden>
+              <span class="shop-reorder-hint"><span class="hint-fine">카드를 끌어서 원하는 자리에 놓아주세요.</span><span class="hint-coarse">카드 오른쪽 위 손잡이를 잡고 끌어서 옮겨주세요.</span></span>
+              <button type="button" data-reorder-save="general">완료</button>
+              <button type="button" class="secondary" data-reorder-cancel="general">취소</button>
+            </div>
           </div>
           <div class="shop-grid" id="shop-list"></div>
           <p id="shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
@@ -121,6 +127,12 @@
         <div id="title-shop-section" hidden>
           <div class="shop-section-toolbar" id="title-item-toolbar" hidden>
             <button type="button" class="secondary" id="title-item-add-btn">+ 칭호 상품 추가</button>
+            <button type="button" class="secondary shop-reorder-btn" data-reorder-start="title">순서 변경</button>
+            <div class="shop-reorder-bar" data-reorder-bar="title" hidden>
+              <span class="shop-reorder-hint"><span class="hint-fine">카드를 끌어서 원하는 자리에 놓아주세요.</span><span class="hint-coarse">카드 오른쪽 위 손잡이를 잡고 끌어서 옮겨주세요.</span></span>
+              <button type="button" data-reorder-save="title">완료</button>
+              <button type="button" class="secondary" data-reorder-cancel="title">취소</button>
+            </div>
           </div>
           <div class="shop-grid" id="title-shop-list"></div>
           <p id="title-shop-list-empty" class="empty-state" hidden>상품 준비 중입니다.</p>
@@ -131,6 +143,8 @@
         </div>
 
         <p id="global-status" class="status-msg"></p>
+        <!-- 순서 변경을 키보드(손잡이에서 방향키)로 할 때 화면 읽기 프로그램에 "N번째로 옮김"을 알려주는 칸. -->
+        <p id="shop-reorder-live" class="sr-only" aria-live="polite"></p>
       </div>
 
       <!-- 상품 추가/수정 모달 (관리자 전용 — notice-modal 재사용). id는 추가할 때만 정할 수 있고
@@ -208,7 +222,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=27"></script>
+  <script src="assets/js/chzzk-auth.js?v=28"></script>
   <script src="assets/js/spa-router.js?v=10"></script>
   <script>
   // spa-router.js가 페이지 이동마다 이 스크립트를 다시 실행하므로 IIFE로 감쌈
@@ -233,7 +247,8 @@
     // 상품 카드 하나의 HTML 렌더링. 일반 상품/칭호 구매 상품을 같은 함수로 그림 — 칭호 상품은
     // grants_title_id가 있고, 이미 산 칭호면(purchasedTitleIds) "보유중"으로 표시하고
     // 버튼을 막음(소모성 상품과 달리 쿨타임이 아니라 "이미 있음" 상태라 영구적으로 막힘).
-    function renderItemCard(item, admin, now) {
+    // reordering: 관리자가 "순서 변경" 중인 섹션의 카드 — 사용/수정 버튼 대신 끌기 손잡이만 보여줌.
+    function renderItemCard(item, admin, now, reordering = false) {
       const isTitleItem = Boolean(item.grants_title_id);
       const owned = isTitleItem && purchasedTitleIds.has(item.grants_title_id);
       const liveBlocked = item.requires_live && !isLive;
@@ -262,7 +277,7 @@
       // 배지가 있을 때 margin-right:auto로 버튼을 오른쪽에 밀어붙이던 걸 없애고 항상 가운데로 통일.
       // 관리자 버튼: 수정 / 판매 중지(또는 다시 판매) / 삭제. 판매 중지는 상점에서만 내리는 것(산
       // 사람은 칭호 유지), 삭제는 완전히 지우는 것(칭호 상품이면 보유자한테서도 회수).
-      const adminBar = admin ? `
+      const adminBar = admin && !reordering ? `
         <div class="shop-item-admin-bar">
           ${inactive ? '<span class="shop-item-inactive-badge">판매 중지</span>' : ""}
           <div class="shop-item-admin-buttons">
@@ -281,15 +296,22 @@
       const stockNote = stockLimit != null
         ? `<p class="muted stock-note">${soldOut ? "품절되었어요" : `한정 ${stockRemaining.toLocaleString("ko-KR")}개 남음`}</p>`
         : "";
+      const dragHandle = reordering
+        ? `<button type="button" class="shop-item-drag-handle" aria-label="${escapeHtml(item.name)} 순서 옮기기 (방향키로 앞뒤 이동)" title="끌어서 옮기기"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></button>`
+        : "";
+      const useButton = reordering
+        ? ""
+        : `<button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>`;
       return `
-        <div class="card shop-item${isTitleItem ? " title-item" : ""}${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}">
+        <div class="card shop-item${isTitleItem ? " title-item" : ""}${inactive ? " inactive" : ""}${owned ? " owned" : ""}${soldOut ? " sold-out" : ""}${reordering ? " reorder-card" : ""}" data-item-id="${escapeHtml(item.id)}">
+          ${dragHandle}
           <h3>${escapeHtml(item.name)}</h3>
           ${titlePreview}
           <p class="desc">${escapeHtml(item.description || "")}</p>
           <p class="cost">${item.cost.toLocaleString("ko-KR")}P${item.requires_live ? ' <span class="muted">(방송 중에만)</span>' : ""}</p>
           ${stockNote}
           ${ownerNote}
-          <button class="shop-item-use-btn" data-item-id="${escapeHtml(item.id)}" ${usable ? "" : "disabled"}>${label}</button>
+          ${useButton}
           ${adminBar}
         </div>`;
     }
@@ -314,19 +336,24 @@
     // 일반 상품(shop-list)과 칭호 구매 상품(title-shop-list)을 grants_title_id 유무로 갈라서
     // 각각 다른 그리드에 그림. 관리자 화면에서는 판매 중지된 상품도 같이 받아오는데, 판매 중인
     // 상품과 섞으면 상점이 난잡해져서 각 섹션 맨 아래 "판매 중지된 상품 N개" 접힘 영역에 따로 모음.
-    function renderSection({ items, admin, now, listId, emptyId, groupId, summaryId, inactiveListId }) {
+    function renderSection({ key, items, admin, now, listId, emptyId, groupId, summaryId, inactiveListId }) {
       const listEl = document.getElementById(listId);
       const emptyEl = document.getElementById(emptyId);
       const groupEl = document.getElementById(groupId);
       const inactiveListEl = document.getElementById(inactiveListId);
-      const activeItems = items.filter((item) => item.is_active !== false);
+      let activeItems = items.filter((item) => item.is_active !== false);
       const inactiveItems = admin ? items.filter((item) => item.is_active === false) : [];
+      const reordering = admin && reorderIds[key] != null;
+      if (reordering) activeItems = applyDraftOrder(activeItems, reorderIds[key]);
 
-      listEl.innerHTML = activeItems.map((item) => renderItemCard(item, admin, now)).join("");
+      listEl.innerHTML = activeItems.map((item) => renderItemCard(item, admin, now, reordering)).join("");
+      listEl.classList.toggle("reordering", reordering);
       // 섹션 자체는 항상 띄워두고(사이드바 링크가 가리킬 대상이 항상 있어야 하니까), 판매 중인
       // 상품이 하나도 없을 때만 그리드 대신 "상품 준비 중입니다." 안내를 보여줌.
       emptyEl.hidden = activeItems.length > 0;
-      wireCardButtons(listEl, admin);
+      if (reordering) wireReorderCards(listEl, key);
+      else wireCardButtons(listEl, admin);
+      if (admin) updateReorderToolbar(key, activeItems.length);
 
       groupEl.hidden = inactiveItems.length === 0;
       document.getElementById(summaryId).textContent = `판매 중지된 상품 ${inactiveItems.length}개`;
@@ -335,19 +362,317 @@
     }
 
     function renderShop() {
+      // 끄는 도중에 다시 그리면(쿨타임 카운트다운 등) 잡고 있던 카드가 사라지니, 놓은 뒤로 미룸.
+      if (dragState) {
+        renderQueued = true;
+        return;
+      }
       const now = Date.now();
       const admin = isAdmin();
       renderSection({
+        key: "general",
         items: shopItems.filter((item) => !item.grants_title_id),
         admin, now,
         listId: "shop-list", emptyId: "shop-list-empty",
         groupId: "shop-inactive-group", summaryId: "shop-inactive-summary", inactiveListId: "shop-inactive-list",
       });
       renderSection({
+        key: "title",
         items: shopItems.filter((item) => item.grants_title_id),
         admin, now,
         listId: "title-shop-list", emptyId: "title-shop-list-empty",
         groupId: "title-inactive-group", summaryId: "title-inactive-summary", inactiveListId: "title-inactive-list",
+      });
+    }
+
+    // ── 상품 순서 변경(관리자) ────────────────────────────────────────────────
+    // "순서 변경"을 누르면 그 섹션(일반/칭호)의 판매 중인 상품 카드를 끌어서 옮길 수 있음.
+    // 끄는 동안 다른 카드들이 밀려나며 자리를 보여주고, "완료"를 누르면 서버에 한 번에 저장
+    // (shop-items PATCH ?action=reorder), "취소"면 원래대로. PC는 카드 아무 데나, 폰(터치)은 화면
+    // 스크롤과 겹치지 않게 카드 오른쪽 위 손잡이로만 끌 수 있음. 손잡이에서 방향키로도 옮길 수 있음.
+    // reorderIds[key]: 순서 변경 중인 섹션의 판매 중 상품 id 목록(지금 화면 순서). null이면 평소 화면.
+    const reorderIds = { general: null, title: null };
+    let dragState = null;
+    let renderQueued = false;
+    const DRAG_THRESHOLD_PX = 5;
+    const AUTO_SCROLL_EDGE_PX = 80;
+    const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    function applyDraftOrder(items, ids) {
+      const rank = new Map(ids.map((id, i) => [id, i]));
+      // 순서 변경 중에 목록이 새로 불러와져서 모르는 상품이 생기면 맨 뒤에 붙임.
+      return [...items].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
+    }
+
+    function reorderToolbarEls(key) {
+      return {
+        startBtn: document.querySelector(`[data-reorder-start="${key}"]`),
+        bar: document.querySelector(`[data-reorder-bar="${key}"]`),
+        addBtn: document.getElementById(key === "title" ? "title-item-add-btn" : "shop-item-add-btn"),
+        section: document.getElementById(key === "title" ? "title-shop-section" : "general-shop-section"),
+      };
+    }
+
+    function updateReorderToolbar(key, activeCount) {
+      const { startBtn, bar, addBtn, section } = reorderToolbarEls(key);
+      const on = reorderIds[key] != null;
+      if (!startBtn) return;
+      startBtn.hidden = on;
+      addBtn.hidden = on;
+      bar.hidden = !on;
+      section.classList.toggle("shop-reordering", on);
+      startBtn.disabled = activeCount < 2;
+      startBtn.title = activeCount < 2 ? "판매 중인 상품이 2개 이상일 때 쓸 수 있어요" : "";
+    }
+
+    function activeItemsOf(key) {
+      return shopItems.filter((item) => Boolean(item.grants_title_id) === (key === "title") && item.is_active !== false);
+    }
+
+    function startReorder(key) {
+      reorderIds[key] = activeItemsOf(key).map((item) => item.id);
+      const statusEl = document.getElementById("global-status");
+      statusEl.textContent = "";
+      statusEl.className = "status-msg";
+      renderShop();
+    }
+
+    function stopReorder(key) {
+      reorderIds[key] = null;
+      renderShop();
+    }
+
+    function readDomOrder(listEl) {
+      return [...listEl.querySelectorAll(".reorder-card")].map((el) => el.dataset.itemId);
+    }
+
+    async function saveReorder(key) {
+      const statusEl = document.getElementById("global-status");
+      const { bar } = reorderToolbarEls(key);
+      const draft = reorderIds[key] ?? [];
+      const original = activeItemsOf(key).map((item) => item.id);
+      if (draft.join("\n") === original.join("\n")) {
+        stopReorder(key);
+        return;
+      }
+      // 서버에는 그 탭 상품 전부를 보냄 — 판매 중인 건 새 순서, 판매 중지된 건 지금 순서 그대로 그 뒤에.
+      const inactiveIds = shopItems
+        .filter((item) => Boolean(item.grants_title_id) === (key === "title") && item.is_active === false)
+        .map((item) => item.id);
+      const ids = [...draft, ...inactiveIds];
+      bar.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      statusEl.className = "status-msg";
+      statusEl.textContent = "순서 저장 중...";
+      try {
+        const res = await authFetch(`${SHOP_ITEMS_URL}?action=reorder`, { method: "PATCH", body: JSON.stringify({ ids }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (data.error === "stale_order" || data.error === "invalid_order") {
+            // 그 사이 상품이 추가/삭제됐거나 목록이 어긋남 — 최신 목록으로 다시 그리고 다시 하게 함.
+            await loadShopItems();
+            reorderIds[key] = null;
+            renderShop();
+            statusEl.className = "status-msg error";
+            statusEl.textContent = "그 사이 상품 목록이 바뀌어서 저장하지 못했어요. 다시 순서를 바꿔주세요.";
+            return;
+          }
+          throw new Error(String(res.status));
+        }
+        await loadShopItems();
+        reorderIds[key] = null;
+        renderShop();
+        statusEl.className = "status-msg ok";
+        statusEl.textContent = "상품 순서를 저장했어요.";
+      } catch (err) {
+        console.error("[shop] 순서 저장 실패", err);
+        statusEl.className = "status-msg error";
+        statusEl.textContent = "순서를 저장하지 못했어요. 다시 시도해주세요.";
+      } finally {
+        bar.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+      }
+    }
+
+    // 카드를 before 앞으로 옮기면서(null이면 맨 뒤) 나머지 카드들이 원래 자리에서 새 자리로
+    // 부드럽게 미끄러지게 함(FLIP: 옮기기 전 위치 기억 → 옮기고 → 차이만큼 되돌렸다가 0으로).
+    function moveCardWithAnimation(listEl, card, before) {
+      const cards = [...listEl.querySelectorAll(".reorder-card")];
+      const firstRects = new Map(cards.map((el) => [el, el.getBoundingClientRect()]));
+      cards.forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+      listEl.insertBefore(card, before);
+      if (prefersReducedMotion()) return;
+      cards.forEach((el) => {
+        if (el === card) return;
+        const a = firstRects.get(el);
+        const b = el.getBoundingClientRect();
+        const dx = a.left - b.left;
+        const dy = a.top - b.top;
+        if (dx || dy) {
+          el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 180, easing: "ease-out" });
+        }
+      });
+    }
+
+    // 포인터 위치(화면 좌표)에 맞춰 잡은 카드가 들어갈 자리를 정함. 다른 카드들을 읽는 순서(줄 → 왼쪽부터)로
+    // 보면서 "포인터가 이 카드보다 앞"인 첫 카드 앞에 넣음. 애니메이션 중인 카드의 겉보기 위치 대신
+    // 실제 배치 위치(offsetLeft/Top)로 판단해서 옮기는 도중에 자리가 왔다 갔다 하지 않게 함.
+    function updateDropTarget(x, y) {
+      const { card, listEl } = dragState;
+      const listRect = listEl.getBoundingClientRect();
+      const px = x - listRect.left;
+      const py = y - listRect.top;
+      const others = [...listEl.querySelectorAll(".reorder-card")].filter((el) => el !== card);
+      let before = null;
+      for (const el of others) {
+        const top = el.offsetTop;
+        const bottom = top + el.offsetHeight;
+        if (py < top || (py <= bottom && px < el.offsetLeft + el.offsetWidth / 2)) {
+          before = el;
+          break;
+        }
+      }
+      let currentNext = card.nextElementSibling;
+      while (currentNext && !currentNext.classList.contains("reorder-card")) currentNext = currentNext.nextElementSibling;
+      if (before === currentNext) return;
+      moveCardWithAnimation(listEl, card, before);
+    }
+
+    function autoScrollStep() {
+      if (!dragState || !dragState.started) return;
+      const { lastY } = dragState;
+      const vh = window.innerHeight;
+      let speed = 0;
+      if (lastY < AUTO_SCROLL_EDGE_PX) speed = -Math.ceil((AUTO_SCROLL_EDGE_PX - lastY) / 6);
+      else if (lastY > vh - AUTO_SCROLL_EDGE_PX) speed = Math.ceil((lastY - (vh - AUTO_SCROLL_EDGE_PX)) / 6);
+      if (speed !== 0) {
+        window.scrollBy(0, speed);
+        updateDropTarget(dragState.lastX, dragState.lastY);
+      }
+      dragState.scrollRaf = requestAnimationFrame(autoScrollStep);
+    }
+
+    function beginDrag() {
+      const { card } = dragState;
+      const rect = card.getBoundingClientRect();
+      const ghost = card.cloneNode(true);
+      ghost.classList.add("shop-drag-ghost");
+      ghost.removeAttribute("data-item-id");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.style.width = `${rect.width}px`;
+      ghost.style.height = `${rect.height}px`;
+      ghost.style.left = `${rect.left}px`;
+      ghost.style.top = `${rect.top}px`;
+      document.body.appendChild(ghost);
+      card.classList.add("drag-placeholder");
+      document.body.classList.add("shop-dragging");
+      dragState.ghost = ghost;
+      dragState.started = true;
+      const lefts = new Set([...dragState.listEl.querySelectorAll(".reorder-card")].map((el) => el.offsetLeft));
+      dragState.singleColumn = lefts.size === 1;
+      dragState.scrollRaf = requestAnimationFrame(autoScrollStep);
+    }
+
+    function onDragPointerMove(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      dragState.lastX = e.clientX;
+      dragState.lastY = e.clientY;
+      if (!dragState.started) {
+        if (Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) < DRAG_THRESHOLD_PX) return;
+        beginDrag();
+      }
+      e.preventDefault();
+      // 한 줄에 카드가 하나뿐인 화면(폰)에선 옆으로는 안 움직이게 — 위아래로만 따라다님.
+      if (!dragState.singleColumn) dragState.ghost.style.left = `${e.clientX - dragState.offsetX}px`;
+      dragState.ghost.style.top = `${e.clientY - dragState.offsetY}px`;
+      updateDropTarget(e.clientX, e.clientY);
+    }
+
+    function onDragPointerEnd(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      const { card, listEl, key, ghost, started, scrollRaf } = dragState;
+      window.removeEventListener("pointermove", onDragPointerMove);
+      window.removeEventListener("pointerup", onDragPointerEnd);
+      window.removeEventListener("pointercancel", onDragPointerEnd);
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      dragState = null;
+      if (started) {
+        document.body.classList.remove("shop-dragging");
+        reorderIds[key] = readDomOrder(listEl);
+        // 떠 있던 카드가 새 자리로 쏙 들어가는 느낌만 짧게 주고 지움.
+        const target = card.getBoundingClientRect();
+        const finish = () => {
+          ghost.remove();
+          card.classList.remove("drag-placeholder");
+        };
+        if (prefersReducedMotion()) {
+          finish();
+        } else {
+          const from = ghost.getBoundingClientRect();
+          ghost.animate(
+            [{ transform: "none" }, { transform: `translate(${target.left - from.left}px, ${target.top - from.top}px)` }],
+            { duration: 140, easing: "ease-out", fill: "forwards" },
+          ).finished.then(finish, finish);
+        }
+      }
+      if (renderQueued) {
+        renderQueued = false;
+        renderShop();
+      }
+    }
+
+    function onReorderPointerDown(e, card, listEl, key) {
+      if (dragState || (e.pointerType === "mouse" && e.button !== 0)) return;
+      // 터치/펜은 화면 스크롤과 겹치지 않게 손잡이를 잡았을 때만 끌기 시작.
+      if (e.pointerType !== "mouse" && !e.target.closest(".shop-item-drag-handle")) return;
+      e.preventDefault();
+      const rect = card.getBoundingClientRect();
+      dragState = {
+        card, listEl, key,
+        pointerId: e.pointerId,
+        startX: e.clientX, startY: e.clientY,
+        lastX: e.clientX, lastY: e.clientY,
+        offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top,
+        started: false, ghost: null, scrollRaf: null,
+      };
+      // 잡은 카드는 끄는 동안 목록 안에서 자리를 옮기는데(DOM 이동), 그러면 카드에 걸어둔 포인터
+      // 캡처가 풀려버려서 이벤트는 창(window)에서 받음.
+      window.addEventListener("pointermove", onDragPointerMove, { passive: false });
+      window.addEventListener("pointerup", onDragPointerEnd);
+      window.addEventListener("pointercancel", onDragPointerEnd);
+    }
+
+    // 손잡이에 포커스가 있을 때 ←/↑ = 한 칸 앞으로, →/↓ = 한 칸 뒤로, Home/End = 맨 앞/맨 뒤.
+    function onReorderHandleKey(e, card, listEl, key) {
+      const cards = [...listEl.querySelectorAll(".reorder-card")];
+      const index = cards.indexOf(card);
+      let next = index;
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = index - 1;
+      else if (e.key === "ArrowRight" || e.key === "ArrowDown") next = index + 1;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = cards.length - 1;
+      else return;
+      e.preventDefault();
+      if (next < 0 || next >= cards.length || next === index) return;
+      const others = cards.filter((el) => el !== card);
+      moveCardWithAnimation(listEl, card, others[next] ?? null);
+      card.querySelector(".shop-item-drag-handle")?.focus();
+      reorderIds[key] = readDomOrder(listEl);
+      const live = document.getElementById("shop-reorder-live");
+      if (live) live.textContent = `${next + 1}번째로 옮겼어요.`;
+    }
+
+    function wireReorderCards(listEl, key) {
+      listEl.querySelectorAll(".reorder-card").forEach((card) => {
+        card.addEventListener("pointerdown", (e) => onReorderPointerDown(e, card, listEl, key));
+        const handle = card.querySelector(".shop-item-drag-handle");
+        handle?.addEventListener("keydown", (e) => onReorderHandleKey(e, card, listEl, key));
+      });
+    }
+
+    function setupReorderControls() {
+      ["general", "title"].forEach((key) => {
+        document.querySelector(`[data-reorder-start="${key}"]`)?.addEventListener("click", () => startReorder(key));
+        document.querySelector(`[data-reorder-save="${key}"]`)?.addEventListener("click", () => saveReorder(key));
+        document.querySelector(`[data-reorder-cancel="${key}"]`)?.addEventListener("click", () => stopReorder(key));
       });
     }
 
@@ -377,12 +702,13 @@
           // 실패해도 아래로 흘러서 최소한 일반 유저 화면(활성 상품만)이라도 보여줌.
         }
       }
-      // 정렬은 등록한 순서(먼저 추가한 상품이 앞, 새로 추가한 상품이 뒤) — shop-items 함수와 같음.
+      // 정렬은 관리자가 정한 순서(sort_order), 같으면 등록 순서 — shop-items 함수와 같음.
       // grants_title_id도 같이 받아와야 일반 유저 화면에서도 칭호 상점 섹션을 나눠 그릴 수 있고,
       // titles(name, color)는 칭호 상품 카드에 배지 미리보기를 그리는 데 씀.
       const { data, error } = await supabase
         .from("shop_items")
         .select("id, name, cost, description, requires_live, cooldown_seconds, grants_title_id, stock_limit, sold_count, titles(name, color)")
+        .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
       if (error) {
@@ -776,6 +1102,7 @@
         document.getElementById("shop-item-toolbar").hidden = false;
         document.getElementById("title-item-toolbar").hidden = false;
         setupShopItemModal();
+        setupReorderControls();
       }
 
       await Promise.all([loadShopItems(), loadLiveStatus()]);
