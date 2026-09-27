@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=66">
+<link rel="stylesheet" href="assets/css/style.css?v=67">
 </head>
 <body>
   <script>
@@ -128,7 +128,7 @@
               <input type="checkbox" id="notice-html-mode">
               HTML로 꾸미기 (노션처럼)
             </label>
-            <button type="button" class="secondary notice-preview-btn" id="notice-preview-btn" hidden>미리보기</button>
+            <button type="button" class="secondary notice-preview-btn" id="notice-preview-btn">미리보기</button>
           </div>
           <div class="notice-html-tools" id="notice-html-tools" hidden>
             <button type="button" class="secondary" data-snippet="h1">제목1</button>
@@ -160,13 +160,7 @@
             <button type="button" class="secondary" data-snippet="table">표</button>
             <button type="button" class="secondary" data-snippet="link">링크</button>
           </div>
-          <div class="notice-editor" id="notice-editor">
-            <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
-            <div class="notice-editor-preview" id="notice-editor-preview" hidden>
-              <span class="notice-editor-preview-label muted">미리보기</span>
-              <div class="notice-modal-content notice-html" id="notice-editor-preview-content"></div>
-            </div>
-          </div>
+          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
           <div class="notice-attachment-field">
             <div class="notice-attachment-field-header">
               <span class="field-label">첨부파일</span>
@@ -203,6 +197,25 @@
             <button type="button" class="secondary" id="notice-modal-cancel-btn">취소</button>
           </div>
         </form>
+      </dialog>
+
+      <!-- 글쓰기/수정 중 "미리보기" — 글쓰기 창 위에 새 팝업으로 띄워서, 저장하면 실제로 보일 모양(제목·본문·
+           첨부 사진) 그대로 보여줌. 닫으면 쓰던 글쓰기 창으로 그대로 돌아감(Esc/바깥 클릭도 이 팝업만 닫힘). -->
+      <dialog id="notice-preview-modal" class="notice-modal notice-board-modal">
+        <div class="notice-modal-pane">
+          <div class="notice-modal-head">
+            <h3 id="notice-preview-title"></h3>
+            <p class="muted"><span class="notice-preview-badge">미리보기</span> 저장하면 이렇게 보여요</p>
+          </div>
+          <div class="notice-modal-body" id="notice-preview-body" tabindex="-1">
+            <div class="notice-modal-content" id="notice-preview-content"></div>
+            <div class="notice-image-gallery" id="notice-preview-gallery" hidden></div>
+            <div class="notice-file-list" id="notice-preview-files" hidden></div>
+          </div>
+          <div class="notice-modal-actions">
+            <button type="button" class="secondary" id="notice-preview-close-btn">편집으로 돌아가기</button>
+          </div>
+        </div>
       </dialog>
     </main>
   </div>
@@ -543,7 +556,6 @@
       const contentInput = document.getElementById("notice-modal-content-input");
       contentInput.value = content;
       document.getElementById("notice-html-mode").checked = isHtml;
-      setPreviewOpen(false);
       applyHtmlModeUi();
       document.getElementById("notice-modal-submit-btn").textContent = submitLabel;
       const statusEl = document.getElementById("notice-modal-status");
@@ -660,29 +672,57 @@
     function applyHtmlModeUi() {
       const on = isHtmlMode();
       document.getElementById("notice-html-tools").hidden = !on;
-      document.getElementById("notice-preview-btn").hidden = !on;
       const input = document.getElementById("notice-modal-content-input");
       input.classList.toggle("is-code", on);
       input.placeholder = on ? "HTML로 입력하세요 — 위 버튼으로 제목·콜아웃·토글 등을 넣을 수 있어요" : "내용을 입력하세요 (방송 일정, 스케줄 변경 등)";
-      if (!on) setPreviewOpen(false);
       requestAnimationFrame(() => autoResizeTextarea(input));
     }
 
-    let previewTimer = null;
-    function setPreviewOpen(open) {
-      const box = document.getElementById("notice-editor-preview");
-      box.hidden = !open;
-      document.getElementById("notice-editor").classList.toggle("is-previewing", open);
-      const btn = document.getElementById("notice-preview-btn");
-      btn.textContent = open ? "미리보기 닫기" : "미리보기";
-      btn.setAttribute("aria-pressed", open ? "true" : "false");
-      if (open) refreshPreview();
-    }
-    function refreshPreview() {
-      const box = document.getElementById("notice-editor-preview");
-      if (box.hidden) return;
+    // 미리보기 팝업 — 지금 쓰고 있는 제목/본문/첨부를 실제 보기 화면과 같은 모양으로 그려서 띄움.
+    // 새로 고른(아직 안 올린) 사진은 브라우저 안에서만 임시 주소(blob:)로 보여주고, 닫을 때 정리함.
+    let previewObjectUrls = [];
+    function openPreviewModal() {
+      const title = document.getElementById("notice-modal-title-input").value.trim();
       const content = document.getElementById("notice-modal-content-input").value;
-      renderNoticeContent(document.getElementById("notice-editor-preview-content"), { content, is_html: true });
+      document.getElementById("notice-preview-title").textContent = title || "(제목 없음)";
+      const contentEl = document.getElementById("notice-preview-content");
+      if (content.trim()) {
+        renderNoticeContent(contentEl, { content, is_html: isHtmlMode() });
+      } else {
+        contentEl.classList.remove("notice-html");
+        contentEl.innerHTML = `<span class="muted">(내용 없음)</span>`;
+      }
+
+      previewObjectUrls.forEach((u) => URL.revokeObjectURL(u));
+      previewObjectUrls = [];
+      const { galleryHtml: keptGallery, fileListHtml: keptFiles } = renderNoticeAttachmentsHtml(keptAttachments);
+      const pendingGallery = pendingFiles.filter((p) => p.kind === "image").map((p) => {
+        const url = URL.createObjectURL(p.file);
+        previewObjectUrls.push(url);
+        return `<span class="notice-gallery-thumb"><img src="${url}" alt="${escapeHtml(p.file.name)}"></span>`;
+      }).join("");
+      const pendingFileRows = pendingFiles.filter((p) => p.kind !== "image").map((p) => `
+        <span class="notice-file-row">
+          <span class="notice-file-icon">${NOTICE_FILE_ICON_SVG}</span>
+          <span class="notice-file-name">${escapeHtml(p.file.name)}</span>
+          <span class="notice-file-size">${formatNoticeFileSize(p.file.size)}</span>
+        </span>`).join("");
+      const galleryEl = document.getElementById("notice-preview-gallery");
+      const filesEl = document.getElementById("notice-preview-files");
+      galleryEl.innerHTML = keptGallery + pendingGallery;
+      galleryEl.hidden = !galleryEl.innerHTML.trim();
+      filesEl.innerHTML = keptFiles + pendingFileRows;
+      filesEl.hidden = !filesEl.innerHTML.trim();
+
+      const dialog = document.getElementById("notice-preview-modal");
+      if (!dialog.open) dialog.showModal();
+      const body = document.getElementById("notice-preview-body");
+      body.scrollTop = 0;
+      body.focus({ preventScroll: true });
+    }
+    function closePreviewModal() {
+      const dialog = document.getElementById("notice-preview-modal");
+      if (dialog.open) dialog.close();
     }
 
     function closeModal() {
@@ -720,11 +760,7 @@
           closeModal();
         }
       });
-      contentInput.addEventListener("input", () => {
-        autoResizeTextarea(contentInput);
-        clearTimeout(previewTimer);
-        previewTimer = setTimeout(refreshPreview, 250);
-      });
+      contentInput.addEventListener("input", () => autoResizeTextarea(contentInput));
       document.getElementById("notice-html-mode").addEventListener("change", () => {
         const statusEl = document.getElementById("notice-modal-status");
         statusEl.className = "status-msg";
@@ -740,8 +776,15 @@
         }
         applyHtmlModeUi();
       });
-      document.getElementById("notice-preview-btn").addEventListener("click", () => {
-        setPreviewOpen(document.getElementById("notice-editor-preview").hidden);
+      document.getElementById("notice-preview-btn").addEventListener("click", openPreviewModal);
+      const previewDialog = document.getElementById("notice-preview-modal");
+      document.getElementById("notice-preview-close-btn").addEventListener("click", closePreviewModal);
+      previewDialog.addEventListener("click", (e) => { if (e.target === previewDialog) closePreviewModal(); });
+      previewDialog.addEventListener("close", () => {
+        previewObjectUrls.forEach((u) => URL.revokeObjectURL(u));
+        previewObjectUrls = [];
+        // 닫고 나면 글쓰기 창의 본문 입력칸으로 포커스를 돌려줌(계속 이어서 쓸 수 있게).
+        document.getElementById("notice-modal-content-input")?.focus({ preventScroll: true });
       });
       document.querySelectorAll("#notice-html-tools [data-snippet]").forEach((btn) => {
         // mousedown에서 기본 동작을 막아야 버튼을 눌러도 textarea의 선택 영역이 안 풀림.

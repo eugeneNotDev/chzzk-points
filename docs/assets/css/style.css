@@ -884,7 +884,6 @@ ul.notice-list, ol.notice-list {
 .notice-html-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; flex-wrap: wrap; }
 .notice-html-toggle { font-size: 0.85rem; }
 .notice-preview-btn { padding: 6px 12px; font-size: 0.82rem; }
-.notice-preview-btn[hidden] { display: none; }
 .notice-html-tools { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; }
 .notice-html-tools[hidden] { display: none; }
 .notice-html-tools button { padding: 5px 9px; font-size: 0.78rem; white-space: nowrap; }
@@ -898,16 +897,8 @@ ul.notice-list, ol.notice-list {
   color: var(--text-dim);
 }
 .notice-textarea.is-code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.84rem; line-height: 1.55; min-height: 220px; }
-.notice-editor { display: grid; grid-template-columns: 1fr; gap: 10px; }
-@media (min-width: 900px) {
-  .notice-editor.is-previewing { grid-template-columns: 1fr 1fr; align-items: start; }
-}
-.notice-editor .notice-textarea { margin-bottom: 0; }
-.notice-editor-preview { border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 10px 14px 14px; min-width: 0; }
-.notice-editor-preview[hidden] { display: none; }
-.notice-editor-preview-label { display: block; font-size: 0.72rem; margin-bottom: 4px; }
-.notice-editor-preview .notice-modal-content { margin-top: 0; }
-.notice-editor + * { margin-top: 10px; }
+/* 미리보기 팝업 제목 아래 "미리보기" 표시 */
+.notice-preview-badge { display: inline-block; padding: 1px 8px; margin-right: 4px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; color: #3a2a00; background: #f2c230; vertical-align: 1px; }
 
 /* ── 공지 HTML 모드: 보는 화면(노션 느낌). renderNoticeContent가 .notice-html을 붙임 ── */
 .notice-modal-content.notice-html { white-space: normal; line-height: 1.7; }
