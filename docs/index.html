@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=68">
+<link rel="stylesheet" href="assets/css/style.css?v=69">
 </head>
 <body>
   <script>
@@ -145,7 +145,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=34"></script>
+  <script src="assets/js/chzzk-auth.js?v=35"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -208,9 +208,10 @@
     function renderNoticePreviewItem(n) {
       const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
       const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
+      const pinTag = n.pinned_at ? noticePinTagHtml() : "";
       return `
-        <li class="notice-item">
-          <button type="button" class="notice-title-btn" data-id="${n.id}">${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
+        <li class="notice-item${n.pinned_at ? " is-pinned" : ""}">
+          <button type="button" class="notice-title-btn" data-id="${n.id}">${pinTag}${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
             <time>${new Date(n.created_at).toLocaleString("ko-KR")}</time>
           </div>
@@ -269,7 +270,9 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, content, is_html, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
+        .select("id, title, content, is_html, pinned_at, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
+        // 공지사항 탭과 같은 순서 — 고정글 먼저(먼저 고정한 글이 위), 그 다음 최신순.
+        .order("pinned_at", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false })
         .order("sort_order", { referencedTable: "notice_attachments", ascending: true })
         .limit(NOTICE_PREVIEW_LIMIT);

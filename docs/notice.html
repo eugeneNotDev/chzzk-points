@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=68">
+<link rel="stylesheet" href="assets/css/style.css?v=69">
 </head>
 <body>
   <script>
@@ -111,6 +111,7 @@
           </div>
           <div class="notice-modal-actions">
             <span class="notice-modal-admin-actions" id="notice-modal-admin-actions" hidden>
+              <button type="button" class="secondary" id="notice-modal-pin-btn">고정</button>
               <button type="button" class="secondary" id="notice-modal-edit-btn">수정</button>
               <button type="button" class="secondary" id="notice-modal-delete-btn">삭제</button>
             </span>
@@ -124,10 +125,17 @@
           <!-- HTML 모드: 켜면 본문을 HTML로 써서 노션처럼 꾸밀 수 있음(제목/콜아웃/토글/색 글자 등 버튼으로 넣기 +
                미리보기). 저장할 땐 isHtml로 같이 보내고, 보는 화면은 위험한 태그를 걸러서 그림(chzzk-auth.js). -->
           <div class="notice-html-bar">
-            <label class="admin-checkbox-label notice-html-toggle">
-              <input type="checkbox" id="notice-html-mode">
-              HTML로 꾸미기 (노션처럼)
-            </label>
+            <span class="notice-form-toggles">
+              <!-- 상단 고정: 켜면 목록 맨 위에 계속 떠 있음(고정글이 여러 개면 먼저 고정한 글이 위). -->
+              <label class="admin-checkbox-label notice-html-toggle">
+                <input type="checkbox" id="notice-pin-mode">
+                상단 고정
+              </label>
+              <label class="admin-checkbox-label notice-html-toggle">
+                <input type="checkbox" id="notice-html-mode">
+                HTML로 꾸미기 (노션처럼)
+              </label>
+            </span>
             <button type="button" class="secondary notice-preview-btn" id="notice-preview-btn">미리보기</button>
           </div>
           <div class="notice-html-tools" id="notice-html-tools" hidden>
@@ -220,7 +228,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=34"></script>
+  <script src="assets/js/chzzk-auth.js?v=35"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -427,16 +435,19 @@
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       const isNew = !!noticeListSeenBaseline && new Date(n.created_at) > new Date(noticeListSeenBaseline);
       const newTag = isNew ? `<span class="notice-new-tag">NEW</span>` : "";
+      const pinned = !!n.pinned_at;
+      const pinTag = pinned ? noticePinTagHtml() : "";
       const actions = isAdmin()
         ? `
           <span class="notice-item-actions">
+            <button type="button" class="link-btn notice-pin-btn" data-id="${idStr}">${pinned ? "고정 해제" : "고정"}</button>
             <button type="button" class="link-btn notice-edit-btn" data-id="${idStr}">수정</button>
             <button type="button" class="link-btn notice-delete-btn" data-id="${idStr}">삭제</button>
           </span>`
         : "";
       return `
-        <li class="notice-item" data-id="${idStr}">
-          <button type="button" class="notice-title-btn" data-id="${idStr}">${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
+        <li class="notice-item${pinned ? " is-pinned" : ""}" data-id="${idStr}">
+          <button type="button" class="notice-title-btn" data-id="${idStr}">${pinTag}${newTag}${escapeHtml(n.title || "(제목 없음)")}</button>
           <div class="notice-item-footer">
             <time>${formatDate(n.created_at)}${editedLabel}</time>
             ${actions}
@@ -462,6 +473,9 @@
           if (tag) tag.remove();
         });
       });
+      document.querySelectorAll(".notice-pin-btn").forEach((btn) => {
+        btn.addEventListener("click", () => togglePin(btn.dataset.id, btn));
+      });
       document.querySelectorAll(".notice-edit-btn").forEach((btn) => {
         btn.addEventListener("click", () => openEditModal(btn.dataset.id));
       });
@@ -475,7 +489,9 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, content, is_html, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
+        .select("id, title, content, is_html, pinned_at, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
+        // 고정글 먼저(먼저 고정한 글이 위), 그 다음 일반 글 최신순 — 0042_notice_pin.sql 참고.
+        .order("pinned_at", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false })
         .order("sort_order", { referencedTable: "notice_attachments", ascending: true })
         .limit(NOTICE_LIMIT);
@@ -523,6 +539,7 @@
       document.getElementById("notice-modal").classList.toggle("has-images", galleryHtml.length > 0);
 
       document.getElementById("notice-modal-admin-actions").hidden = !isAdmin();
+      document.getElementById("notice-modal-pin-btn").textContent = n.pinned_at ? "고정 해제" : "고정";
       document.getElementById("notice-modal-view").hidden = false;
       document.getElementById("notice-modal-form").hidden = true;
       showModal();
@@ -536,7 +553,7 @@
       modalNoticeId = id;
       pendingFiles = [];
       keptAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
-      fillForm(n.title, n.content, "저장", n.is_html === true);
+      fillForm(n.title, n.content, "저장", n.is_html === true, !!n.pinned_at);
       showModal();
       scrollModalBodyToTop("notice-form-body");
     }
@@ -546,13 +563,14 @@
       modalNoticeId = null;
       pendingFiles = [];
       keptAttachments = [];
-      fillForm("", "", "등록", false);
+      fillForm("", "", "등록", false, false);
       showModal();
       scrollModalBodyToTop("notice-form-body");
     }
 
-    function fillForm(title, content, submitLabel, isHtml) {
+    function fillForm(title, content, submitLabel, isHtml, pinned) {
       document.getElementById("notice-modal-title-input").value = title;
+      document.getElementById("notice-pin-mode").checked = pinned;
       const contentInput = document.getElementById("notice-modal-content-input");
       contentInput.value = content;
       document.getElementById("notice-html-mode").checked = isHtml;
@@ -744,12 +762,39 @@
       }
     }
 
+    // 상단 고정/해제(목록의 "고정" 링크, 보기 팝업의 "고정" 버튼). 글 내용은 안 건드리는 별도
+    // 요청이라 "(수정됨)"도 안 붙음. 끝나면 목록을 다시 불러서 순서를 반영함.
+    async function togglePin(id, btn) {
+      const n = noticesById.get(id);
+      if (!n) return;
+      const nextPinned = !n.pinned_at;
+      if (btn) btn.disabled = true;
+      try {
+        const res = await authFetch(NOTICES_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "set-pin", id: Number(id), pinned: nextPinned }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        await loadNotices();
+        if (modalMode === "view" && modalNoticeId === id) {
+          const updated = noticesById.get(id);
+          document.getElementById("notice-modal-pin-btn").textContent = updated && updated.pinned_at ? "고정 해제" : "고정";
+        }
+      } catch (err) {
+        console.error("[notice] 고정 변경 실패", err);
+        alert(nextPinned ? "고정에 실패했어요." : "고정 해제에 실패했어요.");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
     function setupModal() {
       const dialog = document.getElementById("notice-modal");
       const contentInput = document.getElementById("notice-modal-content-input");
 
       document.getElementById("notice-write-btn").addEventListener("click", openCreateModal);
       document.getElementById("notice-modal-close-btn").addEventListener("click", closeModal);
+      document.getElementById("notice-modal-pin-btn").addEventListener("click", (e) => togglePin(modalNoticeId, e.currentTarget));
       document.getElementById("notice-modal-edit-btn").addEventListener("click", () => openEditModal(modalNoticeId));
       document.getElementById("notice-modal-delete-btn").addEventListener("click", () => deleteNotice(modalNoticeId));
       document.getElementById("notice-modal-cancel-btn").addEventListener("click", () => {
@@ -876,7 +921,13 @@
           const url = isEdit ? `${NOTICES_URL}?id=${encodeURIComponent(modalNoticeId)}` : NOTICES_URL;
           const res = await authFetch(url, {
             method: isEdit ? "PATCH" : "POST",
-            body: JSON.stringify({ title, content, isHtml: isHtmlMode(), attachments }),
+            body: JSON.stringify({
+              title,
+              content,
+              isHtml: isHtmlMode(),
+              pinned: document.getElementById("notice-pin-mode").checked,
+              attachments,
+            }),
           });
           if (!res.ok) throw new Error(String(res.status));
           closeModal();

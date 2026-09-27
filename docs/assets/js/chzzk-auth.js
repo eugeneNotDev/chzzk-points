@@ -895,6 +895,11 @@ function renderNoticeAttachmentsHtml(attachments) {
 }
 
 // ── 공지 HTML 모드(노션처럼 꾸민 글) ─────────────────────────────────────────────
+// 상단 고정 공지 제목 앞에 붙는 "고정" 표시(압정 아이콘 + 글자). 공지사항 탭과 홈 미리보기가 같이 씀.
+function noticePinTagHtml() {
+  return `<span class="notice-pin-tag" aria-label="고정 공지"><svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path fill="currentColor" d="M10.3 1.3a1 1 0 0 1 1.4 0l3 3a1 1 0 0 1 0 1.4l-.6.6a1 1 0 0 1-1 .25l-2.3 2.3.2 2.7a1 1 0 0 1-.3.8l-.8.8a.5.5 0 0 1-.7 0L6.9 10.9 3 14.8a.6.6 0 0 1-.85-.85L6.1 10 3.8 7.8a.5.5 0 0 1 0-.7l.8-.8a1 1 0 0 1 .8-.3l2.7.2 2.3-2.3a1 1 0 0 1 .25-1z"/></svg>고정</span>`;
+}
+
 // notices.is_html이 true인 글은 본문을 HTML로 그림. 관리자만 쓸 수 있는 글이지만, 혹시 모를 사고
 // (세션 탈취, 복붙한 코드에 섞인 스크립트 등)에 대비해서 DOMPurify(assets/js/purify.min.js, Cure53,
 // Apache-2.0/MPL-2.0)로 스크립트·이벤트 속성·iframe 같은 위험한 건 전부 걸러내고 아래 목록에 있는

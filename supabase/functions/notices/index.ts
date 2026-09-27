@@ -5,13 +5,17 @@
 //
 // POST body에 action이 있으면 그 action을 처리하고, 없으면 기존처럼 새 공지 작성으로 취급함.
 //
-// POST   { title, content, isHtml?, attachments? }              → 새 공지 작성
+// POST   { title, content, isHtml?, pinned?, attachments? }     → 새 공지 작성
+// POST   { action: "set-pin", id, pinned }                       → 상단 고정/해제(0042_notice_pin.sql)
+//                                                                   — 글 내용은 안 건드려서 updated_at도 그대로
 // POST   { action: "get-upload-urls", files: [{fileName, sizeBytes, kind?}] }
 //                                                                 → 첨부파일 업로드용 signed URL 발급
 //                                                                   (kind는 선택 — "사진" 피커로 고른
 //                                                                   건 "image", "파일" 피커로 고른 건
 //                                                                   확장자가 이미지여도 "file"로 보냄)
-// PATCH  ?id=<notice id>  { title, content, isHtml?, attachments? } → 기존 공지 수정(첨부파일도 통째로 교체)
+// PATCH  ?id=<notice id>  { title, content, isHtml?, pinned?, attachments? } → 기존 공지 수정(첨부파일도 통째로 교체)
+// pinned: true면 상단 고정(이미 고정된 글이면 고정 순서 그대로 유지), false면 해제, 안 보내면 그대로.
+//   고정글끼리는 먼저 고정한 글이 위 — 새로 고정한 글은 기존 고정글들 아래로 들어감(pinned_at = 고정한 시각).
 // isHtml: true면 content를 HTML로 저장(노션처럼 꾸민 글 — 0040_notice_html.sql). 화면이 DOMPurify로
 //   위험한 태그/속성을 걸러서 그림. 안 보내거나 false면 지금처럼 글자 그대로 보여주는 일반 글.
 // DELETE ?id=<notice id>                                         → 공지 삭제(첨부파일 Storage 객체도 같이 정리)
@@ -122,6 +126,14 @@ Deno.serve(async (req: Request) => {
       if (body?.action === "get-upload-urls") {
         return await handleGetUploadUrls(admin, body.files);
       }
+      if (body?.action === "set-pin") {
+        const pinId = Number(body.id);
+        if (!Number.isSafeInteger(pinId) || pinId <= 0) return jsonResponse({ error: "missing_id" }, 400);
+        if (typeof body.pinned !== "boolean") return jsonResponse({ error: "invalid_pinned" }, 400);
+        const pinned = await setPinned(admin, pinId, body.pinned);
+        if (!pinned) return jsonResponse({ error: "not_found" }, 404);
+        return jsonResponse(pinned, 200);
+      }
 
       const { title, content, attachments } = body;
       const isHtml = body.isHtml === true;
@@ -137,7 +149,12 @@ Deno.serve(async (req: Request) => {
 
       const { data, error } = await admin
         .from("notices")
-        .insert({ title: title.trim(), content: content.trim(), is_html: isHtml })
+        .insert({
+          title: title.trim(),
+          content: content.trim(),
+          is_html: isHtml,
+          pinned_at: body.pinned === true ? new Date().toISOString() : null,
+        })
         .select()
         .single();
       if (error) throw new Error(`notices insert 실패: ${error.message}`);
@@ -172,6 +189,10 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(`notices update 실패: ${error.message}`);
 
       await replaceAttachments(admin, Number(id), validAttachments);
+      if (typeof patchBody.pinned === "boolean") {
+        const pinned = await setPinned(admin, Number(id), patchBody.pinned);
+        if (pinned) return jsonResponse(pinned, 200);
+      }
       return jsonResponse(data, 200);
     }
 
@@ -196,6 +217,25 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "notice_failed" }, 500);
   }
 });
+
+// 상단 고정/해제. 이미 고정된 글을 다시 고정하면 pinned_at을 안 바꿈(고정 순서 유지) — 그래서
+// "고정 안 된 글만" 조건을 걸어 새 시각을 찍음. 해제는 그냥 null. 글이 없으면 null을 돌려줌.
+async function setPinned(admin: ReturnType<typeof getAdminClient>, noticeId: number, pinned: boolean) {
+  if (pinned) {
+    const { error } = await admin
+      .from("notices")
+      .update({ pinned_at: new Date().toISOString() })
+      .eq("id", noticeId)
+      .is("pinned_at", null);
+    if (error) throw new Error(`notices pin 실패: ${error.message}`);
+  } else {
+    const { error } = await admin.from("notices").update({ pinned_at: null }).eq("id", noticeId);
+    if (error) throw new Error(`notices unpin 실패: ${error.message}`);
+  }
+  const { data, error } = await admin.from("notices").select().eq("id", noticeId).maybeSingle();
+  if (error) throw new Error(`notices 조회 실패: ${error.message}`);
+  return data;
+}
 
 // 요청받은 파일 목록마다 확장자/용량을 검사하고, 전부 통과해야 signed upload URL들을 발급함
 // (하나라도 실패하면 그 즉시 400 — 관리자 개인용 도구라 트래픽이 크지 않으니 배치 부분 성공
