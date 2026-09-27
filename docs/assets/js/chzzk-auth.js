@@ -45,6 +45,8 @@ const TOKEN_STORAGE_KEY = "chzzk_points_token";
 const CHANNEL_ID_STORAGE_KEY = "chzzk_points_channel_id";
 const CHANNEL_NAME_STORAGE_KEY = "chzzk_points_channel_name";
 const STATE_STORAGE_KEY = "chzzk_points_oauth_state";
+// 치지직 프로필 이미지 주소(로그인 응답과 /me 응답으로 갱신). 없으면(기본 프사) 이름 첫 글자로 대신 보여줌.
+const PROFILE_IMAGE_STORAGE_KEY = "chzzk_points_profile_image";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
 const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
 // 모바일 상단바 포인트 표시용 — /me 응답의 balance를 받을 때마다 갱신해두는 캐시(표시용일 뿐,
@@ -106,6 +108,7 @@ async function handleOAuthCallbackIfPresent() {
     localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
     localStorage.setItem(CHANNEL_ID_STORAGE_KEY, data.channelId ?? "");
     localStorage.setItem(CHANNEL_NAME_STORAGE_KEY, data.channelName ?? "");
+    saveProfileImage(data.profileImageUrl);
   } catch (err) {
     console.error("[chzzk-auth] 로그인 처리 중 오류", err);
   }
@@ -142,6 +145,50 @@ function logout() {
   localStorage.removeItem(CHANNEL_ID_STORAGE_KEY);
   localStorage.removeItem(CHANNEL_NAME_STORAGE_KEY);
   localStorage.removeItem(BALANCE_CACHE_KEY);
+  localStorage.removeItem(PROFILE_IMAGE_STORAGE_KEY);
+}
+
+// 프로필 이미지 주소를 저장(null이면 지움). 바뀌었으면 true.
+function saveProfileImage(url) {
+  const next = typeof url === "string" && /^https:\/\//.test(url) ? url : null;
+  const prev = localStorage.getItem(PROFILE_IMAGE_STORAGE_KEY);
+  if (next === prev) return false;
+  if (next) localStorage.setItem(PROFILE_IMAGE_STORAGE_KEY, next);
+  else localStorage.removeItem(PROFILE_IMAGE_STORAGE_KEY);
+  return true;
+}
+
+// 치지직 프로필 원본은 1500px짜리라 작은 동그라미에 쓰기엔 무거움 → 네이버 이미지 서버(pstatic.net)면
+// 120px 썸네일(?type=f120_120_na)로 받음. 다른 주소거나 이미 옵션이 붙어 있으면 그대로 씀.
+function profileThumbUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.endsWith(".pstatic.net") && !u.search) return url + "?type=f120_120_na";
+  } catch (_) { /* 이상한 주소면 그대로 */ }
+  return url;
+}
+
+// 동그란 프로필 아바타 — 치지직 프로필 이미지가 있으면 그 사진, 없거나 못 불러오면 이름 첫 글자.
+// className: 크기/위치용 클래스(모바일 상단바 m-avatar, 사이드바 sidebar-avatar 등).
+function profileAvatarHtml(className) {
+  const name = getChannelName() || "?";
+  const initial = escapeHtmlForAuth(Array.from(name)[0] || "?");
+  const img = localStorage.getItem(PROFILE_IMAGE_STORAGE_KEY);
+  const inner = img
+    ? `<img src="${escapeHtmlForAuth(profileThumbUrl(img))}" alt="" referrerpolicy="no-referrer" decoding="async">`
+    : initial;
+  return `<span class="${className}${img ? " has-image" : ""}" data-initial="${initial}">${inner}</span>`;
+}
+// 사진이 깨지면(주소 만료 등) 이름 첫 글자로 되돌림.
+function wireAvatarFallback(root) {
+  root?.querySelectorAll("[data-initial] > img").forEach((img) => {
+    img.addEventListener("error", () => {
+      const holder = img.parentElement;
+      if (!holder) return;
+      holder.classList.remove("has-image");
+      holder.textContent = holder.dataset.initial || "?";
+    }, { once: true });
+  });
 }
 
 // Edge Function 호출 공통 래퍼. 로그인 상태면 Authorization 헤더를 자동으로 붙여줌.
@@ -186,7 +233,10 @@ async function authFetch(url, options = {}) {
       // /me 프로필 응답이면 잔액을 캐싱해서 모바일 상단바 포인트 표시를 갱신함.
       if (isMeProfileCall && typeof body.balance === "number") {
         localStorage.setItem(BALANCE_CACHE_KEY, String(body.balance));
-        renderMobileUser();
+        // 치지직 프로필 이미지가 바뀌었으면(처음 받아왔거나 치지직에서 프사를 바꿈) 사이드바 아바타도 다시 그림.
+        const imageChanged = "profileImageUrl" in body && saveProfileImage(body.profileImageUrl);
+        if (imageChanged) renderSidebarUser();
+        else renderMobileUser();
       }
     }).catch(() => {});
   }
@@ -222,7 +272,7 @@ function renderSidebarUser() {
   if (isLoggedIn()) {
     const name = getChannelName() || "(이름 없음)";
     el.innerHTML = `
-      <p class="sidebar-user-name">${escapeHtmlForAuth(name)}님</p>
+      <p class="sidebar-user-name">${profileAvatarHtml("sidebar-avatar")}<span class="sidebar-user-name-text">${escapeHtmlForAuth(name)}님</span></p>
       <button class="secondary sidebar-icon-btn" id="sidebar-logout-btn" title="로그아웃" aria-label="로그아웃">
         <span class="icon">${SIDEBAR_ICON_LOGOUT}</span>
         <span class="label">로그아웃</span>
@@ -232,6 +282,7 @@ function renderSidebarUser() {
       logout();
       location.href = "index.html";
     });
+    wireAvatarFallback(el);
   } else {
     el.innerHTML = `
       <button class="sidebar-icon-btn" id="sidebar-login-btn" title="치지직으로 로그인" aria-label="치지직으로 로그인">
@@ -1352,24 +1403,25 @@ function renderMobileUser() {
   }
 
   const name = getChannelName() || "(이름 없음)";
-  const initial = escapeHtmlForAuth(Array.from(name)[0] || "?");
   const cached = localStorage.getItem(BALANCE_CACHE_KEY);
   const pointsHtml = cached !== null ? `<span class="m-point-pill">${formatPointsShort(cached)}</span>` : "";
 
   topEl.innerHTML = `
     <a href="mypage.html" class="m-topbar-profile" aria-label="마이페이지">
       ${pointsHtml}
-      <span class="m-avatar">${initial}</span>
+      ${profileAvatarHtml("m-avatar")}
     </a>
   `;
   sheetUserEl.innerHTML = `
-    <span class="m-avatar m-avatar-lg">${initial}</span>
+    ${profileAvatarHtml("m-avatar m-avatar-lg")}
     <div class="m-sheet-user-text">
       <div class="m-sheet-user-name">${escapeHtmlForAuth(name)}님</div>
       <div class="m-sheet-user-sub">내 포인트</div>
     </div>
     <span class="m-sheet-user-points">${cached !== null ? formatPointsShort(cached) : "-"}</span>
   `;
+  wireAvatarFallback(topEl);
+  wireAvatarFallback(sheetUserEl);
   footerEl.innerHTML = `<button type="button" class="m-sheet-logout-btn" id="m-sheet-logout-btn">로그아웃</button>`;
   document.getElementById("m-sheet-logout-btn").addEventListener("click", () => {
     logout();

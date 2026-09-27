@@ -307,7 +307,32 @@ body.game-nav-expanded #game-nav-submenu { display: flex; }
   color: var(--text-dim);
   word-break: break-all;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+.sidebar-user-name-text { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* 사이드바 이름 앞 동그란 프로필(치지직 프사, 없으면 이름 첫 글자). */
+.sidebar-avatar {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  overflow: hidden;
+}
+/* 치지직 프사가 있으면 동그라미 안을 사진으로 꽉 채움(모바일 상단바/더보기 아바타 공용). */
+.sidebar-avatar.has-image,
+.m-avatar.has-image { background: var(--surface-2); padding: 0; overflow: hidden; }
+.sidebar-avatar > img,
+.m-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
 .sidebar-user button { width: 100%; }
 .sidebar-icon-btn {
   display: flex;

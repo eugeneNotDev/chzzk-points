@@ -1,8 +1,11 @@
 // 로그인한 유저 본인의 프로필 + 포인트 잔액 + 본인 포인트 로그 + 칭호.
 // mypage.html, shop.html이 이 함수를 씀 (Authorization: Bearer <세션토큰> 필수).
 //
-// GET  → { channelId, channelName, isPublic, balance, maxBalanceReached, tierTitleName,
+// GET  → { channelId, channelName, profileImageUrl, isPublic, balance, maxBalanceReached, tierTitleName,
 //          tierTitleColor, selectedTitleId, purchasedTitleIds, refreshedToken? }
+//   (profileImageUrl: 치지직 프로필 이미지 주소, 없으면 null. 마지막 확인 후 PROFILE_IMAGE_REFRESH_MS가
+//   지났으면 이 요청 때 치지직에 다시 물어봐서 갱신함 — 치지직에서 프사를 바꿔도 몇 시간 안에 반영되게.
+//   0041_user_profile_image.sql, _shared/chzzk.ts 참고.)
 //   (maxBalanceReached: 지금까지 한 번이라도 도달한 최고 보유 포인트. points_ledger에 행이
 //   추가될 때마다 DB 트리거가 자동으로 갱신함, 0016_titles.sql 참고.
 //   tierTitleName/tierTitleColor: 포인트 구간 칭호(브론즈~다이아) — maxBalanceReached 기준으로
@@ -38,6 +41,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession, issueSessionToken, shouldRefresh } from "../_shared/session.ts";
+import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -56,6 +60,7 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 const MY_POINTS_LOG_PAGE_SIZE = 10;
+const PROFILE_IMAGE_REFRESH_MS = 6 * 60 * 60 * 1000; // 6시간
 // 이 값 이상인 titles row는 구매 전용 칭호(shop-items 함수의 PURCHASE_ONLY_MIN_POINTS =
 // 999,999,999,999) — 포인트 구간 칭호는 전부 이보다 한참 작음(가장 큰 값이 1,000,000).
 const PURCHASE_ONLY_THRESHOLD = 1_000_000_000;
@@ -156,10 +161,25 @@ async function getProfile(channelId: string) {
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance")
+    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance, profile_image_url, profile_image_checked_at")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
+
+  // 프로필 이미지 — 한 번도 안 물어봤거나 오래됐으면 치지직에 다시 확인(실패하면 저장된 값 그대로 씀).
+  let profileImageUrl: string | null = user.profile_image_url ?? null;
+  const checkedAt = user.profile_image_checked_at ? new Date(user.profile_image_checked_at).getTime() : 0;
+  if (Date.now() - checkedAt > PROFILE_IMAGE_REFRESH_MS) {
+    const fetched = await fetchChzzkChannelImage(channelId);
+    if (fetched !== undefined) {
+      profileImageUrl = fetched;
+      const { error: imageError } = await admin
+        .from("users")
+        .update({ profile_image_url: fetched, profile_image_checked_at: new Date().toISOString() })
+        .eq("channel_id", channelId);
+      if (imageError) console.error(`profile_image_url 갱신 실패: ${imageError.message}`);
+    }
+  }
 
   // 잔액은 users.balance(points_ledger 트리거가 자동 갱신 — 0032_users_balance.sql).
   const balance = Number(user.balance ?? 0);
@@ -175,6 +195,7 @@ async function getProfile(channelId: string) {
   return {
     channelId: user.channel_id,
     channelName: user.channel_name,
+    profileImageUrl,
     isPublic: user.is_public,
     banned: user.banned,
     balance,
