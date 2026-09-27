@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=65">
+<link rel="stylesheet" href="assets/css/style.css?v=66">
 </head>
 <body>
   <script>
@@ -96,13 +96,19 @@
 
       <!-- 글 보기/글쓰기/수정을 전부 이 하나의 dialog로 처리함 (모드에 따라 안쪽 뷰만 토글) —
            네이버카페 게시글처럼 제목 누르면 팝업으로 내용이 뜨는 느낌. -->
-      <dialog id="notice-modal" class="notice-modal">
-        <div id="notice-modal-view">
-          <h3 id="notice-modal-title"></h3>
-          <p class="muted" id="notice-modal-meta"></p>
-          <p class="notice-modal-content" id="notice-modal-content"></p>
-          <div class="notice-image-gallery" id="notice-modal-gallery" hidden></div>
-          <div class="notice-file-list" id="notice-modal-files" hidden></div>
+      <!-- 팝업 높이는 화면 안으로 제한하고, 제목·버튼은 고정한 채 본문(.notice-modal-body)만 스크롤됨 —
+           긴 글을 열어도 수정/삭제/닫기 버튼이 항상 보이고, 글은 맨 위부터 시작함. -->
+      <dialog id="notice-modal" class="notice-modal notice-board-modal">
+        <div id="notice-modal-view" class="notice-modal-pane">
+          <div class="notice-modal-head">
+            <h3 id="notice-modal-title"></h3>
+            <p class="muted" id="notice-modal-meta"></p>
+          </div>
+          <div class="notice-modal-body" id="notice-modal-body" tabindex="-1">
+            <div class="notice-modal-content" id="notice-modal-content"></div>
+            <div class="notice-image-gallery" id="notice-modal-gallery" hidden></div>
+            <div class="notice-file-list" id="notice-modal-files" hidden></div>
+          </div>
           <div class="notice-modal-actions">
             <span class="notice-modal-admin-actions" id="notice-modal-admin-actions" hidden>
               <button type="button" class="secondary" id="notice-modal-edit-btn">수정</button>
@@ -112,9 +118,55 @@
           </div>
         </div>
         <!-- autocomplete="off": 브라우저가 예전에 입력했던 제목들을 드롭다운으로 추천하는 걸 막음. -->
-        <form id="notice-modal-form" autocomplete="off" hidden>
+        <form id="notice-modal-form" class="notice-modal-pane" autocomplete="off" hidden>
+          <div class="notice-modal-body notice-form-body" id="notice-form-body">
           <input type="text" id="notice-modal-title-input" class="notice-title-input" placeholder="제목" maxlength="80" autocomplete="off">
-          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
+          <!-- HTML 모드: 켜면 본문을 HTML로 써서 노션처럼 꾸밀 수 있음(제목/콜아웃/토글/색 글자 등 버튼으로 넣기 +
+               미리보기). 저장할 땐 isHtml로 같이 보내고, 보는 화면은 위험한 태그를 걸러서 그림(chzzk-auth.js). -->
+          <div class="notice-html-bar">
+            <label class="admin-checkbox-label notice-html-toggle">
+              <input type="checkbox" id="notice-html-mode">
+              HTML로 꾸미기 (노션처럼)
+            </label>
+            <button type="button" class="secondary notice-preview-btn" id="notice-preview-btn" hidden>미리보기</button>
+          </div>
+          <div class="notice-html-tools" id="notice-html-tools" hidden>
+            <button type="button" class="secondary" data-snippet="h1">제목1</button>
+            <button type="button" class="secondary" data-snippet="h2">제목2</button>
+            <button type="button" class="secondary" data-snippet="h3">제목3</button>
+            <button type="button" class="secondary" data-snippet="b"><b>굵게</b></button>
+            <button type="button" class="secondary" data-snippet="u"><u>밑줄</u></button>
+            <button type="button" class="secondary" data-snippet="s"><s>취소선</s></button>
+            <select id="notice-color-select" aria-label="글자색">
+              <option value="">글자색</option>
+              <option value="c-gray">회색</option><option value="c-red">빨강</option><option value="c-orange">주황</option>
+              <option value="c-yellow">노랑</option><option value="c-green">초록</option><option value="c-blue">파랑</option>
+              <option value="c-purple">보라</option><option value="c-pink">분홍</option><option value="c-accent">민트</option>
+            </select>
+            <select id="notice-bg-select" aria-label="배경색">
+              <option value="">배경색</option>
+              <option value="bg-gray">회색</option><option value="bg-red">빨강</option><option value="bg-orange">주황</option>
+              <option value="bg-yellow">노랑</option><option value="bg-green">초록</option><option value="bg-blue">파랑</option>
+              <option value="bg-purple">보라</option><option value="bg-pink">분홍</option>
+            </select>
+            <button type="button" class="secondary" data-snippet="callout">콜아웃</button>
+            <button type="button" class="secondary" data-snippet="toggle">토글</button>
+            <button type="button" class="secondary" data-snippet="quote">인용</button>
+            <button type="button" class="secondary" data-snippet="hr">구분선</button>
+            <button type="button" class="secondary" data-snippet="ul">목록</button>
+            <button type="button" class="secondary" data-snippet="ol">번호 목록</button>
+            <button type="button" class="secondary" data-snippet="todo">체크리스트</button>
+            <button type="button" class="secondary" data-snippet="columns">2단</button>
+            <button type="button" class="secondary" data-snippet="table">표</button>
+            <button type="button" class="secondary" data-snippet="link">링크</button>
+          </div>
+          <div class="notice-editor" id="notice-editor">
+            <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
+            <div class="notice-editor-preview" id="notice-editor-preview" hidden>
+              <span class="notice-editor-preview-label muted">미리보기</span>
+              <div class="notice-modal-content notice-html" id="notice-editor-preview-content"></div>
+            </div>
+          </div>
           <div class="notice-attachment-field">
             <div class="notice-attachment-field-header">
               <span class="field-label">첨부파일</span>
@@ -145,6 +197,7 @@
             </div>
           </div>
           <p class="status-msg" id="notice-modal-status"></p>
+          </div>
           <div class="notice-form-actions">
             <button type="submit" id="notice-modal-submit-btn">등록</button>
             <button type="button" class="secondary" id="notice-modal-cancel-btn">취소</button>
@@ -154,7 +207,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=29"></script>
+  <script src="assets/js/chzzk-auth.js?v=30"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -409,7 +462,7 @@
       const emptyEl = document.getElementById("notice-empty");
       const { data, error } = await supabase
         .from("notices")
-        .select("id, title, content, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
+        .select("id, title, content, is_html, created_at, updated_at, notice_attachments(id, kind, file_name, storage_path, mime_type, size_bytes, sort_order)")
         .order("created_at", { ascending: false })
         .order("sort_order", { referencedTable: "notice_attachments", ascending: true })
         .limit(NOTICE_LIMIT);
@@ -443,7 +496,7 @@
       const editedLabel = n.updated_at && n.updated_at !== n.created_at ? " (수정됨)" : "";
       document.getElementById("notice-modal-title").textContent = n.title || "(제목 없음)";
       document.getElementById("notice-modal-meta").textContent = formatDate(n.created_at) + editedLabel;
-      document.getElementById("notice-modal-content").textContent = n.content;
+      renderNoticeContent(document.getElementById("notice-modal-content"), n);
 
       const sortedAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
       const { galleryHtml, fileListHtml } = renderNoticeAttachmentsHtml(sortedAttachments);
@@ -460,6 +513,7 @@
       document.getElementById("notice-modal-view").hidden = false;
       document.getElementById("notice-modal-form").hidden = true;
       showModal();
+      scrollModalBodyToTop("notice-modal-body");
     }
 
     function openEditModal(id) {
@@ -469,8 +523,9 @@
       modalNoticeId = id;
       pendingFiles = [];
       keptAttachments = (n.notice_attachments || []).slice().sort((a, b) => a.sort_order - b.sort_order);
-      fillForm(n.title, n.content, "저장");
+      fillForm(n.title, n.content, "저장", n.is_html === true);
       showModal();
+      scrollModalBodyToTop("notice-form-body");
     }
 
     function openCreateModal() {
@@ -478,14 +533,18 @@
       modalNoticeId = null;
       pendingFiles = [];
       keptAttachments = [];
-      fillForm("", "", "등록");
+      fillForm("", "", "등록", false);
       showModal();
+      scrollModalBodyToTop("notice-form-body");
     }
 
-    function fillForm(title, content, submitLabel) {
+    function fillForm(title, content, submitLabel, isHtml) {
       document.getElementById("notice-modal-title-input").value = title;
       const contentInput = document.getElementById("notice-modal-content-input");
       contentInput.value = content;
+      document.getElementById("notice-html-mode").checked = isHtml;
+      setPreviewOpen(false);
+      applyHtmlModeUi();
       document.getElementById("notice-modal-submit-btn").textContent = submitLabel;
       const statusEl = document.getElementById("notice-modal-status");
       statusEl.textContent = "";
@@ -504,6 +563,126 @@
     function showModal() {
       const dialog = document.getElementById("notice-modal");
       if (!dialog.open) dialog.showModal();
+    }
+
+    // 팝업을 열면 브라우저가 첫 번째 버튼(맨 아래 수정/닫기 등)에 포커스를 주면서 그쪽으로 스크롤해버려서
+    // 긴 글이 맨 아래부터 보이던 문제 — 본문 영역을 맨 위로 올리고 포커스도 본문으로 옮김(스크롤 없이).
+    function scrollModalBodyToTop(bodyId) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      body.scrollTop = 0;
+      if (bodyId === "notice-modal-body") body.focus({ preventScroll: true });
+      requestAnimationFrame(() => { body.scrollTop = 0; });
+    }
+
+    // --- HTML 모드(노션처럼 꾸미기) -------------------------------------------------
+    // 버튼으로 넣는 조각들. wrap: 고른 글자를 감쌈(안 고르면 placeholder를 넣고 그 부분을 선택해둠).
+    // block: 줄 단위로 통째로 넣음(앞뒤 줄바꿈 맞춰줌) — "□" 자리가 선택되어서 바로 고쳐 쓸 수 있음.
+    const NOTICE_SNIPPETS = {
+      h1: { wrap: ["<h1>", "</h1>"], placeholder: "큰 제목" },
+      h2: { wrap: ["<h2>", "</h2>"], placeholder: "중간 제목" },
+      h3: { wrap: ["<h3>", "</h3>"], placeholder: "작은 제목" },
+      b: { wrap: ["<b>", "</b>"], placeholder: "굵은 글자" },
+      u: { wrap: ["<u>", "</u>"], placeholder: "밑줄 글자" },
+      s: { wrap: ["<s>", "</s>"], placeholder: "취소선 글자" },
+      link: { wrap: ['<a href="https://">', "</a>"], placeholder: "링크 글자" },
+      quote: { wrap: ["<blockquote>", "</blockquote>"], placeholder: "인용할 내용" },
+      callout: { block: '<div class="callout">\n  <span class="callout-icon">💡</span>\n  <div>□</div>\n</div>', placeholder: "강조하고 싶은 내용" },
+      toggle: { block: "<details>\n  <summary>□</summary>\n  <p>펼치면 보이는 내용</p>\n</details>", placeholder: "토글 제목" },
+      hr: { block: "<hr>" },
+      ul: { block: "<ul>\n  <li>□</li>\n  <li>항목</li>\n</ul>", placeholder: "항목" },
+      ol: { block: "<ol>\n  <li>□</li>\n  <li>항목</li>\n</ol>", placeholder: "항목" },
+      todo: { block: '<ul class="todo">\n  <li class="done">□</li>\n  <li>할 일</li>\n</ul>', placeholder: "완료한 일" },
+      columns: { block: '<div class="columns">\n  <div>□</div>\n  <div>오른쪽 내용</div>\n</div>', placeholder: "왼쪽 내용" },
+      table: { block: "<table>\n  <tr><th>□</th><th>제목</th></tr>\n  <tr><td>내용</td><td>내용</td></tr>\n</table>", placeholder: "제목" },
+    };
+
+    // textarea의 선택 영역을 text로 바꾸고, 바꾼 뒤 [selFrom, selTo](text 기준)를 선택함.
+    // execCommand("insertText")로 넣어야 Ctrl+Z로 되돌릴 수 있어서 그걸 먼저 쓰고, 안 되면 setRangeText.
+    function replaceSelection(input, text, selFrom, selTo) {
+      const start = input.selectionStart, end = input.selectionEnd;
+      input.focus();
+      let ok = false;
+      try { ok = document.execCommand("insertText", false, text); } catch { ok = false; }
+      if (!ok || input.value.slice(start, start + text.length) !== text) {
+        input.setRangeText(text, start, end, "end");
+      }
+      input.setSelectionRange(start + selFrom, start + selTo);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    function insertSnippet(key) {
+      const input = document.getElementById("notice-modal-content-input");
+      const snip = NOTICE_SNIPPETS[key];
+      if (!snip) return;
+      const selected = input.value.slice(input.selectionStart, input.selectionEnd);
+      if (snip.wrap) {
+        const inner = selected || snip.placeholder;
+        replaceSelection(input, snip.wrap[0] + inner + snip.wrap[1], snip.wrap[0].length, snip.wrap[0].length + inner.length);
+        return;
+      }
+      const inner = selected || snip.placeholder || "";
+      const body = snip.block.replace("□", inner);
+      // 앞뒤로 빈 줄을 맞춰서 블록이 다른 글과 붙지 않게 함.
+      const before = input.value.slice(0, input.selectionStart);
+      const after = input.value.slice(input.selectionEnd);
+      const lead = before.length === 0 || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
+      const trail = after.startsWith("\n") ? "" : "\n";
+      const text = lead + body + trail;
+      const markerAt = snip.block.indexOf("□");
+      const from = markerAt === -1 ? text.length : lead.length + markerAt;
+      const to = markerAt === -1 ? text.length : from + inner.length;
+      replaceSelection(input, text, from, to);
+    }
+
+    function wrapWithClass(cls) {
+      if (!cls) return;
+      const input = document.getElementById("notice-modal-content-input");
+      const selected = input.value.slice(input.selectionStart, input.selectionEnd) || "색 글자";
+      const open = `<span class="${cls}">`;
+      replaceSelection(input, open + selected + "</span>", open.length, open.length + selected.length);
+    }
+
+    // 일반 글을 HTML 모드로 바꿀 때 — 태그가 하나도 없는 글이면 줄바꿈이 그대로 보이게 HTML로 바꿔줌
+    // (빈 줄로 나뉜 덩어리는 문단(<p>), 한 줄 바꿈은 <br>). 이미 태그가 있는 글은 그대로 둠.
+    function plainTextToHtml(text) {
+      if (/<[a-z][^>]*>/i.test(text)) return text;
+      return text
+        .split(/\n{2,}/)
+        .map((block) => block.trim())
+        .filter(Boolean)
+        .map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>\n")}</p>`)
+        .join("\n\n");
+    }
+
+    function isHtmlMode() { return document.getElementById("notice-html-mode").checked; }
+
+    function applyHtmlModeUi() {
+      const on = isHtmlMode();
+      document.getElementById("notice-html-tools").hidden = !on;
+      document.getElementById("notice-preview-btn").hidden = !on;
+      const input = document.getElementById("notice-modal-content-input");
+      input.classList.toggle("is-code", on);
+      input.placeholder = on ? "HTML로 입력하세요 — 위 버튼으로 제목·콜아웃·토글 등을 넣을 수 있어요" : "내용을 입력하세요 (방송 일정, 스케줄 변경 등)";
+      if (!on) setPreviewOpen(false);
+      requestAnimationFrame(() => autoResizeTextarea(input));
+    }
+
+    let previewTimer = null;
+    function setPreviewOpen(open) {
+      const box = document.getElementById("notice-editor-preview");
+      box.hidden = !open;
+      document.getElementById("notice-editor").classList.toggle("is-previewing", open);
+      const btn = document.getElementById("notice-preview-btn");
+      btn.textContent = open ? "미리보기 닫기" : "미리보기";
+      btn.setAttribute("aria-pressed", open ? "true" : "false");
+      if (open) refreshPreview();
+    }
+    function refreshPreview() {
+      const box = document.getElementById("notice-editor-preview");
+      if (box.hidden) return;
+      const content = document.getElementById("notice-modal-content-input").value;
+      renderNoticeContent(document.getElementById("notice-editor-preview-content"), { content, is_html: true });
     }
 
     function closeModal() {
@@ -541,7 +720,45 @@
           closeModal();
         }
       });
-      contentInput.addEventListener("input", () => autoResizeTextarea(contentInput));
+      contentInput.addEventListener("input", () => {
+        autoResizeTextarea(contentInput);
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(refreshPreview, 250);
+      });
+      document.getElementById("notice-html-mode").addEventListener("change", () => {
+        const statusEl = document.getElementById("notice-modal-status");
+        statusEl.className = "status-msg";
+        statusEl.textContent = "";
+        if (isHtmlMode()) {
+          const converted = plainTextToHtml(contentInput.value);
+          if (converted !== contentInput.value) {
+            contentInput.value = converted;
+            statusEl.textContent = "기존 글을 HTML로 바꿨어요. 줄바꿈은 그대로 유지돼요.";
+          }
+        } else if (/<[a-z][^>]*>/i.test(contentInput.value)) {
+          statusEl.textContent = "HTML을 끄면 태그가 글자 그대로 보여요. 다시 켜면 원래대로 보여요.";
+        }
+        applyHtmlModeUi();
+      });
+      document.getElementById("notice-preview-btn").addEventListener("click", () => {
+        setPreviewOpen(document.getElementById("notice-editor-preview").hidden);
+      });
+      document.querySelectorAll("#notice-html-tools [data-snippet]").forEach((btn) => {
+        // mousedown에서 기본 동작을 막아야 버튼을 눌러도 textarea의 선택 영역이 안 풀림.
+        btn.addEventListener("mousedown", (e) => e.preventDefault());
+        btn.addEventListener("click", () => insertSnippet(btn.dataset.snippet));
+      });
+      // 글자색/배경색: 고른 글자를 색 span으로 감쌈. textarea는 포커스를 잃어도 선택 영역을 기억하고 있어서
+      // 다시 포커스만 주면 그 선택 그대로 감쌀 수 있음.
+      ["notice-color-select", "notice-bg-select"].forEach((id) => {
+        const sel = document.getElementById(id);
+        sel.addEventListener("change", () => {
+          const cls = sel.value;
+          sel.value = "";
+          contentInput.focus();
+          wrapWithClass(cls);
+        });
+      });
 
       // 사진/파일 두 input을 따로 받되, 처리 로직(개수 제한·확장자 검증·pendingFiles에 담기)은
       // 공통이라 헬퍼 하나로 묶음 — allowedExt는 각 그룹의 화이트리스트, kind는 어느 피커로
@@ -616,7 +833,7 @@
           const url = isEdit ? `${NOTICES_URL}?id=${encodeURIComponent(modalNoticeId)}` : NOTICES_URL;
           const res = await authFetch(url, {
             method: isEdit ? "PATCH" : "POST",
-            body: JSON.stringify({ title, content, attachments }),
+            body: JSON.stringify({ title, content, isHtml: isHtmlMode(), attachments }),
           });
           if (!res.ok) throw new Error(String(res.status));
           closeModal();

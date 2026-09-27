@@ -835,6 +835,77 @@ function renderNoticeAttachmentsHtml(attachments) {
   return { galleryHtml, fileListHtml };
 }
 
+// ── 공지 HTML 모드(노션처럼 꾸민 글) ─────────────────────────────────────────────
+// notices.is_html이 true인 글은 본문을 HTML로 그림. 관리자만 쓸 수 있는 글이지만, 혹시 모를 사고
+// (세션 탈취, 복붙한 코드에 섞인 스크립트 등)에 대비해서 DOMPurify(assets/js/purify.min.js, Cure53,
+// Apache-2.0/MPL-2.0)로 스크립트·이벤트 속성·iframe 같은 위험한 건 전부 걸러내고 아래 목록에 있는
+// 태그/속성만 남김. DOMPurify는 공지를 HTML로 볼 때만 필요해서 그때 한 번만 불러옴.
+const NOTICE_HTML_ALLOWED_TAGS = [
+  "h1", "h2", "h3", "h4", "p", "br", "hr", "b", "strong", "i", "em", "u", "s", "del", "mark", "small", "sub", "sup",
+  "span", "div", "blockquote", "code", "pre", "ul", "ol", "li", "a", "img", "figure", "figcaption",
+  "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption", "details", "summary",
+];
+const NOTICE_HTML_ALLOWED_ATTR = ["class", "style", "href", "src", "alt", "title", "width", "height", "colspan", "rowspan", "open", "start"];
+let noticeSanitizerPromise = null;
+function loadNoticeSanitizer() {
+  if (window.DOMPurify) return Promise.resolve(window.DOMPurify);
+  if (!noticeSanitizerPromise) {
+    noticeSanitizerPromise = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "assets/js/purify.min.js?v=3.4.16";
+      s.onload = () => {
+        const purify = window.DOMPurify;
+        if (!purify) { reject(new Error("DOMPurify 없음")); return; }
+        // 링크는 항상 새 탭 + 원래 페이지를 못 건드리게(noopener). 이미지는 필요할 때 불러오게.
+        purify.addHook("afterSanitizeAttributes", (node) => {
+          if (node.tagName === "A" && node.getAttribute("href")) {
+            node.setAttribute("target", "_blank");
+            node.setAttribute("rel", "noopener noreferrer");
+          }
+          if (node.tagName === "IMG") node.setAttribute("loading", "lazy");
+        });
+        resolve(purify);
+      };
+      s.onerror = () => { noticeSanitizerPromise = null; reject(new Error("DOMPurify 로드 실패")); };
+      document.head.appendChild(s);
+    });
+  }
+  return noticeSanitizerPromise;
+}
+function sanitizeNoticeHtml(purify, html) {
+  return purify.sanitize(String(html), {
+    ALLOWED_TAGS: NOTICE_HTML_ALLOWED_TAGS,
+    ALLOWED_ATTR: NOTICE_HTML_ALLOWED_ATTR,
+    ADD_ATTR: ["target", "rel", "loading"],
+  });
+}
+// 공지 본문을 el에 그림 — 일반 글은 글자 그대로(textContent), HTML 글은 걸러낸 HTML로.
+// 여러 글을 빠르게 연달아 열어도 늦게 끝난 이전 글이 덮어쓰지 않게 순번으로 막음.
+let noticeRenderSeq = 0;
+async function renderNoticeContent(el, notice) {
+  if (!el) return;
+  const seq = ++noticeRenderSeq;
+  const isHtml = notice?.is_html === true;
+  el.classList.toggle("notice-html", isHtml);
+  if (!isHtml) {
+    el.textContent = notice?.content ?? "";
+    return;
+  }
+  el.textContent = "";
+  try {
+    const purify = await loadNoticeSanitizer();
+    if (seq !== noticeRenderSeq) return;
+    el.innerHTML = sanitizeNoticeHtml(purify, notice.content);
+  } catch (err) {
+    console.error("[notice] HTML 본문 표시 실패", err);
+    if (seq !== noticeRenderSeq) return;
+    // 거르는 도구를 못 불러왔으면 HTML을 그대로 넣지 않고, 태그를 뺀 글자만 보여줌.
+    const doc = new DOMParser().parseFromString(String(notice.content), "text/html");
+    el.classList.remove("notice-html");
+    el.textContent = doc.body.textContent || "";
+  }
+}
+
 // 사이드바 접기/펴기 토글 버튼 연결. localStorage에 상태를 저장해서 다른 페이지로 이동해도 유지됨.
 // (각 페이지 <body> 맨 앞의 인라인 스크립트가 렌더링 시작 전에 미리 같은 클래스를 적용해두기 때문에,
 //  페이지를 열자마자 "펼쳐졌다가 순간적으로 접히는" 깜빡임이 없음.)

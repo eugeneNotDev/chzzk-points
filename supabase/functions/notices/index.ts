@@ -5,13 +5,15 @@
 //
 // POST body에 action이 있으면 그 action을 처리하고, 없으면 기존처럼 새 공지 작성으로 취급함.
 //
-// POST   { title, content, attachments? }                       → 새 공지 작성
+// POST   { title, content, isHtml?, attachments? }              → 새 공지 작성
 // POST   { action: "get-upload-urls", files: [{fileName, sizeBytes, kind?}] }
 //                                                                 → 첨부파일 업로드용 signed URL 발급
 //                                                                   (kind는 선택 — "사진" 피커로 고른
 //                                                                   건 "image", "파일" 피커로 고른 건
 //                                                                   확장자가 이미지여도 "file"로 보냄)
-// PATCH  ?id=<notice id>  { title, content, attachments? }       → 기존 공지 수정(첨부파일도 통째로 교체)
+// PATCH  ?id=<notice id>  { title, content, isHtml?, attachments? } → 기존 공지 수정(첨부파일도 통째로 교체)
+// isHtml: true면 content를 HTML로 저장(노션처럼 꾸민 글 — 0040_notice_html.sql). 화면이 DOMPurify로
+//   위험한 태그/속성을 걸러서 그림. 안 보내거나 false면 지금처럼 글자 그대로 보여주는 일반 글.
 // DELETE ?id=<notice id>                                         → 공지 삭제(첨부파일 Storage 객체도 같이 정리)
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
 //  일치해야만 허용 — 아니면 403)
@@ -37,6 +39,7 @@ const BUCKET = "notice-attachments";
 const MAX_ATTACHMENTS = 10;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB — 프론트에서 미리 리사이즈해서 보통 훨씬 작음
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+const MAX_CONTENT_LENGTH = 100000; // 본문 최대 글자 수(HTML 태그 포함) — 실수로 엄청 긴 걸 붙여넣는 것만 막는 정도
 
 const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 const FILE_EXTENSIONS = new Set(["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "hwp", "hwpx", "zip", "txt", "csv"]);
@@ -121,18 +124,20 @@ Deno.serve(async (req: Request) => {
       }
 
       const { title, content, attachments } = body;
+      const isHtml = body.isHtml === true;
       if (typeof title !== "string" || title.trim().length === 0) {
         return jsonResponse({ error: "empty_title" }, 400);
       }
       if (typeof content !== "string" || content.trim().length === 0) {
         return jsonResponse({ error: "empty_content" }, 400);
       }
+      if (content.length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
       if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
 
       const { data, error } = await admin
         .from("notices")
-        .insert({ title: title.trim(), content: content.trim() })
+        .insert({ title: title.trim(), content: content.trim(), is_html: isHtml })
         .select()
         .single();
       if (error) throw new Error(`notices insert 실패: ${error.message}`);
@@ -145,19 +150,22 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "PATCH") {
       if (!id) return jsonResponse({ error: "missing_id" }, 400);
-      const { title, content, attachments } = await req.json();
+      const patchBody = await req.json();
+      const { title, content, attachments } = patchBody;
+      const isHtml = patchBody.isHtml === true;
       if (typeof title !== "string" || title.trim().length === 0) {
         return jsonResponse({ error: "empty_title" }, 400);
       }
       if (typeof content !== "string" || content.trim().length === 0) {
         return jsonResponse({ error: "empty_content" }, 400);
       }
+      if (content.length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
       if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
 
       const { data, error } = await admin
         .from("notices")
-        .update({ title: title.trim(), content: content.trim(), updated_at: new Date().toISOString() })
+        .update({ title: title.trim(), content: content.trim(), is_html: isHtml, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
         .single();
