@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=69">
+<link rel="stylesheet" href="assets/css/style.css?v=70">
 </head>
 <body>
   <script>
@@ -145,7 +145,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=35"></script>
+  <script src="assets/js/chzzk-auth.js?v=36"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -313,7 +313,7 @@
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}">${rankingPrivateTagHtml(row)}${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -321,11 +321,8 @@
     async function loadRankingPreview() {
       const listEl = document.getElementById("ranking-preview");
       const emptyEl = document.getElementById("ranking-empty");
-      const { data, error } = await supabase
-        .from("ranking")
-        .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color")
-        .order("total_points", { ascending: false })
-        .limit(RANKING_PREVIEW_LIMIT);
+      // 관리자면 비공개 유저도 실제 이름으로(fetchRankingRows, chzzk-auth.js).
+      const { data, error } = await fetchRankingRows(supabase, RANKING_PREVIEW_LIMIT);
 
       if (error) {
         console.error("[index] 랭킹 조회 실패", error);

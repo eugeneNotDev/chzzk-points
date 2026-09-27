@@ -1243,8 +1243,21 @@ ol.ranking-list .rank {
   color: var(--muted);
   font-weight: 600;
 }
-ol.ranking-list .name { flex: 1; }
+ol.ranking-list .name { flex: 1; min-width: 0; word-break: keep-all; overflow-wrap: anywhere; } /* 이름이 길면 글자 중간이 아니라 칭호/이름 단위로 줄바꿈 */
 ol.ranking-list .name.is-private { color: var(--muted); }
+/* 관리자 화면에서만 — 비공개 유저 이름 앞 "비공개" 표시(일반 유저 화면엔 이름 자체가 "비공개"로 가려짐). */
+.rank-private-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+  line-height: 1.4;
+}
 ol.ranking-list .points { font-weight: 600; }
 ol.ranking-list li.me {
   background: var(--accent-dim);

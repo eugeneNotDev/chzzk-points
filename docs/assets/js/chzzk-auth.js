@@ -31,6 +31,8 @@ const PREDICTIONS_URL = `${FUNCTIONS_BASE_URL}/predictions`;
 const ROULETTE_URL = `${FUNCTIONS_BASE_URL}/roulette`;
 const RPS_URL = `${FUNCTIONS_BASE_URL}/rps`;
 const ODD_EVEN_URL = `${FUNCTIONS_BASE_URL}/odd-even`;
+// 관리자용 랭킹(비공개 유저도 실제 이름으로) — fetchRankingRows() 참고.
+const ADMIN_RANKING_URL = `${FUNCTIONS_BASE_URL}/admin-ranking`;
 // 공지사항 첨부파일(이미지/파일) Storage 버킷 — 공개 버킷이라 signed URL 없이 퍼블릭 URL로
 // 바로 접근 가능함 (0031_notice_attachments.sql, supabase/functions/notices 참고).
 // 업로드(쓰기)는 signed upload URL로만 하니 버킷 이름 자체는 시크릿이 아님.
@@ -597,6 +599,38 @@ function titleBadgeHtml(name, value) {
 // 랭킹/홈에서 이름 앞에 붙이는 장착 칭호(뒤에 한 칸 띄움).
 function renderShopTitleBadgeHtml(shopName, color) {
   return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
+}
+
+// 랭킹 목록 조회 — ranking.html(전체)과 index.html(홈 미리보기)이 같이 씀. 결과 모양은 둘 다
+// public.ranking 뷰 그대로({ data, error }).
+//  - 일반 유저/비로그인: 공개 뷰 — 비공개 유저는 이름이 "비공개"로 가려지고 칭호도 안 보임
+//  - 관리자: admin-ranking 함수로 가리기 전 값을 받아옴(비공개 유저도 실제 이름·칭호, 0043_admin_ranking.sql).
+//    각 행에 admin_view: true를 붙여서, 화면이 비공개 유저 앞에 "비공개" 표시를 달 수 있게 함.
+//    함수 호출이 실패하면 조용히 공개 뷰로 돌아감(랭킹 자체는 항상 보이게).
+async function fetchRankingRows(supabase, limit) {
+  if (isAdmin()) {
+    try {
+      const res = await authFetch(`${ADMIN_RANKING_URL}?limit=${encodeURIComponent(limit)}`);
+      if (res.ok) {
+        const body = await res.json();
+        if (Array.isArray(body.rows)) {
+          return { data: body.rows.map((r) => ({ ...r, admin_view: true })), error: null };
+        }
+      }
+    } catch (err) {
+      console.warn("[ranking] 관리자 랭킹 조회 실패 — 공개 랭킹으로 표시", err);
+    }
+  }
+  return await supabase
+    .from("ranking")
+    .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color")
+    .order("total_points", { ascending: false })
+    .limit(limit);
+}
+
+// 관리자 화면에서만: 비공개 유저 행 이름 앞에 붙는 작은 "비공개" 표시. 그 외엔 빈 문자열.
+function rankingPrivateTagHtml(row) {
+  return row.admin_view && row.is_public === false ? `<span class="rank-private-tag">비공개</span>` : "";
 }
 
 // 칭호 꾸미기 UI — 상점 칭호 상품 추가/수정 모달, 관리자 칭호 지급 폼에서 같이 씀.

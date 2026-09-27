@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>랭킹 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=69">
+<link rel="stylesheet" href="assets/css/style.css?v=70">
 </head>
 <body>
   <script>
@@ -95,7 +95,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=35"></script>
+  <script src="assets/js/chzzk-auth.js?v=36"></script>
   <script src="assets/js/spa-router.js?v=11"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -110,6 +110,8 @@
     // 적용됐는지 헷갈리지 않음). 포인트 구간 칭호(자동)는 배지가 아니라 이름 색으로 표시하고
     // (applyTierColorToName), 상점 구매 칭호(장착)만 "[칭호명]" 배지로 앞에 붙임
     // (renderShopTitleBadgeHtml) — 둘 다 chzzk-auth.js 공용 함수.
+    // 단, 관리자 화면은 예외 — 비공개 유저도 실제 이름·칭호로 내려오고(admin_view), 이름 앞에 "비공개"
+    // 표시만 붙음(rankingPrivateTagHtml). 한눈에 전체 순위를 보려는 용도.
     function renderRankingRow(row, i, myChannelId) {
       const isMe = row.channel_id === myChannelId;
       const isPrivate = row.is_public === false;
@@ -120,7 +122,7 @@
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate ? " is-private" : ""}">${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}">${rankingPrivateTagHtml(row)}${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -128,11 +130,8 @@
     const RANKING_LIMIT = 50;
 
     async function loadRanking(supabase) {
-      const { data, error } = await supabase
-        .from("ranking")
-        .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color")
-        .order("total_points", { ascending: false })
-        .limit(RANKING_LIMIT);
+      // 관리자면 비공개 유저도 실제 이름으로(fetchRankingRows, chzzk-auth.js).
+      const { data, error } = await fetchRankingRows(supabase, RANKING_LIMIT);
 
       const listEl = document.getElementById("ranking-list");
       const emptyEl = document.getElementById("empty-msg");
