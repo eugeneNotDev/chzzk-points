@@ -877,6 +877,7 @@ ul.notice-list, ol.notice-list {
   word-break: break-word;
   line-height: 1.6;
 }
+.notice-modal-content[hidden] { display: none; }
 
 /* 이미지가 들어있는 공지를 볼 때만 팝업을 넓힘(JS가 .has-images를 토글 — 글쓰기/수정 폼이나
    notice-modal을 재사용하는 다른 팝업들은 원래 520px 그대로). */
@@ -1553,6 +1554,10 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .spend-process-btn { padding: 6px 14px; font-size: 0.82rem; }
 .spend-processed-badge { font-size: 0.82rem; font-weight: 600; color: var(--muted); }
 .spend-unprocess-btn { font-size: 0.76rem; text-decoration: underline; text-underline-offset: 2px; }
+/* 칭호 상점 구매 — 사는 순간 자동 지급이라 처리 버튼 대신 표시만(0045_title_purchase_flag.sql). */
+.spend-auto-badge { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+/* 체크박스 자리 비워두기 — 보이지 않는 체크박스를 그대로 둬서 다른 줄과 이름 시작 위치를 맞춤. */
+.spend-select-placeholder { visibility: hidden; }
 .points-log-row.is-processed .points-log-who,
 .points-log-row.is-processed .points-log-amount,
 .points-log-row.is-processed .points-log-time { opacity: 0.5; }
@@ -1598,7 +1603,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 .points-log-amount { flex: 0 0 84px; width: 84px; text-align: right; font-weight: 700; white-space: nowrap; }
 .points-log-amount.positive { color: var(--accent); }
 .points-log-amount.negative { color: var(--danger); }
-.points-log-time { flex: 0 0 148px; width: 148px; text-align: right; color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+.points-log-time { flex: 0 0 160px; width: 160px; text-align: right; color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 /* 관리자 지급/차감 행에만 실행취소 버튼/"취소됨" 표시가 뜨는 칸 — 다른 종류 행(출석체크,
    상점 사용 등)은 내용이 비어도 이 칸의 너비만큼은 그대로 차지해서 금액·시간 칸처럼 세로
    정렬이 흐트러지지 않게 함. */

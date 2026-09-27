@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>공지사항 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=72">
+<link rel="stylesheet" href="assets/css/style.css?v=74">
 </head>
 <body>
   <script>
@@ -168,7 +168,7 @@
             <button type="button" class="secondary" data-snippet="table">표</button>
             <button type="button" class="secondary" data-snippet="link">링크</button>
           </div>
-          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (방송 일정, 스케줄 변경 등)" rows="6" autocomplete="off"></textarea>
+          <textarea id="notice-modal-content-input" class="notice-textarea" placeholder="내용을 입력하세요 (비워둬도 돼요)" rows="6" autocomplete="off"></textarea>
           <div class="notice-attachment-field">
             <div class="notice-attachment-field-header">
               <span class="field-label">첨부파일</span>
@@ -228,7 +228,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=37"></script>
+  <script src="assets/js/chzzk-auth.js?v=38"></script>
   <script src="assets/js/spa-router.js?v=12"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -899,8 +899,9 @@
         const statusEl = document.getElementById("notice-modal-status");
         const title = titleInput.value.trim();
         const content = contentInput.value.trim();
-        if (!title || !content) {
-          statusEl.textContent = "제목과 내용을 모두 입력해주세요.";
+        // 본문은 비워도 됨(스케줄표처럼 사진만 올리는 공지) — 제목만 필수.
+        if (!title) {
+          statusEl.textContent = "제목을 입력해주세요.";
           statusEl.className = "status-msg error";
           return;
         }

@@ -1002,6 +1002,8 @@ async function renderNoticeContent(el, notice) {
   if (!el) return;
   const seq = ++noticeRenderSeq;
   const isHtml = notice?.is_html === true;
+  // 본문 없는 공지(사진만 있는 스케줄표 등)는 본문 칸 자체를 숨겨서 빈 여백이 안 생기게.
+  el.hidden = String(notice?.content ?? "").trim().length === 0;
   el.classList.toggle("notice-html", isHtml);
   if (!isHtml) {
     el.textContent = notice?.content ?? "";

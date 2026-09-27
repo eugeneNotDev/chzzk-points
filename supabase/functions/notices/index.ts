@@ -6,6 +6,7 @@
 // POST body에 action이 있으면 그 action을 처리하고, 없으면 기존처럼 새 공지 작성으로 취급함.
 //
 // POST   { title, content, isHtml?, pinned?, attachments? }     → 새 공지 작성
+//   (content는 비워도 됨 — 스케줄표처럼 사진만 올리는 공지도 있어서. 제목만 필수.)
 // POST   { action: "set-pin", id, pinned }                       → 상단 고정/해제(0042_notice_pin.sql)
 //                                                                   — 글 내용은 안 건드려서 updated_at도 그대로
 // POST   { action: "get-upload-urls", files: [{fileName, sizeBytes, kind?}] }
@@ -140,10 +141,11 @@ Deno.serve(async (req: Request) => {
       if (typeof title !== "string" || title.trim().length === 0) {
         return jsonResponse({ error: "empty_title" }, 400);
       }
-      if (typeof content !== "string" || content.trim().length === 0) {
-        return jsonResponse({ error: "empty_content" }, 400);
+      // 본문은 비워도 됨(사진만 있는 스케줄표 공지 등) — 문자열이 아니면만 거절.
+      if (content !== undefined && content !== null && typeof content !== "string") {
+        return jsonResponse({ error: "invalid_content" }, 400);
       }
-      if (content.length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
+      if ((content ?? "").length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
       if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
 
@@ -151,7 +153,7 @@ Deno.serve(async (req: Request) => {
         .from("notices")
         .insert({
           title: title.trim(),
-          content: content.trim(),
+          content: (content ?? "").trim(),
           is_html: isHtml,
           pinned_at: body.pinned === true ? new Date().toISOString() : null,
         })
@@ -173,16 +175,17 @@ Deno.serve(async (req: Request) => {
       if (typeof title !== "string" || title.trim().length === 0) {
         return jsonResponse({ error: "empty_title" }, 400);
       }
-      if (typeof content !== "string" || content.trim().length === 0) {
-        return jsonResponse({ error: "empty_content" }, 400);
+      // 본문은 비워도 됨(사진만 있는 스케줄표 공지 등) — 문자열이 아니면만 거절.
+      if (content !== undefined && content !== null && typeof content !== "string") {
+        return jsonResponse({ error: "invalid_content" }, 400);
       }
-      if (content.length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
+      if ((content ?? "").length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
       if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
 
       const { data, error } = await admin
         .from("notices")
-        .update({ title: title.trim(), content: content.trim(), is_html: isHtml, updated_at: new Date().toISOString() })
+        .update({ title: title.trim(), content: (content ?? "").trim(), is_html: isHtml, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
         .single();

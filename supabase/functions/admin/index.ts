@@ -43,7 +43,9 @@
 //     처리완료 체크는 여기 없음 — 상점 사용 처리는 아래 list-spend-log 전용 화면에서만 함
 //     (한 화면에 모든 종류 기록 + 체크박스가 섞여 있으니 오히려 헷갈린다는 피드백으로 분리함).
 // POST { action: "list-spend-log", q?: string, page?: number }
-//   → { entries: [{ id, channelId, channelName, amount, reason, processed, createdAt }], page, pageSize, totalCount, totalPages }
+//   → { entries: [{ id, channelId, channelName, amount, reason, processed, titlePurchase, createdAt }], page, pageSize, totalCount, totalPages }
+//     (titlePurchase: 칭호 상점 구매 기록인지 — 칭호는 사는 순간 자동 지급이라 처리완료 체크가 필요 없어서
+//     화면이 이 줄엔 체크박스/처리 버튼을 안 띄움. 0045_title_purchase_flag.sql 참고.)
 //     (points_ledger에서 상점 사용("포인트 상점 사용: ..." reason) 기록만 걸러서 보여줌 —
 //     list-points-log와 달리 24시간 제한 없이 전체 기간. 예전에 처리해둔 것도 나중에 다시 찾아볼
 //     수 있어야 해서 기간을 안 자름. admin.html의 "상점 내역" 탭 전용 — 처리완료 체크박스는 여기
@@ -590,7 +592,7 @@ async function listSpendLog(
 
   let query = admin
     .from("points_ledger")
-    .select("id, channel_id, amount, reason, processed, created_at", { count: "exact" })
+    .select("id, channel_id, amount, reason, processed, title_purchase, created_at", { count: "exact" })
     .like("reason", "포인트 상점 사용:%")
     .order("created_at", { ascending: false })
     .range(offset, offset + SPEND_LOG_PAGE_SIZE - 1);
@@ -615,6 +617,7 @@ async function listSpendLog(
     amount: r.amount,
     reason: r.reason,
     processed: r.processed,
+    titlePurchase: r.title_purchase === true,
     createdAt: r.created_at,
   }));
 
