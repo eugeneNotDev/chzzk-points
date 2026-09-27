@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=75">
+<link rel="stylesheet" href="assets/css/style.css?v=76">
 </head>
 <body>
   <script>
@@ -117,6 +117,7 @@
           <button type="button" class="admin-tab-btn active" data-tab="users">유저 관리</button>
           <button type="button" class="admin-tab-btn" data-tab="log">포인트 로그</button>
           <button type="button" class="admin-tab-btn" data-tab="spend">상점 내역</button>
+          <button type="button" class="admin-tab-btn" data-tab="code">방송 코드</button>
           <button type="button" class="admin-tab-btn" data-tab="donation">후원 적립<span class="admin-tab-count" id="donation-pending-count" hidden></span></button>
         </div>
 
@@ -216,6 +217,37 @@
             <div id="spend-log-list"></div>
             <p id="spend-log-empty" class="empty-state" hidden>기록이 없어요.</p>
             <div id="spend-log-pagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <!-- 방송 코드 — 방송 중에 뿌리는 10분짜리 코드(0047_stream_codes.sql, admin-stream-codes 함수).
+             시청자는 출석체크 페이지에서 입력하고, 코드는 OBS 오버레이(overlay.html?key=...)에도 뜸. -->
+        <div id="admin-tab-code" class="admin-tab-panel" hidden>
+          <div class="card">
+            <div class="card-header"><h2>방송 코드 만들기</h2></div>
+            <p class="muted">코드를 만들면 10분 동안만 입력할 수 있고, 방송 화면(오버레이)에도 바로 떠요.</p>
+            <form class="code-form" id="code-create-form">
+              <label>코드 <input type="text" id="code-create-code" maxlength="20" placeholder="비우면 자동 (예: K7Q2MX)"></label>
+              <label>포인트 <input type="number" id="code-create-points" min="1" step="1" value="100"></label>
+              <label>선착순 인원 <input type="number" id="code-create-max" min="1" step="1" placeholder="비우면 무제한"></label>
+              <button type="submit" id="code-create-btn">코드 만들기</button>
+            </form>
+            <p id="code-create-status" class="status-msg"></p>
+            <div class="code-overlay-row" id="code-overlay-row" hidden>
+              <span>OBS 오버레이 주소(코드 표시용, 키 포함 — 남에게 공유 X)</span>
+              <button type="button" class="secondary" id="code-overlay-copy">주소 복사</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>진행 중인 코드</h2></div>
+            <div id="code-active"></div>
+            <p id="code-active-empty" class="empty-state">진행 중인 코드가 없어요.</p>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>지난 코드</h2></div>
+            <div id="code-past-list"></div>
+            <p id="code-past-empty" class="empty-state" hidden>아직 만든 코드가 없어요.</p>
+            <div id="code-past-pagination" class="pagination"></div>
           </div>
         </div>
 
@@ -1211,6 +1243,7 @@
       log: document.getElementById("admin-tab-log"),
       spend: document.getElementById("admin-tab-spend"),
       donation: document.getElementById("admin-tab-donation"),
+      code: document.getElementById("admin-tab-code"),
     };
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1226,7 +1259,175 @@
           loadSpendLog("", 1);
         }
         if (tab === "donation") loadDonations();
+        if (tab === "code") loadStreamCodes(codePastPage);
       });
+    });
+
+    // 방송 코드 탭 ------------------------------------------------------------
+    const ADMIN_STREAM_CODES_URL = `${FUNCTIONS_BASE_URL}/admin-stream-codes`;
+    const CODE_CREATE_ERRORS = {
+      invalid_code: "코드는 한글/영문/숫자 2~20자로 써주세요.",
+      invalid_points: "포인트를 1 이상으로 넣어주세요.",
+      invalid_max_uses: "선착순 인원은 1명 이상이거나 비워두세요.",
+    };
+    let codePastPage = 1;
+    let codeActive = null;       // 진행 중인 코드(없으면 null)
+    let codeClockOffset = 0;     // 서버 시각 - 내 PC 시각(남은 시간을 서버 기준으로 계산)
+    let codeOverlayUrl = null;
+    let codeTimer = null;
+    let codePollTicks = 0;
+
+    const fmtNum = (n) => Number(n).toLocaleString("ko-KR");
+    function codeRemainingMs() {
+      return codeActive ? new Date(codeActive.expiresAt).getTime() - (Date.now() + codeClockOffset) : 0;
+    }
+    function formatMmSs(ms) {
+      const sec = Math.max(0, Math.ceil(ms / 1000));
+      return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+    }
+
+    async function loadStreamCodes(page) {
+      codePastPage = page ?? 1;
+      try {
+        const res = await authFetch(`${ADMIN_STREAM_CODES_URL}?page=${codePastPage}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        codeClockOffset = new Date(data.serverNow).getTime() - Date.now();
+        if (!Number.isFinite(codeClockOffset)) codeClockOffset = 0;
+        codeActive = data.active;
+        codeOverlayUrl = data.overlayUrl;
+        document.getElementById("code-overlay-row").hidden = !codeOverlayUrl;
+        renderCodeActive();
+        renderCodePast(data.past || []);
+        renderPagination(document.getElementById("code-past-pagination"), data.page, data.totalPages, loadStreamCodes);
+      } catch (err) {
+        console.error("[admin] 방송 코드 조회 실패", err);
+        const st = document.getElementById("code-create-status");
+        st.textContent = "방송 코드를 불러오지 못했어요.";
+        st.className = "status-msg error";
+      }
+    }
+
+    function renderCodeActive() {
+      const el = document.getElementById("code-active");
+      document.getElementById("code-active-empty").hidden = !!codeActive;
+      if (!codeActive) {
+        el.innerHTML = "";
+        return;
+      }
+      const c = codeActive;
+      const uses = c.maxUses ? `선착순 ${fmtNum(c.maxUses)}명 중 <b>${fmtNum(c.usedCount)}명</b> 받음` : `<b>${fmtNum(c.usedCount)}명</b> 받음 · 무제한`;
+      el.innerHTML = `
+        <div class="code-active">
+          <div class="code-active-code">${escapeHtml(c.code)}</div>
+          <div class="code-active-meta">
+            <span class="time" id="code-active-time">⏱ ${formatMmSs(codeRemainingMs())}</span>
+            <span>+${fmtNum(c.points)}P · ${uses}</span>
+          </div>
+          <div class="code-active-actions"><button type="button" class="secondary" id="code-end-btn">지금 종료</button></div>
+        </div>`;
+    }
+
+    function codePastStatus(c) {
+      if (c.maxUses && c.usedCount >= c.maxUses) return `+${fmtNum(c.points)}P · ${fmtNum(c.usedCount)}/${fmtNum(c.maxUses)}명 (마감)`;
+      const uses = c.maxUses ? `${fmtNum(c.usedCount)}/${fmtNum(c.maxUses)}명` : `${fmtNum(c.usedCount)}명 받음`;
+      return `+${fmtNum(c.points)}P · ${uses} · ${c.endedAt ? "직접 종료" : "시간 종료"}`;
+    }
+
+    function renderCodePast(list) {
+      document.getElementById("code-past-empty").hidden = list.length > 0;
+      document.getElementById("code-past-list").innerHTML = list.map((c) => `
+        <div class="code-row">
+          <span class="c">${escapeHtml(c.code)}</span>
+          <span class="m">${codePastStatus(c)}</span>
+          <span class="t">${formatDateTime(c.createdAt)}</span>
+        </div>`).join("");
+    }
+
+    // 1초마다 남은 시간만 갱신, 시간이 다 되면 목록 새로고침. 진행 중일 땐 10초마다 받은 인원도 새로고침.
+    function startCodeTimer() {
+      if (codeTimer) return;
+      codeTimer = setInterval(() => {
+        if (tabPanels.code.hidden || !codeActive) return;
+        const left = codeRemainingMs();
+        const timeEl = document.getElementById("code-active-time");
+        if (timeEl) timeEl.textContent = `⏱ ${formatMmSs(left)}`;
+        codePollTicks += 1;
+        if (left <= 0 || codePollTicks % 10 === 0) loadStreamCodes(codePastPage);
+      }, 1000);
+    }
+    startCodeTimer();
+    window.__pageCleanup = () => {
+      if (codeTimer) clearInterval(codeTimer);
+      codeTimer = null;
+    };
+
+    document.getElementById("code-create-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const st = document.getElementById("code-create-status");
+      const btn = document.getElementById("code-create-btn");
+      const code = document.getElementById("code-create-code").value.trim();
+      const points = Number(document.getElementById("code-create-points").value);
+      const maxRaw = document.getElementById("code-create-max").value.trim();
+      st.textContent = "";
+      st.className = "status-msg";
+      if (!Number.isInteger(points) || points <= 0) {
+        st.textContent = CODE_CREATE_ERRORS.invalid_points;
+        st.classList.add("error");
+        return;
+      }
+      if (maxRaw && (!Number.isInteger(Number(maxRaw)) || Number(maxRaw) <= 0)) {
+        st.textContent = CODE_CREATE_ERRORS.invalid_max_uses;
+        st.classList.add("error");
+        return;
+      }
+      if (codeActive && codeRemainingMs() > 0 && !confirm(`진행 중인 코드(${codeActive.code})를 끝내고 새 코드를 만들까요?`)) return;
+      btn.disabled = true;
+      try {
+        const res = await authFetch(ADMIN_STREAM_CODES_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "create", code, points, maxUses: maxRaw ? Number(maxRaw) : null }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          st.textContent = CODE_CREATE_ERRORS[data.error] || "코드를 만들지 못했어요.";
+          st.classList.add("error");
+          return;
+        }
+        st.textContent = `코드 ${data.code}를 만들었어요. 10분 동안 입력할 수 있어요.`;
+        st.classList.add("ok");
+        document.getElementById("code-create-code").value = "";
+        await loadStreamCodes(1);
+      } catch (err) {
+        st.textContent = "코드를 만들지 못했어요.";
+        st.classList.add("error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("code-active").addEventListener("click", async (e) => {
+      if (!e.target.closest("#code-end-btn") || !codeActive) return;
+      if (!confirm(`코드 ${codeActive.code}를 지금 종료할까요? 종료하면 더 이상 입력할 수 없어요.`)) return;
+      try {
+        const res = await authFetch(ADMIN_STREAM_CODES_URL, { method: "POST", body: JSON.stringify({ action: "end", id: codeActive.id }) });
+        if (!res.ok && (await res.json().catch(() => ({}))).error !== "not_active") throw new Error(String(res.status));
+      } catch (err) {
+        alert("종료하지 못했어요.");
+      }
+      await loadStreamCodes(1);
+    });
+
+    document.getElementById("code-overlay-copy").addEventListener("click", async () => {
+      if (!codeOverlayUrl) return;
+      const btn = document.getElementById("code-overlay-copy");
+      try {
+        await navigator.clipboard.writeText(codeOverlayUrl);
+        btn.textContent = "복사됨!";
+      } catch {
+        prompt("아래 주소를 복사해서 OBS 브라우저 소스 URL에 넣어주세요.", codeOverlayUrl);
+      }
+      setTimeout(() => { btn.textContent = "주소 복사"; }, 1500);
     });
 
     // 후원 적립 탭 ------------------------------------------------------------

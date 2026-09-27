@@ -2861,3 +2861,64 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 }
 .donation-assign .donation-user-input:focus { outline: none; border-color: var(--accent); }
 #donation-recent-list .points-log-time { flex: 0 0 auto; width: auto; }
+
+/* 방송 코드 — 출석체크 페이지 입력 카드(0047_stream_codes.sql). 코드는 대문자로 보이게(서버도 대문자로 맞춰서 비교). */
+.code-card-head h2 { margin: 0; font-size: 1.05rem; font-family: var(--font-logo); }
+.code-card-desc { margin: 6px 0 0; color: var(--muted); font-size: 0.86rem; word-break: keep-all; }
+.code-redeem-row { display: flex; gap: 8px; margin-top: 14px; }
+.code-redeem-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 12px;
+}
+.code-redeem-input::placeholder { letter-spacing: normal; font-weight: 500; font-size: 0.95rem; color: var(--muted); text-transform: none; }
+.code-redeem-input:focus { outline: none; border-color: var(--accent); }
+.code-redeem-row button { white-space: nowrap; padding-left: 20px; padding-right: 20px; }
+.code-result { margin-top: 12px; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 0.9rem; display: flex; align-items: center; gap: 10px; word-break: keep-all; }
+.code-result:empty { display: none; }
+.code-result.ok { background: var(--accent-dim); color: var(--accent); }
+.code-result.ok strong { font-size: 1.15rem; white-space: nowrap; }
+.code-result.error { background: var(--danger-dim); color: #ff8a8a; }
+
+/* 관리자 "방송 코드" 탭 — 만들기 폼 / 진행 중인 코드 / 지난 코드(5개씩 페이지). */
+.code-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 12px; }
+.code-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
+.code-form input { font: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 10px 12px; min-width: 0; }
+.code-form input:focus { outline: none; border-color: var(--accent); }
+.code-form button { white-space: nowrap; }
+.code-overlay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--muted); }
+.code-overlay-row button { font-size: 0.8rem; padding: 4px 10px; }
+.code-active { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 16px; border-radius: var(--radius-sm); background: var(--accent-dim); border: 1px solid rgba(0, 229, 160, 0.35); }
+.code-active-code { font-family: ui-monospace, Consolas, monospace; font-size: 2rem; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); word-break: break-all; }
+.code-active-meta { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; }
+.code-active-meta .time { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.code-active-actions { display: flex; gap: 8px; }
+.code-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.code-row:last-child { border-bottom: none; }
+.code-row .c { font-family: ui-monospace, Consolas, monospace; font-weight: 700; letter-spacing: 0.08em; min-width: 110px; }
+.code-row .m { flex: 1; color: var(--muted); font-size: 0.82rem; }
+.code-row .t { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
+@media (max-width: 560px) {
+  .code-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .code-form label:first-child, .code-form button { grid-column: 1 / -1; }
+  .code-active { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px; }
+  .code-active-code { font-size: 1.6rem; }
+  .code-active-meta { display: contents; }
+  .code-active-meta .time { grid-column: 2; grid-row: 1; align-self: center; font-size: 1rem; }
+  .code-active-meta span:not(.time) { grid-column: 1 / -1; font-size: 0.85rem; }
+  .code-active-actions { grid-column: 1 / -1; }
+  .code-active-actions button { width: 100%; }
+  .code-row { flex-wrap: wrap; gap: 4px 12px; }
+  .code-row .c { flex: 1; }
+  .code-row .m { order: 3; flex-basis: 100%; }
+}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>출석체크 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=75">
+<link rel="stylesheet" href="assets/css/style.css?v=76">
 </head>
 <body>
   <script>
@@ -117,6 +117,17 @@
           <button type="button" id="checkin-btn" class="attendance-checkin-btn">출석체크</button>
           <p id="attendance-progress" class="attendance-progress" hidden></p>
           <p id="checkin-status" class="status-msg"></p>
+        </div>
+
+        <!-- 방송 코드 — 방송에서 알려준 코드를 10분 안에 입력하면 포인트(0047_stream_codes.sql, stream-code 함수). -->
+        <div class="card">
+          <div class="code-card-head"><h2>방송 코드</h2></div>
+          <p class="code-card-desc">방송에서 알려준 코드를 10분 안에 입력하면 포인트를 받아요.</p>
+          <form class="code-redeem-row" id="code-form">
+            <input type="text" class="code-redeem-input" id="code-input" maxlength="20" placeholder="코드 입력" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <button type="submit" id="code-submit">받기</button>
+          </form>
+          <div id="code-result" class="code-result"></div>
         </div>
       </div>
     </main>
@@ -306,6 +317,58 @@
         console.error("[attendance] 출석체크 실패", err);
         statusEl.textContent = "출석체크에 실패했어요. 다시 시도해주세요.";
         statusEl.classList.add("error");
+        btnEl.disabled = false;
+      }
+    });
+
+    // 방송 코드 입력 ----------------------------------------------------------
+    const STREAM_CODE_URL = `${FUNCTIONS_BASE_URL}/stream-code`;
+    const CODE_ERRORS = {
+      invalid_code: "없는 코드예요. 다시 확인해 주세요.",
+      expired: "시간이 지난 코드예요. 코드는 10분 동안만 입력할 수 있어요.",
+      sold_out: "아쉽지만 선착순 인원이 다 찼어요.",
+      already_redeemed: "이미 받은 코드예요.",
+      too_many_attempts: "틀린 코드를 너무 많이 입력했어요. 잠시 후 다시 시도해 주세요.",
+    };
+    document.getElementById("code-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const inputEl = document.getElementById("code-input");
+      const btnEl = document.getElementById("code-submit");
+      const resultEl = document.getElementById("code-result");
+      const code = inputEl.value.trim();
+      resultEl.className = "code-result";
+      resultEl.textContent = "";
+      if (!code) {
+        resultEl.classList.add("error");
+        resultEl.textContent = "코드를 입력해 주세요.";
+        return;
+      }
+      btnEl.disabled = true;
+      try {
+        const res = await authFetch(STREAM_CODE_URL, { method: "POST", body: JSON.stringify({ code }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) return;
+          resultEl.classList.add("error");
+          resultEl.textContent = CODE_ERRORS[data.error] || "코드 입력에 실패했어요. 다시 시도해 주세요.";
+          return;
+        }
+        const fmt = (n) => Number(n).toLocaleString("ko-KR");
+        const rankText = data.maxUses ? `선착순 ${fmt(data.maxUses)}명 중 ${fmt(data.rank)}번째` : `${fmt(data.rank)}번째로 받았어요`;
+        resultEl.classList.add("ok");
+        resultEl.innerHTML = `<strong>+${fmt(data.points)}P</strong><span>받았어요! ${rankText}</span>`;
+        inputEl.value = "";
+        if (typeof data.balance === "number") {
+          todayStatus.balance = data.balance;
+          // 모바일 상단바/더보기 시트의 포인트 표시도 같이 갱신(chzzk-auth.js가 캐시값을 씀).
+          try { localStorage.setItem(BALANCE_CACHE_KEY, String(data.balance)); } catch {}
+          if (typeof renderMobileUser === "function") renderMobileUser();
+        }
+      } catch (err) {
+        console.error("[attendance] 방송 코드 입력 실패", err);
+        resultEl.classList.add("error");
+        resultEl.textContent = "코드 입력에 실패했어요. 다시 시도해 주세요.";
+      } finally {
         btnEl.disabled = false;
       }
     });

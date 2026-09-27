@@ -28,6 +28,24 @@
     animation: toast-in 0.25s ease-out, toast-out 0.4s ease-in 4.6s forwards;
   }
   .toast .who { color: #7fd1ff; font-weight: 700; }
+  /* 방송 코드 박스(왼쪽 위) — overlay.html?key=... 로 열었을 때만 뜸. */
+  .code-box {
+    position: fixed; top: 32px; left: 32px; width: 280px; box-sizing: border-box;
+    background: rgba(16, 19, 23, 0.88); color: #fff; border-radius: 12px; padding: 14px 18px 13px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35); border: 1px solid rgba(0, 229, 160, 0.35);
+    font-family: system-ui, "Noto Sans KR", sans-serif;
+    animation: code-in 0.35s ease-out;
+  }
+  .code-box[hidden] { display: none; }
+  .code-box .label { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; color: #00e5a0; }
+  .code-box .time { color: #fff; font-variant-numeric: tabular-nums; font-size: 16px; }
+  .code-box .code { margin: 6px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: 0.14em; text-align: center; font-family: ui-monospace, Consolas, monospace; word-break: break-all; line-height: 1.15; }
+  .code-box .sub { display: flex; justify-content: space-between; font-size: 13px; color: #c9d1d9; }
+  .code-box .sub b { color: #00e5a0; }
+  .code-box .bar { margin-top: 10px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+  .code-box .bar i { display: block; height: 100%; width: 100%; background: #00e5a0; border-radius: 3px; transition: width 1s linear; }
+  .code-box .where { margin-top: 8px; font-size: 12px; color: #8b939b; text-align: center; }
+  @keyframes code-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
   @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes toast-out { to { opacity: 0; transform: translateY(-8px); } }
 </style>
@@ -35,6 +53,14 @@
 <body>
   <!-- OBS 브라우저 소스로 이 페이지를 추가함. 배경 투명 처리 이미 돼있음. -->
   <div id="overlay-root"></div>
+  <!-- 방송 코드 — 주소에 ?key=...(관리자 페이지 "방송 코드" 탭에서 복사)가 있을 때만 씀. -->
+  <div class="code-box" id="code-box" hidden>
+    <div class="label"><span>방송 코드</span><span class="time" id="code-time">10:00</span></div>
+    <div class="code" id="code-text"></div>
+    <div class="sub"><span><b id="code-points"></b></span><span id="code-uses"></span></div>
+    <div class="bar"><i id="code-bar"></i></div>
+    <div class="where">eugene4lpha.com → 출석체크에서 입력</div>
+  </div>
 
   <script type="module">
     import { supabase } from "./assets/js/supabase-client.js";
@@ -81,6 +107,90 @@
         (payload) => renderToast(payload.new),
       )
       .subscribe();
+
+    // --- 방송 코드 (0047_stream_codes.sql) ---------------------------------------
+    // 코드는 DB에서 직접 못 읽게 막아뒀고(누구나 overlay.html을 열 수 있어서), 주소의 key를 아는 오버레이만
+    // stream-code 함수에서 지금 코드를 받아오고, 이후 변화는 이 key가 들어간 이름의 채널(broadcast)로 받음.
+    const overlayKey = new URLSearchParams(location.search).get("key");
+    const STREAM_CODE_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/stream-code";
+    const CODE_DURATION_MS = 10 * 60 * 1000;
+    const codeBox = document.getElementById("code-box");
+    let activeCode = null;
+    let clockOffset = 0; // 서버 시각 - 이 PC 시각
+
+    function syncClock(serverNow) {
+      const t = new Date(serverNow).getTime();
+      if (Number.isFinite(t)) clockOffset = t - Date.now();
+    }
+    function remainingMs() {
+      return activeCode ? new Date(activeCode.expiresAt).getTime() - (Date.now() + clockOffset) : 0;
+    }
+    function isSoldOut(c) {
+      return c.maxUses != null && c.usedCount >= c.maxUses;
+    }
+    function hideCode() {
+      activeCode = null;
+      codeBox.hidden = true;
+    }
+    function renderCode() {
+      if (!activeCode || remainingMs() <= 0 || isSoldOut(activeCode)) { hideCode(); return; }
+      const c = activeCode;
+      document.getElementById("code-text").textContent = c.code;
+      document.getElementById("code-points").textContent = `+${Number(c.points).toLocaleString("ko-KR")}P`;
+      document.getElementById("code-uses").innerHTML = c.maxUses != null
+        ? `선착순 <b>${(c.maxUses - c.usedCount).toLocaleString("ko-KR")}</b>/${c.maxUses.toLocaleString("ko-KR")}명 남음`
+        : "";
+      tick();
+      codeBox.hidden = false;
+    }
+    function tick() {
+      if (!activeCode) return;
+      const left = remainingMs();
+      if (left <= 0) { hideCode(); return; }
+      const sec = Math.ceil(left / 1000);
+      document.getElementById("code-time").textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+      document.getElementById("code-bar").style.width = `${Math.max(0, Math.min(100, (left / CODE_DURATION_MS) * 100))}%`;
+    }
+
+    async function fetchActiveCode() {
+      try {
+        const res = await fetch(`${STREAM_CODE_URL}?key=${encodeURIComponent(overlayKey)}`);
+        if (!res.ok) {
+          if (res.status === 401) console.error("[overlay] 오버레이 키가 맞지 않아요. 관리자 페이지에서 주소를 다시 복사해 주세요.");
+          return;
+        }
+        const data = await res.json();
+        syncClock(data.serverNow);
+        activeCode = data.active;
+        renderCode();
+      } catch (err) {
+        console.error("[overlay] 방송 코드 조회 실패", err);
+      }
+    }
+
+    if (overlayKey) {
+      setInterval(tick, 1000);
+      fetchActiveCode();
+      supabase
+        .channel(`stream-code-${overlayKey}`)
+        .on("broadcast", { event: "code" }, ({ payload }) => {
+          syncClock(payload.serverNow);
+          activeCode = payload;
+          renderCode();
+        })
+        .on("broadcast", { event: "update" }, ({ payload }) => {
+          if (!activeCode || activeCode.id !== payload.id) return;
+          activeCode.usedCount = payload.usedCount;
+          renderCode();
+        })
+        .on("broadcast", { event: "end" }, ({ payload }) => {
+          if (activeCode && activeCode.id === payload.id) hideCode();
+        })
+        .subscribe((status) => {
+          // 연결이 끊겼다가 다시 붙으면 그 사이에 놓친 변화가 있을 수 있어서 한 번 새로 받아옴.
+          if (status === "SUBSCRIBED") fetchActiveCode();
+        });
+    }
   </script>
 </body>
 </html>
