@@ -1203,10 +1203,10 @@ function initShopNavGroup() {
   initGameNavGroup();
 }
 
-// "미니게임" 사이드바 그룹(룰렛/가위바위보/홀짝/무료 뽑기). 하위 링크는 페이지가 따로라서(roulette.html, rps.html, oddeven.html, freebox.html)
+// "미니게임" 사이드바 그룹(무료 뽑기/룰렛/가위바위보/홀짝). 하위 링크는 페이지가 따로라서(freebox.html, roulette.html, rps.html, oddeven.html)
 // 일반 링크처럼 spa-router가 이동과 active 표시를 알아서 함 — 여기선 펼치기/접기와 그룹 버튼의
 // active 표시만 담당. 미니게임 페이지에 있으면 그룹을 자동으로 펼쳐둠.
-const MINIGAME_PAGES = ["roulette.html", "rps.html", "oddeven.html", "freebox.html"];
+const MINIGAME_PAGES = ["freebox.html", "roulette.html", "rps.html", "oddeven.html"];
 function isOnMinigamePage() {
   // location은 spa-router가 스크립트 실행 뒤에 바꿔서 못 믿음 — 페이지에만 있는 표시로 판단(isOnShopPage와 같은 이유).
   return document.querySelector("[data-minigame-page]") !== null;
@@ -1217,7 +1217,7 @@ function initGameNavGroup() {
   if (toggleBtn.dataset.bound !== "1") {
     toggleBtn.dataset.bound = "1";
     toggleBtn.addEventListener("click", () => {
-      // 사이드바를 접은 상태에선 하위 메뉴가 안 보이니 바로 첫 게임(룰렛)으로 이동.
+      // 사이드바를 접은 상태에선 하위 메뉴가 안 보이니 바로 첫 게임(무료 뽑기)으로 이동.
       if (document.body.classList.contains("sidebar-collapsed")) {
         if (isOnMinigamePage()) return; // 이미 게임 페이지면 그대로(진행 중인 판을 날리지 않게)
         if (typeof spaNavigate === "function") spaNavigate(MINIGAME_PAGES[0]);
@@ -1377,10 +1377,10 @@ function initMobileNav() {
     <div class="m-sheet-user" id="m-sheet-user"></div>
     <div class="m-sheet-grid">
       <a href="ranking.html" class="m-sheet-item" data-page="ranking.html">${M_ICONS.ranking}<span>랭킹</span></a>
+      <a href="freebox.html" class="m-sheet-item" data-page="freebox.html">${M_ICONS.freebox}<span>무료 뽑기</span></a>
       <a href="roulette.html" class="m-sheet-item" data-page="roulette.html">${M_ICONS.roulette}<span>룰렛</span></a>
       <a href="rps.html" class="m-sheet-item" data-page="rps.html">${M_ICONS.rps}<span>가위바위보</span></a>
       <a href="oddeven.html" class="m-sheet-item" data-page="oddeven.html">${M_ICONS.oddeven}<span>홀짝</span></a>
-      <a href="freebox.html" class="m-sheet-item" data-page="freebox.html">${M_ICONS.freebox}<span>무료 뽑기</span></a>
       <a href="shop.html#general-shop-section" class="m-sheet-item" data-shop-anchor="general-shop-section">${M_ICONS.shop}<span>일반 상점</span></a>
       <a href="shop.html#title-shop-section" class="m-sheet-item" data-shop-anchor="title-shop-section">${M_ICONS.title}<span>칭호 상점</span></a>
       <a href="mypage.html" class="m-sheet-item" data-page="mypage.html">${M_ICONS.mypage}<span>마이페이지</span></a>
