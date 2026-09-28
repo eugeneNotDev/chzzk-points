@@ -215,9 +215,9 @@
         return;
       }
       el.innerHTML = list.map((r) => {
-        const [, m, d] = String(r.date).split("-");
+        const [y, m, d] = String(r.date).split("-");
         const cls = r.points >= 1000 ? "is-jackpot" : r.points === 0 ? "is-zero" : "";
-        return `<li><span>${m}. ${d}.</span><b class="${cls}">${r.points >= 1000 ? "🌟 " : ""}+${fmt(r.points)}P</b></li>`;
+        return `<li><span>${y}. ${m}. ${d}.</span><b class="${cls}">${r.points >= 1000 ? "🌟 " : ""}+${fmt(r.points)}P</b></li>`;
       }).join("");
     }
 

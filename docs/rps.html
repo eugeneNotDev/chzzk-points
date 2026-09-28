@@ -229,7 +229,7 @@
     }
 
     function timeLabel(iso) {
-      return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+      return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
     }
     const RESULT_COLOR = { win: "#2fb574", draw: "#6b7480", lose: "#e03141" };
     function recentItemHtml(r) {
