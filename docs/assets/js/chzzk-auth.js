@@ -78,6 +78,53 @@ function startLogin() {
   location.href = `https://chzzk.naver.com/account-interlock?${params.toString()}`;
 }
 
+// "다른 계정으로 로그인" 안내 창. 치지직 로그인은 브라우저에 로그인된 네이버 계정을 그대로 쓰고(이미 동의한
+// 계정이면 확인 화면도 없이 바로 넘어감), 로그인 요청에 계정 선택을 강제하는 옵션도 없음(치지직 문서상 파라미터는
+// clientId/redirectUri/state뿐). 그래서 새 탭에서 네이버 로그아웃 → 돌아와서 로그인하면 네이버 로그인 화면에서
+// 계정을 고를 수 있게 안내함. 창은 body에 한 번만 만들어 두고 계속 씀(SPA로 페이지를 옮겨도 남아있게).
+const NAVER_LOGOUT_URL = "https://nid.naver.com/nidlogin.logout";
+function openSwitchAccountDialog() {
+  let dlg = document.getElementById("switch-account-modal");
+  if (!dlg) {
+    dlg = document.createElement("dialog");
+    dlg.id = "switch-account-modal";
+    dlg.className = "notice-modal switch-account-modal";
+    dlg.innerHTML = `
+      <h3>다른 치지직 계정으로 로그인</h3>
+      <p class="muted switch-account-desc">치지직 로그인은 이 브라우저에 로그인된 <b>네이버 계정</b>을 그대로 써요. 다른 계정으로 들어가려면 네이버에서 먼저 로그아웃해 주세요.</p>
+      <ol class="switch-account-steps">
+        <li>
+          <div><b>네이버 로그아웃</b><span class="muted">새 탭에서 네이버가 로그아웃돼요. 끝나면 이 창으로 돌아와 주세요.</span></div>
+          <button type="button" class="secondary" id="switch-account-logout-btn">네이버 로그아웃</button>
+        </li>
+        <li>
+          <div><b>원하는 계정으로 로그인</b><span class="muted">네이버 로그인 화면이 나오면 쓰고 싶은 계정으로 들어가면 돼요.</span></div>
+          <button type="button" id="switch-account-login-btn">치지직으로 로그인</button>
+        </li>
+      </ol>
+      <ul class="switch-account-notes muted">
+        <li>이 브라우저의 네이버(카페·메일 등)도 함께 로그아웃돼요.</li>
+        <li>카카오톡·치지직 앱 안에서 열었다면 크롬이나 사파리로 열어주세요.</li>
+        <li>시크릿 창(비공개 탭)에서 로그인해도 계정을 고를 수 있어요.</li>
+      </ul>
+      <div class="switch-account-actions"><button type="button" class="secondary" id="switch-account-close-btn">닫기</button></div>
+    `;
+    document.body.appendChild(dlg);
+    dlg.querySelector("#switch-account-logout-btn").addEventListener("click", () => {
+      window.open(NAVER_LOGOUT_URL, "_blank", "noopener");
+    });
+    dlg.querySelector("#switch-account-login-btn").addEventListener("click", () => {
+      dlg.close();
+      startLogin();
+    });
+    dlg.querySelector("#switch-account-close-btn").addEventListener("click", () => dlg.close());
+    // 바깥(어두운 배경)을 누르면 닫힘.
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+  }
+  if (typeof closeMobileSheet === "function") closeMobileSheet();
+  if (!dlg.open) dlg.showModal();
+}
+
 // 각 페이지 로드 시 한 번 호출. URL에 ?code=&state=가 있으면(=로그인 후 돌아온 상태)
 // oauth-callback을 호출해서 토큰을 받아 저장하고, URL에서 code/state를 지움.
 // 없으면 아무 일도 안 하고 조용히 리턴.
@@ -305,8 +352,10 @@ function renderSidebarUser() {
         <span class="icon">${SIDEBAR_ICON_LOGIN}</span>
         <span class="label">치지직으로 로그인</span>
       </button>
+      <button type="button" class="link-btn sidebar-switch-btn" id="sidebar-switch-btn">다른 계정으로 로그인</button>
     `;
     document.getElementById("sidebar-login-btn").addEventListener("click", startLogin);
+    document.getElementById("sidebar-switch-btn").addEventListener("click", openSwitchAccountDialog);
   }
 
   // 모든 페이지가 페이지 스크립트 시작 시 이 함수를 부르므로, 모바일 상단바/더보기 시트의
@@ -1535,7 +1584,8 @@ function renderMobileUser() {
       <button type="button" class="m-sheet-login-btn" id="m-sheet-login-btn">치지직으로 로그인</button>
     `;
     document.getElementById("m-sheet-login-btn").addEventListener("click", startLogin);
-    footerEl.innerHTML = "";
+    footerEl.innerHTML = `<button type="button" class="link-btn m-sheet-switch-btn" id="m-sheet-switch-btn">다른 계정으로 로그인</button>`;
+    document.getElementById("m-sheet-switch-btn").addEventListener("click", openSwitchAccountDialog);
     return;
   }
 

@@ -3008,3 +3008,32 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .fb-recent b { color: var(--accent); font-variant-numeric: tabular-nums; }
 .fb-recent b.is-zero { color: var(--muted); }
 .fb-recent b.is-jackpot { color: #f2c230; }
+
+/* "다른 계정으로 로그인" — 사이드바/모바일 더보기의 작은 링크와 안내 창(chzzk-auth.js openSwitchAccountDialog). */
+.sidebar-user .sidebar-switch-btn { width: 100%; margin-top: 8px; text-align: center; }
+@media (min-width: 721px) { body.sidebar-collapsed .sidebar-switch-btn { display: none; } }
+.m-sheet-switch-btn { display: block; width: 100%; padding: 10px 0 4px; text-align: center; }
+.switch-account-desc { margin: 6px 0 0; font-size: 0.88rem; line-height: 1.55; word-break: keep-all; }
+.switch-account-desc b { color: var(--text); }
+.switch-account-steps { list-style: none; counter-reset: sa; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.switch-account-steps li {
+  counter-increment: sa;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.switch-account-steps li::before {
+  content: counter(sa);
+  flex: 0 0 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-dim); color: var(--accent); font-weight: 700; font-size: 0.85rem;
+}
+.switch-account-steps li > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
+.switch-account-steps li > div .muted { font-size: 0.78rem; word-break: keep-all; }
+.switch-account-steps li button { white-space: nowrap; flex-shrink: 0; }
+.switch-account-notes { margin: 14px 0 0; padding-left: 18px; font-size: 0.8rem; line-height: 1.6; }
+.switch-account-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+@media (max-width: 560px) {
+  .switch-account-steps li { flex-wrap: wrap; }
+  .switch-account-steps li > div { flex-basis: calc(100% - 38px); }
+  .switch-account-steps li button { margin-left: 38px; width: calc(100% - 38px); }
+}
