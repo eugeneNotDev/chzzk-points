@@ -1203,10 +1203,10 @@ function initShopNavGroup() {
   initGameNavGroup();
 }
 
-// "미니게임" 사이드바 그룹(룰렛/가위바위보/홀짝). 하위 링크는 페이지가 따로라서(roulette.html, rps.html, oddeven.html)
+// "미니게임" 사이드바 그룹(룰렛/가위바위보/홀짝/무료 뽑기). 하위 링크는 페이지가 따로라서(roulette.html, rps.html, oddeven.html, freebox.html)
 // 일반 링크처럼 spa-router가 이동과 active 표시를 알아서 함 — 여기선 펼치기/접기와 그룹 버튼의
 // active 표시만 담당. 미니게임 페이지에 있으면 그룹을 자동으로 펼쳐둠.
-const MINIGAME_PAGES = ["roulette.html", "rps.html", "oddeven.html"];
+const MINIGAME_PAGES = ["roulette.html", "rps.html", "oddeven.html", "freebox.html"];
 function isOnMinigamePage() {
   // location은 spa-router가 스크립트 실행 뒤에 바꿔서 못 믿음 — 페이지에만 있는 표시로 판단(isOnShopPage와 같은 이유).
   return document.querySelector("[data-minigame-page]") !== null;
@@ -1320,6 +1320,7 @@ const M_ICONS = {
   roulette: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 3v6.5M12 14.5V21M3 12h6.5M14.5 12H21M5.6 5.6l4.6 4.6M13.8 13.8l4.6 4.6M18.4 5.6l-4.6 4.6M10.2 13.8l-4.6 4.6"/></svg>`,
   rps: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-7a1.5 1.5 0 0 1 3 0v7"/><path d="M14 11.5V7a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 10.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.5a6 6 0 0 1-4.9-2.6L4.2 15a1.6 1.6 0 0 1 2.6-1.9L8 14.5"/></svg>`,
   oddeven: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="16" rx="2"/><path d="M19 7.5l1.2.4a1.5 1.5 0 0 1 .9 1.9l-3.3 9.7a1.5 1.5 0 0 1-1.9.9L12.5 19"/><path d="M8 7.5h.01M12 14.5h.01"/></svg>`,
+  freebox: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8"/><path d="M12 8v12"/><path d="M12 8c-1.5-3-5-4-5.5-1.5S9 8 12 8zM12 8c1.5-3 5-4 5.5-1.5S15 8 12 8z"/></svg>`,
   attendance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>`,
   more: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>`,
   ranking: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg>`,
@@ -1379,6 +1380,7 @@ function initMobileNav() {
       <a href="roulette.html" class="m-sheet-item" data-page="roulette.html">${M_ICONS.roulette}<span>룰렛</span></a>
       <a href="rps.html" class="m-sheet-item" data-page="rps.html">${M_ICONS.rps}<span>가위바위보</span></a>
       <a href="oddeven.html" class="m-sheet-item" data-page="oddeven.html">${M_ICONS.oddeven}<span>홀짝</span></a>
+      <a href="freebox.html" class="m-sheet-item" data-page="freebox.html">${M_ICONS.freebox}<span>무료 뽑기</span></a>
       <a href="shop.html#general-shop-section" class="m-sheet-item" data-shop-anchor="general-shop-section">${M_ICONS.shop}<span>일반 상점</span></a>
       <a href="shop.html#title-shop-section" class="m-sheet-item" data-shop-anchor="title-shop-section">${M_ICONS.title}<span>칭호 상점</span></a>
       <a href="mypage.html" class="m-sheet-item" data-page="mypage.html">${M_ICONS.mypage}<span>마이페이지</span></a>

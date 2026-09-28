@@ -2923,3 +2923,82 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
   .code-row .c { flex: 1; }
   .code-row .m { order: 3; flex-basis: 100%; }
 }
+
+/* ── 무료 뽑기 (freebox.html) — 하루 한 번 여는 선물 상자(0048_free_box.sql).
+   상태: is-ready(둥실) → is-opening(흔들림) → is-open(뚜껑이 옆으로 떨어지고 숫자가 튀어나옴) / is-jackpot(황금) / is-done(오늘 이미 염, 회색).
+   베팅 없는 게임이라 .game-panel/.game-balance/.game-result만 다른 미니게임과 같이 씀. */
+.fb-card { display: flex; flex-direction: column; gap: 18px; --fb-a: #00e5a0; --fb-a2: #0b8f67; --fb-rib: #ff5f8f; }
+.fb-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 64px 12px 18px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 42%, #14302a 0%, #0f1215 62%);
+  box-shadow: inset 0 0 0 1px var(--border);
+  overflow: hidden;
+  min-height: 260px;
+}
+.fb-box { position: relative; width: 150px; height: 150px; margin-top: 12px; }
+.fb-body {
+  position: absolute; left: 10px; right: 10px; bottom: 0; height: 96px; border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(90deg, transparent 43%, var(--fb-rib) 43% 57%, transparent 57%), linear-gradient(160deg, var(--fb-a) 0%, var(--fb-a2) 100%);
+  box-shadow: inset 0 -10px 0 rgba(0, 0, 0, 0.18), 0 14px 30px rgba(0, 0, 0, 0.45);
+}
+.fb-lid {
+  position: absolute; left: 0; right: 0; top: 34px; height: 30px; border-radius: 6px; z-index: 2;
+  background: linear-gradient(90deg, transparent 42%, var(--fb-rib) 42% 58%, transparent 58%), linear-gradient(160deg, #3dffc4, var(--fb-a));
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+  transition: transform 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.fb-bow { position: absolute; left: 50%; top: -26px; width: 0; height: 0; }
+.fb-bow i { position: absolute; top: 0; width: 34px; height: 26px; border: 7px solid var(--fb-rib); border-radius: 50% / 60% 60% 40% 40%; box-sizing: border-box; }
+.fb-bow i:first-child { right: 0; transform: rotate(-18deg); }
+.fb-bow i:last-child { left: 0; transform: rotate(18deg); }
+.fb-prize {
+  position: absolute; left: 50%; top: 30px; z-index: 3;
+  transform: translate(-50%, 20px) scale(0.6); opacity: 0;
+  font-family: var(--font-logo); color: var(--accent); white-space: nowrap;
+  text-shadow: 0 0 18px rgba(0, 229, 160, 0.55);
+  transition: all 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 0.15s;
+}
+.fb-prize b { font-size: 2.6rem; }
+.fb-prize span { font-size: 1.2rem; margin-left: 2px; }
+.fb-caption { margin: 14px 0 0; position: relative; z-index: 4; font-family: var(--font-logo); font-size: 1.05rem; text-align: center; word-break: keep-all; }
+.fb-rays, .fb-sparkles { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
+.fb-rays { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(0, 229, 160, 0.1) 0 10deg, transparent 10deg 20deg); animation: fb-spin 14s linear infinite; }
+@keyframes fb-spin { to { transform: rotate(360deg); } }
+.fb-sparkles i { position: absolute; width: 8px; height: 8px; background: #ffe58a; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: fb-twinkle 1.4s ease-in-out infinite; }
+.fb-sparkles i:nth-child(1) { left: 18%; top: 22%; } .fb-sparkles i:nth-child(2) { left: 78%; top: 18%; animation-delay: 0.3s; }
+.fb-sparkles i:nth-child(3) { left: 12%; top: 62%; animation-delay: 0.6s; } .fb-sparkles i:nth-child(4) { left: 86%; top: 58%; animation-delay: 0.2s; }
+.fb-sparkles i:nth-child(5) { left: 30%; top: 10%; animation-delay: 0.9s; } .fb-sparkles i:nth-child(6) { left: 68%; top: 74%; animation-delay: 0.5s; }
+.fb-sparkles i:nth-child(7) { left: 24%; top: 80%; animation-delay: 1.1s; } .fb-sparkles i:nth-child(8) { left: 62%; top: 8%; animation-delay: 0.7s; }
+@keyframes fb-twinkle { 0%, 100% { transform: scale(0.4); opacity: 0.3; } 50% { transform: scale(1.4); opacity: 1; } }
+.fb-stage.is-ready .fb-box { animation: fb-bob 2.4s ease-in-out infinite; }
+@keyframes fb-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.fb-stage.is-opening .fb-box { animation: fb-shake 0.5s ease-in-out infinite; }
+@keyframes fb-shake { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-7deg); } 40% { transform: rotate(6deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(3deg); } }
+.fb-stage.is-open .fb-lid, .fb-stage.is-done .fb-lid { transform: translate(88px, 38px) rotate(62deg); }
+.fb-stage.is-open .fb-prize { opacity: 1; transform: translate(-50%, -66px) scale(1); }
+.fb-stage.is-open .fb-rays { opacity: 1; }
+.fb-stage.is-jackpot { --fb-a: #f2c230; --fb-a2: #b8860b; --fb-rib: #ff5f5f; background: radial-gradient(circle at 50% 42%, #3a2d0a 0%, #0f1215 65%); }
+.fb-stage.is-jackpot .fb-lid { background: linear-gradient(90deg, transparent 42%, var(--fb-rib) 42% 58%, transparent 58%), linear-gradient(160deg, #ffe58a, #f2c230); }
+.fb-stage.is-jackpot .fb-rays { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(242, 194, 48, 0.18) 0 10deg, transparent 10deg 20deg); }
+.fb-stage.is-jackpot .fb-sparkles { opacity: 1; }
+.fb-stage.is-jackpot .fb-prize { color: #f2c230; text-shadow: 0 0 24px rgba(242, 194, 48, 0.7); }
+.fb-stage.is-jackpot .fb-prize b { font-size: 3rem; }
+.fb-stage.is-done .fb-box { filter: grayscale(0.85) brightness(0.6); }
+.fb-open-btn { width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 700; font-family: var(--font-logo); }
+.fb-open-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
+.fb-reset { margin: 0; text-align: center; font-size: 0.82rem; color: var(--muted); }
+.fb-reset b { color: var(--text); font-variant-numeric: tabular-nums; }
+.fb-recent { list-style: none; margin: 0; padding: 0; }
+.fb-recent li { display: flex; justify-content: space-between; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.fb-recent li:last-child { border-bottom: 0; }
+.fb-recent li.fb-recent-empty { justify-content: center; color: var(--muted); padding: 18px 0; }
+.fb-recent span { color: var(--muted); }
+.fb-recent b { color: var(--accent); font-variant-numeric: tabular-nums; }
+.fb-recent b.is-zero { color: var(--muted); }
+.fb-recent b.is-jackpot { color: #f2c230; }

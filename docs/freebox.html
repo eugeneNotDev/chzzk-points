@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무료 뽑기 · 유진 팬보드</title>
+<link rel="stylesheet" href="assets/css/style.css?v=78">
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <img class="mark" src="assets/img/brand-mark.png" alt="유진 팬보드">
+          <span class="label">유진 팬보드</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
+          <span class="label">공지사항</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
+        <a href="predict.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="label">투표</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="game-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12a4 4 0 0 1 4 4v2a4 4 0 0 1-7.2 2.4L14 14h-4l-.8 1.4A4 4 0 0 1 2 13v-2a4 4 0 0 1 4-4z"/><path d="M7 10v4M5 12h4"/><path d="M15.5 11h.01M18 13h.01"/></svg></span>
+            <span class="label">미니게임</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="game-nav-submenu">
+            <a href="roulette.html">룰렛</a>
+            <a href="rps.html">가위바위보</a>
+            <a href="oddeven.html">홀짝</a>
+            <a href="freebox.html" class="active">무료 뽑기</a>
+          </div>
+        </div>
+        <a href="attendance.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+          <span class="label">출석체크</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1 class="brand-heading" data-minigame-page>무료 뽑기</h1>
+
+      <div id="loading-state" class="card">
+        <p class="skeleton skeleton-line" style="width:140px;height:20px;"></p>
+        <p class="skeleton skeleton-line" style="width:100%;height:220px;margin-top:14px;"></p>
+      </div>
+
+      <div id="logged-out" class="card" hidden>
+        <p>로그인하면 매일 무료 선물 상자를 열 수 있어요.</p>
+        <button onclick="spaNavigate('index.html')">홈으로 가서 로그인</button>
+      </div>
+
+      <div id="logged-in" hidden>
+        <div class="card fb-card">
+          <div class="fb-stage" id="fb-stage">
+            <div class="fb-rays"></div>
+            <div class="fb-sparkles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="fb-box">
+              <div class="fb-lid"><span class="fb-bow"><i></i><i></i></span></div>
+              <div class="fb-body"></div>
+              <div class="fb-prize"><b id="fb-amount"></b><span>P</span></div>
+            </div>
+            <p class="fb-caption" id="fb-caption"></p>
+          </div>
+
+          <div class="game-panel">
+            <div class="game-balance">
+              <span class="muted">보유 포인트</span>
+              <strong><span id="game-balance">0</span>P</strong>
+            </div>
+            <button type="button" class="fb-open-btn" id="fb-open-btn">🎁 무료로 열기</button>
+            <p class="fb-reset" id="fb-reset"></p>
+            <div class="game-result" id="game-result" role="status" aria-live="polite" hidden></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="game-recent-title">최근 기록</h2>
+          <ul class="fb-recent" id="fb-recent"></ul>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=40"></script>
+  <script src="assets/js/spa-router.js?v=13"></script>
+  <script>
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  //
+  // 무료 뽑기: 하루 한 번(한국 시간 자정 초기화) 선물 상자를 열어 포인트를 받음. 포인트는 서버(free-box 함수 →
+  // DB의 free_box_open)가 정하고, 화면은 상자가 흔들렸다가 열리는 연출만 함. 확률은 화면에 안 보여줌.
+  (function () {
+    const FREE_BOX_URL = `${FUNCTIONS_BASE_URL}/free-box`;
+    const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const SHAKE_MIN_MS = REDUCED_MOTION ? 200 : 1400; // 흔들리는 연출 최소 시간(서버 응답이 빨라도 이만큼은 보여줌)
+
+    let state = null;       // GET 응답
+    let clockOffset = 0;    // 서버 시각 - 내 기기 시각(남은 시간을 서버 기준으로 계산)
+    let opening = false;
+    let disposed = false;
+    const timers = [];
+
+    const fmt = (n) => Number(n).toLocaleString("ko-KR");
+    const $ = (id) => document.getElementById(id);
+    const sleep = (ms) => new Promise((resolve) => { const t = setTimeout(resolve, ms); timers.push(t); });
+
+    function syncClock(serverNow) {
+      const t = new Date(serverNow).getTime();
+      if (Number.isFinite(t)) clockOffset = t - Date.now();
+    }
+    function formatLeft(ms) {
+      const sec = Math.max(0, Math.ceil(ms / 1000));
+      const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+      return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+    }
+    function setBalance(v) {
+      $("game-balance").textContent = fmt(v);
+      // 모바일 상단바/더보기 시트의 포인트 표시도 같이 갱신(chzzk-auth.js가 캐시값을 씀).
+      try { localStorage.setItem(BALANCE_CACHE_KEY, String(v)); } catch {}
+      if (typeof renderMobileUser === "function") renderMobileUser();
+    }
+
+    function setStage(cls) {
+      $("fb-stage").className = "fb-stage " + cls;
+    }
+
+    function renderReady() {
+      setStage("is-ready");
+      $("fb-caption").textContent = "오늘의 선물 상자가 도착했어요!";
+      const btn = $("fb-open-btn");
+      btn.disabled = false;
+      btn.textContent = "🎁 무료로 열기";
+      $("fb-reset").textContent = "하루 한 번 · 매일 자정(00시)에 다시 열 수 있어요";
+      $("game-result").hidden = true;
+    }
+
+    function renderDone(points) {
+      setStage("is-done");
+      $("fb-caption").textContent = "오늘 상자는 이미 열었어요";
+      const btn = $("fb-open-btn");
+      btn.disabled = true;
+      btn.textContent = "오늘은 이미 열었어요";
+      renderResetLine(points);
+    }
+
+    function renderOpened(points, jackpot) {
+      setStage("is-open" + (jackpot ? " is-jackpot" : ""));
+      $("fb-amount").textContent = `+${fmt(points)}`;
+      $("fb-caption").textContent = jackpot
+        ? "🌟 대박! 황금 상자예요! 🌟"
+        : points > 0 ? `선물 상자에서 ${fmt(points)}P가 나왔어요!` : "앗, 상자가 비어 있었어요… 내일 다시 도전!";
+      const btn = $("fb-open-btn");
+      btn.disabled = true;
+      btn.textContent = "오늘은 이미 열었어요";
+      const res = $("game-result");
+      res.hidden = false;
+      res.className = "game-result " + (jackpot ? "is-jackpot" : points > 0 ? "is-plus" : "is-even");
+      res.innerHTML = `<strong>+${fmt(points)}P</strong><span class="muted">${jackpot ? "1,000번에 1번 나오는 대박이에요!" : "내일 00시에 새 상자가 도착해요"}</span>`;
+      renderResetLine(null);
+    }
+
+    function renderResetLine(todayPoints) {
+      const left = state ? new Date(state.nextResetAt).getTime() - (Date.now() + clockOffset) : 0;
+      $("fb-reset").innerHTML = `다음 상자까지 <b>${formatLeft(left)}</b>`
+        + (todayPoints != null ? ` · 오늘 받은 포인트 <b>+${fmt(todayPoints)}P</b>` : "");
+    }
+
+    function renderRecent(list) {
+      const el = $("fb-recent");
+      if (!list || list.length === 0) {
+        el.innerHTML = `<li class="fb-recent-empty">아직 연 상자가 없어요.</li>`;
+        return;
+      }
+      el.innerHTML = list.map((r) => {
+        const [, m, d] = String(r.date).split("-");
+        const cls = r.points >= 1000 ? "is-jackpot" : r.points === 0 ? "is-zero" : "";
+        return `<li><span>${m}. ${d}.</span><b class="${cls}">${r.points >= 1000 ? "🌟 " : ""}+${fmt(r.points)}P</b></li>`;
+      }).join("");
+    }
+
+    async function loadState() {
+      const res = await authFetch(FREE_BOX_URL);
+      if (!res.ok) return false;
+      state = await res.json();
+      syncClock(state.serverNow);
+      setBalance(state.balance ?? 0);
+      if (state.openedToday) renderDone(state.todayPoints ?? 0);
+      else renderReady();
+      renderRecent(state.recent);
+      return true;
+    }
+
+    $("fb-open-btn").addEventListener("click", async () => {
+      if (opening || !state || state.openedToday) return;
+      opening = true;
+      const btn = $("fb-open-btn");
+      btn.disabled = true;
+      btn.textContent = "여는 중...";
+      setStage("is-opening");
+      $("fb-caption").textContent = "두근두근...";
+      try {
+        const [res] = await Promise.all([
+          authFetch(FREE_BOX_URL, { method: "POST", body: JSON.stringify({}) }),
+          sleep(SHAKE_MIN_MS),
+        ]);
+        if (disposed) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (data.error === "already_opened") { await loadState(); return; }
+          if (res.status === 401 || res.status === 403) return;
+          renderReady();
+          const r = $("game-result");
+          r.hidden = false;
+          r.className = "game-result is-error";
+          r.textContent = "상자를 열지 못했어요. 잠시 후 다시 시도해 주세요.";
+          return;
+        }
+        syncClock(data.serverNow);
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + clockOffset));
+        state.openedToday = true;
+        state.todayPoints = data.points;
+        state.nextResetAt = data.nextResetAt;
+        state.recent = [{ date: today, points: data.points }, ...(state.recent || [])].slice(0, 7);
+        if (typeof data.balance === "number") setBalance(data.balance);
+        renderOpened(data.points, data.jackpot);
+        renderRecent(state.recent);
+      } catch (err) {
+        console.error("[free-box] 상자 열기 실패", err);
+        renderReady();
+      } finally {
+        opening = false;
+      }
+    });
+
+    // 1초마다 남은 시간 갱신 — 자정이 지나면 새 상자를 다시 불러옴.
+    timers.push(setInterval(() => {
+      if (disposed || !state || !state.openedToday || opening) return;
+      const left = new Date(state.nextResetAt).getTime() - (Date.now() + clockOffset);
+      if (left <= 0) { loadState(); return; }
+      renderResetLine($("fb-stage").classList.contains("is-done") ? state.todayPoints : null);
+    }, 1000));
+
+    window.__pageCleanup = () => {
+      disposed = true;
+      timers.forEach((t) => { clearTimeout(t); clearInterval(t); });
+    };
+
+    renderSidebarUser();
+    initSidebarToggle();
+    initAdminNav();
+    initShopNavGroup();
+    initNoticeBadge();
+
+    (async () => {
+      if (!isLoggedIn()) {
+        $("loading-state").hidden = true;
+        $("logged-out").hidden = false;
+        return;
+      }
+      const ok = await loadState().catch((err) => { console.error("[free-box] 상태 조회 실패", err); return false; });
+      $("loading-state").hidden = true;
+      if (!ok) {
+        $("logged-out").hidden = false;
+        return;
+      }
+      $("logged-in").hidden = false;
+    })();
+  })();
+  </script>
+</body>
+</html>
