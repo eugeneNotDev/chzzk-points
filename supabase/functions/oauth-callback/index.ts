@@ -10,9 +10,10 @@
 //      → users 테이블에 upsert (service_role 클라이언트, RLS 우회)
 //      → 로그인한 사람이 채널 주인(유진 알파)이면 치지직 토큰을 streamer_tokens에 저장
 //        (후원 자동 적립용 — donation-relay 함수가 이걸로 후원 알림 세션을 엶. 0046_donation_points.sql)
-//        시청자 토큰은 저장하지 않고 유저 확인 뒤 바로 반납(revoke)함.
+//        시청자 토큰은 저장하지 않음(반납도 안 함 — 아래 fetchChzzkUserWithRetry 설명 참고).
 //      → 세션 토큰 발급해서 리턴
-// 치지직이 준 토큰이 유저 조회에서 거절(401)되면 409 { error: "chzzk_token_rejected" } — 프론트가 로그인을 한 번 자동 재시도.
+// 치지직이 준 토큰이 유저 조회에서 거절(401)되면 서버에서 먼저 몇 번 다시 확인해보고(잠깐 기다렸다 재조회 →
+// 토큰 갱신 후 재조회), 그래도 안 되면 409 { error: "chzzk_token_rejected" } — 프론트가 로그인을 자동 재시도.
 //
 // 참고: 치지직 오픈 API 응답은 전부 { code, message, content: {...} } 래퍼 구조.
 //   토큰 엔드포인트: POST https://openapi.chzzk.naver.com/auth/v1/token
@@ -31,12 +32,13 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const CHZZK_TOKEN_URL = "https://openapi.chzzk.naver.com/auth/v1/token";
 const CHZZK_USER_ME_URL = "https://openapi.chzzk.naver.com/open/v1/users/me";
-const CHZZK_REVOKE_URL = "https://openapi.chzzk.naver.com/auth/v1/token/revoke";
 
-// 치지직이 발급해준 토큰으로 유저 조회가 401로 거절되는 경우(로그아웃 후 곧바로 다시 로그인할 때 번갈아 한 번씩
-// 생김 — 이미 살아있는 토큰이 있는 상태에서 새로 발급받으면 거절되는 토큰이 오는 것으로 보임). 이땐 409로 알려주고
-// 프론트(chzzk-auth.js)가 로그인을 한 번 자동으로 다시 시도함 — 두 번째는 항상 정상 발급됨.
+// 치지직이 발급해준 토큰으로 유저 조회가 401로 거절되는 경우가 있음(재로그인할 때 번갈아 한 번씩 생김).
+// 서버에서 먼저 잠깐 기다렸다 다시 조회 → 토큰 갱신(refresh) 후 다시 조회까지 해보고, 그래도 안 되면 409로 알려서
+// 프론트(chzzk-auth.js)가 로그인을 자동으로 다시 시도함.
 class ChzzkTokenRejectedError extends Error {}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface ChzzkUser {
   channelId: string;
@@ -100,24 +102,65 @@ async function saveStreamerTokens(channelId: string, tokens: ChzzkTokens): Promi
   if (error) console.error(`streamer_tokens 저장 실패: ${error.message}`);
 }
 
-// 시청자 토큰은 유저 확인에만 쓰고 저장하지 않으니, 쓰고 나면 바로 치지직에 반납(revoke)함 — 살아있는 토큰을 남겨두지
-// 않아야 다음 로그인 때 위의 "거절되는 토큰" 문제가 덜 생김. 실패해도 로그인은 그대로 진행(로그만 남김).
-// (채널 주인 토큰은 후원 연동에 계속 써야 해서 반납하지 않음.)
-async function revokeChzzkToken(accessToken: string): Promise<void> {
+// 토큰 갱신(refresh_token → 새 accessToken/refreshToken). 실패하면 null.
+async function refreshChzzkTokens(refreshToken: string): Promise<ChzzkTokens | null> {
   const clientId = Deno.env.get("CHZZK_CLIENT_ID");
   const clientSecret = Deno.env.get("CHZZK_CLIENT_SECRET");
-  if (!clientId || !clientSecret) return;
+  if (!clientId || !clientSecret) return null;
   try {
-    const res = await fetch(CHZZK_REVOKE_URL, {
+    const res = await fetch(CHZZK_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, clientSecret, token: accessToken, tokenTypeHint: "access_token" }),
-      signal: AbortSignal.timeout(4000),
+      body: JSON.stringify({ grantType: "refresh_token", refreshToken, clientId, clientSecret }),
+      signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) console.error(`치지직 토큰 반납 실패 (status ${res.status})`);
+    const body = await res.json().catch(() => null);
+    const content = body?.content;
+    if (!res.ok || typeof content?.accessToken !== "string") {
+      console.error(`치지직 토큰 갱신 실패 (status ${res.status})`);
+      return null;
+    }
+    const expiresIn = Number(content.expiresIn ?? 86400);
+    return {
+      accessToken: content.accessToken,
+      refreshToken: typeof content.refreshToken === "string" ? content.refreshToken : refreshToken,
+      expiresIn: Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn : 86400,
+    };
   } catch (err) {
-    console.error(`치지직 토큰 반납 오류: ${err instanceof Error ? err.message : err}`);
+    console.error(`치지직 토큰 갱신 오류: ${err instanceof Error ? err.message : err}`);
+    return null;
   }
+}
+
+// 유저 조회 + 거절(401)되면 서버에서 다시 시도. 순서: 바로 조회 → 0.7초 뒤 재조회 → 1.5초 뒤 재조회
+// → 토큰 갱신해서 조회 → 1초 뒤 재조회. 어느 단계에서 성공했는지 로그를 남겨서 나중에 원인 파악에 씀.
+// 토큰을 갱신했으면 tokens 객체도 새 값으로 바꿔둠(채널 주인이면 그 값을 저장해야 해서).
+// (예전엔 시청자 토큰을 쓰고 바로 반납(revoke)했는데, 그러면 다음 로그인 때 거절이 훨씬 자주 생겨서 뺐음.)
+async function fetchChzzkUserWithRetry(tokens: ChzzkTokens): Promise<ChzzkUser> {
+  const plan: Array<{ wait: number; refresh?: boolean }> = [
+    { wait: 0 }, { wait: 700 }, { wait: 1500 }, { wait: 0, refresh: true }, { wait: 1000 },
+  ];
+  let refreshed = false;
+  for (let i = 0; i < plan.length; i++) {
+    const step = plan[i];
+    if (step.wait) await sleep(step.wait);
+    if (step.refresh) {
+      if (!tokens.refreshToken) continue;
+      const fresh = await refreshChzzkTokens(tokens.refreshToken);
+      if (!fresh) continue;
+      Object.assign(tokens, fresh);
+      refreshed = true;
+    }
+    try {
+      const user = await fetchChzzkUser(tokens.accessToken);
+      if (i > 0) console.log(`치지직 유저 조회 성공 — ${i + 1}번째 시도${refreshed ? " (토큰 갱신 후)" : ""}`);
+      return user;
+    } catch (err) {
+      if (!(err instanceof ChzzkTokenRejectedError)) throw err;
+      console.error(`${err.message} — ${i + 1}번째 시도`);
+    }
+  }
+  throw new ChzzkTokenRejectedError("치지직 유저 정보 조회가 계속 거절됨 — 프론트가 로그인 재시도");
 }
 
 // GET /open/v1/users/me 로 channelId, channelName 조회
@@ -127,7 +170,10 @@ async function fetchChzzkUser(accessToken: string): Promise<ChzzkUser> {
   });
 
   if (res.status === 401) {
-    throw new ChzzkTokenRejectedError("치지직 유저 정보 조회 거절 (status 401) — 프론트가 로그인 재시도");
+    // 거절 사유(치지직 응답의 code/message)만 남김 — 토큰 값은 절대 안 남김.
+    const body = await res.json().catch(() => null);
+    const reason = body ? `${body.code ?? ""} ${String(body.message ?? "").slice(0, 120)}`.trim() : "";
+    throw new ChzzkTokenRejectedError(`치지직 유저 정보 조회 거절 (status 401${reason ? `, ${reason}` : ""})`);
   }
   if (!res.ok) {
     throw new Error(`치지직 유저 정보 조회 실패 (status ${res.status})`);
@@ -203,9 +249,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const tokens = await exchangeCodeForToken(code, state);
-    const user = await fetchChzzkUser(tokens.accessToken);
+    const user = await fetchChzzkUserWithRetry(tokens);
     if (user.channelId === OWNER_CHANNEL_ID) await saveStreamerTokens(user.channelId, tokens);
-    else await revokeChzzkToken(tokens.accessToken);
     const fetchedImage = await fetchChzzkChannelImage(user.channelId);
     await upsertUser(user, fetchedImage);
 

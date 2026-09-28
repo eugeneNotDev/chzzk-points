@@ -124,9 +124,11 @@ function openSwitchAccountDialog() {
   if (!dlg.open) dlg.showModal();
 }
 
-// 로그인 자동 재시도 표시(치지직 토큰 거절 시 한 번만 다시 로그인). 1분 안에 또 거절되면 재시도하지 않고 안내.
-const LOGIN_RETRY_KEY = "chzzk_points_login_retry_at";
-const LOGIN_RETRY_WINDOW_MS = 60 * 1000;
+// 로그인 자동 재시도 기록(치지직 토큰 거절 시 다시 로그인) — { at, count }. 2분 안에 최대 2번까지만 자동으로
+// 다시 하고, 그래도 거절되면 멈추고 안내(무한 반복 방지).
+const LOGIN_RETRY_KEY = "chzzk_points_login_retry";
+const LOGIN_RETRY_WINDOW_MS = 2 * 60 * 1000;
+const LOGIN_RETRY_MAX = 2;
 
 // 각 페이지 로드 시 한 번 호출. URL에 ?code=&state=가 있으면(=로그인 후 돌아온 상태)
 // oauth-callback을 호출해서 토큰을 받아 저장하고, URL에서 code/state를 지움.
@@ -160,12 +162,14 @@ async function handleOAuthCallbackIfPresent() {
         alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
         return;
       }
-      // 치지직이 준 토큰이 거절된 경우(로그아웃 후 바로 다시 로그인하면 한 번씩 생김, oauth-callback 참고) —
-      // 두 번째 시도는 정상이라 한 번만 자동으로 다시 로그인함. 이미 한 번 다시 했으면 멈추고 안내(무한 반복 방지).
+      // 치지직이 준 토큰이 거절된 경우(서버가 이미 몇 번 다시 확인해보고도 안 된 경우, oauth-callback 참고) —
+      // 치지직 로그인을 자동으로 다시 해서 새 토큰을 받음. 2분 안에 2번까지만(그 이상은 멈추고 안내).
       if (res.status === 409 && body.error === "chzzk_token_rejected") {
-        const lastRetry = Number(sessionStorage.getItem(LOGIN_RETRY_KEY) || 0);
-        if (Date.now() - lastRetry > LOGIN_RETRY_WINDOW_MS) {
-          sessionStorage.setItem(LOGIN_RETRY_KEY, String(Date.now()));
+        let retry = { at: 0, count: 0 };
+        try { retry = { ...retry, ...JSON.parse(sessionStorage.getItem(LOGIN_RETRY_KEY) || "{}") }; } catch {}
+        if (Date.now() - retry.at > LOGIN_RETRY_WINDOW_MS) retry = { at: Date.now(), count: 0 };
+        if (retry.count < LOGIN_RETRY_MAX) {
+          sessionStorage.setItem(LOGIN_RETRY_KEY, JSON.stringify({ at: retry.at, count: retry.count + 1 }));
           startLogin();
           return new Promise(() => {}); // 페이지를 떠나는 중 — 뒤 코드(로그아웃 화면 그리기)가 안 돌게 멈춰둠
         }
