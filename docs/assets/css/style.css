@@ -2968,7 +2968,13 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .fb-prize span { font-size: 1.2rem; margin-left: 2px; }
 .fb-caption { margin: 14px 0 0; position: relative; z-index: 4; font-family: var(--font-logo); font-size: 1.05rem; text-align: center; word-break: keep-all; }
 .fb-rays, .fb-sparkles { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.4s; }
-.fb-rays { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(0, 229, 160, 0.1) 0 10deg, transparent 10deg 20deg); animation: fb-spin 14s linear infinite; }
+/* 빛줄기는 무대보다 훨씬 큰 정사각형으로 두고 돌림 — 무대 크기(가로로 긴 직사각형) 그대로 돌리면
+   돌아가는 동안 모서리가 비어서 빛이 가운데 세로 띠로 잘려 보임. */
+.fb-rays {
+  inset: auto; left: 50%; top: 52%; width: 1600px; height: 1600px; margin: -800px 0 0 -800px;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(0, 229, 160, 0.1) 0 10deg, transparent 10deg 20deg);
+  animation: fb-spin 14s linear infinite;
+}
 @keyframes fb-spin { to { transform: rotate(360deg); } }
 .fb-sparkles i { position: absolute; width: 8px; height: 8px; background: #ffe58a; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: fb-twinkle 1.4s ease-in-out infinite; }
 .fb-sparkles i:nth-child(1) { left: 18%; top: 22%; } .fb-sparkles i:nth-child(2) { left: 78%; top: 18%; animation-delay: 0.3s; }
@@ -2985,7 +2991,7 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .fb-stage.is-open .fb-rays { opacity: 1; }
 .fb-stage.is-jackpot { --fb-a: #f2c230; --fb-a2: #b8860b; --fb-rib: #ff5f5f; background: radial-gradient(circle at 50% 42%, #3a2d0a 0%, #0f1215 65%); }
 .fb-stage.is-jackpot .fb-lid { background: linear-gradient(90deg, transparent 42%, var(--fb-rib) 42% 58%, transparent 58%), linear-gradient(160deg, #ffe58a, #f2c230); }
-.fb-stage.is-jackpot .fb-rays { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(242, 194, 48, 0.18) 0 10deg, transparent 10deg 20deg); }
+.fb-stage.is-jackpot .fb-rays { background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(242, 194, 48, 0.18) 0 10deg, transparent 10deg 20deg); }
 .fb-stage.is-jackpot .fb-sparkles { opacity: 1; }
 .fb-stage.is-jackpot .fb-prize { color: #f2c230; text-shadow: 0 0 24px rgba(242, 194, 48, 0.7); }
 .fb-stage.is-jackpot .fb-prize b { font-size: 3rem; }
