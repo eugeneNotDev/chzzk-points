@@ -59,7 +59,7 @@ revoke all on public.donations from anon, authenticated;
 create or replace function public.donation_points(p_amount integer)
 returns integer as $$
   select case when p_amount >= 10000 then (p_amount * 10) / 100 else 0 end;
-$$ language sql immutable;
+$$ language sql immutable set search_path = public;
 
 -- 후원 한 건 처리(idempotent). 결과: { status, points, channelId?, duplicate? }
 create or replace function public.record_donation(
