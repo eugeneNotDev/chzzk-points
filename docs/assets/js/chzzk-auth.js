@@ -53,8 +53,7 @@ const PROFILE_IMAGE_STORAGE_KEY = "chzzk_points_profile_image";
 // /me 응답의 rankKey를 저장해뒀다가 랭킹에서 본인 줄("(나)")을 찾을 때만 씀 — isMyRankingRow() 참고.
 const RANK_KEY_STORAGE_KEY = "chzzk_points_rank_key";
 const SIDEBAR_COLLAPSED_KEY = "chzzk_points_sidebar_collapsed";
-const NOTICE_LAST_SEEN_KEY = "chzzk_points_notice_last_seen_at";
-// 공지 제목 앞 "NEW" 표시 — 사이드바 알림 점과 별개로, 글마다 "이 기기에서 열어봤는지"로 판단함.
+// 공지 제목 앞 "NEW" 표시(+ 사이드바 알림 점) — 글마다 "이 기기에서 열어봤는지"로 판단함.
 // 올라온 지 NOTICE_NEW_WINDOW_MS 안 된 글 중 아직 안 열어본 글에만 붙고, 그 글을 열어보면 사라짐.
 // (예전엔 공지사항 탭에 한 번 들어가기만 해도 전부 "본 걸로" 쳐서, 다른 탭으로 옮기면 NEW가 바로 없어졌음.)
 const NOTICE_READ_IDS_KEY = "chzzk_points_notice_read_ids";
@@ -125,6 +124,10 @@ function openSwitchAccountDialog() {
   if (!dlg.open) dlg.showModal();
 }
 
+// 로그인 자동 재시도 표시(치지직 토큰 거절 시 한 번만 다시 로그인). 1분 안에 또 거절되면 재시도하지 않고 안내.
+const LOGIN_RETRY_KEY = "chzzk_points_login_retry_at";
+const LOGIN_RETRY_WINDOW_MS = 60 * 1000;
+
 // 각 페이지 로드 시 한 번 호출. URL에 ?code=&state=가 있으면(=로그인 후 돌아온 상태)
 // oauth-callback을 호출해서 토큰을 받아 저장하고, URL에서 code/state를 지움.
 // 없으면 아무 일도 안 하고 조용히 리턴.
@@ -151,16 +154,28 @@ async function handleOAuthCallbackIfPresent() {
       body: JSON.stringify({ code, state }),
     });
     if (!res.ok) {
-      if (res.status === 403) {
-        const body = await res.json().catch(() => ({}));
-        if (body.error === "banned") {
-          alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
-          return;
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 403 && body.error === "banned") {
+        sessionStorage.removeItem(LOGIN_RETRY_KEY);
+        alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+        return;
+      }
+      // 치지직이 준 토큰이 거절된 경우(로그아웃 후 바로 다시 로그인하면 한 번씩 생김, oauth-callback 참고) —
+      // 두 번째 시도는 정상이라 한 번만 자동으로 다시 로그인함. 이미 한 번 다시 했으면 멈추고 안내(무한 반복 방지).
+      if (res.status === 409 && body.error === "chzzk_token_rejected") {
+        const lastRetry = Number(sessionStorage.getItem(LOGIN_RETRY_KEY) || 0);
+        if (Date.now() - lastRetry > LOGIN_RETRY_WINDOW_MS) {
+          sessionStorage.setItem(LOGIN_RETRY_KEY, String(Date.now()));
+          startLogin();
+          return new Promise(() => {}); // 페이지를 떠나는 중 — 뒤 코드(로그아웃 화면 그리기)가 안 돌게 멈춰둠
         }
       }
+      sessionStorage.removeItem(LOGIN_RETRY_KEY);
       console.error("[chzzk-auth] 로그인 처리 실패", res.status);
+      alert("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
+    sessionStorage.removeItem(LOGIN_RETRY_KEY);
     const data = await res.json();
     localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
     localStorage.setItem(CHANNEL_ID_STORAGE_KEY, data.channelId ?? "");
@@ -1147,58 +1162,42 @@ function initAdminNav() {
   el.hidden = !isAdmin();
 }
 
-// 사이드바 "공지사항" 링크에 새 글 알림 점(.notice-nav-badge)을 띄움. 서버에 유저별 열람
-// 기록을 두지 않고 localStorage에 "마지막으로 확인한 시각"만 남기는 가벼운 방식이라, 기기를
-// 바꾸면 다시 뜰 수 있음 — 공지사항처럼 가볍게 훑어보는 용도엔 그 정도로 충분하다고 판단함.
-// 이 기능을 막 배포한 시점엔 아무도 아직 "확인"한 적이 없어서 기존 공지 전체가 전부 새 글처럼
-// 떠버리는 걸 막기 위해, localStorage에 값이 아예 없는 최초 1회는 점을 띄우지 않고 조용히
-// 지금 최신 글 시각으로 기준값만 채워둠(그 다음부터 진짜 새 공지가 생기면 정상적으로 뜸).
-// index/notice/ranking/attendance/mypage/shop/admin html이 전부 사이드바 초기화 직후 이 함수를
-// 호출함 — supabase-client를 자체적으로 import함(같은 assets/js 디렉터리 기준 상대경로라
-// "./supabase-client.js" — 페이지 쪽 inline script가 쓰는 "./assets/js/supabase-client.js"와
-// 다름에 주의: 이 파일은 <script src>로 로드된 별도 스크립트라 동적 import 기준 경로가
-// chzzk-auth.js 자신의 위치이지 문서 위치가 아님).
+// 사이드바 "공지사항" 링크의 새 글 알림 점(.notice-nav-badge). 공지 제목 앞 "NEW"와 기준을 똑같이 맞춤 —
+// 올라온 지 3일 안 됐고 이 기기에서 아직 안 열어본 글(isNoticeNew)이 하나라도 있으면 점을 띄우고,
+// 그런 글을 전부 열어봐서 NEW가 다 사라지면 점도 같이 사라짐(markNoticeRead가 바로 다시 계산함).
+// (예전엔 "마지막으로 공지사항 탭에 들어간 시각"으로 따로 판단해서, 홈에서 새 공지를 열어 NEW가 없어져도
+//  점은 계속 남아있거나 — 반대로 공지사항 탭에 들르기만 해도 NEW가 남아있는데 점이 꺼지는 식으로 어긋났음.)
+// 서버에 유저별 열람 기록을 두지 않는 가벼운 방식이라 기기를 바꾸면 다시 뜰 수 있음.
+// 모든 페이지가 사이드바 초기화 직후 이 함수를 호출함 — supabase-client를 자체적으로 import함(이 파일은
+// <script src>로 로드된 별도 스크립트라 동적 import 기준 경로가 문서가 아니라 chzzk-auth.js 자신의 위치).
+let recentNoticesForBadge = [];
+
 async function initNoticeBadge() {
   try {
     const { supabase } = await import("./supabase-client.js");
+    const since = new Date(Date.now() - NOTICE_NEW_WINDOW_MS).toISOString();
     const { data, error } = await supabase
       .from("notices")
-      .select("created_at")
+      .select("id, created_at")
+      .gte("created_at", since)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(50);
     if (error || !data) return;
-
-    const lastSeen = localStorage.getItem(NOTICE_LAST_SEEN_KEY);
-    if (!lastSeen) {
-      localStorage.setItem(NOTICE_LAST_SEEN_KEY, data.created_at);
-      return;
-    }
-    setNoticeBadgeVisible(new Date(data.created_at) > new Date(lastSeen));
+    recentNoticesForBadge = data;
+    refreshNoticeBadge();
   } catch {
     // 배지는 있으면 좋은 부가기능이라 실패해도 조용히 무시함(페이지 핵심 기능엔 영향 없음).
   }
+}
+
+function refreshNoticeBadge() {
+  setNoticeBadgeVisible(recentNoticesForBadge.some((n) => isNoticeNew(n)));
 }
 
 function setNoticeBadgeVisible(visible) {
   document.querySelectorAll(".notice-nav-badge").forEach((el) => {
     el.hidden = !visible;
   });
-}
-
-// 지금까지 저장된 "마지막으로 확인한 시각"을 건드리지 않고 그냥 읽기만 함. 공지 목록/미리보기가
-// 각 글 옆에 "새 글" 표시를 달 때, 이 값보다 나중에 올라온 글만 새 글로 표시하는 기준으로 씀 —
-// markNoticesSeen()으로 값을 갱신하기 *전에* 호출해야 의미가 있음(안 그러면 방금 갱신된 "지금"
-// 시각과 비교하게 돼서 전부 새 글이 아닌 걸로 나옴). 값이 아예 없으면(이 기기에서 공지사항을
-// 한 번도 확인한 적 없음) null을 그대로 돌려줌 — 호출부에서 null이면 "새 글 없음"으로 취급해야
-// initNoticeBadge()의 최초 1회 무음 처리와 일관됨(안 그러면 신규 유저 눈엔 기존 글이 전부 새
-// 글처럼 보여버림).
-function getNoticeLastSeenAt() {
-  try {
-    return localStorage.getItem(NOTICE_LAST_SEEN_KEY);
-  } catch {
-    return null;
-  }
 }
 
 // 이 기기에서 열어본 공지 id 목록(최근 100개까지만 보관).
@@ -1215,11 +1214,12 @@ function getReadNoticeIds() {
 function isNoticeNew(notice) {
   if (!notice || !notice.created_at) return false;
   const age = Date.now() - new Date(notice.created_at).getTime();
-  if (!(age >= 0 && age < NOTICE_NEW_WINDOW_MS)) return false;
+  // 서버와 기기 시계가 몇 초~몇 분 어긋나면 방금 쓴 글의 age가 살짝 음수로 나올 수 있어서 5분까진 봐줌.
+  if (!(age > -5 * 60 * 1000 && age < NOTICE_NEW_WINDOW_MS)) return false;
   return !getReadNoticeIds().has(String(notice.id));
 }
 
-// 공지를 열어봤을 때(팝업) 호출 — 그 글의 NEW를 없앰.
+// 공지를 열어봤을 때(팝업) 호출 — 그 글의 NEW를 없애고, 남은 NEW가 없으면 사이드바 점도 끔.
 function markNoticeRead(id) {
   try {
     const ids = [...getReadNoticeIds()].filter((x) => x !== String(id));
@@ -1228,15 +1228,19 @@ function markNoticeRead(id) {
   } catch {
     // 저장이 막힌 브라우저면 NEW가 안 사라질 뿐 — 기능엔 영향 없음.
   }
+  refreshNoticeBadge();
 }
 
-// notice.html이 목록을 불러온 직후 호출함 — 지금 시각을 "마지막으로 확인함" 기준으로 저장하고
-// 배지를 곧바로 숨김. 방금 불러온 목록엔 그 시점까지의 모든 공지가 들어있으니, 가장 최근 글의
-// created_at이 아니라 그냥 현재 시각을 기준으로 잡아도 됨 — 더 단순하고 서버-클라이언트 시계
-// 오차를 신경 쓸 필요도 없음.
-function markNoticesSeen() {
-  localStorage.setItem(NOTICE_LAST_SEEN_KEY, new Date().toISOString());
-  setNoticeBadgeVisible(false);
+// notice.html/index.html이 공지 목록을 새로 불러온 직후 호출함 — 방금 받은 목록 기준으로 점을 다시 계산
+// (새로 쓰거나 지운 공지가 바로 반영되게). complete=true(공지사항 탭 — 최근 글이 전부 들어있는 전체 목록)면
+// 그 목록으로 통째로 바꾸고, 아니면(홈 미리보기 — 몇 개만 옴) initNoticeBadge에서 받아둔 것에 합침.
+function syncNoticeBadge(notices, complete = false) {
+  if (Array.isArray(notices)) {
+    const byId = complete ? new Map() : new Map(recentNoticesForBadge.map((n) => [String(n.id), n]));
+    notices.forEach((n) => { if (n && n.id != null) byId.set(String(n.id), { id: n.id, created_at: n.created_at }); });
+    recentNoticesForBadge = [...byId.values()];
+  }
+  refreshNoticeBadge();
 }
 
 // 사이드바 "포인트 상점" 아코디언 그룹(펼치면 일반 상점/칭호 상점 하위 링크가 나오는 형태).

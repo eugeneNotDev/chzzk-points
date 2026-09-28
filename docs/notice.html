@@ -229,7 +229,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=43"></script>
+  <script src="assets/js/chzzk-auth.js?v=44"></script>
   <script src="assets/js/spa-router.js?v=13"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
@@ -494,9 +494,9 @@
         listEl.innerHTML = "";
         return;
       }
-      // 목록을 정상적으로 불러왔으면(비어있어도) 여기까지 다 본 걸로 쳐서 사이드바 알림 점을
-      // 끔 — 조회 자체가 실패했을 땐(위 error 분기) 안 함, 못 봤는데 본 걸로 칠 순 없으니.
-      markNoticesSeen();
+      // 사이드바 알림 점을 방금 받은 목록 기준으로 다시 계산 — 점은 NEW가 붙은 글이 남아있을 때만 뜸
+      // (글을 열어봐서 NEW가 다 사라지면 같이 꺼짐 — chzzk-auth.js의 syncNoticeBadge/markNoticeRead).
+      syncNoticeBadge(data || [], true);
       if (!data || data.length === 0) {
         noticesById = new Map();
         emptyEl.hidden = false;

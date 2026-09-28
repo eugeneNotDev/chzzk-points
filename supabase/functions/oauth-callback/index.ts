@@ -10,8 +10,9 @@
 //      → users 테이블에 upsert (service_role 클라이언트, RLS 우회)
 //      → 로그인한 사람이 채널 주인(유진 알파)이면 치지직 토큰을 streamer_tokens에 저장
 //        (후원 자동 적립용 — donation-relay 함수가 이걸로 후원 알림 세션을 엶. 0046_donation_points.sql)
-//        시청자 토큰은 저장하지 않음.
+//        시청자 토큰은 저장하지 않고 유저 확인 뒤 바로 반납(revoke)함.
 //      → 세션 토큰 발급해서 리턴
+// 치지직이 준 토큰이 유저 조회에서 거절(401)되면 409 { error: "chzzk_token_rejected" } — 프론트가 로그인을 한 번 자동 재시도.
 //
 // 참고: 치지직 오픈 API 응답은 전부 { code, message, content: {...} } 래퍼 구조.
 //   토큰 엔드포인트: POST https://openapi.chzzk.naver.com/auth/v1/token
@@ -30,6 +31,12 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const CHZZK_TOKEN_URL = "https://openapi.chzzk.naver.com/auth/v1/token";
 const CHZZK_USER_ME_URL = "https://openapi.chzzk.naver.com/open/v1/users/me";
+const CHZZK_REVOKE_URL = "https://openapi.chzzk.naver.com/auth/v1/token/revoke";
+
+// 치지직이 발급해준 토큰으로 유저 조회가 401로 거절되는 경우(로그아웃 후 곧바로 다시 로그인할 때 번갈아 한 번씩
+// 생김 — 이미 살아있는 토큰이 있는 상태에서 새로 발급받으면 거절되는 토큰이 오는 것으로 보임). 이땐 409로 알려주고
+// 프론트(chzzk-auth.js)가 로그인을 한 번 자동으로 다시 시도함 — 두 번째는 항상 정상 발급됨.
+class ChzzkTokenRejectedError extends Error {}
 
 interface ChzzkUser {
   channelId: string;
@@ -93,12 +100,35 @@ async function saveStreamerTokens(channelId: string, tokens: ChzzkTokens): Promi
   if (error) console.error(`streamer_tokens 저장 실패: ${error.message}`);
 }
 
+// 시청자 토큰은 유저 확인에만 쓰고 저장하지 않으니, 쓰고 나면 바로 치지직에 반납(revoke)함 — 살아있는 토큰을 남겨두지
+// 않아야 다음 로그인 때 위의 "거절되는 토큰" 문제가 덜 생김. 실패해도 로그인은 그대로 진행(로그만 남김).
+// (채널 주인 토큰은 후원 연동에 계속 써야 해서 반납하지 않음.)
+async function revokeChzzkToken(accessToken: string): Promise<void> {
+  const clientId = Deno.env.get("CHZZK_CLIENT_ID");
+  const clientSecret = Deno.env.get("CHZZK_CLIENT_SECRET");
+  if (!clientId || !clientSecret) return;
+  try {
+    const res = await fetch(CHZZK_REVOKE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId, clientSecret, token: accessToken, tokenTypeHint: "access_token" }),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) console.error(`치지직 토큰 반납 실패 (status ${res.status})`);
+  } catch (err) {
+    console.error(`치지직 토큰 반납 오류: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
 // GET /open/v1/users/me 로 channelId, channelName 조회
 async function fetchChzzkUser(accessToken: string): Promise<ChzzkUser> {
   const res = await fetch(CHZZK_USER_ME_URL, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
+  if (res.status === 401) {
+    throw new ChzzkTokenRejectedError("치지직 유저 정보 조회 거절 (status 401) — 프론트가 로그인 재시도");
+  }
   if (!res.ok) {
     throw new Error(`치지직 유저 정보 조회 실패 (status ${res.status})`);
   }
@@ -175,6 +205,7 @@ Deno.serve(async (req: Request) => {
     const tokens = await exchangeCodeForToken(code, state);
     const user = await fetchChzzkUser(tokens.accessToken);
     if (user.channelId === OWNER_CHANNEL_ID) await saveStreamerTokens(user.channelId, tokens);
+    else await revokeChzzkToken(tokens.accessToken);
     const fetchedImage = await fetchChzzkChannelImage(user.channelId);
     await upsertUser(user, fetchedImage);
 
@@ -193,6 +224,13 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
+    if (err instanceof ChzzkTokenRejectedError) {
+      console.error(err.message);
+      return new Response(JSON.stringify({ error: "chzzk_token_rejected" }), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // clientSecret 등 민감정보는 이 경로(에러 메시지들)에 절대 안 섞이도록 위에서 주의해서 짬
     console.error(err instanceof Error ? err.message : err);
     return new Response(JSON.stringify({ error: "oauth_failed" }), {

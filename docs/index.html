@@ -146,7 +146,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=43"></script>
+  <script src="assets/js/chzzk-auth.js?v=44"></script>
   <script src="assets/js/spa-router.js?v=13"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -280,6 +280,7 @@
         listEl.innerHTML = "";
         return;
       }
+      syncNoticeBadge(data || []); // 사이드바 알림 점도 방금 받은 목록 기준으로 다시 계산(chzzk-auth.js)
       if (!data || data.length === 0) {
         noticePreviewById = new Map();
         emptyEl.hidden = false;
