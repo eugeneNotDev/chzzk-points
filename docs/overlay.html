@@ -28,18 +28,21 @@
     animation: toast-in 0.25s ease-out, toast-out 0.4s ease-in 4.6s forwards;
   }
   .toast .who { color: #7fd1ff; font-weight: 700; }
-  /* 방송 코드 박스(왼쪽 위) — overlay.html?key=... 로 열었을 때만 뜸. */
+  /* 방송 코드 박스(왼쪽 위) — overlay.html?key=... 로 열었을 때만 뜸.
+     글꼴은 사이트 로고/제목과 같은 고도체(Godo) — 한글 코드도 예쁘게 보이게(style.css의 --font-logo와 같은 파일). */
+  @font-face { font-family: "Godo"; src: url("//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Godo"; src: url("//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff2") format("woff2"); font-weight: 700; font-display: swap; }
   .code-box {
     position: fixed; top: 32px; left: 32px; width: 280px; box-sizing: border-box;
     background: rgba(16, 19, 23, 0.88); color: #fff; border-radius: 12px; padding: 14px 18px 13px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35); border: 1px solid rgba(0, 229, 160, 0.35);
-    font-family: system-ui, "Noto Sans KR", sans-serif;
+    font-family: "Godo", system-ui, "Noto Sans KR", sans-serif;
     animation: code-in 0.35s ease-out;
   }
   .code-box[hidden] { display: none; }
   .code-box .label { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; color: #00e5a0; }
   .code-box .time { color: #fff; font-variant-numeric: tabular-nums; font-size: 16px; }
-  .code-box .code { margin: 6px 0 4px; font-size: 40px; font-weight: 800; letter-spacing: 0.14em; text-align: center; font-family: ui-monospace, Consolas, monospace; word-break: break-all; line-height: 1.15; }
+  .code-box .code { margin: 8px 0 6px; font-size: 38px; font-weight: 700; letter-spacing: 0.08em; text-align: center; word-break: break-all; line-height: 1.15; }
   .code-box .sub { display: flex; justify-content: space-between; font-size: 13px; color: #c9d1d9; }
   .code-box .sub b { color: #00e5a0; }
   .code-box .bar { margin-top: 10px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }

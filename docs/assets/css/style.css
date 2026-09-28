@@ -2870,6 +2870,7 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
   flex: 1;
   min-width: 0;
   font: inherit;
+  font-family: var(--font-logo);
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -2899,13 +2900,13 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .code-overlay-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--muted); }
 .code-overlay-row button { font-size: 0.8rem; padding: 4px 10px; }
 .code-active { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 16px; border-radius: var(--radius-sm); background: var(--accent-dim); border: 1px solid rgba(0, 229, 160, 0.35); }
-.code-active-code { font-family: ui-monospace, Consolas, monospace; font-size: 2rem; font-weight: 800; letter-spacing: 0.12em; color: var(--accent); word-break: break-all; }
+.code-active-code { font-family: var(--font-logo); font-size: 2rem; font-weight: 700; letter-spacing: 0.08em; color: var(--accent); word-break: break-all; }
 .code-active-meta { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; }
 .code-active-meta .time { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .code-active-actions { display: flex; gap: 8px; }
 .code-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
 .code-row:last-child { border-bottom: none; }
-.code-row .c { font-family: ui-monospace, Consolas, monospace; font-weight: 700; letter-spacing: 0.08em; min-width: 110px; }
+.code-row .c { font-family: var(--font-logo); font-weight: 700; letter-spacing: 0.04em; min-width: 110px; }
 .code-row .m { flex: 1; color: var(--muted); font-size: 0.82rem; }
 .code-row .t { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 @media (max-width: 560px) {
