@@ -96,7 +96,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=41"></script>
+  <script src="assets/js/chzzk-auth.js?v=42"></script>
   <script src="assets/js/spa-router.js?v=13"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -164,15 +164,12 @@
 
       // 실시간 갱신: points_ledger는 RLS로 막혀있어 직접 구독할 수 없어서, 그 대신 매
       // insert마다 트리거가 채워주는 ranking_pings(공개 읽기 가능한 신호용 테이블)를 구독함
-      // (0019_admin_features.sql 참고). 관리자가 일괄 지급을 하면 짧은 시간에 ping이 여러 번
-      // 올 수 있어서 debounce로 묶어서 한 번만 다시 불러옴.
-      let refetchTimer = null;
+      // (0019_admin_features.sql 참고). 미니게임 한 판마다 신호가 오니 createRankingRefresher(chzzk-auth.js)로
+      // 8초에 한 번까지만, 탭이 보일 때만 다시 불러옴.
+      const refresher = createRankingRefresher(() => loadRanking(supabase));
       const channel = supabase
         .channel("ranking_pings_page")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => {
-          clearTimeout(refetchTimer);
-          refetchTimer = setTimeout(() => loadRanking(supabase), 800);
-        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => refresher.ping())
         .subscribe();
 
       // 비공개 상태 본인 줄 "(나)" 표시용 값(rankKey)이 /me로 막 도착했으면 다시 그림(chzzk-auth.js).
@@ -180,7 +177,7 @@
       window.addEventListener("chzzk:rankkey", onRankKey);
 
       window.__pageCleanup = () => {
-        clearTimeout(refetchTimer);
+        refresher.dispose();
         supabase.removeChannel(channel);
         window.removeEventListener("chzzk:rankkey", onRankKey);
       };

@@ -146,7 +146,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=41"></script>
+  <script src="assets/js/chzzk-auth.js?v=42"></script>
   <script src="assets/js/spa-router.js?v=13"></script>
   <script>
   // 라우터(spa-router.js)가 페이지 이동할 때마다 이 스크립트를 다시 실행하므로,
@@ -354,7 +354,10 @@
       // 테이블)를 구독함(0019_admin_features.sql 참고) — ranking.html과 동일한 패턴.
       // 관리자가 일괄 지급하면 짧은 시간에 ping이 여러 번 올 수 있어 debounce로 묶음.
       let noticeRefetchTimer = null;
-      let rankingRefetchTimer = null;
+      // 랭킹은 미니게임 한 판마다 신호가 와서 8초에 한 번까지만, 탭이 보일 때만 다시 불러옴(createRankingRefresher).
+      const rankingRefresher = createRankingRefresher(() => {
+        if (document.getElementById("ranking-preview")) loadRankingPreview();
+      });
       const noticeChannel = supabase
         .channel("notices_index_preview")
         .on("postgres_changes", { event: "*", schema: "public", table: "notices" }, () => {
@@ -367,13 +370,7 @@
         .subscribe();
       const rankingChannel = supabase
         .channel("ranking_pings_index_preview")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => {
-          clearTimeout(rankingRefetchTimer);
-          rankingRefetchTimer = setTimeout(() => {
-            if (!document.getElementById("ranking-preview")) return;
-            loadRankingPreview();
-          }, 800);
-        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "ranking_pings" }, () => rankingRefresher.ping())
         .subscribe();
 
       // 비공개 상태 본인 줄 "(나)" 표시용 값(rankKey)이 /me로 막 도착했으면 랭킹 미리보기를 다시 그림.
@@ -384,7 +381,7 @@
 
       window.__pageCleanup = () => {
         clearTimeout(noticeRefetchTimer);
-        clearTimeout(rankingRefetchTimer);
+        rankingRefresher.dispose();
         supabase.removeChannel(noticeChannel);
         supabase.removeChannel(rankingChannel);
         window.removeEventListener("chzzk:rankkey", onRankKey);

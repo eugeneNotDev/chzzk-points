@@ -615,6 +615,48 @@ function renderShopTitleBadgeHtml(shopName, color) {
   return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
 }
 
+// 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.
+// 포인트가 움직일 때마다(미니게임 한 판마다) 신호가 오는데, 그때마다 바로 다시 불러오면 보고 있는
+// 사람 수만큼 조회가 계속 생김. 그래서:
+//   - 신호가 아무리 많이 와도 minIntervalMs(기본 8초)에 한 번만 다시 불러옴(마지막 신호는 놓치지 않음)
+//   - 탭이 안 보이는 동안(다른 탭/창 최소화)은 안 불러오고, 다시 보일 때 밀린 게 있으면 한 번 불러옴
+// 사용: const r = createRankingRefresher(() => loadRanking()); ... 신호 오면 r.ping(); 페이지 떠날 때 r.dispose();
+function createRankingRefresher(refetch, { minIntervalMs = 8000, settleMs = 800 } = {}) {
+  let lastRun = 0;
+  let timer = null;
+  let dirty = false;
+  let disposed = false;
+
+  function run() {
+    timer = null;
+    if (disposed || document.hidden) return; // 안 보이면 dirty 그대로 두고 다시 보일 때 처리
+    dirty = false;
+    lastRun = Date.now();
+    refetch();
+  }
+  function ping() {
+    if (disposed) return;
+    dirty = true;
+    if (document.hidden || timer) return;
+    const wait = Math.max(settleMs, lastRun + minIntervalMs - Date.now());
+    timer = setTimeout(run, wait);
+  }
+  function onVisibility() {
+    if (!document.hidden && dirty) ping();
+  }
+  document.addEventListener("visibilitychange", onVisibility);
+
+  return {
+    ping,
+    dispose() {
+      disposed = true;
+      clearTimeout(timer);
+      timer = null;
+      document.removeEventListener("visibilitychange", onVisibility);
+    },
+  };
+}
+
 // 랭킹 목록 조회 — ranking.html(전체)과 index.html(홈 미리보기)이 같이 씀. 결과 모양은 둘 다
 // public.ranking 뷰 그대로({ data, error }).
 //  - 일반 유저/비로그인: 공개 뷰 — 비공개 유저는 이름이 "비공개"로 가려지고 칭호도 안 보임
