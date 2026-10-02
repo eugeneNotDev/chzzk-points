@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=82">
+<link rel="stylesheet" href="assets/css/style.css?v=83">
 </head>
 <body>
   <script>
@@ -221,16 +221,28 @@
           </div>
         </div>
 
-        <!-- 방송 코드 — 방송 중에 뿌리는 10분짜리 코드(0047_stream_codes.sql, admin-stream-codes 함수).
+        <!-- 방송 코드 — 방송 중에 뿌리는 코드(0047_stream_codes.sql, admin-stream-codes 함수). 지속 시간(분)은 정할 수 있고 비우면 무제한,
+             포인트는 고정이거나 최소~최대 사이 랜덤(받는 사람마다 따로 뽑음, 0051_stream_code_options.sql).
              시청자는 출석체크 페이지에서 입력하고, 코드는 OBS 오버레이(overlay.html?key=...)에도 뜸. -->
         <div id="admin-tab-code" class="admin-tab-panel" hidden>
           <div class="card">
             <div class="card-header"><h2>방송 코드 만들기</h2></div>
-            <p class="muted">코드를 만들면 10분 동안만 입력할 수 있고, 방송 화면(오버레이)에도 바로 떠요.</p>
+            <p class="muted">정한 시간 동안만 입력할 수 있고(비우면 직접 종료할 때까지), 방송 화면(오버레이)에도 바로 떠요.</p>
             <form class="code-form" id="code-create-form">
-              <label>코드 <input type="text" id="code-create-code" maxlength="20" placeholder="비우면 자동 (예: K7Q2MX)"></label>
-              <label>포인트 <input type="number" id="code-create-points" min="1" step="1" value="100"></label>
+              <label class="code-f-code">코드 <input type="text" id="code-create-code" maxlength="20" placeholder="비우면 자동 (예: K7Q2MX)"></label>
+              <div class="code-f-points">
+                <div class="code-f-head">
+                  <span>포인트</span>
+                  <label class="code-f-random"><input type="checkbox" id="code-create-random"> 랜덤</label>
+                </div>
+                <div class="code-f-range">
+                  <input type="number" id="code-create-points" min="1" step="1" value="100" aria-label="포인트(랜덤이면 최소)">
+                  <span class="code-f-tilde" hidden>~</span>
+                  <input type="number" id="code-create-points-max" min="1" step="1" value="500" aria-label="최대 포인트" hidden>
+                </div>
+              </div>
               <label>선착순 인원 <input type="number" id="code-create-max" min="1" step="1" placeholder="비우면 무제한"></label>
+              <label>지속 시간(분) <input type="number" id="code-create-minutes" min="1" step="1" value="10" placeholder="비우면 무제한"></label>
               <button type="submit" id="code-create-btn">코드 만들기</button>
             </form>
             <p id="code-create-status" class="status-msg"></p>
@@ -1270,7 +1282,18 @@
       invalid_code: "코드는 한글/영문/숫자 2~20자로 써주세요.",
       invalid_points: "포인트를 1 이상으로 넣어주세요.",
       invalid_max_uses: "선착순 인원은 1명 이상이거나 비워두세요.",
+      invalid_minutes: "지속 시간은 1분 이상이거나 비워두세요(비우면 무제한).",
+      invalid_points_max: "랜덤 최대 포인트는 최소보다 커야 해요.",
     };
+    // 포인트 칸 표시 — 고정이면 "+100P", 랜덤이면 "10~500P 랜덤".
+    const codePointsLabel = (c) => c.pointsMax ? `${fmtNum(c.points)}~${fmtNum(c.pointsMax)}P 랜덤` : `+${fmtNum(c.points)}P`;
+    function setCodeRandomUi() {
+      const on = document.getElementById("code-create-random").checked;
+      document.getElementById("code-create-points-max").hidden = !on;
+      document.querySelector(".code-f-tilde").hidden = !on;
+      document.getElementById("code-create-points").setAttribute("aria-label", on ? "최소 포인트" : "포인트");
+    }
+    document.getElementById("code-create-random").addEventListener("change", setCodeRandomUi);
     let codePastPage = 1;
     let codeActive = null;       // 진행 중인 코드(없으면 null)
     let codeClockOffset = 0;     // 서버 시각 - 내 PC 시각(남은 시간을 서버 기준으로 계산)
@@ -1279,9 +1302,13 @@
     let codePollTicks = 0;
 
     const fmtNum = (n) => Number(n).toLocaleString("ko-KR");
+    // 남은 시간(ms). 무제한 코드(expiresAt 없음)면 Infinity.
     function codeRemainingMs() {
-      return codeActive ? new Date(codeActive.expiresAt).getTime() - (Date.now() + codeClockOffset) : 0;
+      if (!codeActive) return 0;
+      if (!codeActive.expiresAt) return Infinity;
+      return new Date(codeActive.expiresAt).getTime() - (Date.now() + codeClockOffset);
     }
+    const codeTimeLabel = (ms) => (ms === Infinity ? "제한 없음" : formatMmSs(ms));
     function formatMmSs(ms) {
       const sec = Math.max(0, Math.ceil(ms / 1000));
       return `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
@@ -1322,17 +1349,17 @@
         <div class="code-active">
           <div class="code-active-code">${escapeHtml(c.code)}</div>
           <div class="code-active-meta">
-            <span class="time" id="code-active-time">⏱ ${formatMmSs(codeRemainingMs())}</span>
-            <span>+${fmtNum(c.points)}P · ${uses}</span>
+            <span class="time" id="code-active-time">⏱ ${codeTimeLabel(codeRemainingMs())}</span>
+            <span>${codePointsLabel(c)} · ${uses}</span>
           </div>
           <div class="code-active-actions"><button type="button" class="secondary" id="code-end-btn">지금 종료</button></div>
         </div>`;
     }
 
     function codePastStatus(c) {
-      if (c.maxUses && c.usedCount >= c.maxUses) return `+${fmtNum(c.points)}P · ${fmtNum(c.usedCount)}/${fmtNum(c.maxUses)}명 (마감)`;
+      if (c.maxUses && c.usedCount >= c.maxUses) return `${codePointsLabel(c)} · ${fmtNum(c.usedCount)}/${fmtNum(c.maxUses)}명 (마감)`;
       const uses = c.maxUses ? `${fmtNum(c.usedCount)}/${fmtNum(c.maxUses)}명` : `${fmtNum(c.usedCount)}명 받음`;
-      return `+${fmtNum(c.points)}P · ${uses} · ${c.endedAt ? "직접 종료" : "시간 종료"}`;
+      return `${codePointsLabel(c)} · ${uses} · ${c.endedAt ? "직접 종료" : "시간 종료"}`;
     }
 
     function renderCodePast(list) {
@@ -1352,7 +1379,7 @@
         if (tabPanels.code.hidden || !codeActive) return;
         const left = codeRemainingMs();
         const timeEl = document.getElementById("code-active-time");
-        if (timeEl) timeEl.textContent = `⏱ ${formatMmSs(left)}`;
+        if (timeEl) timeEl.textContent = `⏱ ${codeTimeLabel(left)}`;
         codePollTicks += 1;
         if (left <= 0 || codePollTicks % 10 === 0) loadStreamCodes(codePastPage);
       }, 1000);
@@ -1370,6 +1397,9 @@
       const code = document.getElementById("code-create-code").value.trim();
       const points = Number(document.getElementById("code-create-points").value);
       const maxRaw = document.getElementById("code-create-max").value.trim();
+      const minutesRaw = document.getElementById("code-create-minutes").value.trim();
+      const isRandom = document.getElementById("code-create-random").checked;
+      const pointsMax = isRandom ? Number(document.getElementById("code-create-points-max").value) : null;
       st.textContent = "";
       st.className = "status-msg";
       if (!Number.isInteger(points) || points <= 0) {
@@ -1382,12 +1412,26 @@
         st.classList.add("error");
         return;
       }
+      if (minutesRaw && (!Number.isInteger(Number(minutesRaw)) || Number(minutesRaw) <= 0)) {
+        st.textContent = CODE_CREATE_ERRORS.invalid_minutes;
+        st.classList.add("error");
+        return;
+      }
+      if (isRandom && (!Number.isInteger(pointsMax) || pointsMax <= points)) {
+        st.textContent = CODE_CREATE_ERRORS.invalid_points_max;
+        st.classList.add("error");
+        return;
+      }
       if (codeActive && codeRemainingMs() > 0 && !confirm(`진행 중인 코드(${codeActive.code})를 끝내고 새 코드를 만들까요?`)) return;
       btn.disabled = true;
       try {
         const res = await authFetch(ADMIN_STREAM_CODES_URL, {
           method: "POST",
-          body: JSON.stringify({ action: "create", code, points, maxUses: maxRaw ? Number(maxRaw) : null }),
+          body: JSON.stringify({
+            action: "create", code, points, pointsMax,
+            maxUses: maxRaw ? Number(maxRaw) : null,
+            minutes: minutesRaw ? Number(minutesRaw) : null,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -1395,7 +1439,9 @@
           st.classList.add("error");
           return;
         }
-        st.textContent = `코드 ${data.code}를 만들었어요. 10분 동안 입력할 수 있어요.`;
+        st.textContent = minutesRaw
+          ? `코드 ${data.code}를 만들었어요. ${fmtNum(minutesRaw)}분 동안 입력할 수 있어요.`
+          : `코드 ${data.code}를 만들었어요. 직접 종료할 때까지 입력할 수 있어요.`;
         st.classList.add("ok");
         document.getElementById("code-create-code").value = "";
         await loadStreamCodes(1);

@@ -116,7 +116,6 @@
     // stream-code 함수에서 지금 코드를 받아오고, 이후 변화는 이 key가 들어간 이름의 채널(broadcast)로 받음.
     const overlayKey = new URLSearchParams(location.search).get("key");
     const STREAM_CODE_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/stream-code";
-    const CODE_DURATION_MS = 10 * 60 * 1000;
     const codeBox = document.getElementById("code-box");
     let activeCode = null;
     let clockOffset = 0; // 서버 시각 - 이 PC 시각
@@ -125,8 +124,11 @@
       const t = new Date(serverNow).getTime();
       if (Number.isFinite(t)) clockOffset = t - Date.now();
     }
+    // 남은 시간(ms). 시간 제한 없는 코드(expiresAt 없음)면 Infinity.
     function remainingMs() {
-      return activeCode ? new Date(activeCode.expiresAt).getTime() - (Date.now() + clockOffset) : 0;
+      if (!activeCode) return 0;
+      if (!activeCode.expiresAt) return Infinity;
+      return new Date(activeCode.expiresAt).getTime() - (Date.now() + clockOffset);
     }
     function isSoldOut(c) {
       return c.maxUses != null && c.usedCount >= c.maxUses;
@@ -139,7 +141,8 @@
       if (!activeCode || remainingMs() <= 0 || isSoldOut(activeCode)) { hideCode(); return; }
       const c = activeCode;
       document.getElementById("code-text").textContent = c.code;
-      document.getElementById("code-points").textContent = `+${Number(c.points).toLocaleString("ko-KR")}P`;
+      const fmt = (n) => Number(n).toLocaleString("ko-KR");
+      document.getElementById("code-points").textContent = c.pointsMax ? `${fmt(c.points)}~${fmt(c.pointsMax)}P 랜덤` : `+${fmt(c.points)}P`;
       document.getElementById("code-uses").innerHTML = c.maxUses != null
         ? `선착순 <b>${(c.maxUses - c.usedCount).toLocaleString("ko-KR")}</b>/${c.maxUses.toLocaleString("ko-KR")}명 남음`
         : "";
@@ -150,9 +153,18 @@
       if (!activeCode) return;
       const left = remainingMs();
       if (left <= 0) { hideCode(); return; }
+      const bar = document.getElementById("code-bar");
+      if (left === Infinity) {
+        document.getElementById("code-time").textContent = "제한 없음";
+        bar.parentElement.hidden = true;
+        return;
+      }
+      bar.parentElement.hidden = false;
       const sec = Math.ceil(left / 1000);
       document.getElementById("code-time").textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-      document.getElementById("code-bar").style.width = `${Math.max(0, Math.min(100, (left / CODE_DURATION_MS) * 100))}%`;
+      // 막대는 만든 시각~끝나는 시각 전체 길이 대비 남은 비율.
+      const total = new Date(activeCode.expiresAt).getTime() - new Date(activeCode.createdAt).getTime();
+      bar.style.width = `${Math.max(0, Math.min(100, total > 0 ? (left / total) * 100 : 0))}%`;
     }
 
     async function fetchActiveCode() {

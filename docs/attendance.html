@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>출석체크 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=82">
+<link rel="stylesheet" href="assets/css/style.css?v=83">
 </head>
 <body>
   <script>
@@ -120,10 +120,10 @@
           <p id="checkin-status" class="status-msg"></p>
         </div>
 
-        <!-- 방송 코드 — 방송에서 알려준 코드를 10분 안에 입력하면 포인트(0047_stream_codes.sql, stream-code 함수). -->
+        <!-- 방송 코드 — 방송에서 알려준 코드를 정해진 시간 안에 입력하면 포인트(0047_stream_codes.sql, 0051, stream-code 함수). -->
         <div class="card">
           <div class="code-card-head"><h2>방송 코드</h2></div>
-          <p class="code-card-desc">방송에서 알려준 코드를 10분 안에 입력하면 포인트를 받아요.</p>
+          <p class="code-card-desc">방송에서 알려준 코드를 입력하면 포인트를 받아요.</p>
           <form class="code-redeem-row" id="code-form">
             <input type="text" class="code-redeem-input" id="code-input" maxlength="20" placeholder="코드 입력" autocomplete="off" autocapitalize="characters" spellcheck="false">
             <button type="submit" id="code-submit">받기</button>
@@ -334,7 +334,7 @@
     const STREAM_CODE_URL = `${FUNCTIONS_BASE_URL}/stream-code`;
     const CODE_ERRORS = {
       invalid_code: "없는 코드예요. 다시 확인해 주세요.",
-      expired: "시간이 지난 코드예요. 코드는 10분 동안만 입력할 수 있어요.",
+      expired: "이미 끝난 코드예요.",
       sold_out: "아쉽지만 선착순 인원이 다 찼어요.",
       already_redeemed: "이미 받은 코드예요.",
       too_many_attempts: "틀린 코드를 너무 많이 입력했어요. 잠시 후 다시 시도해 주세요.",

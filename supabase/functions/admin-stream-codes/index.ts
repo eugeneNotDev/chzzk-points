@@ -3,9 +3,10 @@
 // GET ?page=N → { active, past: [...], page, totalPages, overlayUrl, serverNow }
 //   active: 진행 중인 코드(없으면 null) / past: 지난 코드 5개씩 (최신순)
 //   overlayUrl: 방송 코드를 띄우는 오버레이 주소(OBS 브라우저 소스에 넣는 주소 — 키 포함)
-// POST { action: "create", code?, points, maxUses? } → 만든 코드 (진행 중이던 코드는 자동 종료)
+// POST { action: "create", code?, points, pointsMax?, maxUses?, minutes? } → 만든 코드 (진행 중이던 코드는 자동 종료)
+//   minutes: 지속 시간(분, 비우면 무제한 — 직접 종료할 때까지) / pointsMax: 있으면 points~pointsMax 랜덤 (0051_stream_code_options.sql)
 // POST { action: "end", id }                        → { ok: true }
-// 오류 400: invalid_code / invalid_points / invalid_max_uses / not_active
+// 오류 400: invalid_code / invalid_points / invalid_points_max / invalid_max_uses / invalid_minutes / not_active
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -14,7 +15,8 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { broadcastToOverlay, getActiveCode, getOverlayKey, toStreamCode } from "../_shared/stream-code.ts";
 
 const PAGE_SIZE = 5;
-const KNOWN_ERRORS = ["invalid_code", "invalid_points", "invalid_max_uses", "not_active"];
+// invalid_points_max가 invalid_points보다 먼저 와야 함(knownError가 앞에서부터 포함 여부로 찾음).
+const KNOWN_ERRORS = ["invalid_code", "invalid_points_max", "invalid_points", "invalid_max_uses", "invalid_minutes", "not_active"];
 const SITE_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugene4lpha.com";
 
 function json(body: unknown, status: number) {
@@ -50,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
       let query = admin
         .from("stream_codes")
-        .select("id, code, points, max_uses, used_count, created_at, expires_at, ended_at", { count: "exact" })
+        .select("id, code, points, points_max, max_uses, used_count, created_at, expires_at, ended_at", { count: "exact" })
         .order("created_at", { ascending: false })
         .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
       if (active) query = query.neq("id", active.id);
@@ -74,11 +76,18 @@ Deno.serve(async (req: Request) => {
     if (body.action === "create") {
       const code = typeof body.code === "string" ? body.code.slice(0, 40) : "";
       const points = Number(body.points);
-      const maxUses = body.maxUses === null || body.maxUses === undefined || body.maxUses === "" ? null : Number(body.maxUses);
+      const optionalInt = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+      const maxUses = optionalInt(body.maxUses);
+      const minutes = optionalInt(body.minutes);
+      const pointsMax = optionalInt(body.pointsMax);
       if (!Number.isSafeInteger(points)) return json({ error: "invalid_points" }, 400);
+      if (pointsMax !== null && !Number.isSafeInteger(pointsMax)) return json({ error: "invalid_points_max" }, 400);
       if (maxUses !== null && !Number.isSafeInteger(maxUses)) return json({ error: "invalid_max_uses" }, 400);
+      if (minutes !== null && !Number.isSafeInteger(minutes)) return json({ error: "invalid_minutes" }, 400);
 
-      const { data, error } = await admin.rpc("create_stream_code", { p_code: code, p_points: points, p_max_uses: maxUses });
+      const { data, error } = await admin.rpc("create_stream_code", {
+        p_code: code, p_points: points, p_max_uses: maxUses, p_minutes: minutes, p_points_max: pointsMax,
+      });
       if (error) {
         const known = knownError(error.message);
         if (known) return json({ error: known }, 400);

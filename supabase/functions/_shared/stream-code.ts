@@ -1,4 +1,4 @@
-// 방송 코드(0047_stream_codes.sql) 공용 코드 — stream-code(시청자 입력/오버레이)와 admin-stream-codes(관리자)가 같이 씀.
+// 방송 코드(0047_stream_codes.sql, 0051_stream_code_options.sql) 공용 코드 — stream-code(시청자 입력/오버레이)와 admin-stream-codes(관리자)가 같이 씀.
 //
 // 오버레이(overlay.html?key=...)는 코드가 생기거나 바뀔 때 Realtime broadcast로 알림을 받음.
 // 채널 이름에 오버레이 키(app_secrets.overlay_key)가 들어가서, 키를 모르면 구독할 채널 이름 자체를 모름
@@ -11,11 +11,17 @@ export interface StreamCodeRow {
   id: number;
   code: string;
   points: number;
+  points_max: number | null;   // 랜덤 코드면 최대 포인트(받는 사람마다 points~points_max 사이에서 뽑음)
   max_uses: number | null;
   used_count: number;
   created_at: string;
-  expires_at: string;
+  expires_at: string;          // 무제한 코드는 "infinity"(0051_stream_code_options.sql)
   ended_at: string | null;
+}
+
+// 무제한 코드(expires_at = infinity)는 화면/오버레이에 expiresAt: null로 보냄.
+function finiteTime(v: string | null): string | null {
+  return v && Number.isFinite(new Date(v).getTime()) ? v : null;
 }
 
 export function toStreamCode(r: StreamCodeRow) {
@@ -23,24 +29,27 @@ export function toStreamCode(r: StreamCodeRow) {
     id: r.id,
     code: r.code,
     points: r.points,
+    pointsMax: r.points_max ?? null,
     maxUses: r.max_uses,
     usedCount: r.used_count,
     createdAt: r.created_at,
-    expiresAt: r.expires_at,
+    expiresAt: finiteTime(r.expires_at),
     endedAt: r.ended_at,
   };
 }
 
-// 진행 중 = 안 끝났고, 10분 안 지났고, 선착순이 안 찼음.
+// 진행 중 = 안 끝났고, 시간이 안 지났고(무제한이면 통과), 선착순이 안 찼음.
 export function isActive(r: StreamCodeRow): boolean {
-  return !r.ended_at && new Date(r.expires_at).getTime() > Date.now() && (r.max_uses == null || r.used_count < r.max_uses);
+  const expires = finiteTime(r.expires_at);
+  const timeOk = expires === null || new Date(expires).getTime() > Date.now();
+  return !r.ended_at && timeOk && (r.max_uses == null || r.used_count < r.max_uses);
 }
 
 // 지금 진행 중인 코드(없으면 null). 진행 중인 건 한 번에 하나라 제일 최근 것만 보면 됨.
 export async function getActiveCode(admin: Admin): Promise<StreamCodeRow | null> {
   const { data, error } = await admin
     .from("stream_codes")
-    .select("id, code, points, max_uses, used_count, created_at, expires_at, ended_at")
+    .select("id, code, points, points_max, max_uses, used_count, created_at, expires_at, ended_at")
     .is("ended_at", null)
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false })

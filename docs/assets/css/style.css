@@ -2904,7 +2904,15 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .code-result.error { background: var(--danger-dim); color: #ff8a8a; }
 
 /* 관리자 "방송 코드" 탭 — 만들기 폼 / 진행 중인 코드 / 지난 코드(5개씩 페이지). */
-.code-form { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 12px; }
+.code-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; align-items: end; margin-top: 12px; }
+.code-form .code-f-code, .code-form .code-f-points, .code-form button { grid-column: span 2; }
+.code-f-points { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); min-width: 0; }
+.code-f-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.code-form .code-f-random { flex-direction: row; align-items: center; gap: 4px; cursor: pointer; color: var(--text-dim); }
+.code-form .code-f-random input { width: 14px; height: 14px; padding: 0; margin: 0; accent-color: var(--accent); }
+.code-f-range { display: flex; align-items: center; gap: 6px; }
+.code-f-range input { flex: 1; width: 100%; }
+.code-f-tilde { color: var(--muted); }
 .code-form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; color: var(--muted); }
 .code-form input { font: inherit; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 10px 12px; min-width: 0; }
 .code-form input:focus { outline: none; border-color: var(--accent); }
@@ -2923,7 +2931,7 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .code-row .t { color: var(--muted); font-size: 0.78rem; white-space: nowrap; }
 @media (max-width: 560px) {
   .code-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .code-form label:first-child, .code-form button { grid-column: 1 / -1; }
+  .code-form .code-f-code, .code-form .code-f-points, .code-form button { grid-column: 1 / -1; }
   .code-active { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 14px; }
   .code-active-code { font-size: 1.6rem; }
   .code-active-meta { display: contents; }
