@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.admin-special-title]
 verify_jwt = false
+
+[functions.admin-schedule]
+verify_jwt = false

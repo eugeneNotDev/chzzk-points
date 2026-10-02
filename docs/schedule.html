@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>방송 스케줄 · 유진 팬보드</title>
+<link rel="stylesheet" href="assets/css/style.css?v=88">
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <img class="mark" src="assets/img/brand-mark.png" alt="유진 팬보드">
+          <span class="label">유진 팬보드</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
+          <span class="label">공지사항</span>
+        </a>
+        <a href="schedule.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 13v3l2 1"/></svg></span>
+          <span class="label">방송 스케줄</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
+        <a href="predict.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="label">투표</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="game-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12a4 4 0 0 1 4 4v2a4 4 0 0 1-7.2 2.4L14 14h-4l-.8 1.4A4 4 0 0 1 2 13v-2a4 4 0 0 1 4-4z"/><path d="M7 10v4M5 12h4"/><path d="M15.5 11h.01M18 13h.01"/></svg></span>
+            <span class="label">미니게임</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="game-nav-submenu">
+            <a href="freebox.html">무료 뽑기</a>
+            <a href="roulette.html">룰렛</a>
+            <a href="rps.html">가위바위보</a>
+            <a href="oddeven.html">홀짝</a>
+          </div>
+        </div>
+        <a href="attendance.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+          <span class="label">출석체크</span>
+        </a>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1 class="brand-heading">방송 스케줄</h1>
+
+      <div class="card">
+        <div class="sched-top">
+          <button type="button" class="sched-ico" id="sched-prev" aria-label="이전 달">‹</button>
+          <h2 id="sched-month-title"></h2>
+          <button type="button" class="sched-ico" id="sched-next" aria-label="다음 달">›</button>
+          <button type="button" class="sched-today-btn" id="sched-today-btn">오늘</button>
+        </div>
+        <div class="sched-dow-row" id="sched-dow"></div>
+        <div class="sched-grid" id="sched-grid"></div>
+        <p id="sched-load-error" class="status-msg error" hidden>스케줄을 불러오지 못했어요.</p>
+        <div class="sched-legend">
+          <span><i style="background: rgba(0, 229, 160, 0.5)"></i>방송</span>
+          <span><i style="background: rgba(245, 185, 74, 0.6)"></i>시간 미정</span>
+          <span>🌙 휴방</span>
+        </div>
+      </div>
+
+      <div class="card sched-detail" id="sched-detail"></div>
+
+      <!-- 관리자 전용 — 날짜 하나의 일정(방송/휴방) 추가·수정·삭제. admin-schedule 함수(0055_broadcast_schedule.sql). -->
+      <dialog id="sched-modal" class="notice-modal" style="width: min(440px, calc(100vw - 32px))">
+        <h3 id="sched-modal-title"></h3>
+        <div class="sched-modal-field">
+          <span class="field-label">종류</span>
+          <div class="sched-modal-row">
+            <button type="button" class="secondary sched-kind-btn" data-kind="live">방송</button>
+            <button type="button" class="secondary sched-kind-btn" data-kind="off">쉬는 날</button>
+          </div>
+        </div>
+        <div id="sched-live-fields">
+          <div class="sched-modal-row">
+            <div class="sched-modal-field">
+              <label class="field-label" for="sched-time-input">시작 시간</label>
+              <input type="time" id="sched-time-input" value="20:00">
+            </div>
+            <div class="sched-modal-field">
+              <span class="field-label">시간 미정</span>
+              <label class="sched-tbd-label" style="height: 38px"><input type="checkbox" id="sched-tbd-input"> 미정으로 표시</label>
+            </div>
+          </div>
+          <div class="sched-modal-field">
+            <label class="field-label" for="sched-title-input">제목 / 컨텐츠 (최대 30자)</label>
+            <input type="text" id="sched-title-input" class="notice-title-input" maxlength="30" placeholder="예: 잔혹동화 3화">
+          </div>
+        </div>
+        <div class="sched-modal-field">
+          <label class="field-label" for="sched-memo-input">메모 (선택, 최대 200자)</label>
+          <textarea id="sched-memo-input" class="notice-title-input" rows="3" maxlength="200" style="resize: none"></textarea>
+        </div>
+        <p class="status-msg" id="sched-modal-status"></p>
+        <div class="notice-modal-actions">
+          <button type="button" class="secondary danger" id="sched-delete-btn" hidden>삭제</button>
+          <button type="button" class="secondary" id="sched-cancel-btn">취소</button>
+          <button type="button" id="sched-save-btn">저장</button>
+        </div>
+      </dialog>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=46"></script>
+  <script src="assets/js/spa-router.js?v=14"></script>
+  <script>
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  (function () {
+    const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+    const ADMIN_SCHEDULE_URL = `${FUNCTIONS_BASE_URL}/admin-schedule`;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function ymd(y, m, d) { return `${y}-${pad(m + 1)}-${pad(d)}`; } // m: 0~11
+
+    // "오늘"은 한국 시간 기준.
+    const todayStr = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
+    const [ty, tm] = todayStr.split("-").map(Number);
+    let viewY = ty;
+    let viewM = tm - 1;
+    let selected = todayStr;
+    let admin = false;
+    let supabaseClient = null;
+    const monthCache = new Map(); // "YYYY-MM" → Map(day → row)
+    let loadSeq = 0;
+
+    const gridEl = document.getElementById("sched-grid");
+    const titleEl = document.getElementById("sched-month-title");
+    const detailEl = document.getElementById("sched-detail");
+    const errorEl = document.getElementById("sched-load-error");
+    const modal = document.getElementById("sched-modal");
+
+    document.getElementById("sched-dow").innerHTML = WEEK
+      .map((w, i) => `<div class="sched-dow${i === 0 ? " sun" : ""}${i === 6 ? " sat" : ""}">${w}</div>`).join("");
+
+    async function fetchMonth(y, m, force) {
+      const key = `${y}-${pad(m + 1)}`;
+      if (!force && monthCache.has(key)) return monthCache.get(key);
+      const last = new Date(y, m + 1, 0).getDate();
+      const { data, error } = await supabaseClient
+        .from("broadcast_schedule")
+        .select("day, kind, start_time, title, memo")
+        .gte("day", ymd(y, m, 1))
+        .lte("day", ymd(y, m, last));
+      if (error) throw error;
+      const map = new Map((data ?? []).map((r) => [r.day, r]));
+      monthCache.set(key, map);
+      return map;
+    }
+
+    function renderGrid(map) {
+      titleEl.textContent = `${viewY}년 ${viewM + 1}월`;
+      const first = new Date(viewY, viewM, 1).getDay();
+      const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+      const prevDays = new Date(viewY, viewM, 0).getDate();
+      const weeks = Math.ceil((first + daysInMonth) / 7);
+      let html = "";
+      for (let i = 0; i < weeks * 7; i++) {
+        const d = i - first + 1;
+        const col = i % 7;
+        if (d < 1 || d > daysInMonth) {
+          const label = d < 1 ? prevDays + d : d - daysInMonth;
+          html += `<div class="sched-cell other"><div class="sched-head"><span class="sched-num">${label}</span></div></div>`;
+          continue;
+        }
+        const day = ymd(viewY, viewM, d);
+        const row = map.get(day);
+        const live = row && row.kind === "live";
+        const off = row && row.kind === "off";
+        const tbd = live && !row.start_time;
+        const cls = ["sched-cell"];
+        if (day === todayStr) cls.push("today");
+        if (day === selected) cls.push("sel");
+        if (live) cls.push("live");
+        if (tbd) cls.push("tbdc");
+        if (off) cls.push("off");
+        if (day < todayStr) cls.push("past");
+        if (col === 0) cls.push("sun");
+        if (col === 6) cls.push("sat");
+        const timeHtml = live ? `<span class="sched-time${tbd ? " tbd" : ""}">${tbd ? "미정" : escapeHtml(row.start_time)}</span>` : "";
+        const bodyHtml = off ? `<div class="sched-off">🌙 휴방</div>` : live ? `<div class="sched-title">${escapeHtml(row.title)}</div>` : "";
+        const addBtn = admin && !row ? `<button type="button" class="sched-add" data-add-day="${day}" aria-label="일정 추가">+</button>` : "";
+        html += `<div class="${cls.join(" ")}" data-day="${day}" role="button" tabindex="0"><div class="sched-head"><span class="sched-num">${d}</span>${timeHtml}</div>${bodyHtml}${addBtn}</div>`;
+      }
+      gridEl.innerHTML = html;
+    }
+
+    function renderDetail(map) {
+      const [y, m, d] = selected.split("-").map(Number);
+      const wd = WEEK[new Date(y, m - 1, d).getDay()];
+      const row = map.get(selected);
+      let body;
+      if (!row) {
+        body = `<div class="sched-detail-empty">${selected < todayStr ? "방송이 없었어요." : "아직 정해진 일정이 없어요."}</div>`;
+      } else if (row.kind === "off") {
+        body = `<div class="sched-detail-title">🌙 쉬는 날</div>${row.memo ? `<div class="sched-detail-memo">${escapeHtml(row.memo)}</div>` : ""}`;
+      } else {
+        const tbd = !row.start_time;
+        body = `<span class="sched-detail-time${tbd ? " tbd" : ""}">${tbd ? "시간 미정" : `${escapeHtml(row.start_time)} 시작`}</span>
+          <div class="sched-detail-title">${escapeHtml(row.title)}</div>${row.memo ? `<div class="sched-detail-memo">${escapeHtml(row.memo)}</div>` : ""}`;
+      }
+      const actions = admin ? `<div class="sched-detail-actions"><button type="button" class="secondary" id="sched-edit-btn">${row ? "수정" : "일정 추가"}</button></div>` : "";
+      detailEl.innerHTML = `
+        <div class="sched-detail-date"><div class="n">${d}</div><div class="w">${wd}요일</div></div>
+        <div class="sched-detail-body">${body}</div>${actions}`;
+      const editBtn = document.getElementById("sched-edit-btn");
+      if (editBtn) editBtn.addEventListener("click", () => openModal(selected));
+    }
+
+    async function refresh(force) {
+      const seq = ++loadSeq;
+      let map;
+      try {
+        map = await fetchMonth(viewY, viewM, force);
+        errorEl.hidden = true;
+      } catch (err) {
+        console.error("[schedule] 조회 실패", err);
+        errorEl.hidden = false;
+        map = new Map();
+      }
+      if (seq !== loadSeq || !gridEl.isConnected) return; // 그 사이 다른 달로 넘어갔거나 페이지를 떠났으면 무시
+      renderGrid(map);
+      renderDetail(map);
+    }
+
+    function currentMap() {
+      return monthCache.get(`${viewY}-${pad(viewM + 1)}`) ?? new Map();
+    }
+
+    function selectDay(day) {
+      selected = day;
+      renderGrid(currentMap());
+      renderDetail(currentMap());
+    }
+
+    gridEl.addEventListener("click", (e) => {
+      const addBtn = e.target.closest("[data-add-day]");
+      if (addBtn) {
+        selectDay(addBtn.dataset.addDay);
+        openModal(addBtn.dataset.addDay);
+        return;
+      }
+      const cell = e.target.closest(".sched-cell[data-day]");
+      if (cell) selectDay(cell.dataset.day);
+    });
+    gridEl.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const cell = e.target.closest(".sched-cell[data-day]");
+      if (!cell) return;
+      e.preventDefault();
+      selectDay(cell.dataset.day);
+    });
+
+    function moveMonth(delta) {
+      const d = new Date(viewY, viewM + delta, 1);
+      viewY = d.getFullYear();
+      viewM = d.getMonth();
+      // 선택한 날이 이 달 밖이면 그 달의 1일(이번 달로 돌아오면 오늘)을 선택
+      if (!selected.startsWith(`${viewY}-${pad(viewM + 1)}`)) {
+        selected = viewY === ty && viewM === tm - 1 ? todayStr : ymd(viewY, viewM, 1);
+      }
+      refresh(false);
+    }
+    document.getElementById("sched-prev").addEventListener("click", () => moveMonth(-1));
+    document.getElementById("sched-next").addEventListener("click", () => moveMonth(1));
+    document.getElementById("sched-today-btn").addEventListener("click", () => {
+      viewY = ty; viewM = tm - 1; selected = todayStr;
+      refresh(false);
+    });
+
+    // 관리자 입력 모달 ------------------------------------------------------------
+    const kindBtns = Array.from(document.querySelectorAll(".sched-kind-btn"));
+    const liveFieldsEl = document.getElementById("sched-live-fields");
+    const timeInput = document.getElementById("sched-time-input");
+    const tbdInput = document.getElementById("sched-tbd-input");
+    const titleInput = document.getElementById("sched-title-input");
+    const memoInput = document.getElementById("sched-memo-input");
+    const statusEl = document.getElementById("sched-modal-status");
+    const saveBtn = document.getElementById("sched-save-btn");
+    const deleteBtn = document.getElementById("sched-delete-btn");
+    let modalDay = null;
+    let modalKind = "live";
+
+    function setKind(kind) {
+      modalKind = kind;
+      kindBtns.forEach((b) => b.classList.toggle("is-active", b.dataset.kind === kind));
+      liveFieldsEl.hidden = kind !== "live";
+    }
+    function setStatus(text, kind = "") {
+      statusEl.textContent = text;
+      statusEl.className = `status-msg${kind ? ` ${kind}` : ""}`;
+    }
+    function syncTbd() { timeInput.disabled = tbdInput.checked; }
+    kindBtns.forEach((b) => b.addEventListener("click", () => setKind(b.dataset.kind)));
+    tbdInput.addEventListener("change", syncTbd);
+
+    function openModal(day) {
+      if (!admin) return;
+      modalDay = day;
+      const row = currentMap().get(day);
+      const [y, m, d] = day.split("-").map(Number);
+      document.getElementById("sched-modal-title").textContent = `${m}월 ${d}일 (${WEEK[new Date(y, m - 1, d).getDay()]}) 스케줄`;
+      setKind(row ? row.kind : "live");
+      timeInput.value = row && row.start_time ? row.start_time : "20:00";
+      tbdInput.checked = !!row && row.kind === "live" && !row.start_time;
+      syncTbd();
+      titleInput.value = row && row.kind === "live" ? row.title : "";
+      memoInput.value = row ? row.memo : "";
+      deleteBtn.hidden = !row;
+      saveBtn.disabled = false;
+      setStatus("");
+      modal.showModal();
+    }
+    document.getElementById("sched-cancel-btn").addEventListener("click", () => modal.close());
+    modal.addEventListener("click", (e) => { if (e.target === modal) modal.close(); });
+
+    const SAVE_ERRORS = {
+      invalid_title: "제목은 1~30자로 입력해주세요.",
+      invalid_time: "시작 시간이 올바르지 않아요.",
+      invalid_memo: "메모는 200자까지만 쓸 수 있어요.",
+    };
+
+    async function submit(payload, doneText) {
+      saveBtn.disabled = true;
+      deleteBtn.disabled = true;
+      setStatus("저장 중...");
+      try {
+        const res = await authFetch(ADMIN_SCHEDULE_URL, { method: "POST", body: JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setStatus(SAVE_ERRORS[data.error] || "저장하지 못했어요.", "error");
+          return;
+        }
+        monthCache.delete(modalDay.slice(0, 7));
+        modal.close();
+        await refresh(true);
+      } catch (err) {
+        console.error("[schedule] 저장 실패", err);
+        setStatus("저장하지 못했어요.", "error");
+      } finally {
+        saveBtn.disabled = false;
+        deleteBtn.disabled = false;
+      }
+    }
+
+    saveBtn.addEventListener("click", () => {
+      if (modalKind === "live") {
+        const title = titleInput.value.trim();
+        if (!title) { setStatus("제목을 입력해주세요.", "error"); return; }
+        if (!tbdInput.checked && !timeInput.value) { setStatus("시작 시간을 입력하거나 '미정'을 체크해주세요.", "error"); return; }
+        submit({ date: modalDay, kind: "live", time: tbdInput.checked ? null : timeInput.value, title, memo: memoInput.value });
+      } else {
+        submit({ date: modalDay, kind: "off", memo: memoInput.value });
+      }
+    });
+    deleteBtn.addEventListener("click", () => {
+      if (!confirm("이 날 일정을 삭제할까요?")) return;
+      submit({ date: modalDay, action: "delete" });
+    });
+
+    (async () => {
+      renderSidebarUser();
+      initSidebarToggle();
+      initAdminNav();
+      initShopNavGroup();
+      initNoticeBadge();
+      verifySessionInBackground();
+
+      admin = isAdmin();
+      const mod = await import("./assets/js/supabase-client.js");
+      supabaseClient = mod.supabase;
+      renderGrid(new Map());
+      renderDetail(new Map());
+      await refresh(false);
+    })();
+  })();
+  </script>
+</body>
+</html>
