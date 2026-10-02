@@ -2608,6 +2608,18 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .game-result.is-minus strong { color: #ff8a8a; }
 .game-result.is-even strong { color: var(--text); }
 .game-result.is-error { color: #ff8a8a; font-size: 0.9rem; }
+.game-result-note {
+  align-self: stretch;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  word-break: break-all;
+}
+.game-result-note b { color: var(--accent); font-weight: 600; }
 .game-result.is-jackpot { box-shadow: 0 0 18px rgba(242, 194, 48, 0.35); }
 .game-result.is-jackpot strong { color: #f2c230; }
 

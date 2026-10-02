@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>홀짝 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=80">
+<link rel="stylesheet" href="assets/css/style.css?v=81">
 </head>
 <body>
   <script>
@@ -263,6 +263,20 @@
       el.className = `game-result ${cls}`;
       el.style.setProperty("--c", RESULT_COLOR[res.result]);
       el.innerHTML = `<strong>${RESULT_KO[res.result]} · ${sign}${fmt(res.net)}P</strong><span class="muted">${PICK_KO[pick]} 선택 · 카드 ${cardLabel(res.card)} · ${fmt(bet)}P 걸어서 ${fmt(res.payout)}P 받았어요</span>`;
+      if (res.note) {
+        // 서버가 덧붙여 보낸 한 줄 메시지(odd-even 함수의 note) — 글자 그대로 보여줌.
+        const note = document.createElement("div");
+        note.className = "game-result-note";
+        const cut = res.note.indexOf("›"); // "머리말 › 본문" 꼴이면 머리말만 강조
+        if (cut > 0) {
+          const head = document.createElement("b");
+          head.textContent = res.note.slice(0, cut + 1);
+          note.append(head, " ", res.note.slice(cut + 1).trim());
+        } else {
+          note.textContent = res.note;
+        }
+        el.appendChild(note);
+      }
       el.hidden = false;
     }
     function showError(msg) {

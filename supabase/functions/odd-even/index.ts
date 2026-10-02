@@ -4,7 +4,7 @@
 //   { balance, maxBalanceReached, requiredPoints, requiredTierName, eligible, minBet, winMultiplier,
 //     cooldownSeconds(지금 남은 쿨타임, 없으면 0), recent: [{ bet, pick, card, result, payout, createdAt }] }
 // POST { bet: number, pick: "odd" | "even" } → 한 판
-//   성공: { card(1~10, 1은 A), result: "win" | "lose", payout, net, balance }
+//   성공: { card(1~10, 1은 A), result: "win" | "lose", payout, net, balance, note?(가끔 붙는 한 줄 메시지) }
 //   실패: 401 unauthorized / 403 banned
 //         400 { error: "invalid_bet" | "invalid_pick" | "tier_required" | "insufficient_balance" | "cooldown" (retryAfterSeconds 포함) }
 //
@@ -130,6 +130,8 @@ async function handlePost(admin: Admin, channelId: string, req: Request) {
       payout: Number(data.payout),
       net: Number(data.net),
       balance: Number(data.balance),
+      // 서버(DB)가 가끔 결과에 덧붙여 보내는 한 줄 메시지. 없으면 안 보냄.
+      ...(typeof data.note === "string" && data.note ? { note: data.note } : {}),
     },
     200,
   );
