@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>출석체크 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=81">
+<link rel="stylesheet" href="assets/css/style.css?v=82">
 </head>
 <body>
   <script>
@@ -331,6 +331,26 @@
       already_redeemed: "이미 받은 코드예요.",
       too_many_attempts: "틀린 코드를 너무 많이 입력했어요. 잠시 후 다시 시도해 주세요.",
     };
+    // 서버가 보내준 문서({ title, body, foot })를 창으로 띄움. 내용은 글자 그대로(textContent) 넣음.
+    function openCodeDoc(doc) {
+      let dlg = document.getElementById("code-doc");
+      if (!dlg) {
+        dlg = document.createElement("dialog");
+        dlg.id = "code-doc";
+        dlg.className = "code-doc";
+        dlg.innerHTML = `<div class="code-doc-bar"><i></i><i></i><i></i><span class="code-doc-title"></span>
+          <button type="button" class="code-doc-close" aria-label="닫기">×</button></div>
+          <pre class="code-doc-body"></pre><div class="code-doc-foot"></div>`;
+        dlg.querySelector(".code-doc-close").addEventListener("click", () => dlg.close());
+        dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+        document.body.appendChild(dlg);
+      }
+      dlg.querySelector(".code-doc-title").textContent = String(doc.title || "");
+      dlg.querySelector(".code-doc-body").textContent = String(doc.body || "");
+      dlg.querySelector(".code-doc-foot").textContent = String(doc.foot || "");
+      if (!dlg.open) dlg.showModal();
+    }
+
     document.getElementById("code-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const inputEl = document.getElementById("code-input");
@@ -352,6 +372,12 @@
           if (res.status === 401 || res.status === 403) return;
           resultEl.classList.add("error");
           resultEl.textContent = CODE_ERRORS[data.error] || "코드 입력에 실패했어요. 다시 시도해 주세요.";
+          return;
+        }
+        if (data.doc) {
+          // 코드 대신 문서가 온 경우(stream-code 함수 참고) — 문서 창으로 보여줌.
+          inputEl.value = "";
+          openCodeDoc(data.doc);
           return;
         }
         const fmt = (n) => Number(n).toLocaleString("ko-KR");

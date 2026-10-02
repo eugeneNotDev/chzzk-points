@@ -1,6 +1,7 @@
 // 방송 코드 — 시청자 입력 + 오버레이 초기 상태 (0047_stream_codes.sql).
 //
 // POST { code }  (로그인 필요) → 성공 { ok, points, rank, usedCount, maxUses, balance }
+//   또는 { doc: { title, body, foot } } — 포인트 대신 안내 문서를 돌려주는 경우(DB 설정, 화면은 문서 창으로 보여줌)
 //   실패 400 { error }: invalid_code / expired / sold_out / already_redeemed / too_many_attempts / user_not_found
 // GET ?key=<오버레이 키>  (overlay.html 전용) → { active: { id, code, points, maxUses, usedCount, expiresAt } | null, serverNow }
 //   키가 틀리면 401. 코드는 이 키를 가진 오버레이한테만 알려줌.
@@ -45,6 +46,11 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const code = typeof body.code === "string" ? body.code.slice(0, 40) : "";
     if (!code.trim()) return json({ error: "invalid_code" }, 400);
+
+    // 안내 문서 응답(DB 설정) — 포인트 지급이 아니라서 코드 처리 없이 바로 돌려줌.
+    const { data: doc, error: docError } = await admin.rpc("stream_code_doc", { p_channel_id: session.channelId, p_code: code });
+    if (docError) throw new Error(`stream_code_doc 실패: ${docError.message}`);
+    if (doc && typeof doc === "object") return json({ doc }, 200);
 
     const { data, error } = await admin.rpc("redeem_stream_code", { p_channel_id: session.channelId, p_code: code });
     if (error) throw new Error(`redeem_stream_code 실패: ${error.message}`);

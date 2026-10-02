@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>페이지를 찾을 수 없어요 · 유진 팬보드</title>
+<link rel="stylesheet" href="/assets/css/style.css?v=82">
+<style>
+  /* 없는 주소로 들어왔을 때 GitHub Pages가 보여주는 페이지. 어느 깊이의 주소에서도 열리니까 경로는 전부 / 로 시작. */
+  body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; background: #050607; }
+  .nf { width: min(460px, 100%); text-align: center; }
+  .nf h1 { font-size: 26px; margin: 14px 0 8px; }
+  .nf p { color: var(--text-dim); line-height: 1.7; margin: 0 0 22px; white-space: pre-line; }
+  .nf .sig { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #3fae86; letter-spacing: 0.3em; font-size: 12px; opacity: 0.8; }
+  .nf .prize { font-size: 34px; font-weight: 800; color: var(--accent); margin-bottom: 18px; text-shadow: 0 0 18px rgba(0, 229, 160, 0.35); }
+  .nf button, .nf .btn { display: block; width: 100%; padding: 14px; font-size: 16px; box-sizing: border-box; text-align: center; text-decoration: none; }
+  .nf a.btn { padding: 0; }
+  .nf .small { margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .nf .done { border: 1px solid var(--border); border-radius: 12px; padding: 16px; color: var(--muted); }
+  .nf .done b { color: var(--text); }
+  .nf .err { color: #ff8a8a; margin-top: 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div class="nf" id="nf">
+    <div class="sig">404</div>
+    <h1>페이지를 찾을 수 없어요</h1>
+    <p>주소가 바뀌었거나 없는 페이지예요.</p>
+    <a class="btn" href="/index.html"><button type="button">홈으로</button></a>
+  </div>
+
+  <script>
+    (function () {
+      // 특별한 주소인지 서버(pages 함수)에 물어봄 — 아니면 위의 기본 404 화면 그대로.
+      const PAGES_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/pages";
+      const TOKEN_KEY = "chzzk_points_token";
+      const path = decodeURIComponent(location.pathname).replace(/^\/+|\/+$/g, "");
+      if (!path || path.length > 80) return;
+      const root = document.getElementById("nf");
+
+      const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+      const fmt = (n) => Number(n).toLocaleString("ko-KR");
+      const timeText = (iso) => new Date(iso).toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+      function renderLate(page) {
+        const c = page.content || {};
+        root.replaceChildren(el("div", "sig", c.sig || ""), el("h1", "", c.lateTitle || ""), el("p", "", c.lateBody || ""));
+        if (page.claimedAt) {
+          const box = el("div", "done");
+          box.append("첫 번째로 찾은 사람: ", el("b", "", page.winnerName || "비공개"), ` · ${timeText(page.claimedAt)}`);
+          root.append(box);
+        }
+      }
+
+      function renderWon(page, points) {
+        const c = page.content || {};
+        root.replaceChildren(el("div", "sig", c.sig || ""), el("h1", "", c.wonTitle || ""), el("div", "prize", `+${fmt(points)}P`), el("p", "", c.wonBody || ""));
+        const home = el("a", "btn"); home.href = "/index.html"; home.append(el("button", "", "홈으로"));
+        root.append(home);
+      }
+
+      function renderOpen(page) {
+        const c = page.content || {};
+        root.replaceChildren(el("div", "sig", c.sig || ""), el("h1", "", c.title || ""), el("p", "", c.body || ""), el("div", "prize", `${fmt(page.points)}P`));
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+          root.append(el("p", "small", "로그인해야 받을 수 있어요.\n홈에서 로그인한 뒤 이 주소로 다시 와주세요."));
+          const home = el("a", "btn"); home.href = "/index.html"; home.append(el("button", "", "홈으로 가서 로그인"));
+          root.append(home);
+          return;
+        }
+        const btn = el("button", "", c.button || "받기");
+        const err = el("div", "err");
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          err.textContent = "";
+          try {
+            const res = await fetch(PAGES_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
+              body: JSON.stringify({ path }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.ok) {
+              try { localStorage.setItem("chzzk_points_balance_cache", String(data.balance)); } catch {}
+              renderWon(page, data.points);
+              return;
+            }
+            if (data.error === "already_claimed") { load(); return; }
+            if (res.status === 401) err.textContent = "로그인이 만료됐어요. 홈에서 다시 로그인한 뒤 이 주소로 와주세요.";
+            else err.textContent = "받지 못했어요. 잠시 후 다시 시도해 주세요.";
+          } catch {
+            err.textContent = "받지 못했어요. 잠시 후 다시 시도해 주세요.";
+          }
+          btn.disabled = false;
+        });
+        root.append(btn, el("p", "small", c.note || ""), err);
+      }
+
+      async function load() {
+        try {
+          const res = await fetch(`${PAGES_URL}?path=${encodeURIComponent(path)}`);
+          if (!res.ok) return;
+          const page = await res.json();
+          if (!page.found) return;
+          document.title = "유진 팬보드";
+          if (page.claimed) renderLate(page); else renderOpen(page);
+        } catch {
+          // 서버에 못 물어보면 그냥 기본 404 화면.
+        }
+      }
+      load();
+    })();
+  </script>
+</body>
+</html>
