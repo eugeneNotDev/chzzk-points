@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>투표 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=83">
+<link rel="stylesheet" href="assets/css/style.css?v=84">
 </head>
 <body>
   <script>
@@ -314,7 +314,9 @@
         }
       }
 
+      // 이미 걸었으면 그 항목에만 추가로 걸 수 있음(다른 항목으로 바꾸기는 불가) — 선택은 내 항목으로 고정.
       const selectable = isOpenAndActive && !p.myBet;
+      if (p.myBet && isOpenAndActive) selectedOptionId = p.myBet.optionId;
       document.getElementById("predict-option-list").innerHTML = p.options.map((opt) => {
         const isMine = p.myBet && p.myBet.optionId === opt.id;
         const isWinner = p.status === "resolved" && p.winningOptionId === opt.id;
@@ -330,6 +332,7 @@
             <div class="predict-option-content">
               <span class="predict-option-label">${escapeHtml(opt.label)}${isMine ? '<span class="my-pick-badge">내 선택</span>' : ""}</span>
               <span class="predict-option-stats">
+                ${isMine ? `<span class="predict-option-amount">${p.myBet.amount.toLocaleString("ko-KR")}P</span>` : ""}
                 <span class="predict-option-percent">${opt.percent.toFixed(1)}%</span>
                 <span class="predict-option-multiplier">${opt.multiplier > 0 ? opt.multiplier.toFixed(2) + "배" : "-"}</span>
               </span>
@@ -351,14 +354,22 @@
 
       const betFormEl = document.getElementById("predict-bet-form");
       const myBetNoteEl = document.getElementById("predict-my-bet-note");
+      const submitBtn = document.getElementById("predict-bet-submit-btn");
+      const amountInput = document.getElementById("predict-bet-amount");
       if (p.myBet) {
-        betFormEl.hidden = true;
-        myBetNoteEl.hidden = false;
         const optLabel = p.options.find((o) => o.id === p.myBet.optionId)?.label ?? "";
-        myBetNoteEl.textContent = `"${optLabel}"에 ${p.myBet.amount.toLocaleString("ko-KR")}P 베팅했어요.`;
+        myBetNoteEl.hidden = false;
+        myBetNoteEl.textContent = isOpenAndActive
+          ? `"${optLabel}"에 ${p.myBet.amount.toLocaleString("ko-KR")}P 걸었어요. 같은 항목에만 더 걸 수 있어요.`
+          : `"${optLabel}"에 ${p.myBet.amount.toLocaleString("ko-KR")}P 베팅했어요.`;
+        betFormEl.hidden = !isOpenAndActive;
+        submitBtn.textContent = "같은 항목에 추가 베팅";
+        amountInput.placeholder = "추가로 걸 포인트 (최소 100P)";
       } else if (isOpenAndActive) {
         betFormEl.hidden = false;
         myBetNoteEl.hidden = true;
+        submitBtn.textContent = "선택한 항목에 베팅";
+        amountInput.placeholder = "베팅할 포인트 (최소 100P)";
       } else {
         betFormEl.hidden = true;
         myBetNoteEl.hidden = true;
@@ -395,7 +406,7 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (data.error === "insufficient_balance") statusEl.textContent = "포인트가 부족해요.";
-          else if (data.error === "already_bet") statusEl.textContent = "이미 이 투표에 베팅했어요.";
+          else if (data.error === "already_bet" || data.error === "different_option") statusEl.textContent = "처음 건 항목에만 더 걸 수 있어요.";
           else if (data.error === "prediction_closed") statusEl.textContent = "이미 마감된 투표예요.";
           else if (data.error === "amount_too_small") statusEl.textContent = "100P 이상 입력해주세요.";
           else if (data.error !== "banned") statusEl.textContent = "베팅에 실패했어요.";
@@ -404,7 +415,7 @@
           await loadPrediction(); // 그 사이 마감/취소됐을 수 있으니 최신 상태로 다시 그림
           return;
         }
-        statusEl.textContent = "베팅 완료!";
+        statusEl.textContent = data.bet && data.bet.added ? `${amount.toLocaleString("ko-KR")}P 추가 베팅 완료! (총 ${Number(data.bet.amount).toLocaleString("ko-KR")}P)` : "베팅 완료!";
         statusEl.className = "status-msg ok";
         amountInput.value = "";
         const balanceEl = document.getElementById("predict-balance-value");

@@ -15,22 +15,19 @@
 //   status가 open이어도 closesAt이 지났으면 "마감, 정산 대기중"으로 프론트가 판단함(별도 필드 없음
 //   — 프론트가 그냥 Date.now()랑 closesAt을 비교).
 //
-// POST { predictionId, optionId, amount } (로그인 필요)
-//   성공: { balance, bet: { optionId, amount } }
+// POST { predictionId, optionId, amount } (로그인 필요) — 처음 베팅, 또는 이미 건 항목에 추가 베팅
+//   성공: { balance, bet: { optionId, amount(이 투표에 건 합계), added(추가 베팅이었는지) } }
 //   실패: 401 unauthorized, 403 banned,
 //         400 { error: "invalid_request" | "prediction_not_found" | "prediction_closed"
-//               | "invalid_option" | "amount_too_small" | "insufficient_balance" | "already_bet" }
+//               | "invalid_option" | "amount_too_small" | "insufficient_balance" | "different_option" }
 //
 // 익명 범위(요청사항): 다른 유저에게는 완전 익명 — 개별 베팅 내역이 담긴 prediction_bets 테이블에
 // anon 읽기 정책 자체가 없어서(0030_predictions.sql) 이 함수(service_role) 밖에서는 아무도 남의
 // 베팅을 못 봄. 관리자에게는 비익명(admin 함수의 get-prediction-status가 개별 내역까지 조회 가능
 // — 어뷰징/정산 오류 대응용, 요청사항).
 //
-// 베팅 변경(요청사항): 1회 확정, 변경 불가 — prediction_bets의 (prediction_id, channel_id) unique
-// 제약이 이걸 DB 레벨에서 강제함. 그래서 "연타 방지"도 이 제약이 마지막 방어선 역할을 함 — 버튼
-// 연타로 같은 요청이 거의 동시에 두 번 들어와도, 먼저 도착한 요청이 베팅 행을 먼저 insert하고
-// 나면 두 번째 요청은 그 시점에 unique violation(23505)으로 막힘(포인트 차감 전에 막히므로 이중
-// 차감 자체가 발생하지 않음 — attendance-check의 "attendance 먼저 insert" 패턴과 같은 원리).
+// 베팅 변경(요청사항): 처음 건 항목은 못 바꾸고, 같은 항목에만 더 걸 수 있음(0052_prediction_add_bet.sql).
+// 한 사람당 prediction_bets 행은 하나(unique 제약)라서 추가 베팅은 그 행의 amount에 더해짐 — 정산은 합계 기준.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -58,12 +55,6 @@ async function isBanned(admin: ReturnType<typeof getAdminClient>, channelId: str
   const { data, error } = await admin.from("users").select("banned").eq("channel_id", channelId).maybeSingle();
   if (error) throw new Error(`banned 조회 실패: ${error.message}`);
   return data?.banned === true;
-}
-
-async function getBalance(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<number> {
-  const { data, error } = await admin.from("users").select("balance").eq("channel_id", channelId).maybeSingle();
-  if (error) throw new Error(`잔액 조회 실패: ${error.message}`);
-  return Number(data?.balance ?? 0);
 }
 
 interface PredictionRow {
@@ -163,7 +154,8 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ prediction: out }, 200);
     }
 
-    // POST — 베팅
+    // POST — 베팅 / 추가 베팅. 검사와 베팅 행 갱신·포인트 차감은 DB 함수 place_prediction_bet()이 한 번에 처리함
+    // (0052_prediction_add_bet.sql) — 연타나 동시 요청에도 금액이 꼬이지 않음.
     const body = await req.json().catch(() => ({}));
     const predictionId = Number(body.predictionId);
     const optionId = Number(body.optionId);
@@ -173,60 +165,23 @@ Deno.serve(async (req: Request) => {
     }
     if (amount < MIN_BET_AMOUNT) return jsonResponse({ error: "amount_too_small" }, 400);
 
-    const { data: prediction, error: predictionError } = await admin
-      .from("predictions")
-      .select("id, title, status, closes_at")
-      .eq("id", predictionId)
-      .maybeSingle();
-    if (predictionError) throw new Error(`predictions 조회 실패: ${predictionError.message}`);
-    if (!prediction) return jsonResponse({ error: "prediction_not_found" }, 400);
-    if (prediction.status !== "open" || new Date(prediction.closes_at).getTime() <= Date.now()) {
-      return jsonResponse({ error: "prediction_closed" }, 400);
-    }
-
-    const { data: option, error: optionError } = await admin
-      .from("prediction_options")
-      .select("id, label")
-      .eq("id", optionId)
-      .eq("prediction_id", predictionId)
-      .maybeSingle();
-    if (optionError) throw new Error(`prediction_options 조회 실패: ${optionError.message}`);
-    if (!option) return jsonResponse({ error: "invalid_option" }, 400);
-
-    const balance = await getBalance(admin, session.channelId);
-    if (balance < amount) return jsonResponse({ error: "insufficient_balance" }, 400);
-
-    // 베팅 행을 먼저 insert — (prediction_id, channel_id) unique 제약이 "이미 베팅했는지"를
-    // 동시성까지 안전하게 걸러주는 관문 역할(attendance-check의 "attendance 먼저 insert"와
-    // 같은 패턴). 이걸 통과해야만 포인트를 차감하므로, 연타로 두 요청이 거의 동시에 들어와도
-    // 포인트가 두 번 깎이는 일은 없음.
-    const { error: betInsertError } = await admin
-      .from("prediction_bets")
-      .insert({ prediction_id: predictionId, option_id: optionId, channel_id: session.channelId, amount });
-    if (betInsertError) {
-      if (betInsertError.code === "23505") {
-        return jsonResponse({ error: "already_bet" }, 400);
-      }
-      throw new Error(`prediction_bets insert 실패: ${betInsertError.message}`);
-    }
-
-    // 잔액 확인 + 차감을 DB에서 한 번에(0032_users_balance.sql의 debit_points) — 위의 잔액 체크는
-    // 빠른 안내용이고, 진짜 판정은 여기서 함. 여기서 거절되거나 실패하면 방금 넣은 베팅 행을
-    // 지워서 "포인트는 안 빠졌는데 베팅은 된" 상태가 안 남게 함.
-    const { data: debited, error: debitError } = await admin.rpc("debit_points", {
+    const { data, error } = await admin.rpc("place_prediction_bet", {
+      p_prediction_id: predictionId,
+      p_option_id: optionId,
       p_channel_id: session.channelId,
       p_amount: amount,
-      p_reason: `투표 베팅: ${prediction.title} - ${option.label}`,
     });
-    if (debitError) {
-      await admin.from("prediction_bets").delete().eq("prediction_id", predictionId).eq("channel_id", session.channelId);
-      if (debitError.message.includes("insufficient_balance")) {
-        return jsonResponse({ error: "insufficient_balance" }, 400);
-      }
-      throw new Error(`debit_points 실패: ${debitError.message}`);
+    if (error) throw new Error(`place_prediction_bet 실패: ${error.message}`);
+    if (data?.error) {
+      if (data.error === "user_not_found") return jsonResponse({ error: "unauthorized" }, 401);
+      const known = ["prediction_not_found", "prediction_closed", "invalid_option", "amount_too_small", "different_option", "insufficient_balance"];
+      return jsonResponse({ error: known.includes(data.error) ? data.error : "prediction_failed" }, 400);
     }
 
-    return jsonResponse({ balance: Number(debited), bet: { optionId, amount } }, 200);
+    return jsonResponse(
+      { balance: Number(data.balance), bet: { optionId: Number(data.optionId), amount: Number(data.amount), added: data.added === true } },
+      200,
+    );
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
     return jsonResponse({ error: "prediction_failed" }, 500);

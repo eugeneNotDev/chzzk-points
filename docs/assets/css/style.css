@@ -1798,6 +1798,7 @@ ol.ranking-list li.me .name { color: var(--accent); font-weight: 600; }
 }
 .predict-bet-form input:focus { outline: none; border-color: var(--accent); }
 .predict-my-bet-note { margin-top: 10px; font-size: 0.85rem; color: var(--text-dim); }
+.predict-option-amount { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 /* 투표 항목 추가/삭제(생성 모달) — 항목명 입력칸 + 2개 초과일 때만 보이는 삭제 X 버튼. */
 .predict-create-option-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
