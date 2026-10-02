@@ -7,14 +7,17 @@
 // 방송 시작 시각을 못 읽으면(치지직 응답에 없으면) 예전처럼 오늘 날짜로 기록함.
 //
 // 1회 100P, 누적 출석 10번째마다 보너스 +100P(그 회차엔 기본 100P + 보너스 100P = 200P).
+// 누적 100번째마다 추가 보너스 +1,000P(10번째 보너스와 겹치면 둘 다 — 100번째 출석은 100 + 100 + 1,000 = 1,200P).
 //
 // GET  ?year=2026&month=9 → 그 달의 출석 현황 조회 (year/month 생략 시 이번 달, KST 기준)
-//   { attendedDates: ["2026-09-14", ...], checkedToday, isLive, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints }
+//   { attendedDates: ["2026-09-14", ...], checkedToday, isLive, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints,
+//     milestoneEvery, milestonePoints }
 //   checkedToday: 방송 중이면 "이번 방송에 출석했는지", 아니면 "오늘 날짜로 출석 기록이 있는지".
 //   attendanceCount: 누적 출석 횟수(밴 초기화 이후만). sessionDate: 지금 출석하면 기록될 날짜.
 // POST {} → 출석체크 시도. 방송 중이 아니면 400 not_live, 이번 방송에 이미 했으면 400 already_checked.
 //   성공 시 attendance 테이블에 기록 + points_ledger에 +100P (10번째마다 보너스 +100P 한 줄 더).
-//   { attendedDates, checkedToday: true, isLive: true, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints, pointsEarned, bonus }
+//   { attendedDates, checkedToday: true, isLive: true, balance, attendanceCount, bonusEvery, pointsPerCheck, bonusPoints,
+//     milestoneEvery, milestonePoints, pointsEarned, bonus(보너스 합계), milestoneBonus }
 //   (pointsPerCheck/bonusPoints는 화면 문구용 — 금액을 바꿀 땐 아래 상수만 고치면 화면도 같이 바뀜)
 //
 // 밴된 유저는 다른 함수들과 동일하게 403 { error: "banned" }.
@@ -32,6 +35,9 @@ const ATTENDANCE_POINTS = 100;
 // 누적 출석 이 횟수마다 보너스를 한 번 더 줌.
 const BONUS_EVERY = 10;
 const BONUS_POINTS = 100;
+// 누적 출석 이 횟수마다 큰 보너스를 한 번 더 줌(위 보너스와 별도).
+const MILESTONE_EVERY = 100;
+const MILESTONE_POINTS = 1000;
 
 function getAdminClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -187,6 +193,8 @@ Deno.serve(async (req: Request) => {
           bonusEvery: BONUS_EVERY,
           pointsPerCheck: ATTENDANCE_POINTS,
           bonusPoints: BONUS_POINTS,
+          milestoneEvery: MILESTONE_EVERY,
+          milestonePoints: MILESTONE_POINTS,
           sessionDate,
         },
         200,
@@ -210,13 +218,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const attendanceCount = await getAttendanceCount(admin, session.channelId, resetAt);
-    const bonus = attendanceCount > 0 && attendanceCount % BONUS_EVERY === 0 ? BONUS_POINTS : 0;
+    const regularBonus = attendanceCount > 0 && attendanceCount % BONUS_EVERY === 0 ? BONUS_POINTS : 0;
+    const milestoneBonus = attendanceCount > 0 && attendanceCount % MILESTONE_EVERY === 0 ? MILESTONE_POINTS : 0;
+    const bonus = regularBonus + milestoneBonus;
 
     const ledgerRows: { channel_id: string; amount: number; reason: string }[] = [
       { channel_id: session.channelId, amount: ATTENDANCE_POINTS, reason: "출석체크" },
     ];
-    if (bonus > 0) {
-      ledgerRows.push({ channel_id: session.channelId, amount: bonus, reason: `출석체크 ${attendanceCount}회 보너스` });
+    if (regularBonus > 0) {
+      ledgerRows.push({ channel_id: session.channelId, amount: regularBonus, reason: `출석체크 ${attendanceCount}회 보너스` });
+    }
+    if (milestoneBonus > 0) {
+      ledgerRows.push({ channel_id: session.channelId, amount: milestoneBonus, reason: `출석체크 ${attendanceCount}회 달성 보너스` });
     }
     const { error: pointsError } = await admin.from("points_ledger").insert(ledgerRows);
     if (pointsError) throw new Error(`points_ledger insert 실패: ${pointsError.message}`);
@@ -236,8 +249,11 @@ Deno.serve(async (req: Request) => {
         bonusEvery: BONUS_EVERY,
         pointsPerCheck: ATTENDANCE_POINTS,
         bonusPoints: BONUS_POINTS,
+        milestoneEvery: MILESTONE_EVERY,
+        milestonePoints: MILESTONE_POINTS,
         pointsEarned: ATTENDANCE_POINTS + bonus,
         bonus,
+        milestoneBonus,
       },
       200,
     );
