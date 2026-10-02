@@ -2655,7 +2655,7 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .game-lock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
 .game-lock[hidden] { display: none; }
 .game-lock svg { width: 36px; height: 36px; color: #cd7f32; }
-.game-lock p { margin: 0; font-size: 0.88rem; }
+.game-lock p { margin: 0; font-size: 0.88rem; white-space: pre-line; }
 .game-lock-progress { width: min(320px, 100%); height: 8px; border-radius: 999px; background: var(--bg); overflow: hidden; }
 .game-lock-progress div { height: 100%; background: linear-gradient(90deg, #8a5a2b, #cd7f32); }
 
@@ -3123,3 +3123,7 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 .admin-minigame-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .admin-minigame-actions select { font: inherit; font-size: 0.85rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; }
 #user-detail-minigame-status.is-blocked { color: #ff8a8a; }
+
+/* 미니게임 차단된 계정 — 걸 포인트 입력/빠른 버튼 비활성 */
+.game-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.game-bet-input input:disabled, input[id$="-bet-input"]:disabled { opacity: 0.5; cursor: not-allowed; }

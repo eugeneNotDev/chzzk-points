@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>홀짝 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=85">
+<link rel="stylesheet" href="assets/css/style.css?v=86">
 </head>
 <body>
   <script>
@@ -202,6 +202,10 @@
     function validate() {
       const hint = $("game-hint"), input = $("oe-bet-input");
       if (!hint || !input) return false;
+      // 관리자가 미니게임을 막은 계정은 걸 포인트 입력과 빠른 버튼도 못 건드리게.
+      const locked = !!(state && state.blocked);
+      input.disabled = locked;
+      document.querySelectorAll(".game-chip").forEach((c) => { c.disabled = locked; });
       const v = betValue();
       let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요 · 홀이나 짝을 누르면 바로 시작돼요`;
       let bad = false;
@@ -237,7 +241,7 @@
         const until = state.blockedUntil
           ? `${new Date(state.blockedUntil).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}까지`
           : "별도 해제 전까지";
-        $("game-lock-desc").textContent = `${until} 룰렛·가위바위보·홀짝에 참여할 수 없어요. 무료 뽑기와 투표는 그대로 할 수 있어요.`;
+        $("game-lock-desc").textContent = `${until} 룰렛·가위바위보·홀짝에 참여할 수 없어요.\n무료 뽑기와 투표는 그대로 할 수 있어요.`;
         barWrap.hidden = true;
         lock.hidden = false;
         return;
