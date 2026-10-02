@@ -52,7 +52,18 @@ function fmtTime(iso) {
   const k = new Date(d.getTime() + 9 * 3_600_000);
   return `${k.getUTCFullYear()}.${k.getUTCMonth() + 1}.${k.getUTCDate()}`;
 }
-const isNew = (iso) => Date.now() - new Date(iso).getTime() < 86_400_000;
+// N 표시: 올라온 지 1시간 이내 + 내가 아직 안 열어본 글만. 열어본 글 id는 이 브라우저에만 기억(최근 300개).
+const SEEN_KEY = "chzzk_board_seen";
+function loadSeen() {
+  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || "[]")); } catch { return new Set(); }
+}
+function markSeen(id) {
+  try {
+    const arr = [...loadSeen().add(id)].slice(-300);
+    localStorage.setItem(SEEN_KEY, JSON.stringify(arr));
+  } catch { /* 저장 못 해도 N 표시만 계속 남을 뿐 */ }
+}
+const isNew = (iso, id, seen) => Date.now() - new Date(iso).getTime() < 3_600_000 && !seen.has(id);
 
 const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
@@ -116,12 +127,13 @@ export function initBoard(board) {
       return;
     }
     if (!alive || !listEl.isConnected) return;
+    const seen = loadSeen();
     if (!data.posts.length) {
       listEl.innerHTML = `<div class="bd-empty">아직 글이 없어요. 첫 글을 남겨보세요!</div>`;
     } else {
       listEl.innerHTML = data.posts.map((p) => `
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
-          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
+          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
           <div class="bd-meta">${whoHtml(p.author, p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
@@ -177,6 +189,7 @@ export function initBoard(board) {
       return;
     }
     if (!alive) return;
+    markSeen(id);
     const p = data.post;
     const review = board === "review";
     root.innerHTML = `
