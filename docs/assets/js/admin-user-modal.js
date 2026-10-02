@@ -165,6 +165,25 @@
             <button type="submit" id="user-detail-grant-submit-btn">지급하기</button>
           </div>
         </form>
+        <!-- 특수 칭호 — 랭킹에서 장착 칭호 "앞"에 항상 붙음(유저가 장착/해제하지 않음). "지난달 1위"는 자동이라 여기 안 뜸. -->
+        <h4 class="admin-user-section-heading">특수 칭호</h4>
+        <p class="muted admin-grant-existing-help">랭킹에서 장착 칭호 앞에 항상 표시돼요. 유저가 끄거나 바꿀 수 없어요.</p>
+        <div class="admin-user-title-list" id="user-detail-special-list"></div>
+        <p id="user-detail-special-empty" class="muted" hidden>지급한 특수 칭호가 없어요.</p>
+        <form id="user-detail-special-form" class="admin-title-grant-form" autocomplete="off">
+          <div class="shop-item-field">
+            <label class="field-label" for="user-detail-special-name">칭호명 (최대 20자)</label>
+            <input type="text" id="user-detail-special-name" class="notice-title-input" maxlength="20" placeholder="예: 도박중독">
+          </div>
+          <div class="shop-item-field">
+            <span class="field-label">칭호 꾸미기</span>
+            <div id="user-detail-special-color"></div>
+          </div>
+          <p class="status-msg" id="user-detail-special-status"></p>
+          <div class="admin-title-grant-actions">
+            <button type="submit" id="user-detail-special-submit-btn">특수 칭호 지급</button>
+          </div>
+        </form>
         <div class="notice-modal-actions">
           <button type="button" class="secondary" id="user-titles-close-btn">닫기</button>
         </div>
@@ -428,6 +447,115 @@
         setGrantStatus("지급에 실패했어요.", "error");
       } finally {
         grantSubmitBtn.disabled = false;
+      }
+    });
+
+    // 특수 칭호(랭킹에서 장착 칭호 앞에 항상 붙음) — admin-special-title 함수(0054_special_titles.sql).
+    const ADMIN_SPECIAL_TITLE_URL = `${FUNCTIONS_BASE_URL}/admin-special-title`;
+    const specialListEl = document.getElementById("user-detail-special-list");
+    const specialEmptyEl = document.getElementById("user-detail-special-empty");
+    const specialForm = document.getElementById("user-detail-special-form");
+    const specialNameInput = document.getElementById("user-detail-special-name");
+    const specialStatusEl = document.getElementById("user-detail-special-status");
+    const specialSubmitBtn = document.getElementById("user-detail-special-submit-btn");
+    const specialColorPicker = createTitleColorPicker(document.getElementById("user-detail-special-color"), {
+      initialColor: DEFAULT_TITLE_COLOR,
+      getPreviewName: () => specialNameInput.value,
+    });
+    specialNameInput.addEventListener("input", () => specialColorPicker.refreshPreview());
+
+    function setSpecialStatus(text, kind = "") {
+      specialStatusEl.textContent = text;
+      specialStatusEl.className = `status-msg${kind ? ` ${kind}` : ""}`;
+    }
+
+    function renderSpecialTitles(list) {
+      specialEmptyEl.hidden = list.length > 0;
+      specialListEl.innerHTML = list.map((t) => `
+        <span class="admin-user-title-chip">
+          ${titleBadgeHtml(t.name, t.color)}
+          <button type="button" class="secondary" data-revoke-special-id="${escapeHtml(t.id)}" data-title-name="${escapeHtml(t.name)}">회수</button>
+        </span>`).join("");
+      specialListEl.querySelectorAll("button[data-revoke-special-id]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm(`"${btn.dataset.titleName}" 특수 칭호를 회수할까요?`)) return;
+          btn.disabled = true;
+          try {
+            const res = await authFetch(ADMIN_SPECIAL_TITLE_URL, {
+              method: "POST",
+              body: JSON.stringify({ channelId: detailChannelId, action: "revoke", id: Number(btn.dataset.revokeSpecialId) }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            renderSpecialTitles((await res.json()).titles ?? []);
+            setSpecialStatus(`"${btn.dataset.titleName}" 특수 칭호를 회수했어요.`, "ok");
+            if (onChanged) onChanged();
+          } catch (err) {
+            console.error("[admin] 특수 칭호 회수 실패", err);
+            alert("특수 칭호를 회수하지 못했어요.");
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    async function loadSpecialTitles(channelId) {
+      specialListEl.innerHTML = "";
+      specialEmptyEl.hidden = true;
+      setSpecialStatus("");
+      try {
+        const res = await authFetch(`${ADMIN_SPECIAL_TITLE_URL}?channelId=${encodeURIComponent(channelId)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (detailChannelId !== channelId) return;
+        renderSpecialTitles(data.titles ?? []);
+      } catch (err) {
+        console.error("[admin] 특수 칭호 조회 실패", err);
+        setSpecialStatus("특수 칭호를 불러오지 못했어요.", "error");
+      }
+    }
+    // 칭호 관리 모달을 열 때마다 최신 목록을 다시 받아옴(위의 열기 버튼 핸들러와 따로 붙임).
+    document.getElementById("user-detail-titles-open-btn").addEventListener("click", () => {
+      specialNameInput.value = "";
+      specialColorPicker.setColor(DEFAULT_TITLE_COLOR);
+      loadSpecialTitles(detailChannelId);
+    });
+
+    specialForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = specialNameInput.value.trim();
+      if (!name) {
+        setSpecialStatus("칭호명을 입력해주세요.", "error");
+        return;
+      }
+      specialSubmitBtn.disabled = true;
+      setSpecialStatus("지급 중...");
+      try {
+        const res = await authFetch(ADMIN_SPECIAL_TITLE_URL, {
+          method: "POST",
+          body: JSON.stringify({ channelId: detailChannelId, name, color: specialColorPicker.getColor() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setSpecialStatus(
+            data.error === "already_owned" ? "이미 같은 이름의 특수 칭호가 있어요."
+              : data.error === "too_many_titles" ? "특수 칭호는 한 유저에게 최대 5개까지만 줄 수 있어요."
+              : data.error === "invalid_title_name" ? "칭호명은 1~20자로 입력해주세요."
+              : data.error === "invalid_title_color" ? "칭호 색상이 올바르지 않아요."
+              : "지급에 실패했어요.",
+            "error",
+          );
+          return;
+        }
+        renderSpecialTitles(data.titles ?? []);
+        specialNameInput.value = "";
+        specialColorPicker.setColor(DEFAULT_TITLE_COLOR);
+        setSpecialStatus("특수 칭호를 지급했어요. 랭킹에서 장착 칭호 앞에 보여요.", "ok");
+        if (onChanged) onChanged();
+      } catch (err) {
+        console.error("[admin] 특수 칭호 지급 실패", err);
+        setSpecialStatus("지급에 실패했어요.", "error");
+      } finally {
+        specialSubmitBtn.disabled = false;
       }
     });
 

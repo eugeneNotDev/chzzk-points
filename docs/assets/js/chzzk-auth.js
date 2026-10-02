@@ -683,6 +683,13 @@ function renderShopTitleBadgeHtml(shopName, color) {
   return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
 }
 
+// 특수 칭호(지난달 1위 + 관리자 지급, 0054_special_titles.sql) — 장착 칭호 "앞"에 항상 붙는 배지들.
+// list는 랭킹 행의 special_titles([{ name, color }] 또는 null). 배지마다 뒤에 한 칸 띄움.
+function renderSpecialTitleBadgesHtml(list) {
+  if (!Array.isArray(list) || list.length === 0) return "";
+  return list.map((t) => `${titleBadgeHtml(t.name, t.color)} `).join("");
+}
+
 // 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.
 // 포인트가 움직일 때마다(미니게임 한 판마다) 신호가 오는데, 그때마다 바로 다시 불러오면 보고 있는
 // 사람 수만큼 조회가 계속 생김. 그래서:
@@ -747,7 +754,7 @@ async function fetchRankingRows(supabase, limit) {
   }
   return await supabase
     .from("ranking")
-    .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color")
+    .select("channel_id, channel_name, total_points, is_public, tier_title_name, tier_title_color, shop_title_name, shop_title_color, special_titles")
     .order("total_points", { ascending: false })
     .limit(limit);
 }

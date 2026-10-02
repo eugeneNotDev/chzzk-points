@@ -96,7 +96,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=45"></script>
+  <script src="assets/js/chzzk-auth.js?v=46"></script>
   <script src="assets/js/spa-router.js?v=13"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -117,6 +117,8 @@
       const isMe = isMyRankingRow(row);
       const isPrivate = row.is_public === false;
       const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color);
+      // 특수 칭호(지난달 1위·관리자 지급)는 장착 칭호 앞에 항상 붙음(renderSpecialTitleBadgesHtml, chzzk-auth.js).
+      const specialBadges = renderSpecialTitleBadgesHtml(row.special_titles);
       // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급 자체는
       // 그대로 있고 마이페이지 "등급" 칸에서 보임.
       const coloredName = escapeHtml(row.channel_name || "(이름 없음)");
@@ -128,7 +130,7 @@
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}"${adminClickAttrs}>${rankingPrivateTagHtml(row)}${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}"${adminClickAttrs}>${rankingPrivateTagHtml(row)}${specialBadges}${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
@@ -140,7 +142,7 @@
       if (window.AdminUserModal) return Promise.resolve(window.AdminUserModal);
       return new Promise((resolve, reject) => {
         const s = document.createElement("script");
-        s.src = "assets/js/admin-user-modal.js?v=1";
+        s.src = "assets/js/admin-user-modal.js?v=2";
         s.onload = () => resolve(window.AdminUserModal);
         s.onerror = reject;
         document.head.appendChild(s);

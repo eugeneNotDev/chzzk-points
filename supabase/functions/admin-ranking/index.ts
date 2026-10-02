@@ -3,7 +3,8 @@
 // 관리자 전용 기능은 원래 admin 함수에 모으지만, 그 파일이 워낙 커서 읽기 전용인 이 기능만 따로 뺌.
 //
 // GET ?limit=50 → { rows: [{ channel_id, channel_name, total_points, is_public,
-//                           tier_title_name, tier_title_color, shop_title_name, shop_title_color }] }
+//                           tier_title_name, tier_title_color, shop_title_name, shop_title_color,
+//                           special_titles: [{ name, color }] | null }] }
 //   (public.ranking 뷰와 같은 모양·같은 순서 — 화면이 같은 코드로 그릴 수 있게)
 // Authorization: Bearer <세션토큰> 필수, 관리자(OWNER_CHANNEL_ID)가 아니면 403.
 
@@ -42,7 +43,15 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await admin.rpc("admin_ranking", { p_limit: limit });
     if (error) throw new Error(`admin_ranking 실패: ${error.message}`);
-    const rows = (data ?? []).map((r: Record<string, unknown>) => ({ ...r, total_points: Number(r.total_points) }));
+    // 특수 칭호(지난달 1위 + 관리자 지급, 0054_special_titles.sql)는 비공개 유저도 그대로 보여줌.
+    const { data: sp, error: spErr } = await admin.rpc("ranking_special_titles");
+    if (spErr) throw new Error(`ranking_special_titles 실패: ${spErr.message}`);
+    const specialByChannel = new Map<string, unknown>((sp ?? []).map((r: { channel_id: string; titles: unknown }) => [r.channel_id, r.titles]));
+    const rows = (data ?? []).map((r: Record<string, unknown>) => ({
+      ...r,
+      total_points: Number(r.total_points),
+      special_titles: specialByChannel.get(r.channel_id as string) ?? null,
+    }));
     return jsonResponse({ rows }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
