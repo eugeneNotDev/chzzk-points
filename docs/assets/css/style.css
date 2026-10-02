@@ -3127,3 +3127,5 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
 /* 미니게임 차단된 계정 — 걸 포인트 입력/빠른 버튼 비활성 */
 .game-chip:disabled { opacity: 0.45; cursor: not-allowed; }
 .game-bet-input input:disabled, input[id$="-bet-input"]:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 차단 상태에서는 마우스를 올려도 강조(hover)되지 않게 — button.secondary:hover보다 명시도를 높여 기본 모양 유지 */
+button.secondary.game-chip:disabled:hover { border-color: var(--border); color: var(--text-dim); background: transparent; }
