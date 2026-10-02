@@ -9,8 +9,8 @@ const MAX_IMAGES = 5;
 const MAX_EDGE = 1600;
 
 const CFG = {
-  free: { name: "자유게시판", desc: "익명으로 자유롭게 이야기해요. (운영자에게는 작성자가 보여요)", hint: "" },
-  review: { name: "방송 후기", desc: "방송 보고 느낀 점을 남겨주세요. 닉네임이 표시돼요.", hint: "" },
+  free: { name: "자유게시판", sub: "닉네임 없이 익명으로 남기는 공간이에요. 서로 배려해 주세요.", write: "글쓰기" },
+  review: { name: "방송 후기", sub: "방송을 보고 느낀 점을 남겨주세요. 닉네임이 그대로 보여요.", write: "후기 쓰기" },
 };
 
 const ERR = {
@@ -44,15 +44,27 @@ function errText(e) { return ERR[e.code] || "처리하지 못했어요. 잠시 �
 function fmtTime(iso) {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
-  if (diff < 60_000) return "방금";
+  if (diff < 60_000) return "방금 전";
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
-  const p = (n) => String(n).padStart(2, "0");
+  if (diff < 172_800_000) return "어제";
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`;
   const k = new Date(d.getTime() + 9 * 3_600_000);
-  return `${k.getUTCMonth() + 1}.${p(k.getUTCDate())} ${p(k.getUTCHours())}:${p(k.getUTCMinutes())}`;
+  return `${k.getUTCFullYear()}.${k.getUTCMonth() + 1}.${k.getUTCDate()}`;
 }
+const isNew = (iso) => Date.now() - new Date(iso).getTime() < 86_400_000;
 
+const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
+
+function whoHtml(name, badge, mine) {
+  const b = badge && typeof titleBadgeHtml === "function" ? `${titleBadgeHtml(badge.name, badge.color)} ` : "";
+  return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
+}
+const admChip = (name) => (name ? `<span class="bd-adm">관리자에게만 보임: ${esc(name)}</span>` : "");
+function chipsHtml(p) {
+  return `${p.broadcast ? `<span class="bd-chip">${esc(p.broadcast)} 방송</span>` : ""}${p.paid ? `<span class="bd-paid">+100P</span>` : ""}`;
+}
 
 // 이미지를 긴 변 1600px 이하로 줄여서 JPEG로 저장(gif는 애니메이션 때문에 그대로).
 async function shrinkImage(file) {
@@ -79,26 +91,54 @@ export function initBoard(board) {
   const cfg = CFG[board];
   let alive = true;
   window.__pageCleanup = () => { alive = false; };
-  let listState = { posts: [], page: 0, hasMore: false, loading: false };
+  let curPage = 0;
 
   // ---------- 목록 ----------
-  async function showList(reset = true) {
-    if (reset) listState = { posts: [], page: 0, hasMore: false, loading: false };
+  async function showList(page = curPage) {
+    curPage = page;
     root.innerHTML = `
-      <div class="bd-head">
-        <div><h1 class="brand-heading" style="margin-bottom:4px">${cfg.name}</h1><p class="bd-desc">${cfg.desc}</p></div>
-        <button type="button" id="bd-write-btn">글쓰기</button>
-      </div>
+      <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write" id="bd-write-btn">${cfg.write}</button></div>
+      <p class="bd-sub">${cfg.sub}</p>
       ${board === "review" ? `<div class="bd-banner" id="bd-banner" hidden></div>` : ""}
-      <div class="card bd-list-card"><div id="bd-list"></div>
-        <button type="button" class="secondary bd-more" id="bd-more" hidden>더보기</button></div>`;
+      <div class="bd-list" id="bd-list"><div class="bd-empty">불러오는 중...</div></div>
+      <div class="bd-pager" id="bd-pager"></div>`;
     document.getElementById("bd-write-btn").addEventListener("click", () => {
       if (!isLoggedIn()) { startLogin(); return; }
       showEditor(null);
     });
-    document.getElementById("bd-more").addEventListener("click", () => loadPage());
     if (board === "review") loadBanner();
-    await loadPage();
+    const listEl = document.getElementById("bd-list");
+    let data;
+    try {
+      data = await call({ action: "list", board, page });
+    } catch (e) {
+      if (listEl.isConnected) listEl.innerHTML = `<div class="bd-empty">글 목록을 불러오지 못했어요.</div>`;
+      return;
+    }
+    if (!alive || !listEl.isConnected) return;
+    if (!data.posts.length) {
+      listEl.innerHTML = `<div class="bd-empty">아직 글이 없어요. 첫 글을 남겨보세요!</div>`;
+    } else {
+      listEl.innerHTML = data.posts.map((p) => `
+        <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
+          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
+          <div class="bd-prev">${esc(p.preview)}</div>
+          <div class="bd-meta">${whoHtml(p.author, p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
+        </a>`).join("");
+    }
+    renderPager(data.total, data.pageSize);
+  }
+
+  function renderPager(total, size) {
+    const el = document.getElementById("bd-pager");
+    const pages = Math.max(1, Math.ceil(total / size));
+    if (!el || pages <= 1) { if (el) el.innerHTML = ""; return; }
+    const start = Math.max(0, Math.min(curPage - 2, pages - 5));
+    const end = Math.min(pages, start + 5);
+    let h = `<button type="button" data-pg="${curPage - 1}" ${curPage === 0 ? "disabled" : ""}>‹</button>`;
+    for (let i = start; i < end; i++) h += `<button type="button" data-pg="${i}" class="${i === curPage ? "on" : ""}">${i + 1}</button>`;
+    h += `<button type="button" data-pg="${curPage + 1}" ${curPage >= pages - 1 ? "disabled" : ""}>›</button>`;
+    el.innerHTML = h;
   }
 
   async function loadBanner() {
@@ -106,99 +146,75 @@ export function initBoard(board) {
       const s = await call({ action: "review-status" });
       const el = document.getElementById("bd-banner");
       if (!el || !alive) return;
-      let cls = "", text;
-      if (s.eligible && !s.alreadyRewarded) { cls = "hot"; text = `<b>+${s.reward}P</b> 지금 후기를 쓰면 ${s.reward}P를 드려요! (방송 ${s.isLive ? "중" : "종료 후 6시간 이내"} · 방송당 첫 후기 1회)`; }
-      else if (s.eligible) { text = `이번 방송 후기 보상(+${s.reward}P)은 이미 받았어요.`; }
-      else { text = `방송 중이거나 종료 후 6시간 안에 쓰는 <b>첫 후기</b>에 <b>+${s.reward}P</b>를 드려요. (방송당 1회)`; }
-      el.className = `bd-banner ${cls}`;
-      el.innerHTML = text;
+      let title, sub, dim = false;
+      if (s.eligible && !s.alreadyRewarded) {
+        title = `${s.isLive ? "지금 방송 중!" : "이번 방송"} 후기를 남기면 ${s.reward}P!`;
+        sub = "방송 중이거나 종료 후 6시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
+      } else if (s.eligible) {
+        title = "이번 방송 후기 보상은 이미 받았어요";
+        sub = "다음 방송 때 첫 후기를 남기면 또 받을 수 있어요.";
+        dim = true;
+      } else {
+        title = `방송 후기를 남기면 ${s.reward}P!`;
+        sub = "방송 중이거나 종료 후 6시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
+        dim = true;
+      }
+      el.className = `bd-banner${dim ? " dim" : ""}`;
+      el.innerHTML = `<div class="ic">+${s.reward}</div><div><b>${title}</b><span>${sub}</span></div>`;
       el.hidden = false;
     } catch { /* 배너는 없어도 됨 */ }
   }
 
-  async function loadPage() {
-    if (listState.loading) return;
-    listState.loading = true;
-    const listEl = document.getElementById("bd-list");
-    try {
-      const data = await call({ action: "list", board, page: listState.page });
-      if (!alive || !listEl.isConnected) return;
-      listState.posts.push(...data.posts);
-      listState.hasMore = data.hasMore;
-      listState.page += 1;
-    } catch (e) {
-      if (listEl.isConnected) listEl.innerHTML = `<p class="status-msg error">글 목록을 불러오지 못했어요.</p>`;
-      listState.loading = false;
-      return;
-    }
-    listState.loading = false;
-    renderList();
-  }
-
-  function renderList() {
-    const listEl = document.getElementById("bd-list");
-    if (!listEl) return;
-    if (!listState.posts.length) {
-      listEl.innerHTML = `<div class="bd-empty">아직 글이 없어요. 첫 글을 남겨보세요!</div>`;
-    } else {
-      listEl.innerHTML = listState.posts.map((p) => `
-        <button type="button" class="bd-row" data-id="${p.id}">
-          <span class="bd-row-main">
-            <span class="bd-row-title">${esc(p.title)}</span>
-            ${p.hasImages ? IMG_ICON : ""}
-            ${p.commentCount ? `<span class="bd-cc">[${p.commentCount}]</span>` : ""}
-          </span>
-          <span class="bd-row-meta"><span class="bd-author${p.mine ? " me" : ""}">${esc(p.author)}</span><span>${fmtTime(p.createdAt)}</span></span>
-        </button>`).join("");
-    }
-    document.getElementById("bd-more").hidden = !listState.hasMore;
-  }
-
   // ---------- 글 보기 ----------
   async function showPost(id) {
-    root.innerHTML = `<div class="card"><p class="status-msg">불러오는 중...</p></div>`;
+    root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1></div><div class="bd-post"><div class="bd-empty">불러오는 중...</div></div>`;
     let data;
     try {
       data = await call({ action: "get", id });
     } catch (e) {
-      root.innerHTML = `<div class="card"><p class="status-msg error">${e.code === "not_found" ? "삭제됐거나 없는 글이에요." : "글을 불러오지 못했어요."}</p><button type="button" class="secondary" id="bd-back">목록으로</button></div>`;
+      root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div><div class="bd-post"><div class="bd-empty">${e.code === "not_found" ? "삭제됐거나 없는 글이에요." : "글을 불러오지 못했어요."}</div></div>`;
       document.getElementById("bd-back").addEventListener("click", () => showList());
       return;
     }
     if (!alive) return;
     const p = data.post;
+    const review = board === "review";
     root.innerHTML = `
-      <button type="button" class="secondary bd-back-btn" id="bd-back">← 목록</button>
-      <article class="card bd-post">
-        <h2 class="bd-post-title">${esc(p.title)}</h2>
-        <div class="bd-post-meta"><span class="bd-author${p.mine ? " me" : ""}">${esc(p.author)}</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span></div>
-        <div class="bd-post-body">${esc(p.body)}</div>
+      <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div>
+      <div class="bd-post">
+        <div class="bd-meta" style="margin-bottom:10px">${whoHtml(p.author, p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName)}</div>
+        <h2>${esc(p.title)}${review ? ` <span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
+        <div class="bd-body">${esc(p.body)}</div>
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
-        <div class="bd-post-actions">
+        ${p.mine || p.canDelete ? `<div class="bd-actions">
           ${p.mine ? `<button type="button" class="secondary" id="bd-edit">수정</button>` : ""}
           ${p.canDelete ? `<button type="button" class="secondary danger" id="bd-del">삭제</button>` : ""}
-        </div>
-      </article>
-      <section class="card bd-comments">
-        <h3 class="bd-c-title">댓글 <span>${data.comments.length}</span></h3>
-        <div id="bd-clist">${data.comments.map((c) => `
-          <div class="bd-c" data-cid="${c.id}">
-            <div class="bd-c-head"><span class="bd-author${c.mine ? " me" : ""}">${esc(c.author)}</span><span>${fmtTime(c.createdAt)}</span>
-              ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
-            <div class="bd-c-body">${esc(c.body)}</div>
-          </div>`).join("") || `<div class="bd-empty sm">첫 댓글을 남겨보세요.</div>`}</div>
-        <form class="bd-c-form" id="bd-cform">
-          <textarea id="bd-cinput" maxlength="500" rows="2" placeholder="${isLoggedIn() ? "댓글을 입력하세요 (최대 500자)" : "로그인하면 댓글을 쓸 수 있어요"}" ${isLoggedIn() ? "" : "disabled"}></textarea>
+        </div>` : ""}
+      </div>
+      <div class="bd-post">
+        <div class="bd-cm-h">댓글 ${data.comments.length}</div>
+        <div id="bd-clist">${data.comments.map((c, i) => `
+          <div class="bd-cm"${i === 0 ? ` style="border-top:0"` : ""}>
+            <div class="bd-av${c.op ? " op" : ""}">${esc(c.avatar ?? (c.author || "?").charAt(0))}</div>
+            <div class="bd-cm-main">
+              <div class="bd-meta">${whoHtml(c.author, c.badge, c.mine)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName)}
+                ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
+              <div class="t">${esc(c.body)}</div>
+            </div>
+          </div>`).join("")}</div>
+        <form class="bd-form" id="bd-cform">
+          <input type="text" id="bd-cinput" class="notice-title-input" maxlength="500" placeholder="${isLoggedIn() ? (review ? "댓글 남기기" : "익명으로 댓글 남기기") : "로그인하면 댓글을 쓸 수 있어요"}" ${isLoggedIn() ? "" : "disabled"}>
           <button type="submit">${isLoggedIn() ? "등록" : "로그인"}</button>
         </form>
-        <p class="status-msg" id="bd-cstatus"></p>
-      </section>`;
+        ${review ? "" : `<div class="bd-note">같은 글 안에서는 같은 사람이 같은 익명 번호로 보여요.</div>`}
+        <div class="bd-note" id="bd-cstatus"></div>
+      </div>`;
     document.getElementById("bd-back").addEventListener("click", () => showList());
     const editBtn = document.getElementById("bd-edit");
     if (editBtn) editBtn.addEventListener("click", () => showEditor({ post: p, images: data.images }));
     const delBtn = document.getElementById("bd-del");
     if (delBtn) delBtn.addEventListener("click", async () => {
-      const warn = board === "review" ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?";
+      const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?";
       if (!confirm(warn)) return;
       delBtn.disabled = true;
       try {
@@ -217,7 +233,7 @@ export function initBoard(board) {
       const btn = e.target.querySelector("button");
       btn.disabled = true;
       try { await call({ action: "comment", postId: p.id, body: text }); showPost(p.id); }
-      catch (err) { btn.disabled = false; statusEl.textContent = errText(err); statusEl.className = "status-msg error"; }
+      catch (err) { btn.disabled = false; statusEl.textContent = errText(err); statusEl.style.color = "#ff8f8f"; }
     });
     document.getElementById("bd-clist").addEventListener("click", async (e) => {
       const b = e.target.closest(".bd-c-del");
@@ -233,21 +249,21 @@ export function initBoard(board) {
     // 이미지 항목: {path?, url, file?}  — 기존(path 있음) / 새로 고른 것(file 있음)
     let imgs = editing ? existing.images.map((i) => ({ path: i.path, url: i.url })) : [];
     root.innerHTML = `
-      <button type="button" class="secondary bd-back-btn" id="bd-back">← ${editing ? "취소" : "목록"}</button>
-      <div class="card bd-editor">
-        <h2 style="margin:0 0 14px">${cfg.name} ${editing ? "수정" : "글쓰기"}</h2>
-        ${!editing && board === "review" ? `<div class="bd-banner" id="bd-banner" hidden></div>` : ""}
+      <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">${editing ? "취소" : "목록"}</button></div>
+      <p class="bd-sub">${editing ? "글을 수정해요." : cfg.sub}</p>
+      ${!editing && board === "review" ? `<div class="bd-banner" id="bd-banner" hidden></div>` : ""}
+      <div class="bd-post bd-editor">
         <input type="text" id="bd-title" class="notice-title-input" maxlength="60" placeholder="제목 (최대 60자)" value="${editing ? esc(existing.post.title) : ""}">
         <textarea id="bd-body" class="notice-title-input bd-body-input" maxlength="5000" rows="10" placeholder="내용을 입력하세요 (최대 5000자)">${editing ? esc(existing.post.body) : ""}</textarea>
         <div class="bd-img-row" id="bd-imgs"></div>
         <input type="file" id="bd-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
-        <p class="status-msg" id="bd-status"></p>
+        <p class="bd-note" id="bd-status"></p>
         <div class="bd-editor-actions"><button type="button" class="secondary" id="bd-cancel">취소</button><button type="button" id="bd-save">${editing ? "수정 완료" : "등록"}</button></div>
       </div>`;
     if (!editing && board === "review") loadBanner();
     const statusEl = document.getElementById("bd-status");
     const imgsEl = document.getElementById("bd-imgs");
-    const setStatus = (t, k = "") => { statusEl.textContent = t; statusEl.className = `status-msg ${k}`; };
+    const setStatus = (t, err = false) => { statusEl.textContent = t; statusEl.style.color = err ? "#ff8f8f" : ""; };
     function renderImgs() {
       imgsEl.innerHTML = imgs.map((im, i) => `<div class="bd-thumb"><img src="${esc(im.url)}" alt=""><button type="button" data-rm="${i}" aria-label="삭제">×</button></div>`).join("") +
         (imgs.length < MAX_IMAGES ? `<button type="button" class="bd-add-img" id="bd-add-img">${IMG_ICON}<span>사진 ${imgs.length}/${MAX_IMAGES}</span></button>` : "");
@@ -265,7 +281,7 @@ export function initBoard(board) {
     document.getElementById("bd-file").addEventListener("change", (e) => {
       for (const f of Array.from(e.target.files)) {
         if (imgs.length >= MAX_IMAGES) break;
-        if (!/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { setStatus("jpg, png, gif, webp 이미지만 올릴 수 있어요.", "error"); continue; }
+        if (!/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { setStatus("jpg, png, gif, webp 이미지만 올릴 수 있어요.", true); continue; }
         imgs.push({ file: f, url: URL.createObjectURL(f) });
       }
       e.target.value = "";
@@ -278,11 +294,11 @@ export function initBoard(board) {
     saveBtn.addEventListener("click", async () => {
       const title = document.getElementById("bd-title").value.trim();
       const text = document.getElementById("bd-body").value.trim();
-      if (!title) { setStatus("제목을 입력해주세요.", "error"); return; }
-      if (!text) { setStatus("내용을 입력해주세요.", "error"); return; }
+      if (!title) { setStatus("제목을 입력해주세요.", true); return; }
+      if (!text) { setStatus("내용을 입력해주세요.", true); return; }
       saveBtn.disabled = true;
       try {
-        const paths = imgs.filter((i) => i.path).map((i) => i.path);
+        let paths = imgs.filter((i) => i.path).map((i) => i.path);
         const fresh = imgs.filter((i) => i.file);
         if (fresh.length) {
           setStatus("사진 올리는 중...");
@@ -294,8 +310,7 @@ export function initBoard(board) {
           }
           // 순서 유지: 기존/새 이미지를 화면에 보이던 순서대로
           let k = 0;
-          const ordered = imgs.map((im) => (im.path ? im.path : uploads[k++].path));
-          paths.length = 0; paths.push(...ordered);
+          paths = imgs.map((im) => (im.path ? im.path : uploads[k++].path));
         }
         setStatus("저장 중...");
         if (editing) {
@@ -308,7 +323,7 @@ export function initBoard(board) {
         }
       } catch (e) {
         saveBtn.disabled = false;
-        setStatus(e.code ? errText(e) : "저장하지 못했어요. 다시 시도해주세요.", "error");
+        setStatus(e.code ? errText(e) : "저장하지 못했어요. 다시 시도해주세요.", true);
       }
     });
   }
@@ -318,8 +333,10 @@ export function initBoard(board) {
   }
 
   root.addEventListener("click", (e) => {
-    const row = e.target.closest(".bd-row");
-    if (row) showPost(Number(row.dataset.id));
+    const item = e.target.closest(".bd-item");
+    if (item) { e.preventDefault(); showPost(Number(item.dataset.id)); return; }
+    const pg = e.target.closest("#bd-pager button[data-pg]");
+    if (pg && !pg.disabled) showList(Number(pg.dataset.pg));
   });
-  showList();
+  showList(0);
 }

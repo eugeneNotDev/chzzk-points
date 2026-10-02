@@ -151,56 +151,79 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function authorLabel(board: string, name: string | null, isAdmin: boolean, anon = "익명") {
-  if (board === "review") return name ?? "알 수 없음";
-  return isAdmin ? `${anon} (${name ?? "알 수 없음"})` : anon;
+interface Who { name: string | null; badge: { name: string; color: string | null } | null }
+
+// 작성자 정보(닉네임 + 장착 칭호). 후기 게시판 표시와 관리자의 자유게시판 작성자 확인용.
+async function loadWho(admin: Admin, cids: string[]): Promise<Map<string, Who>> {
+  const m = new Map<string, Who>();
+  if (!cids.length) return m;
+  const { data: us } = await admin.from("users").select("channel_id, channel_name, selected_title_id").in("channel_id", cids);
+  const tids = [...new Set((us ?? []).map((u: any) => u.selected_title_id).filter(Boolean))];
+  const titles = new Map<string, { name: string; color: string | null }>();
+  if (tids.length) {
+    const { data: ts } = await admin.from("titles").select("id, name, color").in("id", tids);
+    for (const t of ts ?? []) titles.set(t.id, { name: t.name, color: t.color ?? null });
+  }
+  for (const u of us ?? []) m.set(u.channel_id, { name: u.channel_name, badge: u.selected_title_id ? titles.get(u.selected_title_id) ?? null : null });
+  return m;
+}
+
+// "2026-09-26 21:00:03" → "9/26"
+function broadcastLabel(key: string | null): string | null {
+  const m = key ? /^\d{4}-(\d{2})-(\d{2})/.exec(key) : null;
+  return m ? `${Number(m[1])}/${Number(m[2])}` : null;
 }
 
 async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean) {
   const board = body.board;
   if (board !== "free" && board !== "review") return json({ error: "invalid_board" }, 400);
   const page = Math.max(0, Math.min(Number(body.page) || 0, 10000));
-  const { data: posts, error } = await admin
+  const { data: posts, error, count } = await admin
     .from("board_posts")
-    .select("id, title, channel_id, created_at, broadcast_key")
+    .select("id, title, body, channel_id, created_at, broadcast_key", { count: "exact" })
     .eq("board", board)
     .order("id", { ascending: false })
-    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
   if (error) throw new Error(`board_posts 조회 실패: ${error.message}`);
-  const rows = posts ?? [];
-  const hasMore = rows.length > PAGE_SIZE;
-  const slice = rows.slice(0, PAGE_SIZE);
+  const slice = posts ?? [];
   const ids = slice.map((p: any) => p.id);
 
   const commentCounts = new Map<number, number>();
   const withImages = new Set<number>();
+  const paid = new Set<number>();
   if (ids.length) {
-    const [{ data: cs }, { data: ims }] = await Promise.all([
+    const [{ data: cs }, { data: ims }, rw] = await Promise.all([
       admin.from("board_comments").select("post_id").in("post_id", ids),
       admin.from("board_images").select("post_id").in("post_id", ids),
+      board === "review"
+        ? admin.from("board_review_rewards").select("post_id").in("post_id", ids).eq("revoked", false)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     for (const c of cs ?? []) commentCounts.set(c.post_id, (commentCounts.get(c.post_id) ?? 0) + 1);
     for (const i of ims ?? []) withImages.add(i.post_id);
+    for (const r of rw.data ?? []) paid.add(r.post_id);
   }
-  const names = new Map<string, string | null>();
-  if (board === "review" || isAdmin) {
-    const cids = [...new Set(slice.map((p: any) => p.channel_id))];
-    if (cids.length) {
-      const { data: us } = await admin.from("users").select("channel_id, channel_name").in("channel_id", cids);
-      for (const u of us ?? []) names.set(u.channel_id, u.channel_name);
-    }
-  }
+  const who = board === "review" || isAdmin ? await loadWho(admin, [...new Set(slice.map((p: any) => p.channel_id))]) : new Map<string, Who>();
   return json({
-    posts: slice.map((p: any) => ({
-      id: p.id,
-      title: p.title,
-      author: authorLabel(board, names.get(p.channel_id) ?? null, isAdmin),
-      commentCount: commentCounts.get(p.id) ?? 0,
-      hasImages: withImages.has(p.id),
-      createdAt: p.created_at,
-      mine: me !== null && p.channel_id === me,
-    })),
-    hasMore,
+    posts: slice.map((p: any) => {
+      const w = who.get(p.channel_id);
+      return {
+        id: p.id,
+        title: p.title,
+        preview: String(p.body).replace(/\s+/g, " ").trim().slice(0, 120),
+        author: board === "review" ? (w?.name ?? "알 수 없음") : "익명",
+        badge: board === "review" ? (w?.badge ?? null) : null,
+        adminName: board === "free" && isAdmin ? (w?.name ?? "알 수 없음") : null,
+        broadcast: broadcastLabel(p.broadcast_key),
+        paid: paid.has(p.id),
+        commentCount: commentCounts.get(p.id) ?? 0,
+        hasImages: withImages.has(p.id),
+        createdAt: p.created_at,
+        mine: me !== null && p.channel_id === me,
+      };
+    }),
+    total: count ?? slice.length,
+    pageSize: PAGE_SIZE,
   });
 }
 
@@ -209,39 +232,47 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
   if (!Number.isSafeInteger(id) || id <= 0) return json({ error: "invalid_id" }, 400);
   const { data: p } = await admin.from("board_posts").select("*").eq("id", id).maybeSingle();
   if (!p) return json({ error: "not_found" }, 404);
-  const [{ data: ims }, { data: cs }] = await Promise.all([
+  const [{ data: ims }, { data: cs }, rw] = await Promise.all([
     admin.from("board_images").select("storage_path").eq("post_id", id).order("sort_order"),
     admin.from("board_comments").select("id, channel_id, body, created_at").eq("post_id", id).order("id"),
+    admin.from("board_review_rewards").select("post_id").eq("post_id", id).eq("revoked", false),
   ]);
   const comments = cs ?? [];
-  const cids = [...new Set([p.channel_id, ...comments.map((c: any) => c.channel_id)])];
-  const names = new Map<string, string | null>();
-  if (p.board === "review" || isAdmin) {
-    const { data: us } = await admin.from("users").select("channel_id, channel_name").in("channel_id", cids);
-    for (const u of us ?? []) names.set(u.channel_id, u.channel_name);
-  }
-  // 자유게시판 댓글 익명 번호: 글쓴이는 "글쓴이", 나머지는 이 글 안에서 처음 나온 순서대로 익명1, 익명2…
+  const review = p.board === "review";
+  const who = review || isAdmin
+    ? await loadWho(admin, [...new Set([p.channel_id, ...comments.map((c: any) => c.channel_id)])])
+    : new Map<string, Who>();
+  // 자유게시판 익명 번호: 글쓴이는 "익명(글쓴이)", 나머지는 이 글 안에서 처음 나온 순서대로 익명 1, 익명 2…
   const anonNo = new Map<string, number>();
-  const labelFor = (cid: string) => {
-    if (p.board === "review") return names.get(cid) ?? "알 수 없음";
-    let base: string;
-    if (cid === p.channel_id) base = "익명 (글쓴이)";
-    else {
+  const view = (cid: string) => {
+    const w = who.get(cid);
+    if (review) return { author: w?.name ?? "알 수 없음", avatar: null as string | null, op: cid === p.channel_id, badge: w?.badge ?? null, adminName: null as string | null };
+    const op = cid === p.channel_id;
+    let n = 0;
+    if (!op) {
       if (!anonNo.has(cid)) anonNo.set(cid, anonNo.size + 1);
-      base = `익명${anonNo.get(cid)}`;
+      n = anonNo.get(cid)!;
     }
-    return isAdmin ? `${base} [${names.get(cid) ?? "알 수 없음"}]` : base;
+    return {
+      author: op ? "익명(글쓴이)" : `익명 ${n}`,
+      avatar: op ? "글쓴이" : `익${n}`,
+      op,
+      badge: null,
+      adminName: isAdmin ? (w?.name ?? "알 수 없음") : null,
+    };
   };
-  const author = p.board === "review" ? (names.get(p.channel_id) ?? "알 수 없음") : labelFor(p.channel_id);
+  const pv = review ? view(p.channel_id) : { author: "익명", adminName: isAdmin ? (who.get(p.channel_id)?.name ?? "알 수 없음") : null, badge: null as any };
   return json({
     post: {
-      id: p.id, board: p.board, title: p.title, body: p.body, author,
+      id: p.id, board: p.board, title: p.title, body: p.body,
+      author: pv.author, badge: pv.badge, adminName: pv.adminName,
+      broadcast: broadcastLabel(p.broadcast_key), paid: (rw.data ?? []).length > 0,
       createdAt: p.created_at, updatedAt: p.updated_at,
       mine: me !== null && p.channel_id === me, canDelete: isAdmin || (me !== null && p.channel_id === me),
     },
     images: (ims ?? []).map((i: any) => ({ path: i.storage_path, url: imageUrl(i.storage_path) })),
     comments: comments.map((c: any) => ({
-      id: c.id, author: labelFor(c.channel_id), body: c.body, createdAt: c.created_at,
+      id: c.id, body: c.body, createdAt: c.created_at, ...view(c.channel_id),
       mine: me !== null && c.channel_id === me, canDelete: isAdmin || (me !== null && c.channel_id === me),
     })),
   });
