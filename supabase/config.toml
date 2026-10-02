@@ -33,3 +33,6 @@ verify_jwt = false
 
 [functions.admin-schedule]
 verify_jwt = false
+
+[functions.board]
+verify_jwt = false

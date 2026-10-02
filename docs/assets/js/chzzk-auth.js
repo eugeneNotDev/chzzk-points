@@ -1307,6 +1307,34 @@ function initShopNavGroup() {
   updateShopNavActiveState();
   // 모든 페이지가 이 함수를 부르니까 "미니게임" 그룹도 여기서 같이 챙김.
   initGameNavGroup();
+  initBoardNavGroup();
+}
+
+// "게시판" 사이드바 그룹(자유게시판/방송 후기). 하위 링크는 페이지가 따로라서 이동/active 표시는 spa-router가 함 —
+// 여기선 펼치기/접기와 그룹 버튼 active 표시만(미니게임 그룹과 같은 방식). 게시판 페이지에 있으면 자동으로 펼침.
+const BOARD_PAGES = ["board-free.html", "board-review.html"];
+function initBoardNavGroup() {
+  const toggleBtn = document.getElementById("board-nav-toggle");
+  if (!toggleBtn) return;
+  const onBoardPage = document.querySelector("[data-board-page]") !== null;
+  if (toggleBtn.dataset.bound !== "1") {
+    toggleBtn.dataset.bound = "1";
+    toggleBtn.addEventListener("click", () => {
+      // 사이드바를 접은 상태에선 하위 메뉴가 안 보이니 바로 자유게시판으로 이동.
+      if (document.body.classList.contains("sidebar-collapsed")) {
+        if (document.querySelector("[data-board-page]")) return;
+        if (typeof spaNavigate === "function") spaNavigate(BOARD_PAGES[0]);
+        else location.href = BOARD_PAGES[0];
+        return;
+      }
+      document.body.classList.toggle("board-nav-expanded");
+      toggleBtn.setAttribute("aria-expanded", document.body.classList.contains("board-nav-expanded") ? "true" : "false");
+    });
+  }
+  toggleBtn.classList.toggle("active", onBoardPage);
+  if (onBoardPage) document.body.classList.add("board-nav-expanded");
+  toggleBtn.setAttribute("aria-controls", "board-nav-submenu");
+  toggleBtn.setAttribute("aria-expanded", document.body.classList.contains("board-nav-expanded") ? "true" : "false");
 }
 
 // "미니게임" 사이드바 그룹(무료 뽑기/룰렛/가위바위보/홀짝). 하위 링크는 페이지가 따로라서(freebox.html, roulette.html, rps.html, oddeven.html)
@@ -1420,6 +1448,8 @@ function updateShopNavActiveState() {
 // ============================================================================
 
 const M_ICONS = {
+  schedule: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 13v3l2 1"/></svg>`,
+  board: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>`,
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
   notice: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg>`,
   predict: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>`,
@@ -1482,7 +1512,10 @@ function initMobileNav() {
     <div class="m-sheet-grabber"></div>
     <div class="m-sheet-user" id="m-sheet-user"></div>
     <div class="m-sheet-grid">
+      <a href="schedule.html" class="m-sheet-item" data-page="schedule.html">${M_ICONS.schedule}<span>방송 스케줄</span></a>
       <a href="ranking.html" class="m-sheet-item" data-page="ranking.html">${M_ICONS.ranking}<span>랭킹</span></a>
+      <a href="board-free.html" class="m-sheet-item" data-page="board-free.html">${M_ICONS.board}<span>자유게시판</span></a>
+      <a href="board-review.html" class="m-sheet-item" data-page="board-review.html">${M_ICONS.board}<span>방송 후기</span></a>
       <a href="freebox.html" class="m-sheet-item" data-page="freebox.html">${M_ICONS.freebox}<span>무료 뽑기</span></a>
       <a href="roulette.html" class="m-sheet-item" data-page="roulette.html">${M_ICONS.roulette}<span>룰렛</span></a>
       <a href="rps.html" class="m-sheet-item" data-page="rps.html">${M_ICONS.rps}<span>가위바위보</span></a>

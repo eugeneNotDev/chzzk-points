@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>방송 스케줄 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=88">
+<link rel="stylesheet" href="assets/css/style.css?v=89">
 </head>
 <body>
   <script>
@@ -72,6 +72,17 @@
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
           <span class="label">출석체크</span>
         </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="board-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></span>
+            <span class="label">게시판</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="board-nav-submenu">
+            <a href="board-free.html">자유게시판</a>
+            <a href="board-review.html">방송 후기</a>
+          </div>
+        </div>
         <a href="mypage.html">
           <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
           <span class="label">마이페이지</span>
@@ -117,15 +128,17 @@
           </div>
         </div>
         <div id="sched-live-fields">
-          <div class="sched-modal-row">
-            <div class="sched-modal-field">
-              <label class="field-label" for="sched-time-input">시작 시간</label>
-              <input type="time" id="sched-time-input" value="20:00">
+          <div class="sched-modal-field">
+            <span class="field-label">시작 시간</span>
+            <div class="tp" id="sched-tp">
+              <div class="tp-read"><span class="ap" id="tp-ap">오후</span><span class="t" id="tp-t">8:00</span></div>
+              <div class="tp-seg" id="tp-seg"><button type="button" data-ap="AM">오전</button><button type="button" data-ap="PM">오후</button></div>
+              <div class="tp-label">시</div>
+              <div class="tp-grid h" id="tp-h"></div>
+              <div class="tp-label">분</div>
+              <div class="tp-grid m" id="tp-m"></div>
             </div>
-            <div class="sched-modal-field">
-              <span class="field-label">시간 미정</span>
-              <label class="sched-tbd-label" style="height: 38px"><input type="checkbox" id="sched-tbd-input"> 미정으로 표시</label>
-            </div>
+            <label class="tp-tbd" id="tp-tbd-wrap"><input type="checkbox" id="sched-tbd-input"> 시간 미정 (시간은 나중에 정해요)</label>
           </div>
           <div class="sched-modal-field">
             <label class="field-label" for="sched-title-input">제목 / 컨텐츠 (최대 30자)</label>
@@ -146,8 +159,8 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=46"></script>
-  <script src="assets/js/spa-router.js?v=14"></script>
+  <script src="assets/js/chzzk-auth.js?v=47"></script>
+  <script src="assets/js/spa-router.js?v=15"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
   (function () {
@@ -168,7 +181,8 @@
     let selected = todayStr;
     let admin = false;
     let supabaseClient = null;
-    const monthCache = new Map(); // "YYYY-MM" → Map(day → row)
+    const rangeCache = new Map(); // "시작~끝" → Map(day → row)
+    let viewMap = new Map();
     let loadSeq = 0;
 
     const gridEl = document.getElementById("sched-grid");
@@ -180,18 +194,29 @@
     document.getElementById("sched-dow").innerHTML = WEEK
       .map((w, i) => `<div class="sched-dow${i === 0 ? " sun" : ""}${i === 6 ? " sat" : ""}">${w}</div>`).join("");
 
-    async function fetchMonth(y, m, force) {
-      const key = `${y}-${pad(m + 1)}`;
-      if (!force && monthCache.has(key)) return monthCache.get(key);
-      const last = new Date(y, m + 1, 0).getDate();
+    // 달력에 보이는 칸 전체(앞뒤 달 날짜 포함)의 시작/끝 날짜
+    function gridRange(y, m) {
+      const first = new Date(y, m, 1).getDay();
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      const weeks = Math.ceil((first + daysInMonth) / 7);
+      const start = new Date(y, m, 1 - first);
+      const end = new Date(y, m, 1 - first + weeks * 7 - 1);
+      const f = (d) => ymd(d.getFullYear(), d.getMonth(), d.getDate());
+      return [f(start), f(end)];
+    }
+
+    async function fetchRange(y, m, force) {
+      const [a, b] = gridRange(y, m);
+      const key = `${a}~${b}`;
+      if (!force && rangeCache.has(key)) return rangeCache.get(key);
       const { data, error } = await supabaseClient
         .from("broadcast_schedule")
         .select("day, kind, start_time, title, memo")
-        .gte("day", ymd(y, m, 1))
-        .lte("day", ymd(y, m, last));
+        .gte("day", a)
+        .lte("day", b);
       if (error) throw error;
       const map = new Map((data ?? []).map((r) => [r.day, r]));
-      monthCache.set(key, map);
+      rangeCache.set(key, map);
       return map;
     }
 
@@ -199,23 +224,21 @@
       titleEl.textContent = `${viewY}년 ${viewM + 1}월`;
       const first = new Date(viewY, viewM, 1).getDay();
       const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
-      const prevDays = new Date(viewY, viewM, 0).getDate();
       const weeks = Math.ceil((first + daysInMonth) / 7);
       let html = "";
       for (let i = 0; i < weeks * 7; i++) {
-        const d = i - first + 1;
+        const dd = i - first + 1;
         const col = i % 7;
-        if (d < 1 || d > daysInMonth) {
-          const label = d < 1 ? prevDays + d : d - daysInMonth;
-          html += `<div class="sched-cell other"><div class="sched-head"><span class="sched-num">${label}</span></div></div>`;
-          continue;
-        }
-        const day = ymd(viewY, viewM, d);
+        const dateObj = new Date(viewY, viewM, dd);
+        const d = dateObj.getDate();
+        const outside = dd < 1 || dd > daysInMonth;
+        const day = ymd(dateObj.getFullYear(), dateObj.getMonth(), d);
         const row = map.get(day);
         const live = row && row.kind === "live";
         const off = row && row.kind === "off";
         const tbd = live && !row.start_time;
         const cls = ["sched-cell"];
+        if (outside) cls.push("other");
         if (day === todayStr) cls.push("today");
         if (day === selected) cls.push("sel");
         if (live) cls.push("live");
@@ -258,7 +281,7 @@
       const seq = ++loadSeq;
       let map;
       try {
-        map = await fetchMonth(viewY, viewM, force);
+        map = await fetchRange(viewY, viewM, force);
         errorEl.hidden = true;
       } catch (err) {
         console.error("[schedule] 조회 실패", err);
@@ -266,12 +289,13 @@
         map = new Map();
       }
       if (seq !== loadSeq || !gridEl.isConnected) return; // 그 사이 다른 달로 넘어갔거나 페이지를 떠났으면 무시
+      viewMap = map;
       renderGrid(map);
       renderDetail(map);
     }
 
     function currentMap() {
-      return monthCache.get(`${viewY}-${pad(viewM + 1)}`) ?? new Map();
+      return viewMap;
     }
 
     function selectDay(day) {
@@ -318,7 +342,48 @@
     // 관리자 입력 모달 ------------------------------------------------------------
     const kindBtns = Array.from(document.querySelectorAll(".sched-kind-btn"));
     const liveFieldsEl = document.getElementById("sched-live-fields");
-    const timeInput = document.getElementById("sched-time-input");
+    const tpEl = document.getElementById("sched-tp");
+    const tpAp = document.getElementById("tp-ap");
+    const tpT = document.getElementById("tp-t");
+    const tpHours = document.getElementById("tp-h");
+    const tpMins = document.getElementById("tp-m");
+    const tpSeg = document.getElementById("tp-seg");
+    const tpTbdWrap = document.getElementById("tp-tbd-wrap");
+    let tpH24 = 20;
+    let tpMin = 0;
+    tpHours.innerHTML = [1,2,3,4,5,6,7,8,9,10,11,12].map((h) => `<button type="button" data-h="${h}">${h}</button>`).join("");
+    tpMins.innerHTML = [0,5,10,15,20,25,30,35,40,45,50,55].map((mm) => `<button type="button" data-m="${mm}">${pad(mm)}</button>`).join("");
+    function tpRender() {
+      const pm = tpH24 >= 12;
+      const h12 = tpH24 % 12 === 0 ? 12 : tpH24 % 12;
+      tpAp.textContent = pm ? "오후" : "오전";
+      tpT.textContent = `${h12}:${pad(tpMin)}`;
+      tpSeg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", (b.dataset.ap === "PM") === pm));
+      tpHours.querySelectorAll("button").forEach((b) => b.classList.toggle("on", Number(b.dataset.h) === h12));
+      tpMins.querySelectorAll("button").forEach((b) => b.classList.toggle("on", Number(b.dataset.m) === tpMin));
+    }
+    function tpSet(h24, mm) { tpH24 = h24; tpMin = mm; tpRender(); }
+    function tpValue() { return `${pad(tpH24)}:${pad(tpMin)}`; }
+    tpSeg.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-ap]");
+      if (!b) return;
+      const h12 = tpH24 % 12;
+      tpH24 = b.dataset.ap === "PM" ? h12 + 12 : h12;
+      tpRender();
+    });
+    tpHours.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-h]");
+      if (!b) return;
+      const pm = tpH24 >= 12;
+      tpH24 = (Number(b.dataset.h) % 12) + (pm ? 12 : 0);
+      tpRender();
+    });
+    tpMins.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-m]");
+      if (!b) return;
+      tpMin = Number(b.dataset.m);
+      tpRender();
+    });
     const tbdInput = document.getElementById("sched-tbd-input");
     const titleInput = document.getElementById("sched-title-input");
     const memoInput = document.getElementById("sched-memo-input");
@@ -337,7 +402,10 @@
       statusEl.textContent = text;
       statusEl.className = `status-msg${kind ? ` ${kind}` : ""}`;
     }
-    function syncTbd() { timeInput.disabled = tbdInput.checked; }
+    function syncTbd() {
+      tpEl.classList.toggle("off", tbdInput.checked);
+      tpTbdWrap.classList.toggle("on", tbdInput.checked);
+    }
     kindBtns.forEach((b) => b.addEventListener("click", () => setKind(b.dataset.kind)));
     tbdInput.addEventListener("change", syncTbd);
 
@@ -348,7 +416,8 @@
       const [y, m, d] = day.split("-").map(Number);
       document.getElementById("sched-modal-title").textContent = `${m}월 ${d}일 (${WEEK[new Date(y, m - 1, d).getDay()]}) 스케줄`;
       setKind(row ? row.kind : "live");
-      timeInput.value = row && row.start_time ? row.start_time : "20:00";
+      const st = row && row.start_time ? row.start_time : "20:00";
+      tpSet(Number(st.slice(0, 2)), Math.round(Number(st.slice(3, 5)) / 5) * 5 % 60);
       tbdInput.checked = !!row && row.kind === "live" && !row.start_time;
       syncTbd();
       titleInput.value = row && row.kind === "live" ? row.title : "";
@@ -378,7 +447,7 @@
           setStatus(SAVE_ERRORS[data.error] || "저장하지 못했어요.", "error");
           return;
         }
-        monthCache.delete(modalDay.slice(0, 7));
+        rangeCache.clear();
         modal.close();
         await refresh(true);
       } catch (err) {
@@ -394,8 +463,7 @@
       if (modalKind === "live") {
         const title = titleInput.value.trim();
         if (!title) { setStatus("제목을 입력해주세요.", "error"); return; }
-        if (!tbdInput.checked && !timeInput.value) { setStatus("시작 시간을 입력하거나 '미정'을 체크해주세요.", "error"); return; }
-        submit({ date: modalDay, kind: "live", time: tbdInput.checked ? null : timeInput.value, title, memo: memoInput.value });
+        submit({ date: modalDay, kind: "live", time: tbdInput.checked ? null : tpValue(), title, memo: memoInput.value });
       } else {
         submit({ date: modalDay, kind: "off", memo: memoInput.value });
       }
