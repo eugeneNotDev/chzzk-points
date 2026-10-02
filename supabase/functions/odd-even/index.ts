@@ -1,11 +1,11 @@
 // 홀짝 엔드포인트. oddeven.html이 호출함(Authorization: Bearer <세션토큰>).
 //
 // GET  → 홀짝 화면에 필요한 내 상태
-//   { balance, maxBalanceReached, requiredPoints, requiredTierName, eligible, minBet, winMultiplier,
+//   { balance, maxBalanceReached, requiredPoints, requiredTierName, eligible, blocked, blockedUntil, minBet, winMultiplier,
 //     cooldownSeconds(지금 남은 쿨타임, 없으면 0), recent: [{ bet, pick, card, result, payout, createdAt }] }
 // POST { bet: number, pick: "odd" | "even" } → 한 판
 //   성공: { card(1~10, 1은 A), result: "win" | "lose", payout, net, balance, note?(가끔 붙는 한 줄 메시지) }
-//   실패: 401 unauthorized / 403 banned
+//   실패: 401 unauthorized / 403 banned · minigame_blocked(관리자가 미니게임 참여를 막음)
 //         400 { error: "invalid_bet" | "invalid_pick" | "tier_required" | "insufficient_balance" | "cooldown" (retryAfterSeconds 포함) }
 //
 // 카드와 결과는 DB 함수 odd_even_play()가 유저 행을 잠근 채로 뽑고 포인트 기록까지 한 번에 처리함
@@ -52,10 +52,18 @@ async function getRequiredTier(admin: Admin): Promise<{ points: number; name: st
   return { points: Number(data?.min_points ?? 0), name: data?.name ?? null };
 }
 
+// minigame_blocked_until → { blocked, until }. "infinity"(기간 없이 계속)면 until은 null.
+function minigameBlock(raw: string | null): { blocked: boolean; until: string | null } {
+  if (!raw) return { blocked: false, until: null };
+  if (raw === "infinity") return { blocked: true, until: null };
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) && t > Date.now() ? { blocked: true, until: raw } : { blocked: false, until: null };
+}
+
 async function handleGet(admin: Admin, channelId: string) {
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("balance, max_balance_reached, banned")
+    .select("balance, max_balance_reached, banned, minigame_blocked_until")
     .eq("channel_id", channelId)
     .maybeSingle();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -79,13 +87,17 @@ async function handleGet(admin: Admin, channelId: string) {
   }
 
   const maxBalanceReached = Number(user.max_balance_reached);
+  const block = minigameBlock(user.minigame_blocked_until);
   return jsonResponse(
     {
       balance: Number(user.balance),
       maxBalanceReached,
       requiredPoints: required.points,
       requiredTierName: required.name,
-      eligible: maxBalanceReached >= required.points,
+      eligible: maxBalanceReached >= required.points && !block.blocked,
+      // 관리자가 미니게임 참여를 막은 유저(0053_minigame_block.sql). blockedUntil: 끝나는 시각, 기간 없이 계속이면 null.
+      blocked: block.blocked,
+      blockedUntil: block.until,
       minBet: MIN_BET,
       winMultiplier: WIN_MULTIPLIER,
       cooldownSeconds,
@@ -103,6 +115,16 @@ async function handleGet(admin: Admin, channelId: string) {
 }
 
 async function handlePost(admin: Admin, channelId: string, req: Request) {
+  // 관리자가 미니게임 참여를 막은 유저면 거절(0053_minigame_block.sql).
+  const { data: blockRow, error: blockError } = await admin
+    .from("users")
+    .select("minigame_blocked_until")
+    .eq("channel_id", channelId)
+    .maybeSingle();
+  if (blockError) throw new Error(`users 조회 실패: ${blockError.message}`);
+  const block = minigameBlock(blockRow?.minigame_blocked_until ?? null);
+  if (block.blocked) return jsonResponse({ error: "minigame_blocked", blockedUntil: block.until }, 403);
+
   const body = await req.json().catch(() => ({}));
   const bet = typeof body.bet === "number" ? body.bet : Number.NaN;
   if (!Number.isInteger(bet) || bet < MIN_BET) return jsonResponse({ error: "invalid_bet" }, 400);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>가위바위보 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=84">
+<link rel="stylesheet" href="assets/css/style.css?v=85">
 </head>
 <body>
   <script>
@@ -197,7 +197,8 @@
       const v = betValue();
       let msg = `최소 ${fmt(MIN_BET)}P부터 걸 수 있어요 · 손을 누르면 바로 시작돼요`;
       let bad = false;
-      if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요`; }
+      if (state && state.blocked) { bad = true; msg = "미니게임 참여가 제한된 계정이에요"; }
+      else if (!state || !state.eligible) { bad = true; msg = `${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요`; }
       else if (balance() < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 있어야 할 수 있어요`; }
       else if (v < MIN_BET) { bad = true; msg = `${fmt(MIN_BET)}P 이상 걸어야 해요`; }
       else if (v > balance()) { bad = true; msg = "보유 포인트보다 많이 걸 수 없어요"; }
@@ -221,6 +222,19 @@
     function renderLock() {
       const lock = $("game-lock");
       if (state.eligible) { lock.hidden = true; return; }
+      const barWrap = $("game-lock-bar").parentElement;
+      if (state.blocked) {
+        // 관리자가 미니게임 참여를 막은 계정(0053_minigame_block.sql).
+        $("game-lock-title").textContent = "미니게임 참여가 제한됐어요";
+        const until = state.blockedUntil
+          ? `${new Date(state.blockedUntil).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}까지`
+          : "별도 해제 전까지";
+        $("game-lock-desc").textContent = `${until} 룰렛·가위바위보·홀짝에 참여할 수 없어요. 무료 뽑기와 투표는 그대로 할 수 있어요.`;
+        barWrap.hidden = true;
+        lock.hidden = false;
+        return;
+      }
+      barWrap.hidden = false;
       const need = state.requiredPoints, have = state.maxBalanceReached;
       $("game-lock-title").textContent = `${state.requiredTierName || "브론즈"} 등급부터 참여할 수 있어요`;
       $("game-lock-desc").textContent = `최고 보유 포인트 기준이에요. 지금 ${fmt(have)}P · ${fmt(Math.max(0, need - have))}P 더 모으면 열려요.`;
@@ -322,6 +336,9 @@
         } else if (res.status === 401) {
           showLoggedOut();
           return;
+        } else if (data.error === "minigame_blocked") {
+          showError("미니게임 참여가 제한된 계정이에요.");
+          await reloadStateSafely();
         } else if (data.error === "invalid_bet") {
           showError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
         } else if (data.error !== "banned" && res.status !== 401) {

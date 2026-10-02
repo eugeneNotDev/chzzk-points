@@ -3118,3 +3118,8 @@ body.shop-dragging * { cursor: grabbing !important; user-select: none; -webkit-u
   .code-doc-body { font-size: 10.5px; letter-spacing: 0.04em; padding: 14px 12px 16px; }
   .code-doc-foot { padding: 0 12px 12px; }
 }
+
+/* 관리자 유저 상세 — 미니게임 차단(기간) 줄 */
+.admin-minigame-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.admin-minigame-actions select { font: inherit; font-size: 0.85rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; }
+#user-detail-minigame-status.is-blocked { color: #ff8a8a; }

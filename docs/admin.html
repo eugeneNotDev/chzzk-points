@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=84">
+<link rel="stylesheet" href="assets/css/style.css?v=85">
 </head>
 <body>
   <script>
@@ -303,6 +303,23 @@
             <p class="muted" id="user-detail-titles-summary"></p>
           </div>
           <button type="button" class="secondary" id="user-detail-titles-open-btn">칭호 관리</button>
+        </div>
+        <!-- 미니게임 차단 — 기간을 정해 룰렛·가위바위보·홀짝 참여를 막음(무료 뽑기·투표는 그대로). admin-minigame-block 함수. -->
+        <div class="admin-user-titles-row">
+          <div class="admin-user-titles-summary">
+            <h4 class="admin-user-section-heading">미니게임</h4>
+            <p class="muted" id="user-detail-minigame-status">불러오는 중...</p>
+          </div>
+          <div class="admin-minigame-actions">
+            <select id="user-detail-minigame-duration" aria-label="차단 기간">
+              <option value="day">하루</option>
+              <option value="week">일주일</option>
+              <option value="month">한 달</option>
+              <option value="forever">계속</option>
+            </select>
+            <button type="button" class="secondary danger" id="user-detail-minigame-btn" disabled>차단</button>
+            <button type="button" class="secondary" id="user-detail-minigame-off-btn" hidden>해제</button>
+          </div>
         </div>
         <h4 class="admin-user-section-heading">포인트 내역</h4>
         <div id="user-detail-log-list"></div>
@@ -1159,6 +1176,60 @@
       }
     });
 
+    // 미니게임 차단(기간) — 유저 상세를 열 때마다 따로 불러옴(admin-minigame-block 함수, 0053_minigame_block.sql).
+    const ADMIN_MINIGAME_BLOCK_URL = `${FUNCTIONS_BASE_URL}/admin-minigame-block`;
+    const minigameStatusEl = document.getElementById("user-detail-minigame-status");
+    const minigameBtn = document.getElementById("user-detail-minigame-btn");
+    const minigameOffBtn = document.getElementById("user-detail-minigame-off-btn");
+    const minigameDurationEl = document.getElementById("user-detail-minigame-duration");
+    const MINIGAME_DURATION_LABEL = { day: "하루", week: "일주일", month: "한 달", forever: "계속" };
+    function renderMinigameBlock(state) {
+      if (!state) {
+        minigameStatusEl.textContent = "불러오는 중...";
+        minigameBtn.disabled = true;
+        minigameOffBtn.hidden = true;
+        return;
+      }
+      minigameStatusEl.textContent = !state.blocked
+        ? "참여 가능"
+        : state.forever ? "차단 중 — 기간 없이 계속" : `차단 중 — ${new Date(state.until).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}까지`;
+      minigameStatusEl.classList.toggle("is-blocked", !!state.blocked);
+      minigameBtn.textContent = state.blocked ? "기간 바꾸기" : "차단";
+      minigameBtn.disabled = false;
+      minigameOffBtn.hidden = !state.blocked;
+    }
+    async function loadMinigameBlock(channelId) {
+      renderMinigameBlock(null);
+      try {
+        const res = await authFetch(`${ADMIN_MINIGAME_BLOCK_URL}?channelId=${encodeURIComponent(channelId)}`);
+        if (!res.ok) throw new Error(String(res.status));
+        const data = await res.json();
+        if (detailChannelId !== channelId) return; // 그 사이 다른 유저를 열었으면 무시
+        renderMinigameBlock(data);
+      } catch (err) {
+        minigameStatusEl.textContent = "상태를 불러오지 못했어요.";
+      }
+    }
+    async function setMinigameBlock(duration) {
+      const channelId = detailChannelId;
+      if (!channelId) return;
+      const msg = duration === "off"
+        ? `${detailChannelName}님의 미니게임 차단을 풀까요?`
+        : `${detailChannelName}님의 미니게임 참여를 ${MINIGAME_DURATION_LABEL[duration]} 막을까요?\n(룰렛·가위바위보·홀짝 불가, 무료 뽑기·투표는 가능)`;
+      if (!confirm(msg)) return;
+      minigameBtn.disabled = true;
+      try {
+        const res = await authFetch(ADMIN_MINIGAME_BLOCK_URL, { method: "POST", body: JSON.stringify({ channelId, duration }) });
+        if (!res.ok) throw new Error(String(res.status));
+        renderMinigameBlock(await res.json());
+      } catch (err) {
+        alert("변경하지 못했어요.");
+        minigameBtn.disabled = false;
+      }
+    }
+    minigameBtn.addEventListener("click", () => setMinigameBlock(minigameDurationEl.value));
+    minigameOffBtn.addEventListener("click", () => setMinigameBlock("off"));
+
     async function openUserDetailModal(channelId) {
       detailOwnedTitles = [];
       detailOwnedIds = new Set();
@@ -1170,6 +1241,8 @@
       userDetailLogEmptyEl.hidden = true;
       userDetailPaginationEl.innerHTML = "";
       if (!userDetailModal.open) userDetailModal.showModal();
+      detailChannelId = channelId;
+      loadMinigameBlock(channelId);
       await loadUserDetail(channelId, 1);
     }
 
