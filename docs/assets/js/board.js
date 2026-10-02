@@ -72,7 +72,9 @@ function whoHtml(name, badge, mine) {
   const b = badge && typeof titleBadgeHtml === "function" ? `${titleBadgeHtml(badge.name, badge.color)} ` : "";
   return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
 }
-const admChip = (name) => (name ? `<span class="bd-adm">관리자에게만 보임: ${esc(name)}</span>` : "");
+// 관리자에게는 익명 대신 실제 닉네임을 보여주고, 일반 사용자에게 어떻게 보이는지만 작은 칩으로 알려줌.
+const admChip = (name, shown) => (name ? `<span class="bd-adm">일반 사용자에겐 ${esc(shown)}</span>` : "");
+const authorOf = (x) => x.adminName || x.author;
 function chipsHtml(p) {
   return `${p.broadcast ? `<span class="bd-chip">${esc(p.broadcast)} 방송</span>` : ""}${p.paid ? `<span class="bd-paid">+100P</span>` : ""}`;
 }
@@ -135,7 +137,7 @@ export function initBoard(board) {
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
           <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
-          <div class="bd-meta">${whoHtml(p.author, p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
+          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
     }
     renderPager(data.total, data.pageSize);
@@ -195,7 +197,7 @@ export function initBoard(board) {
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div>
       <div class="bd-post">
-        <div class="bd-meta" style="margin-bottom:10px">${whoHtml(p.author, p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName)}</div>
+        <div class="bd-meta" style="margin-bottom:10px">${whoHtml(authorOf(p), p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}</div>
         <h2>${esc(p.title)}${review ? ` <span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
         <div class="bd-body">${esc(p.body)}</div>
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
@@ -210,7 +212,7 @@ export function initBoard(board) {
           <div class="bd-cm"${i === 0 ? ` style="border-top:0"` : ""}>
             <div class="bd-av${c.op ? " op" : ""}">${esc(c.avatar ?? (c.author || "?").charAt(0))}</div>
             <div class="bd-cm-main">
-              <div class="bd-meta">${whoHtml(c.author, c.badge, c.mine)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName)}
+              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}
                 ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
               <div class="t">${esc(c.body)}</div>
             </div>
