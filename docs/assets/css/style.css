@@ -3379,13 +3379,11 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .hm-post:hover .hm-pt { color: var(--accent); }
 .hm-chip { flex: 0 0 auto; font-size: 0.68rem; font-weight: 800; border-radius: 5px; padding: 2px 7px; background: var(--surface-2); color: var(--text-dim); }
 .hm-chip.review { color: var(--accent); background: var(--accent-dim); }
-/* 제목만 말줄임하고 댓글 수 [n]은 항상 보이게(제목 바로 뒤에 붙음) */
-.hm-pt { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; font-size: 0.92rem; font-weight: 600; line-height: 1.4; }
+/* 제목만 말줄임하고 댓글 수 [n]은 항상 보이게(제목 바로 뒤에 붙음).
+   [n]을 제목과 같은 글자 크기로 두고 글자 기준선(baseline)에 맞춤 — 크기가 다르면 윈도우 등에서 [n]이 아래로 처져 보였음. */
+.hm-pt { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 5px; font-size: 0.92rem; font-weight: 600; line-height: 1.4; }
 .hm-pt .tt { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hm-pt .cc { flex: 0 0 auto; color: var(--accent); font-size: 0.8rem; font-weight: 700; line-height: 1.4; }
-/* 댓글 수 [n]: 윈도우에선 숫자·괄호는 Segoe UI, 한글은 맑은 고딕으로 섞여 그려져서 [n]이 제목보다 아래로 처져 보임 →
-   [n]도 한글 글꼴로 그려서 제목과 같은 높이에 오게 함(맥/모바일은 각자 기본 한글 글꼴로). */
-.hm-pt .cc, .ma-t .cc { font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+.hm-pt .cc { flex: 0 0 auto; color: var(--accent); font-size: inherit; font-weight: 700; line-height: inherit; }
 .hm-pm { flex: 0 0 auto; font-size: 0.76rem; color: var(--muted); }
 @media (max-width: 640px) {
   .hm-live-top { padding: 16px; }
@@ -3451,9 +3449,10 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .ma-item { display: flex; align-items: center; gap: 10px; padding: 11px 0; color: inherit; text-decoration: none; }
 .ma-item:hover .tt { color: var(--accent); }
 .ma-main { flex: 1; min-width: 0; }
-.ma-t { font-weight: 600; font-size: 0.92rem; display: flex; gap: 5px; align-items: center; min-width: 0; }
+.ma-t { font-weight: 600; font-size: 0.92rem; display: flex; gap: 5px; align-items: baseline; min-width: 0; }
+.ma-t .bd-paid, .ma-t .ma-anon, .ma-t .adm-hidden-chip { align-self: center; }
 .ma-t .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.ma-t .cc { color: var(--accent); font-size: 0.78rem; font-weight: 700; flex: 0 0 auto; }
+.ma-t .cc { color: var(--accent); font-size: inherit; font-weight: 700; flex: 0 0 auto; }
 .ma-t .bd-paid, .ma-t .adm-hidden-chip { flex: 0 0 auto; }
 .ma-anon { font-size: 0.66rem; font-weight: 700; color: var(--text-dim); background: var(--surface-2); border-radius: 5px; padding: 1px 6px; flex: 0 0 auto; }
 .ma-sub { font-size: 0.8rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
