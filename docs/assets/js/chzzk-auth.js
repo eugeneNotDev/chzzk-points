@@ -1525,6 +1525,7 @@ function initMobileNav() {
       <a href="mypage.html" class="m-sheet-item" data-page="mypage.html">${M_ICONS.mypage}<span>마이페이지</span></a>
       <a href="admin.html" class="m-sheet-item" data-page="admin.html" id="m-sheet-admin" hidden>${M_ICONS.admin}<span>관리자</span></a>
     </div>
+    <div id="m-sheet-theme"></div>
     <div class="m-sheet-footer" id="m-sheet-footer"></div>
   `;
 
@@ -1665,6 +1666,66 @@ function renderMobileUser() {
 }
 
 initMobileNav();
+
+// ===== 라이트/다크 테마 =====
+// 실제 적용(<html data-theme>)은 각 페이지 <head>의 인라인 스크립트가 첫 화면 전에 먼저 해둠(깜빡임 방지).
+// 여기선 전환 버튼(사이드바 맨 아래 + 모바일 더보기 시트)과, 직접 고른 적 없을 때 기기 설정 변경 따라가기만 담당.
+const THEME_STORAGE_KEY = "chzzk_points_theme";
+const THEME_ICON_MOON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
+const THEME_ICON_SUN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
+
+function currentTheme() {
+  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+}
+function applyTheme(theme, remember) {
+  document.documentElement.dataset.theme = theme;
+  if (remember) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* 저장 못 해도 이번 화면엔 적용됨 */ }
+  }
+  renderThemeToggles();
+}
+function themeToggleHtml() {
+  const dark = currentTheme() === "dark";
+  // 스위치가 켜짐 = 다크 모드
+  return `${dark ? THEME_ICON_MOON : THEME_ICON_SUN}<span class="tt-label">다크 모드</span><span class="tt-switch"></span>`;
+}
+function renderThemeToggles() {
+  document.querySelectorAll(".theme-toggle-btn").forEach((btn) => {
+    btn.innerHTML = themeToggleHtml();
+    btn.setAttribute("aria-checked", currentTheme() === "dark" ? "true" : "false");
+    btn.title = currentTheme() === "dark" ? "라이트 모드로 바꾸기" : "다크 모드로 바꾸기";
+  });
+}
+function makeThemeToggle(id) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = id;
+  btn.className = "theme-toggle-btn";
+  btn.setAttribute("role", "switch");
+  btn.addEventListener("click", () => applyTheme(currentTheme() === "dark" ? "light" : "dark", true));
+  return btn;
+}
+function initThemeToggle() {
+  const sidebar = document.querySelector(".sidebar");
+  if (sidebar && !document.getElementById("theme-toggle")) {
+    sidebar.appendChild(makeThemeToggle("theme-toggle"));
+  }
+  const sheetSlot = document.getElementById("m-sheet-theme");
+  if (sheetSlot && !document.getElementById("m-theme-toggle")) {
+    sheetSlot.appendChild(makeThemeToggle("m-theme-toggle"));
+  }
+  renderThemeToggles();
+  // 직접 고른 적이 없으면 기기 설정(라이트/다크)이 바뀔 때 따라감
+  try {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    mq.addEventListener("change", (e) => {
+      let saved = null;
+      try { saved = localStorage.getItem(THEME_STORAGE_KEY); } catch { /* 무시 */ }
+      if (saved !== "light" && saved !== "dark") applyTheme(e.matches ? "light" : "dark", false);
+    });
+  } catch { /* 오래된 브라우저 */ }
+}
+initThemeToggle();
 
 // 입력칸 자동완성 끄기 — 브라우저가 예전에 입력했던 값(상품명, 제목 등)을 드롭다운으로 추천하는
 // 걸 사이트 전체에서 막음. 페이지마다 일일이 속성을 다는 대신 여기서 한 번에: 지금 있는 입력칸 +

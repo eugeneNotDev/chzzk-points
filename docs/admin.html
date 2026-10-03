@@ -4,7 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>관리자 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=90">
+<script>
+  // 라이트/다크 테마 — 첫 화면이 그려지기 전에 적용(깜빡임 방지). 직접 고른 값이 없으면 기기 설정을 따름.
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("chzzk_points_theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="assets/css/style.css?v=91">
 </head>
 <body>
   <script>
@@ -308,7 +317,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=47"></script>
+  <script src="assets/js/chzzk-auth.js?v=48"></script>
   <script src="assets/js/spa-router.js?v=15"></script>
   <script>
   // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
