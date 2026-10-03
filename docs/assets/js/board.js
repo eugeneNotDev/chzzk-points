@@ -70,7 +70,9 @@ const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke=
 
 function whoHtml(name, badge, mine, staff) {
   const b = badge && typeof titleBadgeHtml === "function" ? `${titleBadgeHtml(badge.name, badge.color)} ` : "";
-  return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>${staff ? `<span class="bd-staff">스트리머</span>` : ""}`;
+  // 스트리머 계정은 실명으로 보이는 유일한 계정이고 "스트리머" 칭호를 이미 달고 있어서 이름 뒤 뱃지는 따로 안 붙임
+  void staff;
+  return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
 }
 // 댓글 아바타: 실명(후기 게시판/스트리머)은 프로필 사진, 익명은 "글쓴이"/"익1" 글자. 사진이 안 뜨면 첫 글자로.
 function avatarHtml(c) {
