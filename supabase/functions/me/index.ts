@@ -18,7 +18,8 @@
 //   (이름)는 이 함수가 아니라 마이페이지가 titles 테이블에서 직접 anon으로 조회함 — shop_items와
 //   같은 패턴. user_purchased_titles는 개인별 구매 내역이라 anon 공개 정책이 없어서 여기서
 //   서비스 롤로 조회해 내려줌.)
-// GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt }], page, pageSize, totalCount, totalPages }
+// GET ?action=points-log&page=N → { entries: [{ id, amount, reason, createdAt, balanceAfter }], page, pageSize, totalCount, totalPages }
+//   (balanceAfter = 그 내역이 반영된 직후 보유 포인트. 0060_song_requests.sql의 points_balance_after 참고.)
 //   (본인 포인트 로그, 페이지당 10개, 최신순. 관리자 로그와 달리 기간 제한 없이 전체 보여줌 —
 //   출석체크/관리자 지급·차감/포인트 상점 사용은 다 들어가지만, 나중에 채팅/후원으로 포인트를
 //   주는 기능이 생기면 그건 reason을 "채팅:"/"후원:" 접두사로 남기고 여기선 제외할 것 — 그런
@@ -90,14 +91,27 @@ async function listMyPointsLog(channelId: string, page: number) {
 
   const { data: rows, error, count } = await query
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(offset, offset + MY_POINTS_LOG_PAGE_SIZE - 1);
   if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
+
+  // 각 내역 직후 잔액 — 실패해도 내역 자체는 보여줌(balanceAfter만 null).
+  const balances = new Map<number, number>();
+  if (rows && rows.length > 0) {
+    const { data: bal, error: balError } = await admin.rpc("points_balance_after", {
+      p_channel: channelId,
+      p_ids: rows.map((r) => r.id),
+    });
+    if (balError) console.error(`points_balance_after 실패: ${balError.message}`);
+    for (const b of (bal ?? []) as { id: number; balance_after: number }[]) balances.set(Number(b.id), Number(b.balance_after));
+  }
 
   const entries = (rows ?? []).map((r) => ({
     id: r.id,
     amount: r.amount,
     reason: r.reason,
     createdAt: r.created_at,
+    balanceAfter: balances.get(Number(r.id)) ?? null,
   }));
 
   return { entries, totalCount: count ?? 0 };

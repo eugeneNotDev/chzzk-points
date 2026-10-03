@@ -1448,6 +1448,7 @@ function updateShopNavActiveState() {
 // ============================================================================
 
 const M_ICONS = {
+  music: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
   schedule: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 13v3l2 1"/></svg>`,
   board: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>`,
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>`,
@@ -1513,6 +1514,7 @@ function initMobileNav() {
     <div class="m-sheet-user" id="m-sheet-user"></div>
     <div class="m-sheet-grid">
       <a href="schedule.html" class="m-sheet-item" data-page="schedule.html">${M_ICONS.schedule}<span>방송 스케줄</span></a>
+      <a href="songs.html" class="m-sheet-item" data-page="songs.html">${M_ICONS.music}<span>방종곡 신청</span></a>
       <a href="ranking.html" class="m-sheet-item" data-page="ranking.html">${M_ICONS.ranking}<span>랭킹</span></a>
       <a href="board-free.html" class="m-sheet-item" data-page="board-free.html">${M_ICONS.board}<span>자유게시판</span></a>
       <a href="board-review.html" class="m-sheet-item" data-page="board-review.html">${M_ICONS.board}<span>방송 후기</span></a>

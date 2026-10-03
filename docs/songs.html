@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>방종곡 신청 · 유진 팬보드</title>
+<script>
+  // 라이트/다크 테마 — 첫 화면이 그려지기 전에 적용(깜빡임 방지). 직접 고른 값이 없으면 기기 설정을 따름.
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("chzzk_points_theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="assets/css/style.css?v=100">
+</head>
+<body>
+  <script>
+    if (localStorage.getItem("chzzk_points_sidebar_collapsed") === "1") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  </script>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-top">
+        <a href="index.html" class="sidebar-brand">
+          <img class="mark" src="assets/img/brand-mark.png" alt="유진 팬보드">
+          <span class="label">유진 팬보드</span>
+        </a>
+        <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="사이드바 접기/펴기" title="사이드바 접기/펴기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="index.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>
+          <span class="label">홈</span>
+        </a>
+        <a href="notice.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8"/><path d="M8 13h8"/><path d="M8 17h4"/></svg><span class="notice-nav-badge" hidden></span></span>
+          <span class="label">공지사항</span>
+        </a>
+        <a href="schedule.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M12 13v3l2 1"/></svg></span>
+          <span class="label">방송 스케줄</span>
+        </a>
+        <a href="songs.html" class="active">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+          <span class="label">방종곡 신청</span>
+        </a>
+        <a href="ranking.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H4v2a4 4 0 0 0 4 4"/><path d="M16 5h4v2a4 4 0 0 1-4 4"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 20v-2h4v2"/></svg></span>
+          <span class="label">랭킹</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="shop-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>
+            <span class="label">포인트 상점</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="shop-nav-submenu">
+            <a href="shop.html#general-shop-section" class="sidebar-nav-sublink" data-shop-anchor="general-shop-section">일반 상점</a>
+            <a href="shop.html#title-shop-section" class="sidebar-nav-sublink" data-shop-anchor="title-shop-section">칭호 상점</a>
+          </div>
+        </div>
+        <a href="predict.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>
+          <span class="label">투표</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="game-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12a4 4 0 0 1 4 4v2a4 4 0 0 1-7.2 2.4L14 14h-4l-.8 1.4A4 4 0 0 1 2 13v-2a4 4 0 0 1 4-4z"/><path d="M7 10v4M5 12h4"/><path d="M15.5 11h.01M18 13h.01"/></svg></span>
+            <span class="label">미니게임</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="game-nav-submenu">
+            <a href="freebox.html">무료 뽑기</a>
+            <a href="roulette.html">룰렛</a>
+            <a href="rps.html">가위바위보</a>
+            <a href="oddeven.html">홀짝</a>
+          </div>
+        </div>
+        <a href="attendance.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg></span>
+          <span class="label">출석체크</span>
+        </a>
+        <div class="sidebar-nav-group">
+          <button type="button" class="sidebar-nav-toggle" id="board-nav-toggle">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></span>
+            <span class="label">게시판</span>
+            <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+          </button>
+          <div class="sidebar-nav-submenu" id="board-nav-submenu">
+            <a href="board-free.html">자유게시판</a>
+            <a href="board-review.html">방송 후기</a>
+          </div>
+        </div>
+        <a href="mypage.html">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></span>
+          <span class="label">마이페이지</span>
+        </a>
+        <a href="admin.html" id="admin-nav-link" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4z"/></svg></span>
+          <span class="label">관리자</span>
+        </a>
+      </nav>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </aside>
+
+    <main class="main-content">
+      <h1 class="brand-heading">방종곡 신청</h1>
+
+      <div class="card sg-hero">
+        <div class="sg-top">
+          <h2>🎵 방종곡 신청하기</h2>
+          <div class="sg-chips">
+            <span class="sg-chip">대기 <b id="sg-count">-</b></span>
+            <span class="sg-chip" id="sg-my-chip" hidden></span>
+          </div>
+        </div>
+        <form class="sg-form" id="sg-form" autocomplete="off">
+          <input type="text" id="sg-title" maxlength="60" placeholder="곡 제목" disabled>
+          <input type="text" id="sg-artist" maxlength="40" placeholder="가수" disabled>
+          <button type="submit" id="sg-submit" disabled>불러오는 중</button>
+        </form>
+        <p class="sg-msg" id="sg-msg" hidden></p>
+        <p class="sg-rules"><span>한 사람당 하루 1곡 (한국시간 0시 초기화)</span><span>이미 리스트에 있는 곡은 중복 신청 불가</span><span>방종 때 순서대로 틀어드려요</span></p>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>신청 리스트</h2>
+          <span class="muted" style="font-size: 0.8rem">신청순</span>
+        </div>
+        <div class="sg-admin-bar" id="sg-admin-bar" hidden><span class="tag">관리자</span>방종 때 틀고 나서 <b>틀었음</b>을 누르면 리스트에서 빠지고 아래 기록으로 가요</div>
+        <ul class="sg-list" id="sg-list"></ul>
+        <div class="sg-empty" id="sg-empty" hidden><span class="ic">🎧</span>아직 신청된 곡이 없어요. 첫 곡을 신청해보세요!</div>
+        <p class="status-msg error" id="sg-load-error" hidden>리스트를 불러오지 못했어요.</p>
+      </div>
+
+      <!-- 관리자 전용 — 틀었던 곡 기록 검색 -->
+      <div class="card" id="sg-history-card" hidden>
+        <div class="card-header">
+          <h2>틀었던 곡 기록</h2>
+        </div>
+        <form class="sg-search" id="sg-search" autocomplete="off">
+          <input type="search" id="sg-q" maxlength="40" placeholder="곡 제목 · 가수 · 신청자로 검색">
+          <button type="submit" class="secondary">검색</button>
+        </form>
+        <ul class="sg-list sg-hist" id="sg-hist"></ul>
+        <div class="sg-empty" id="sg-hist-empty" hidden></div>
+        <button type="button" class="secondary sg-more" id="sg-hist-more" hidden>더 보기</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/chzzk-auth.js?v=49"></script>
+  <script src="assets/js/spa-router.js?v=16"></script>
+  <script>
+  // 다른 페이지들과 같은 이유로 IIFE로 감쌈 (라우터가 페이지 이동마다 이 스크립트를 다시 실행함).
+  // 방종곡 신청 — songs 함수(0060_song_requests.sql). 신청은 무료, 하루 1곡, 대기 중인 곡과 중복 불가.
+  (function () {
+    const SONGS_URL = `${FUNCTIONS_BASE_URL}/songs`;
+    const ERR = {
+      duplicate: "이미 리스트에 있는 곡이에요.",
+      already_today: "오늘은 이미 신청했어요. 내일 0시에 다시 신청할 수 있어요.",
+      invalid_title: "곡 제목을 입력해주세요. (최대 60자)",
+      invalid_artist: "가수를 입력해주세요. (최대 40자)",
+      banned: "이용이 제한된 계정이에요.",
+      unauthorized: "로그인이 필요해요.",
+      not_found: "이미 처리된 곡이에요. 새로고침해 주세요.",
+    };
+    const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>';
+
+    let state = { items: [], canRequest: false, requestedToday: false, isAdmin: false, loggedIn: false };
+    let busy = false;
+    let histPage = 1;
+    let histQ = "";
+    let alive = true;
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function ago(iso) {
+      const diff = Date.now() - new Date(iso).getTime();
+      if (diff < 60_000) return "방금 전";
+      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
+      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+      return `${Math.floor(diff / 86_400_000)}일 전`;
+    }
+    function kstDate(iso) {
+      const k = new Date(new Date(iso).getTime() + 9 * 3_600_000);
+      return `${k.getUTCFullYear()}.${k.getUTCMonth() + 1}.${k.getUTCDate()}`;
+    }
+    async function call(payload) {
+      const res = await authFetch(SONGS_URL, { method: "POST", body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const e = new Error(data.error || "songs_failed");
+        e.code = data.error;
+        e.data = data;
+        throw e;
+      }
+      return data;
+    }
+    function errText(e) {
+      if (e.code === "duplicate" && e.data && e.data.title) {
+        return `이미 리스트에 있는 곡이에요 — ${e.data.position ? e.data.position + "번 " : ""}「${e.data.title} - ${e.data.artist}」`;
+      }
+      return ERR[e.code] || "처리하지 못했어요. 잠시 후 다시 시도해주세요.";
+    }
+    function showMsg(text, ok) {
+      const el = document.getElementById("sg-msg");
+      if (!el) return;
+      el.hidden = !text;
+      el.textContent = text || "";
+      el.classList.toggle("ok", !!ok);
+    }
+
+    function renderForm() {
+      const title = document.getElementById("sg-title");
+      const artist = document.getElementById("sg-artist");
+      const btn = document.getElementById("sg-submit");
+      const chip = document.getElementById("sg-my-chip");
+      if (!btn) return;
+      const enabled = state.loggedIn && state.canRequest && !busy;
+      title.disabled = artist.disabled = !(state.loggedIn && state.canRequest);
+      if (!state.loggedIn) {
+        btn.disabled = false;
+        btn.textContent = "로그인하고 신청하기";
+        chip.hidden = true;
+      } else if (!state.canRequest) {
+        btn.disabled = true;
+        btn.textContent = "오늘 신청 완료";
+        chip.hidden = false;
+        chip.className = "sg-chip done";
+        chip.innerHTML = "오늘 내 신청 <b>완료</b> · 내일 0시에 다시 가능";
+      } else {
+        btn.disabled = !enabled;
+        btn.textContent = busy ? "신청 중..." : "신청하기";
+        chip.hidden = false;
+        chip.className = "sg-chip";
+        chip.innerHTML = "오늘 내 신청 <b>가능</b>";
+      }
+    }
+
+    function renderList() {
+      const list = document.getElementById("sg-list");
+      if (!list) return;
+      document.getElementById("sg-count").textContent = `${state.items.length}곡`;
+      document.getElementById("sg-empty").hidden = state.items.length > 0;
+      document.getElementById("sg-admin-bar").hidden = !state.isAdmin;
+      list.innerHTML = state.items
+        .map((it, i) => {
+          const mine = it.mine && !state.isAdmin;
+          const by = `<div class="sg-by"><div class="nm">${esc(it.requester || "알 수 없음")}</div><div class="tm">${ago(it.createdAt)}</div>${
+            mine ? `<button type="button" class="sg-cancel" data-cancel="${it.id}">신청 취소</button>` : ""
+          }</div>`;
+          const adminBtns = state.isAdmin
+            ? `<button type="button" class="sg-check" data-played="${it.id}" title="틀었음"><i>${CHECK_SVG}</i><span>틀었음</span></button><button type="button" class="sg-x" data-del="${it.id}" title="삭제" aria-label="삭제">✕</button>`
+            : "";
+          return `<li class="sg-item${i === 0 ? " first" : ""}${mine ? " mine" : ""}"><div class="sg-no">${i + 1}</div><div class="sg-main"><div class="sg-title"><span class="t">${esc(it.title)}</span>${
+            mine ? '<span class="sg-mine">내 신청</span>' : ""
+          }</div><div class="sg-artist">${esc(it.artist)}</div></div>${by}${adminBtns}</li>`;
+        })
+        .join("");
+    }
+
+    async function load() {
+      try {
+        const data = await call({ action: "list" });
+        if (!alive) return;
+        state = data;
+        document.getElementById("sg-load-error").hidden = true;
+        renderForm();
+        renderList();
+        const hc = document.getElementById("sg-history-card");
+        if (hc && state.isAdmin && hc.hidden) {
+          hc.hidden = false;
+          loadHistory(1);
+        }
+      } catch (e) {
+        if (!alive) return;
+        const el = document.getElementById("sg-load-error");
+        if (el) el.hidden = false;
+      }
+    }
+
+    async function loadHistory(page) {
+      const list = document.getElementById("sg-hist");
+      const empty = document.getElementById("sg-hist-empty");
+      const more = document.getElementById("sg-hist-more");
+      if (!list) return;
+      histPage = page;
+      try {
+        const data = await call({ action: "admin-history", q: histQ, page });
+        const rows = data.items
+          .map(
+            (it) => `<li class="sg-item"><div class="sg-main"><div class="sg-title"><span class="t">${esc(it.title)}</span></div><div class="sg-artist">${esc(it.artist)}</div></div><div class="sg-by"><div class="nm">${esc(
+              it.requester || "알 수 없음"
+            )}</div><div class="tm">${kstDate(it.playedAt)} 재생</div></div><button type="button" class="sg-restore" data-restore="${it.id}">되돌리기</button></li>`
+          )
+          .join("");
+        list.innerHTML = page === 1 ? rows : list.innerHTML + rows;
+        const none = page === 1 && data.items.length === 0;
+        empty.hidden = !none;
+        empty.textContent = histQ ? `"${histQ}" 검색 결과가 없어요.` : "아직 틀었던 곡이 없어요.";
+        more.hidden = !data.hasMore;
+      } catch (e) {
+        empty.hidden = false;
+        empty.textContent = "기록을 불러오지 못했어요.";
+      }
+    }
+
+    // 두 번 눌러야 실행되는 버튼(취소·삭제) — 브라우저 확인창 대신 버튼 글자가 바뀜.
+    function armed(btn, label) {
+      if (btn.dataset.armed === "1") return true;
+      btn.dataset.armed = "1";
+      const prev = btn.innerHTML;
+      btn.classList.add("armed");
+      btn.textContent = label;
+      setTimeout(() => {
+        if (!btn.isConnected) return;
+        btn.dataset.armed = "";
+        btn.classList.remove("armed");
+        btn.innerHTML = prev;
+      }, 3000);
+      return false;
+    }
+
+    async function act(payload, btn) {
+      if (btn) btn.disabled = true;
+      try {
+        await call(payload);
+        await load();
+        return true;
+      } catch (e) {
+        showMsg(errText(e));
+        if (btn) btn.disabled = false;
+        return false;
+      }
+    }
+
+    function bind() {
+      const form = document.getElementById("sg-form");
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        if (!state.loggedIn) {
+          startLogin();
+          return;
+        }
+        if (busy || !state.canRequest) return;
+        const title = document.getElementById("sg-title").value.trim();
+        const artist = document.getElementById("sg-artist").value.trim();
+        if (!title) return showMsg(ERR.invalid_title);
+        if (!artist) return showMsg(ERR.invalid_artist);
+        busy = true;
+        renderForm();
+        showMsg("");
+        try {
+          await call({ action: "request", title, artist });
+          document.getElementById("sg-title").value = "";
+          document.getElementById("sg-artist").value = "";
+          showMsg("신청했어요! 방종 때 틀어드릴게요 🎵", true);
+        } catch (e) {
+          showMsg(errText(e));
+        }
+        busy = false;
+        await load();
+      });
+
+      document.getElementById("sg-list").addEventListener("click", async (ev) => {
+        const b = ev.target.closest("button");
+        if (!b) return;
+        if (b.dataset.cancel) {
+          if (!armed(b, "정말 취소? (오늘 재신청 불가)")) return;
+          if (await act({ action: "cancel", id: Number(b.dataset.cancel) }, b)) showMsg("신청을 취소했어요.", true);
+        } else if (b.dataset.played) {
+          if (await act({ action: "admin-played", id: Number(b.dataset.played) }, b)) loadHistory(1);
+        } else if (b.dataset.del) {
+          if (!armed(b, "삭제?")) return;
+          await act({ action: "admin-delete", id: Number(b.dataset.del) }, b);
+        }
+      });
+
+      document.getElementById("sg-search").addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        histQ = document.getElementById("sg-q").value.trim();
+        loadHistory(1);
+      });
+      document.getElementById("sg-hist-more").addEventListener("click", () => loadHistory(histPage + 1));
+      document.getElementById("sg-hist").addEventListener("click", async (ev) => {
+        const b = ev.target.closest("button[data-restore]");
+        if (!b) return;
+        b.disabled = true;
+        try {
+          await call({ action: "admin-restore", id: Number(b.dataset.restore) });
+          await load();
+          loadHistory(1);
+        } catch (e) {
+          b.disabled = false;
+          b.textContent = e.code === "duplicate" ? "이미 대기 중" : "실패";
+        }
+      });
+    }
+
+    (async function init() {
+      renderSidebarUser();
+      initSidebarToggle();
+      initAdminNav();
+      initShopNavGroup();
+      initNoticeBadge();
+      verifySessionInBackground();
+
+      state.loggedIn = isLoggedIn();
+      renderForm();
+      bind();
+      await load();
+
+      // 다른 시청자 신청이 들어오면 보이도록 30초마다(탭이 보일 때만) 새로고침.
+      const timer = setInterval(() => {
+        if (document.visibilityState === "visible" && !busy) load();
+      }, 30_000);
+      window.__pageCleanup = () => {
+        alive = false;
+        clearInterval(timer);
+      };
+    })();
+  })();
+  </script>
+</body>
+</html>
