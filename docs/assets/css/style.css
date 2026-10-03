@@ -3216,14 +3216,15 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .tp-read .t { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .tp-seg { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; align-self: flex-start; }
 .tp-seg button { border: 0; background: transparent; color: var(--text-dim); border-radius: 8px; padding: 6px 16px; font-size: 0.85rem; font-weight: 700; }
-.tp-seg button.on { background: var(--accent); color: var(--accent-text); }
+.tp-seg button:hover { background: var(--surface-hover); color: var(--text); }
+.tp-seg button.on, .tp-seg button.on:hover { background: var(--accent); color: var(--accent-text); }
 .tp-label { font-size: 0.72rem; color: var(--muted); font-weight: 600; margin-bottom: -4px; }
 .tp-grid { display: grid; gap: 6px; }
 .tp-grid.h { grid-template-columns: repeat(6, 1fr); }
 .tp-grid.m { grid-template-columns: repeat(6, 1fr); }
 .tp-grid button { border: 0; background: var(--surface-2); color: var(--text); border-radius: 9px; padding: 8px 0; font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tp-grid button:hover { background: var(--surface-hover); }
-.tp-grid button.on { background: var(--accent); color: var(--accent-text); }
+.tp-grid button.on, .tp-grid button.on:hover { background: var(--accent); color: var(--accent-text); }
 .tp-tbd { display: flex; align-items: center; gap: 10px; margin-top: 4px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); cursor: pointer; font-size: 0.88rem; color: var(--text-dim); font-weight: 600; }
 .tp-tbd input { width: 18px; height: 18px; accent-color: #f5b94a; margin: 0; }
 .tp-tbd.on { color: var(--amber-text); box-shadow: inset 0 0 0 1px rgba(245, 185, 74, 0.35); }
@@ -3262,7 +3263,7 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-pager button { min-width: 32px; height: 32px; padding: 0 6px; border-radius: 8px; background: var(--surface-2); border: 0; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; color: var(--text-dim); font-weight: 500; }
 .bd-pager button:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
 .bd-pager button:disabled { opacity: 0.35; cursor: default; }
-.bd-pager button.on { background: var(--accent); color: var(--accent-text); font-weight: 800; }
+.bd-pager button.on, .bd-pager button.on:hover { background: var(--accent); color: var(--accent-text); font-weight: 800; }
 .bd-post { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
 .bd-post h2 { margin: 0 0 10px; font-size: 1.2rem; word-break: break-word; }
 .bd-body { line-height: 1.7; color: var(--text-dim); font-size: 0.94rem; margin: 16px 0 4px; white-space: pre-wrap; word-break: break-word; }
@@ -3280,7 +3281,7 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-staff { font-size: 0.66rem; font-weight: 800; color: var(--accent-text); background: var(--accent); border-radius: 5px; padding: 1px 6px; }
 .bd-cm .t { font-size: 0.9rem; line-height: 1.55; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
 .bd-c-del { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 0 4px; font-weight: 500; }
-.bd-c-del:hover { color: var(--red-text); }
+.bd-c-del:hover { color: var(--red-text); background: transparent; }
 .bd-form { display: flex; gap: 8px; margin-top: 6px; }
 .bd-form input { flex: 1; }
 .bd-note { font-size: 0.76rem; color: var(--muted); margin-top: 8px; }
@@ -3290,8 +3291,9 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-thumb { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
 .bd-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .bd-thumb button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border-radius: 999px; background: rgba(0, 0, 0, 0.65); color: #fff; border: 0; font-size: 0.9rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.bd-thumb button:hover { background: rgba(0, 0, 0, 0.85); }
 .bd-add-img { width: 84px; height: 84px; border-radius: 10px; background: var(--surface-2); border: 1px dashed var(--border); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.72rem; font-weight: 600; padding: 0; }
-.bd-add-img:hover { color: var(--accent); border-color: var(--accent); }
+.bd-add-img:hover { color: var(--accent); border-color: var(--accent); background: var(--surface-2); }
 .bd-add-img .bd-imgico { width: 22px; height: 22px; color: inherit; }
 .bd-editor-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 @media (max-width: 640px) {
@@ -3300,10 +3302,10 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 }
 
 /* 게시판 신고 (0057) */
-.bd-report-btn { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 0 4px; font-weight: 500; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
-.bd-report-btn:hover { color: var(--red-text); }
+.bd-report-btn { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 3px 8px; border-radius: 999px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+.bd-report-btn:hover { color: var(--red-text); background: var(--danger-dim); }
 .bd-report-btn.done { cursor: default; opacity: 0.7; }
-.bd-report-btn.done:hover { color: var(--muted); }
+.bd-report-btn.done:hover { color: var(--muted); background: transparent; }
 .bd-report-btn + .bd-c-del { margin-left: 0; }
 .bd-hidden { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.86rem; font-weight: 600; }
 .bd-hidden svg { width: 16px; height: 16px; flex: 0 0 16px; }
@@ -3364,7 +3366,7 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .hm-next { font-size: 0.78rem; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hm-tabs { display: flex; gap: 4px; }
 .hm-tabs button { background: transparent; border: 0; color: var(--muted); font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
-.hm-tabs button:hover { color: var(--text); }
+.hm-tabs button:hover { color: var(--text); background: var(--surface-2); }
 .hm-tabs button.on { background: var(--surface-2); color: var(--text); }
 .hm-posts { list-style: none; margin: 0; padding: 0; }
 .hm-posts li { border-top: 1px solid var(--border); }
