@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=94">
+<link rel="stylesheet" href="assets/css/style.css?v=95">
 </head>
 <body>
   <script>
@@ -145,6 +145,7 @@
           <button type="button" class="admin-tab-btn" data-tab="code">방송 코드</button>
           <button type="button" class="admin-tab-btn" data-tab="donation">후원 적립<span class="admin-tab-count" id="donation-pending-count" hidden></span></button>
           <button type="button" class="admin-tab-btn" data-tab="reports">신고<span class="admin-tab-count" id="report-open-count" hidden></span></button>
+          <button type="button" class="admin-tab-btn" data-tab="backup">백업</button>
         </div>
 
         <div id="admin-tab-users" class="admin-tab-panel">
@@ -286,6 +287,19 @@
             <div id="code-past-list"></div>
             <p id="code-past-empty" class="empty-state" hidden>아직 만든 코드가 없어요.</p>
             <div id="code-past-pagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <!-- 데이터 백업 — 무료 플랜은 Supabase 자동 백업이 없어서 admin-backup 함수로 직접 백업(0059_backups.sql). -->
+        <div id="admin-tab-backup" class="admin-tab-panel" hidden>
+          <div class="card">
+            <div class="card-header">
+              <h2>데이터 백업</h2>
+              <button type="button" id="backup-run-btn">지금 백업</button>
+            </div>
+            <p class="muted">매주 월요일 새벽 5시(한국 시간)에 자동으로 백업돼요. 자동 백업은 최근 8개, 수동 백업은 최근 10개까지 보관해요.<br>가끔 하나씩 내려받아 PC에 따로 보관해 두면 더 안전해요. (사이트 저장소 폴더에는 넣지 마세요.)</p>
+            <p id="backup-status" class="status-msg"></p>
+            <div id="backup-list" class="bk-list"></div>
           </div>
         </div>
 
@@ -941,6 +955,7 @@
       donation: document.getElementById("admin-tab-donation"),
       code: document.getElementById("admin-tab-code"),
       reports: document.getElementById("admin-tab-reports"),
+      backup: document.getElementById("admin-tab-backup"),
     };
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -958,7 +973,74 @@
         if (tab === "donation") loadDonations();
         if (tab === "code") loadStreamCodes(codePastPage);
         if (tab === "reports") loadReports();
+        if (tab === "backup") loadBackups();
       });
+    });
+
+    // 백업 탭 ------------------------------------------------------------------
+    const ADMIN_BACKUP_URL = `${FUNCTIONS_BASE_URL}/admin-backup`;
+    const backupListEl = document.getElementById("backup-list");
+    const backupStatusEl = document.getElementById("backup-status");
+    async function backupCall(payload) {
+      const res = await authFetch(ADMIN_BACKUP_URL, { method: "POST", body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "backup_failed");
+      return data;
+    }
+    function fmtBytes(n) {
+      if (n == null) return "-";
+      return n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`;
+    }
+    async function loadBackups() {
+      backupListEl.innerHTML = `<div class="rq-empty">불러오는 중...</div>`;
+      try {
+        const { items } = await backupCall({ action: "list" });
+        backupListEl.innerHTML = items.length ? items.map((b) => `
+          <div class="bk-row">
+            <span class="bk-kind${b.kind === "auto" ? "" : " manual"}">${b.kind === "auto" ? "자동" : "수동"}</span>
+            <span class="bk-date">${formatDateTime(b.createdAt)}</span>
+            <span class="bk-size">${fmtBytes(b.sizeBytes)}</span>
+            <button type="button" class="secondary" data-backup-path="${escapeHtml(b.path)}">다운로드</button>
+          </div>`).join("") : `<div class="rq-empty">아직 백업이 없어요.</div>`;
+      } catch (err) {
+        console.error("[admin] 백업 목록 실패", err);
+        backupListEl.innerHTML = "";
+        backupStatusEl.textContent = "백업 목록을 불러오지 못했어요.";
+        backupStatusEl.className = "status-msg error";
+      }
+    }
+    document.getElementById("backup-run-btn").addEventListener("click", async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      backupStatusEl.textContent = "백업하는 중... (몇 초 걸려요)";
+      backupStatusEl.className = "status-msg";
+      try {
+        const r = await backupCall({ action: "run" });
+        backupStatusEl.textContent = `백업했어요. (${fmtBytes(r.sizeBytes)})`;
+        backupStatusEl.className = "status-msg ok";
+        await loadBackups();
+      } catch (err) {
+        console.error("[admin] 백업 실패", err);
+        backupStatusEl.textContent = "백업하지 못했어요.";
+        backupStatusEl.className = "status-msg error";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    backupListEl.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-backup-path]");
+      if (!btn) return;
+      btn.disabled = true;
+      try {
+        const { url } = await backupCall({ action: "download", path: btn.dataset.backupPath });
+        location.href = url;
+      } catch (err) {
+        console.error("[admin] 백업 다운로드 실패", err);
+        backupStatusEl.textContent = "다운로드 링크를 만들지 못했어요.";
+        backupStatusEl.className = "status-msg error";
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     // 신고 탭 ------------------------------------------------------------------

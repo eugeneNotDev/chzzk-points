@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.live-tracker]
 verify_jwt = false
+
+[functions.admin-backup]
+verify_jwt = false
