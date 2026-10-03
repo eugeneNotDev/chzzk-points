@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=95">
+<link rel="stylesheet" href="assets/css/style.css?v=96">
 </head>
 <body>
   <script>
@@ -194,6 +194,25 @@
           <p id="my-log-empty" class="empty-state" hidden>아직 내역이 없어요.</p>
           <p id="my-log-status" class="status-msg"></p>
           <div id="my-log-pagination" class="pagination"></div>
+        </div>
+
+        <!-- 내 활동 — 게시판에 쓴 글/댓글(board 함수 my-activity). 익명 글도 본인에게만 보임. -->
+        <div class="card">
+          <div class="card-header">
+            <h2>내 활동</h2>
+            <div class="ma-tabs" id="ma-tabs">
+              <button type="button" class="on" data-ma="posts">내 글 <span id="ma-post-count">0</span></button>
+              <button type="button" data-ma="comments">내 댓글 <span id="ma-comment-count">0</span></button>
+            </div>
+          </div>
+          <div class="ma-stats">
+            <div><div class="k">쓴 글</div><div class="v" id="ma-stat-posts">-</div></div>
+            <div><div class="k">쓴 댓글</div><div class="v" id="ma-stat-comments">-</div></div>
+            <div><div class="k">후기 보상</div><div class="v" id="ma-stat-reward">-</div></div>
+          </div>
+          <ul class="ma-list" id="ma-list"></ul>
+          <p id="ma-empty" class="empty-state" hidden></p>
+          <p class="ma-note">익명으로 쓴 글도 여기선 나에게만 보여요. 누르면 그 글로 이동해요.</p>
         </div>
       </div>
     </main>
@@ -413,7 +432,86 @@
       renderEquippedTitleLabel();
       renderTitlesGrid();
       loadMyPointsLog(1);
+      loadMyActivity();
     }
+
+    // 내 활동 ---------------------------------------------------------------------
+    let maData = null;
+    let maTab = "posts";
+    function maRelTime(iso) {
+      const diff = Date.now() - new Date(iso).getTime();
+      if (diff < 60_000) return "방금 전";
+      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
+      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+      if (diff < 172_800_000) return "어제";
+      if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`;
+      const k = new Date(new Date(iso).getTime() + 9 * 3_600_000);
+      return `${k.getUTCFullYear()}.${k.getUTCMonth() + 1}.${k.getUTCDate()}`;
+    }
+    const maChip = (board) => `<span class="hm-chip${board === "review" ? " review" : ""}">${board === "review" ? "후기" : "자유"}</span>`;
+    function renderMyActivity() {
+      const listEl = document.getElementById("ma-list");
+      const emptyEl = document.getElementById("ma-empty");
+      if (!listEl || !maData) return;
+      if (maTab === "posts") {
+        listEl.innerHTML = maData.posts.map((p) => `
+          <li><a class="ma-item" href="${p.board === "review" ? "board-review.html" : "board-free.html"}?post=${p.id}" data-post="${p.id}">
+            ${maChip(p.board)}
+            <div class="ma-main">
+              <div class="ma-t"><span class="tt">${escapeHtml(p.title)}</span>${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}${p.paid ? `<span class="bd-paid">+100P</span>` : ""}${p.board === "free" ? `<span class="ma-anon">익명으로 올림</span>` : ""}${p.hidden ? `<span class="adm-hidden-chip">신고로 가려짐</span>` : ""}</div>
+              <div class="ma-sub">${p.broadcast ? `${escapeHtml(p.broadcast)} 방송 · ` : ""}${maRelTime(p.createdAt)}</div>
+            </div>
+          </a></li>`).join("");
+        emptyEl.textContent = "아직 쓴 글이 없어요.";
+        emptyEl.hidden = maData.posts.length > 0;
+      } else {
+        listEl.innerHTML = maData.comments.map((c) => `
+          <li><a class="ma-item" href="${c.board === "review" ? "board-review.html" : "board-free.html"}?post=${c.postId}" data-post="${c.postId}">
+            ${c.board ? maChip(c.board) : ""}
+            <div class="ma-main">
+              <div class="ma-t"><span class="tt">${escapeHtml(c.body)}</span>${c.hidden ? `<span class="adm-hidden-chip">신고로 가려짐</span>` : ""}</div>
+              <div class="ma-sub">${c.postTitle === null ? "삭제된 글" : c.postTitle === "" ? "가려진 글" : `글: ${escapeHtml(c.postTitle)}`} · ${maRelTime(c.createdAt)}</div>
+            </div>
+          </a></li>`).join("");
+        emptyEl.textContent = "아직 쓴 댓글이 없어요.";
+        emptyEl.hidden = maData.comments.length > 0;
+      }
+    }
+    async function loadMyActivity() {
+      try {
+        const res = await authFetch(`${FUNCTIONS_BASE_URL}/board`, { method: "POST", body: JSON.stringify({ action: "my-activity" }) });
+        if (!res.ok) throw new Error(String(res.status));
+        maData = await res.json();
+      } catch (err) {
+        console.error("[mypage] 내 활동 조회 실패", err);
+        const emptyEl = document.getElementById("ma-empty");
+        if (emptyEl) { emptyEl.textContent = "내 활동을 불러오지 못했어요."; emptyEl.hidden = false; }
+        return;
+      }
+      if (!document.getElementById("ma-list")) return;
+      document.getElementById("ma-post-count").textContent = maData.postCount;
+      document.getElementById("ma-comment-count").textContent = maData.commentCount;
+      document.getElementById("ma-stat-posts").textContent = maData.postCount.toLocaleString("ko-KR");
+      document.getElementById("ma-stat-comments").textContent = maData.commentCount.toLocaleString("ko-KR");
+      document.getElementById("ma-stat-reward").textContent = `+${maData.rewardTotal.toLocaleString("ko-KR")}P`;
+      renderMyActivity();
+    }
+    document.getElementById("ma-tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-ma]");
+      if (!btn) return;
+      maTab = btn.dataset.ma;
+      document.querySelectorAll("#ma-tabs button").forEach((b) => b.classList.toggle("on", b === btn));
+      renderMyActivity();
+    });
+    document.getElementById("ma-list").addEventListener("click", (e) => {
+      const a = e.target.closest("a.ma-item");
+      if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      // board.js가 글을 바로 열 수 있게 글 번호를 넘김(spa-router가 스크립트를 실행할 땐 주소가 아직 마이페이지라서)
+      window.__boardOpenPost = Number(a.dataset.post);
+      if (typeof spaNavigate === "function") spaNavigate(a.getAttribute("href"));
+      else location.href = a.getAttribute("href");
+    });
 
     renderSidebarUser();
     initSidebarToggle();

@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=95">
+<link rel="stylesheet" href="assets/css/style.css?v=96">
 </head>
 <body>
   <script>
@@ -119,19 +119,18 @@
 
       <div id="logged-in" hidden>
         <div class="card">
-          <div class="attendance-header">
-            <button type="button" class="secondary attendance-nav-btn" id="prev-month-btn" aria-label="이전 달">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <strong id="month-label"></strong>
-            <button type="button" class="secondary attendance-nav-btn" id="next-month-btn" aria-label="다음 달">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
+          <!-- 방송 스케줄 달력과 같은 타일 디자인(sched-* 레이아웃 재사용). 출석한 날은 가운데 체크 도장. -->
+          <div class="at-top">
+            <button type="button" class="sched-ico" id="prev-month-btn" aria-label="이전 달">‹</button>
+            <h2 id="month-label"></h2>
+            <button type="button" class="sched-ico" id="next-month-btn" aria-label="다음 달">›</button>
+            <div class="at-sum"><span>이번 달 <b id="at-month-count">0회</b></span><span>누적 <b id="at-total-count">-</b></span></div>
           </div>
-          <div class="attendance-weekdays">
-            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+          <div class="sched-dow-row">
+            <div class="sched-dow sun">일</div><div class="sched-dow">월</div><div class="sched-dow">화</div><div class="sched-dow">수</div><div class="sched-dow">목</div><div class="sched-dow">금</div><div class="sched-dow sat">토</div>
           </div>
-          <div class="attendance-grid" id="attendance-grid"></div>
+          <div class="sched-grid at-grid" id="attendance-grid"></div>
+          <div class="at-legend"><span><i class="at-legend-stamp"></i>출석함</span><span><i class="at-legend-dot"></i>방송 예정일</span></div>
         </div>
 
         <div class="card">
@@ -205,26 +204,69 @@
       todayMonth = m;
     }
 
+    const STAMP_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>`;
+    let liveDays = new Set(); // 이 달 방송 예정일(방송 스케줄, 점 표시용)
+    let lastRender = null;
+
     function renderCalendar(year, month, attendedDates) {
+      lastRender = { year, month, attendedDates };
       document.getElementById("month-label").textContent = `${year}년 ${month}월`;
       const gridEl = document.getElementById("attendance-grid");
       const attendedSet = new Set(attendedDates);
+      const pad = (n) => String(n).padStart(2, "0");
+      const monthPrefix = `${year}-${pad(month)}-`;
+      document.getElementById("at-month-count").textContent = `${attendedDates.filter((d) => d.startsWith(monthPrefix)).length}회`;
 
       const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
       const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const prevDays = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
+      const weeks = Math.ceil((firstWeekday + daysInMonth) / 7);
 
       let html = "";
-      for (let i = 0; i < firstWeekday; i++) {
-        html += `<span class="attendance-day is-empty"></span>`;
-      }
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        const classes = ["attendance-day"];
-        if (dateStr === todayStr) classes.push("is-today");
-        if (attendedSet.has(dateStr)) classes.push("is-attended");
-        html += `<span class="${classes.join(" ")}">${day}</span>`;
+      for (let i = 0; i < weeks * 7; i++) {
+        const day = i - firstWeekday + 1;
+        const col = i % 7;
+        if (day < 1 || day > daysInMonth) {
+          // 앞뒤 달 날짜는 흐리게 숫자만(출석 기록은 그 달에서 확인)
+          const label = day < 1 ? prevDays + day : day - daysInMonth;
+          html += `<div class="at-cell other${col === 0 ? " sun" : ""}${col === 6 ? " sat" : ""}"><span class="n">${label}</span></div>`;
+          continue;
+        }
+        const dateStr = `${monthPrefix}${pad(day)}`;
+        const cls = ["at-cell"];
+        if (col === 0) cls.push("sun");
+        if (col === 6) cls.push("sat");
+        if (dateStr < todayStr) cls.push("past");
+        if (dateStr === todayStr) cls.push("today");
+        const done = attendedSet.has(dateStr);
+        if (done) cls.push("done");
+        if (liveDays.has(dateStr)) cls.push("live");
+        html += `<div class="${cls.join(" ")}"><span class="n">${day}</span>${done ? `<span class="at-stamp">${STAMP_SVG}</span>` : ""}</div>`;
       }
       gridEl.innerHTML = html;
+      loadLiveDays(year, month);
+    }
+
+    // 방송 스케줄(공개 읽기)에서 이 달 방송 예정일을 받아 작은 점으로 표시. 실패해도 달력은 그대로.
+    async function loadLiveDays(year, month) {
+      const key = `${year}-${month}`;
+      if (loadLiveDays.key === key) return;
+      loadLiveDays.key = key;
+      try {
+        const { supabase } = await import("./assets/js/supabase-client.js");
+        const pad = (n) => String(n).padStart(2, "0");
+        const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        const { data } = await supabase
+          .from("broadcast_schedule")
+          .select("day, kind")
+          .gte("day", `${year}-${pad(month)}-01`)
+          .lte("day", `${year}-${pad(month)}-${pad(last)}`);
+        if (loadLiveDays.key !== key || !document.getElementById("attendance-grid")) return;
+        liveDays = new Set((data ?? []).filter((r) => r.kind === "live").map((r) => r.day));
+        if (lastRender) renderCalendar(lastRender.year, lastRender.month, lastRender.attendedDates);
+      } catch (err) {
+        console.error("[attendance] 방송 예정일 조회 실패", err);
+      }
     }
 
     function renderStatus() {
@@ -263,6 +305,8 @@
       }
 
       // 누적 출석/다음 보너스까지 남은 횟수 안내.
+      const totalEl = document.getElementById("at-total-count");
+      if (totalEl) totalEl.textContent = `${count.toLocaleString("ko-KR")}회`;
       const progressEl = document.getElementById("attendance-progress");
       const left = every - (count % every);
       const mLeft = mEvery - (count % mEvery);

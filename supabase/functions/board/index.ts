@@ -15,6 +15,7 @@
 // review-status  {}                          → { isLive, eligible, alreadyRewarded, reward }
 // report         { targetType: "post"|"comment", targetId, reason, memo? } → { ok, hidden }  (0057_board_reports.sql)
 //                서로 다른 5명이 신고(처리 안 된 신고 기준)하면 자동으로 가림. 본인 글·스트리머 글은 신고 불가, 같은 대상은 1번만.
+// my-activity    {}                          → { posts, comments, postCount, commentCount, rewardTotal }  (로그인 필수, 마이페이지 "내 활동")
 // admin-reports  { status: "open"|"done" }   → { items: [...], openCount }   (관리자 전용, 대상별로 묶어서)
 // admin-resolve  { targetType, targetId, resolve: "restore"|"dismiss"|"delete" } → { ok }  (관리자 전용)
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 429 too_fast
@@ -176,6 +177,7 @@ Deno.serve(async (req: Request) => {
     if (action === "comment") return await addComment(admin, body, me);
     if (action === "delete-comment") return await deleteComment(admin, body, me, isAdmin);
     if (action === "report") return await reportTarget(admin, body, me);
+    if (action === "my-activity") return await myActivity(admin, me);
     if (action === "admin-reports") return isAdmin ? await adminReports(admin, body) : json({ error: "forbidden" }, 403);
     if (action === "admin-resolve") return isAdmin ? await adminResolve(admin, body) : json({ error: "forbidden" }, 403);
     return json({ error: "invalid_action" }, 400);
@@ -653,4 +655,45 @@ async function adminResolve(admin: Admin, body: any) {
   await admin.from(table).update({ hidden: false }).eq("id", targetId);
   await closeReports(admin, { type, id: targetId }, action === "restore" ? "restored" : "dismissed");
   return json({ ok: true });
+}
+
+// ---------- 마이페이지 "내 활동" ----------
+// 내가 쓴 글/댓글(최근 50개씩) + 개수 + 받은 후기 보상 합계. 익명 글도 본인에게는 보여줌(본인 것만 조회하니까).
+async function myActivity(admin: Admin, me: string) {
+  const [{ data: posts }, { count: postCount }, { data: comments }, { count: commentCount }, { data: rewards }] = await Promise.all([
+    admin.from("board_posts").select("id, board, title, created_at, broadcast_key, hidden").eq("channel_id", me).order("id", { ascending: false }).limit(50),
+    admin.from("board_posts").select("id", { count: "exact", head: true }).eq("channel_id", me),
+    admin.from("board_comments").select("id, post_id, body, created_at, hidden").eq("channel_id", me).order("id", { ascending: false }).limit(50),
+    admin.from("board_comments").select("id", { count: "exact", head: true }).eq("channel_id", me),
+    admin.from("board_review_rewards").select("post_id, amount").eq("channel_id", me).eq("revoked", false),
+  ]);
+  const postIds = (posts ?? []).map((p: any) => p.id);
+  const commentCounts = new Map<number, number>();
+  if (postIds.length) {
+    const { data: cs } = await admin.from("board_comments").select("post_id").in("post_id", postIds);
+    for (const c of cs ?? []) commentCounts.set(c.post_id, (commentCounts.get(c.post_id) ?? 0) + 1);
+  }
+  const paid = new Set((rewards ?? []).map((r: any) => r.post_id));
+  const parentIds = [...new Set((comments ?? []).map((c: any) => c.post_id))];
+  const parents = new Map<number, { board: string; title: string; hidden: boolean }>();
+  if (parentIds.length) {
+    const { data: ps } = await admin.from("board_posts").select("id, board, title, hidden").in("id", parentIds);
+    for (const p of ps ?? []) parents.set(p.id, { board: p.board, title: p.title, hidden: !!p.hidden });
+  }
+  return json({
+    posts: (posts ?? []).map((p: any) => ({
+      id: p.id, board: p.board, title: p.title, createdAt: p.created_at, hidden: !!p.hidden,
+      commentCount: commentCounts.get(p.id) ?? 0, broadcast: broadcastLabel(p.broadcast_key), paid: paid.has(p.id),
+    })),
+    comments: (comments ?? []).map((c: any) => {
+      const parent = parents.get(c.post_id);
+      return {
+        id: c.id, postId: c.post_id, body: c.body, createdAt: c.created_at, hidden: !!c.hidden,
+        board: parent?.board ?? null, postTitle: parent ? (parent.hidden ? "" : parent.title) : null,
+      };
+    }),
+    postCount: postCount ?? 0,
+    commentCount: commentCount ?? 0,
+    rewardTotal: (rewards ?? []).reduce((a: number, r: any) => a + (r.amount ?? 0), 0),
+  });
 }
