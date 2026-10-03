@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=91">
+<link rel="stylesheet" href="assets/css/style.css?v=92">
 </head>
 <body>
   <script>
@@ -144,6 +144,7 @@
           <button type="button" class="admin-tab-btn" data-tab="spend">상점 내역</button>
           <button type="button" class="admin-tab-btn" data-tab="code">방송 코드</button>
           <button type="button" class="admin-tab-btn" data-tab="donation">후원 적립<span class="admin-tab-count" id="donation-pending-count" hidden></span></button>
+          <button type="button" class="admin-tab-btn" data-tab="reports">신고<span class="admin-tab-count" id="report-open-count" hidden></span></button>
         </div>
 
         <div id="admin-tab-users" class="admin-tab-panel">
@@ -286,6 +287,16 @@
             <p id="code-past-empty" class="empty-state" hidden>아직 만든 코드가 없어요.</p>
             <div id="code-past-pagination" class="pagination"></div>
           </div>
+        </div>
+
+        <!-- 게시판 신고 — 대상(글/댓글)별로 묶어서 보여줌. 서로 다른 5명이 신고하면 자동 숨김(0057_board_reports.sql, board 함수). -->
+        <div id="admin-tab-reports" class="admin-tab-panel" hidden>
+          <div class="rq-filter">
+            <button type="button" class="rq-filter-btn active" data-report-status="open">처리 대기</button>
+            <button type="button" class="rq-filter-btn" data-report-status="done">처리 완료</button>
+          </div>
+          <p id="report-status-msg" class="status-msg"></p>
+          <div id="report-list"></div>
         </div>
 
         <!-- 후원 적립 — 방송 PC 프로그램(tools/donation-relay)이 넘겨준 후원 기록. 1만 치즈 이상은 10% 자동 적립,
@@ -929,6 +940,7 @@
       spend: document.getElementById("admin-tab-spend"),
       donation: document.getElementById("admin-tab-donation"),
       code: document.getElementById("admin-tab-code"),
+      reports: document.getElementById("admin-tab-reports"),
     };
     tabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -945,8 +957,100 @@
         }
         if (tab === "donation") loadDonations();
         if (tab === "code") loadStreamCodes(codePastPage);
+        if (tab === "reports") loadReports();
       });
     });
+
+    // 신고 탭 ------------------------------------------------------------------
+    const BOARD_URL = `${FUNCTIONS_BASE_URL}/board`;
+    const REPORT_REASON_LABELS = { abuse: "욕설·비방", spam: "도배·광고", obscene: "음란·불쾌한 내용", privacy: "개인정보 노출", etc: "기타" };
+    const REPORT_RESOLUTION_LABELS = { restored: "숨김 해제", dismissed: "문제없음", deleted: "삭제함", author_deleted: "작성자가 삭제" };
+    let reportStatus = "open";
+    const reportListEl = document.getElementById("report-list");
+    const reportMsgEl = document.getElementById("report-status-msg");
+    async function boardCall(payload) {
+      const res = await authFetch(BOARD_URL, { method: "POST", body: JSON.stringify(payload) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "board_failed");
+      return data;
+    }
+    function setReportCount(n) {
+      const el = document.getElementById("report-open-count");
+      el.textContent = n ? String(n) : "";
+      el.hidden = !n;
+    }
+    async function loadReports() {
+      reportMsgEl.textContent = "";
+      reportListEl.innerHTML = `<div class="rq-empty">불러오는 중...</div>`;
+      let data;
+      try {
+        data = await boardCall({ action: "admin-reports", status: reportStatus });
+      } catch (err) {
+        console.error("[admin] 신고 목록 실패", err);
+        reportListEl.innerHTML = "";
+        reportMsgEl.textContent = "신고 목록을 불러오지 못했어요.";
+        reportMsgEl.className = "status-msg error";
+        return;
+      }
+      setReportCount(data.openCount);
+      if (!data.items.length) {
+        reportListEl.innerHTML = `<div class="rq-empty">${reportStatus === "open" ? "처리할 신고가 없어요." : "처리한 신고가 없어요."}</div>`;
+        return;
+      }
+      reportListEl.innerHTML = data.items.map((it) => {
+        const boardName = it.board === "review" ? "방송 후기" : "자유게시판";
+        const page = it.board === "review" ? "board-review.html" : "board-free.html";
+        let state;
+        if (reportStatus === "done") state = `<span class="rq-state">${escapeHtml(REPORT_RESOLUTION_LABELS[it.resolution] || "처리됨")} · ${formatDateTime(it.resolvedAt)}</span>`;
+        else state = it.hidden ? `<span class="rq-state hide">자동 숨김 중</span>` : `<span class="rq-state open">확인 필요</span>`;
+        const reasons = Object.entries(it.reasons).map(([k, n]) => `<span>${escapeHtml(REPORT_REASON_LABELS[k] || k)} ${n}</span>`).join("");
+        const memos = it.memos.map((m) => `<div class="rq-memo">“${escapeHtml(m.memo)}” — ${escapeHtml(m.reporterName)}</div>`).join("");
+        const text = it.targetType === "post"
+          ? `<b>${escapeHtml(it.title)}</b>${escapeHtml(it.body)}`
+          : `${escapeHtml(it.body)}<div class="rq-memo">글: ${escapeHtml(it.title)}</div>`;
+        const key = `data-type="${it.targetType}" data-id="${it.targetId}"`;
+        const actions = reportStatus === "open"
+          ? `${it.exists ? `<button type="button" class="secondary" data-open="${page}?post=${it.postId}">원문 보기</button>` : ""}
+             <button type="button" class="secondary" data-resolve="${it.hidden ? "restore" : "dismiss"}" ${key}>${it.hidden ? "숨김 해제(복구)" : "문제없음"}</button>
+             <button type="button" class="secondary danger" data-resolve="delete" ${key}>삭제</button>`
+          : (it.exists ? `<button type="button" class="secondary" data-open="${page}?post=${it.postId}">원문 보기</button>` : "");
+        return `<div class="rq-card">
+          <div class="rq-head"><span class="rq-type">${it.targetType === "post" ? "글" : "댓글"}</span><span>${boardName}</span><span>·</span><span>작성자 <b>${escapeHtml(it.authorName)}</b></span><span>·</span><span class="rq-count">신고 ${it.count}명</span>${state}</div>
+          <div class="rq-text">${text}</div>
+          <div class="rq-reasons">${reasons}</div>${memos}
+          ${actions ? `<div class="rq-actions">${actions}</div>` : ""}
+        </div>`;
+      }).join("");
+    }
+    document.querySelectorAll("[data-report-status]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        reportStatus = btn.dataset.reportStatus;
+        document.querySelectorAll("[data-report-status]").forEach((b) => b.classList.toggle("active", b === btn));
+        loadReports();
+      });
+    });
+    reportListEl.addEventListener("click", async (e) => {
+      const open = e.target.closest("[data-open]");
+      if (open) { window.open(open.dataset.open, "_blank", "noopener"); return; }
+      const btn = e.target.closest("[data-resolve]");
+      if (!btn) return;
+      const action = btn.dataset.resolve;
+      const what = btn.dataset.type === "post" ? "글" : "댓글";
+      const ask = action === "delete" ? `이 ${what}을 삭제할까요? (보상 받은 후기면 100P가 회수돼요)` : action === "restore" ? `숨김을 해제하고 다시 보이게 할까요?` : `문제없음으로 처리할까요?`;
+      if (!confirm(ask)) return;
+      btn.disabled = true;
+      try {
+        await boardCall({ action: "admin-resolve", targetType: btn.dataset.type, targetId: Number(btn.dataset.id), resolve: action });
+        await loadReports();
+      } catch (err) {
+        console.error("[admin] 신고 처리 실패", err);
+        btn.disabled = false;
+        reportMsgEl.textContent = "처리하지 못했어요.";
+        reportMsgEl.className = "status-msg error";
+      }
+    });
+    // 탭 숫자(처리 대기 건수)는 페이지 들어오자마자 한 번 받아둠
+    boardCall({ action: "admin-reports", status: "open" }).then((d) => setReportCount(d.openCount)).catch(() => {});
 
     // 방송 코드 탭 ------------------------------------------------------------
     const ADMIN_STREAM_CODES_URL = `${FUNCTIONS_BASE_URL}/admin-stream-codes`;

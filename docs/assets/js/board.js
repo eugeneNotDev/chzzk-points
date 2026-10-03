@@ -18,6 +18,9 @@ const ERR = {
   invalid_body: "내용을 입력해주세요. (최대 5000자)",
   invalid_images: "이미지가 올바르지 않아요.",
   too_fast: "너무 빨라요. 잠시 후에 다시 시도해주세요.",
+  already_reported: "이미 신고한 글이에요.",
+  own_target: "내가 쓴 글은 신고할 수 없어요.",
+  invalid_reason: "신고 사유를 골라주세요.",
   forbidden: "권한이 없어요.",
   not_found: "이미 삭제된 글이에요.",
   banned: "이용이 제한된 계정이에요.",
@@ -80,6 +83,19 @@ function avatarHtml(c) {
   if (c.avatarImg) return `<div class="bd-av img${c.staff ? " staff" : ""}"><img src="${esc(c.avatarImg)}" alt="" referrerpolicy="no-referrer" data-fb="${esc(fb)}"></div>`;
   return `<div class="bd-av${c.op ? " op" : ""}">${esc(fb)}</div>`;
 }
+// ---------- 신고 (0057_board_reports.sql) ----------
+const FLAG_ICON = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4"/><path d="M4 4h12l-2 4 2 4H4"/></svg>`;
+const VEIL_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c5 0 9 4.5 10 7a13 13 0 0 1-3 4.2M6.2 6.2A13 13 0 0 0 2 12c1 2.5 5 7 10 7a10 10 0 0 0 4.2-.9"/></svg>`;
+const REPORT_REASONS = [["abuse", "욕설·비방"], ["spam", "도배·광고"], ["obscene", "음란·불쾌한 내용"], ["privacy", "개인정보 노출"], ["etc", "기타"]];
+// 신고 버튼: 내 글·스트리머 글·관리자 화면에선 안 보임. 이미 신고했으면 "신고함".
+function reportBtnHtml(x, type) {
+  if (x.mine || x.staff || (typeof isAdmin === "function" && isAdmin())) return "";
+  if (x.reported) return `<span class="bd-report-btn done">${FLAG_ICON} 신고함</span>`;
+  return `<button type="button" class="bd-report-btn" data-report-type="${type}" data-report-id="${x.id}">${FLAG_ICON} 신고</button>`;
+}
+const veilHtml = (what) => `<span class="bd-hidden">${VEIL_ICON} 신고가 누적되어 가려진 ${what}이에요</span>`;
+const adminHiddenChip = (x) => (x.hidden && typeof isAdmin === "function" && isAdmin() ? `<span class="adm-hidden-chip">자동 숨김 중</span>` : "");
+
 function wireAvatarFallbacks(el) {
   el.querySelectorAll("img[data-fb]").forEach((img) => {
     img.addEventListener("error", () => { img.parentNode.textContent = img.dataset.fb; }, { once: true });
@@ -167,9 +183,14 @@ export function initBoard(board) {
     if (!data.posts.length) {
       listEl.innerHTML = `<div class="bd-empty">아직 글이 없어요. 첫 글을 남겨보세요!</div>`;
     } else {
-      listEl.innerHTML = data.posts.map((p) => `
+      listEl.innerHTML = data.posts.map((p) => p.hidden && !p.title ? `
+        <a class="bd-item hidden-item" tabindex="0" role="button" data-id="${p.id}">
+          <div class="bd-title">${veilHtml("글")}</div>
+          <div class="bd-prev">운영자가 확인 중이에요.</div>
+          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span><span class="cm">${CM_ICON} ${p.commentCount}</span></div>
+        </a>` : `
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
-          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
+          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
@@ -233,9 +254,10 @@ export function initBoard(board) {
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div>
       <div class="bd-post">
-        <div class="bd-meta" style="margin-bottom:10px">${p.avatarImg ? `<img class="bd-mini-av" src="${esc(p.avatarImg)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}</div>
+        <div class="bd-meta" style="margin-bottom:10px">${p.avatarImg ? `<img class="bd-mini-av" src="${esc(p.avatarImg)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}${adminHiddenChip(p)}${reportBtnHtml(p, "post")}</div>
+        ${p.hidden && !p.title ? `<div class="bd-body">${veilHtml("글")}</div>` : `
         <h2>${esc(p.title)}${review ? ` <span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
-        <div class="bd-body">${esc(p.body)}</div>
+        <div class="bd-body">${esc(p.body)}</div>`}
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
         ${p.mine || p.canDelete ? `<div class="bd-actions">
           ${p.mine ? `<button type="button" class="secondary" id="bd-edit">수정</button>` : ""}
@@ -248,9 +270,9 @@ export function initBoard(board) {
           <div class="bd-cm"${i === 0 ? ` style="border-top:0"` : ""}>
             ${avatarHtml(c)}
             <div class="bd-cm-main">
-              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}
+              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}${adminHiddenChip(c)}${reportBtnHtml(c, "comment")}
                 ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
-              <div class="t">${esc(c.body)}</div>
+              ${c.hidden && !c.body ? `<div class="t">${veilHtml("댓글")}</div>` : `<div class="t">${esc(c.body)}</div>`}
             </div>
           </div>`).join("")}</div>
         <form class="bd-form" id="bd-cform">
@@ -262,6 +284,15 @@ export function initBoard(board) {
       </div>`;
     document.getElementById("bd-back").addEventListener("click", () => goBack(() => showList()));
     wireAvatarFallbacks(root);
+    root.querySelectorAll("[data-report-type]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (!isLoggedIn()) { startLogin(); return; }
+        const type = btn.dataset.reportType;
+        const tid = Number(btn.dataset.reportId);
+        const preview = type === "post" ? p.title : (data.comments.find((c) => c.id === tid)?.body ?? "");
+        openReportModal(type, tid, preview, () => showPost(p.id));
+      });
+    });
     const editBtn = document.getElementById("bd-edit");
     if (editBtn) editBtn.addEventListener("click", () => {
       setUrl({ post: String(p.id), edit: "1" }, true, { fromBoard: true });
@@ -296,6 +327,53 @@ export function initBoard(board) {
       try { await call({ action: "delete-comment", id: Number(b.dataset.cid) }); showPost(p.id); }
       catch (err) { alert(errText(err)); }
     });
+  }
+
+  // ---------- 신고 창 ----------
+  function openReportModal(type, targetId, preview, done) {
+    let dlg = document.getElementById("bd-report-modal");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "bd-report-modal";
+      dlg.className = "rp-modal";
+      document.body.appendChild(dlg);
+    }
+    const what = type === "post" ? "글" : "댓글";
+    dlg.innerHTML = `
+      <h3>${what} 신고하기</h3>
+      <p class="rp-sub">신고한 사람은 다른 사람에게 보이지 않아요.</p>
+      <div class="rp-target">${esc(preview || "")}</div>
+      <div class="rp-reasons">${REPORT_REASONS.map(([v, label]) => `<label><input type="radio" name="bd-rp-reason" value="${v}"> ${label}</label>`).join("")}</div>
+      <textarea class="notice-title-input rp-memo" id="bd-rp-memo" rows="2" maxlength="200" placeholder="자세한 내용 (선택, 최대 200자)"></textarea>
+      <p class="rp-note">서로 다른 5명이 신고한 ${what}은 운영자가 확인하기 전까지 자동으로 가려져요. 장난 신고는 이용 제한될 수 있어요.</p>
+      <p class="rp-note" id="bd-rp-status"></p>
+      <div class="rp-actions"><button type="button" class="secondary" id="bd-rp-cancel">취소</button><button type="button" class="rp-submit" id="bd-rp-submit">신고하기</button></div>`;
+    const labels = Array.from(dlg.querySelectorAll(".rp-reasons label"));
+    const statusEl = dlg.querySelector("#bd-rp-status");
+    labels.forEach((l) => l.querySelector("input").addEventListener("change", () => {
+      labels.forEach((x) => x.classList.toggle("on", x.querySelector("input").checked));
+      statusEl.textContent = "";
+    }));
+    dlg.querySelector("#bd-rp-cancel").addEventListener("click", () => dlg.close());
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    const submit = dlg.querySelector("#bd-rp-submit");
+    submit.addEventListener("click", async () => {
+      const reason = dlg.querySelector('input[name="bd-rp-reason"]:checked')?.value;
+      if (!reason) { statusEl.textContent = "신고 사유를 골라주세요."; statusEl.style.color = "var(--red-text)"; return; }
+      submit.disabled = true;
+      try {
+        const r = await call({ action: "report", targetType: type, targetId, reason, memo: dlg.querySelector("#bd-rp-memo").value });
+        dlg.close();
+        alert(r.hidden ? `신고했어요. 신고가 누적되어 이 ${what}은 가려졌어요.` : "신고했어요. 운영자가 확인할게요.");
+        done();
+      } catch (e) {
+        submit.disabled = false;
+        statusEl.textContent = errText(e);
+        statusEl.style.color = "var(--red-text)";
+        if (e.code === "already_reported") done();
+      }
+    });
+    dlg.showModal();
   }
 
   // ---------- 글쓰기 / 수정 ----------
@@ -416,7 +494,11 @@ export function initBoard(board) {
     showList(0);
   };
   document.addEventListener("click", onSidebarClick);
-  window.__pageCleanup = () => { alive = false; document.removeEventListener("click", onSidebarClick); };
+  window.__pageCleanup = () => {
+    alive = false;
+    document.removeEventListener("click", onSidebarClick);
+    document.getElementById("bd-report-modal")?.remove();
+  };
 
   // 초기 화면 — 주소의 ?post= / ?write= / ?page= 를 따름. 단, spa-router로 다른 페이지에서 넘어오는 중엔
   // 스크립트가 실행되는 시점의 주소가 아직 "이전 페이지"라서, 주소가 이 게시판일 때만 읽음.

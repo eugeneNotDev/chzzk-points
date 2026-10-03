@@ -3299,6 +3299,52 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
   .bd-item { padding: 14px; }
 }
 
+/* 게시판 신고 (0057) */
+.bd-report-btn { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 0 4px; font-weight: 500; display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.bd-report-btn:hover { color: var(--red-text); }
+.bd-report-btn.done { cursor: default; opacity: 0.7; }
+.bd-report-btn.done:hover { color: var(--muted); }
+.bd-report-btn + .bd-c-del { margin-left: 0; }
+.bd-hidden { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.86rem; font-weight: 600; }
+.bd-hidden svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.adm-hidden-chip { flex: 0 0 auto; font-size: 0.66rem; font-weight: 800; color: var(--red-text); background: var(--danger-dim); border-radius: 5px; padding: 1px 6px; }
+.rp-modal { width: min(420px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; color: var(--text); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); }
+.rp-modal::backdrop { background: rgba(0, 0, 0, 0.55); }
+.rp-modal h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.rp-sub { color: var(--muted); font-size: 0.8rem; margin: 0 0 14px; }
+.rp-target { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 0.84rem; color: var(--text-dim); margin-bottom: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-reasons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.rp-reasons label { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 0.86rem; cursor: pointer; border: 1px solid transparent; }
+.rp-reasons label.on { border-color: var(--red-text); color: var(--text); background: var(--danger-dim); }
+.rp-reasons input { accent-color: var(--danger); margin: 0; }
+.rp-memo { width: 100%; box-sizing: border-box; resize: none; }
+.rp-note { font-size: 0.74rem; color: var(--muted); margin: 8px 0 0; }
+.rp-note:empty { display: none; }
+.rp-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.rp-submit { background: var(--danger); color: #fff; border-color: var(--danger); }
+.rp-submit:hover:not(:disabled) { background: var(--danger); filter: brightness(1.08); }
+/* 관리자 신고 탭 */
+.rq-filter { display: flex; gap: 6px; margin-bottom: 12px; }
+.rq-filter-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: var(--radius-sm); padding: 6px 12px; font-size: 0.84rem; }
+.rq-filter-btn:hover { background: var(--surface-2); color: var(--text); }
+.rq-filter-btn.active { background: var(--surface-2); color: var(--text); border-color: var(--text-dim); font-weight: 700; }
+.rq-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 10px; }
+.rq-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
+.rq-head b { color: var(--text-dim); }
+.rq-type { font-size: 0.68rem; font-weight: 800; border-radius: 5px; padding: 2px 7px; background: var(--surface-2); color: var(--text-dim); }
+.rq-count { font-weight: 800; color: var(--red-text); }
+.rq-state { margin-left: auto; font-size: 0.7rem; font-weight: 800; border-radius: 999px; padding: 2px 9px; background: var(--surface-2); color: var(--text-dim); }
+.rq-state.hide { color: var(--red-text); background: var(--danger-dim); }
+.rq-state.open { color: var(--amber-text); background: rgba(245, 185, 74, 0.13); }
+.rq-text { margin: 10px 0 8px; font-size: 0.92rem; line-height: 1.5; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.rq-text b { display: block; margin-bottom: 2px; }
+.rq-reasons { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.rq-reasons span { font-size: 0.72rem; background: var(--surface-2); border-radius: 999px; padding: 2px 9px; color: var(--text-dim); }
+.rq-memo { font-size: 0.78rem; color: var(--muted); margin: 2px 0; }
+.rq-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+.rq-actions button, .rq-actions a { padding: 7px 12px; font-size: 0.82rem; }
+.rq-empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 0.9rem; }
+
 /* ===== 라이트 모드 =====
    <html data-theme="light">일 때만 적용. 각 페이지 <head>의 작은 스크립트가 저장된 선택(없으면 기기 설정)을 보고
    첫 화면이 그려지기 전에 data-theme을 붙임 → 깜빡임 없음. 전환 버튼은 chzzk-auth.js의 initThemeToggle.
