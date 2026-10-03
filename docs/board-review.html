@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>방송 후기 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=89">
+<link rel="stylesheet" href="assets/css/style.css?v=90">
 </head>
 <body>
   <script>
@@ -95,8 +95,8 @@
       <div class="sidebar-user" id="sidebar-user"></div>
     </aside>
 
-    <main class="main-content" data-board-page>
-      <div id="board-root"></div>
+    <main class="main-content">
+      <div id="board-root" data-board-page></div>
     </main>
   </div>
 
@@ -110,7 +110,7 @@
     initShopNavGroup();
     initNoticeBadge();
     verifySessionInBackground();
-    import("./assets/js/board.js?v=4").then((m) => m.initBoard("review"));
+    import("./assets/js/board.js?v=5").then((m) => m.initBoard("review"));
   })();
   </script>
 </body>

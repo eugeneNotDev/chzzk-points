@@ -68,9 +68,20 @@ const isNew = (iso, id, seen) => Date.now() - new Date(iso).getTime() < 3_600_00
 const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
 
-function whoHtml(name, badge, mine) {
+function whoHtml(name, badge, mine, staff) {
   const b = badge && typeof titleBadgeHtml === "function" ? `${titleBadgeHtml(badge.name, badge.color)} ` : "";
-  return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
+  return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>${staff ? `<span class="bd-staff">스트리머</span>` : ""}`;
+}
+// 댓글 아바타: 실명(후기 게시판/스트리머)은 프로필 사진, 익명은 "글쓴이"/"익1" 글자. 사진이 안 뜨면 첫 글자로.
+function avatarHtml(c) {
+  const fb = c.avatar ?? (c.author || "?").charAt(0);
+  if (c.avatarImg) return `<div class="bd-av img${c.staff ? " staff" : ""}"><img src="${esc(c.avatarImg)}" alt="" referrerpolicy="no-referrer" data-fb="${esc(fb)}"></div>`;
+  return `<div class="bd-av${c.op ? " op" : ""}">${esc(fb)}</div>`;
+}
+function wireAvatarFallbacks(el) {
+  el.querySelectorAll("img[data-fb]").forEach((img) => {
+    img.addEventListener("error", () => { img.parentNode.textContent = img.dataset.fb; }, { once: true });
+  });
 }
 // 관리자에게는 익명 대신 실제 닉네임을 보여주고, 일반 사용자에게 어떻게 보이는지만 작은 칩으로 알려줌.
 const admChip = (name, shown) => (name ? `<span class="bd-adm">일반 사용자에겐 ${esc(shown)}</span>` : "");
@@ -103,12 +114,32 @@ export function initBoard(board) {
   if (!root) return;
   const cfg = CFG[board];
   let alive = true;
-  window.__pageCleanup = () => { alive = false; };
   let curPage = 0;
+  let curView = "list";
+  const PAGE_FILE = board === "free" ? "board-free.html" : "board-review.html";
+
+  // 뒤로가기 지원: 글 보기/글쓰기로 들어갈 때 주소(?post=, ?write=)를 history에 쌓아서, 브라우저 뒤로가기가
+  // 이전 페이지(랭킹 등)가 아니라 게시판 목록으로 돌아오게 함. 뒤로가기(popstate)가 오면 spa-router가 이
+  // 페이지를 다시 실행하고, 아래 맨 끝의 초기 라우팅이 주소를 보고 알맞은 화면을 띄움.
+  function setUrl(params, push, extra = {}) {
+    const qs = new URLSearchParams(params).toString();
+    const url = PAGE_FILE + (qs ? `?${qs}` : "");
+    const state = { spaPage: PAGE_FILE, ...extra };
+    if (push) history.pushState(state, "", url);
+    else history.replaceState(state, "", url);
+  }
+  const listParams = () => (curPage > 0 ? { page: String(curPage + 1) } : {});
+  function openPost(id) { setUrl({ post: String(id) }, true, { fromBoard: true }); showPost(id); }
+  // 게시판 안에서 쌓은 기록이면 브라우저 뒤로가기와 똑같이 돌아가고, 주소로 바로 들어온 경우엔 현재 기록을 목록으로 바꿈.
+  function goBack(fallback) {
+    if (history.state && history.state.fromBoard) history.back();
+    else { setUrl(listParams(), false); fallback(); }
+  }
 
   // ---------- 목록 ----------
   async function showList(page = curPage) {
     curPage = page;
+    curView = "list";
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write" id="bd-write-btn">${cfg.write}</button></div>
       <p class="bd-sub">${cfg.sub}</p>
@@ -117,6 +148,7 @@ export function initBoard(board) {
       <div class="bd-pager" id="bd-pager"></div>`;
     document.getElementById("bd-write-btn").addEventListener("click", () => {
       if (!isLoggedIn()) { startLogin(); return; }
+      setUrl({ write: "1" }, true, { fromBoard: true });
       showEditor(null);
     });
     if (board === "review") loadBanner();
@@ -137,7 +169,7 @@ export function initBoard(board) {
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
           <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
-          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
+          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
     }
     renderPager(data.total, data.pageSize);
@@ -180,24 +212,26 @@ export function initBoard(board) {
   }
 
   // ---------- 글 보기 ----------
-  async function showPost(id) {
+  async function showPost(id, { thenEdit = false } = {}) {
+    curView = "post";
     root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1></div><div class="bd-post"><div class="bd-empty">불러오는 중...</div></div>`;
     let data;
     try {
       data = await call({ action: "get", id });
     } catch (e) {
       root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div><div class="bd-post"><div class="bd-empty">${e.code === "not_found" ? "삭제됐거나 없는 글이에요." : "글을 불러오지 못했어요."}</div></div>`;
-      document.getElementById("bd-back").addEventListener("click", () => showList());
+      document.getElementById("bd-back").addEventListener("click", () => goBack(() => showList()));
       return;
     }
     if (!alive) return;
     markSeen(id);
     const p = data.post;
+    if (thenEdit && p.mine) { showEditor({ post: p, images: data.images }); return; }
     const review = board === "review";
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">목록</button></div>
       <div class="bd-post">
-        <div class="bd-meta" style="margin-bottom:10px">${whoHtml(authorOf(p), p.badge, p.mine)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}</div>
+        <div class="bd-meta" style="margin-bottom:10px">${p.avatarImg ? `<img class="bd-mini-av" src="${esc(p.avatarImg)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}</div>
         <h2>${esc(p.title)}${review ? ` <span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
         <div class="bd-body">${esc(p.body)}</div>
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
@@ -210,23 +244,27 @@ export function initBoard(board) {
         <div class="bd-cm-h">댓글 ${data.comments.length}</div>
         <div id="bd-clist">${data.comments.map((c, i) => `
           <div class="bd-cm"${i === 0 ? ` style="border-top:0"` : ""}>
-            <div class="bd-av${c.op ? " op" : ""}">${esc(c.avatar ?? (c.author || "?").charAt(0))}</div>
+            ${avatarHtml(c)}
             <div class="bd-cm-main">
-              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}
+              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}
                 ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
               <div class="t">${esc(c.body)}</div>
             </div>
           </div>`).join("")}</div>
         <form class="bd-form" id="bd-cform">
-          <input type="text" id="bd-cinput" class="notice-title-input" maxlength="500" placeholder="${isLoggedIn() ? (review ? "댓글 남기기" : "익명으로 댓글 남기기") : "로그인하면 댓글을 쓸 수 있어요"}" ${isLoggedIn() ? "" : "disabled"}>
+          <input type="text" id="bd-cinput" class="notice-title-input" maxlength="500" placeholder="${!isLoggedIn() ? "로그인하면 댓글을 쓸 수 있어요" : review ? "댓글 남기기" : isAdmin() ? "댓글 남기기 (스트리머 계정은 닉네임으로 보여요)" : "익명으로 댓글 남기기"}" ${isLoggedIn() ? "" : "disabled"}>
           <button type="submit">${isLoggedIn() ? "등록" : "로그인"}</button>
         </form>
         ${review ? "" : `<div class="bd-note">같은 글 안에서는 같은 사람이 같은 익명 번호로 보여요.</div>`}
         <div class="bd-note" id="bd-cstatus"></div>
       </div>`;
-    document.getElementById("bd-back").addEventListener("click", () => showList());
+    document.getElementById("bd-back").addEventListener("click", () => goBack(() => showList()));
+    wireAvatarFallbacks(root);
     const editBtn = document.getElementById("bd-edit");
-    if (editBtn) editBtn.addEventListener("click", () => showEditor({ post: p, images: data.images }));
+    if (editBtn) editBtn.addEventListener("click", () => {
+      setUrl({ post: String(p.id), edit: "1" }, true, { fromBoard: true });
+      showEditor({ post: p, images: data.images });
+    });
     const delBtn = document.getElementById("bd-del");
     if (delBtn) delBtn.addEventListener("click", async () => {
       const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?";
@@ -235,7 +273,7 @@ export function initBoard(board) {
       try {
         const r = await call({ action: "delete", id: p.id });
         if (r.revoked) { alert(`삭제했어요. 보상 ${r.revoked}P가 회수됐어요.`); refreshPoints(); }
-        showList();
+        goBack(() => showList());
       } catch (e) { delBtn.disabled = false; alert(errText(e)); }
     });
     const statusEl = document.getElementById("bd-cstatus");
@@ -261,11 +299,12 @@ export function initBoard(board) {
   // ---------- 글쓰기 / 수정 ----------
   function showEditor(existing) {
     const editing = !!existing;
+    curView = "editor";
     // 이미지 항목: {path?, url, file?}  — 기존(path 있음) / 새로 고른 것(file 있음)
     let imgs = editing ? existing.images.map((i) => ({ path: i.path, url: i.url })) : [];
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">${editing ? "취소" : "목록"}</button></div>
-      <p class="bd-sub">${editing ? "글을 수정해요." : cfg.sub}</p>
+      <p class="bd-sub">${editing ? "글을 수정해요." : board === "free" && isAdmin() ? "스트리머 계정으로 쓴 글은 익명이 아니라 닉네임으로 보여요." : cfg.sub}</p>
       ${!editing && board === "review" ? `<div class="bd-banner" id="bd-banner" hidden></div>` : ""}
       <div class="bd-post bd-editor">
         <input type="text" id="bd-title" class="notice-title-input" maxlength="60" placeholder="제목 (최대 60자)" value="${editing ? esc(existing.post.title) : ""}">
@@ -302,7 +341,7 @@ export function initBoard(board) {
       e.target.value = "";
       renderImgs();
     });
-    const back = () => (editing ? showPost(existing.post.id) : showList());
+    const back = () => goBack(() => (editing ? showPost(existing.post.id) : showList()));
     document.getElementById("bd-back").addEventListener("click", back);
     document.getElementById("bd-cancel").addEventListener("click", back);
     const saveBtn = document.getElementById("bd-save");
@@ -330,10 +369,14 @@ export function initBoard(board) {
         setStatus("저장 중...");
         if (editing) {
           await call({ action: "update", id: existing.post.id, title, body: text, images: paths });
-          showPost(existing.post.id);
+          // 글 보기 → 수정으로 들어온 기록이면 뒤로 돌아가면서 글을 새로 불러옴
+          if (history.state && history.state.fromBoard) history.back();
+          else { setUrl({ post: String(existing.post.id) }, false); showPost(existing.post.id); }
         } else {
           const r = await call({ action: "create", board, title, body: text, images: paths });
           if (r.rewarded) { alert(`후기 보상 ${r.rewarded}P가 지급됐어요!`); refreshPoints(); }
+          // 글쓰기 기록을 새 글 보기로 바꿔치기 → 뒤로가기하면 목록
+          setUrl({ post: String(r.id) }, false, { fromBoard: !!(history.state && history.state.fromBoard) });
           showPost(r.id);
         }
       } catch (e) {
@@ -349,9 +392,36 @@ export function initBoard(board) {
 
   root.addEventListener("click", (e) => {
     const item = e.target.closest(".bd-item");
-    if (item) { e.preventDefault(); showPost(Number(item.dataset.id)); return; }
+    if (item) { e.preventDefault(); openPost(Number(item.dataset.id)); return; }
     const pg = e.target.closest("#bd-pager button[data-pg]");
-    if (pg && !pg.disabled) showList(Number(pg.dataset.pg));
+    if (pg && !pg.disabled) {
+      curPage = Number(pg.dataset.pg);
+      setUrl(listParams(), false, history.state || {});
+      showList(curPage);
+    }
   });
-  showList(0);
+  root.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const item = e.target.closest(".bd-item");
+    if (item) openPost(Number(item.dataset.id));
+  });
+
+  // 글을 보고 있을 때 사이드바의 같은 게시판 메뉴를 누르면(spa-router는 같은 페이지라 무시함) 목록으로.
+  const onSidebarClick = (e) => {
+    const a = e.target.closest(`a[href="${PAGE_FILE}"]`);
+    if (!a || curView === "list") return;
+    setUrl({}, true);
+    showList(0);
+  };
+  document.addEventListener("click", onSidebarClick);
+  window.__pageCleanup = () => { alive = false; document.removeEventListener("click", onSidebarClick); };
+
+  // 초기 화면 — 주소의 ?post= / ?write= / ?page= 를 따름. 단, spa-router로 다른 페이지에서 넘어오는 중엔
+  // 스크립트가 실행되는 시점의 주소가 아직 "이전 페이지"라서, 주소가 이 게시판일 때만 읽음.
+  const here = location.pathname.split("/").pop() === PAGE_FILE;
+  const q = here ? new URLSearchParams(location.search) : new URLSearchParams();
+  const postId = Number(q.get("post"));
+  if (Number.isSafeInteger(postId) && postId > 0) showPost(postId, { thenEdit: q.get("edit") === "1" });
+  else if (q.get("write") === "1" && isLoggedIn()) showEditor(null);
+  else showList(Math.max(0, (Number(q.get("page")) || 1) - 1));
 }

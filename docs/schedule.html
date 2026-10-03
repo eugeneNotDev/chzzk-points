@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>방송 스케줄 · 유진 팬보드</title>
-<link rel="stylesheet" href="assets/css/style.css?v=89">
+<link rel="stylesheet" href="assets/css/style.css?v=90">
 </head>
 <body>
   <script>
@@ -248,7 +248,7 @@
         if (col === 0) cls.push("sun");
         if (col === 6) cls.push("sat");
         const timeHtml = live ? `<span class="sched-time${tbd ? " tbd" : ""}">${tbd ? "미정" : escapeHtml(row.start_time)}</span>` : "";
-        const bodyHtml = off ? `<div class="sched-off">🌙 휴방</div>` : live ? `<div class="sched-title">${escapeHtml(row.title)}</div>` : "";
+        const bodyHtml = off ? `<div class="sched-off"><span>🌙</span><span class="lbl">휴방</span></div>` : live ? `<div class="sched-title">${escapeHtml(row.title)}</div>` : "";
         const addBtn = admin && !row ? `<button type="button" class="sched-add" data-add-day="${day}" aria-label="일정 추가">+</button>` : "";
         html += `<div class="${cls.join(" ")}" data-day="${day}" role="button" tabindex="0"><div class="sched-head"><span class="sched-num">${d}</span>${timeHtml}</div>${bodyHtml}${addBtn}</div>`;
       }

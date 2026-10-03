@@ -3186,9 +3186,16 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .sched-kind-btn.is-active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .sched-tbd-label { display: flex; gap: 6px; align-items: center; font-size: 0.88rem; color: var(--text-dim); cursor: pointer; }
 @media (max-width: 640px) {
-  .sched-cell { min-height: 64px; padding: 5px; }
+  .sched-dow-row, .sched-grid { gap: 4px; }
+  .sched-cell { min-height: 58px; padding: 5px 4px; gap: 3px; border-radius: 9px; }
+  .sched-head { flex-direction: column; align-items: flex-start; justify-content: flex-start; height: auto; gap: 3px; }
+  .sched-num { font-size: 0.76rem; }
+  .sched-cell.today .sched-num { min-width: 20px; height: 20px; }
   .sched-title { display: none; }
-  .sched-time { font-size: 0.62rem; }
+  .sched-time { font-size: 0.6rem; letter-spacing: -0.03em; white-space: nowrap; line-height: 1; }
+  .sched-off { font-size: 0.72rem; }
+  .sched-off .lbl { display: none; }
+  .sched-add { display: none; }
   .sched-detail { flex-wrap: wrap; }
   .sched-detail-actions { width: 100%; }
 }
@@ -3259,6 +3266,10 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-cm-main { flex: 1; min-width: 0; }
 .bd-av { flex: 0 0 32px; height: 32px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; color: var(--text-dim); line-height: 1.1; text-align: center; overflow: hidden; }
 .bd-av.op { background: var(--accent-dim); color: var(--accent); font-size: 0.6rem; }
+.bd-av.img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bd-av.staff { box-shadow: 0 0 0 2px var(--accent); }
+.bd-mini-av { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; margin-right: -4px; }
+.bd-staff { font-size: 0.66rem; font-weight: 800; color: var(--accent-text); background: var(--accent); border-radius: 5px; padding: 1px 6px; }
 .bd-cm .t { font-size: 0.9rem; line-height: 1.55; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
 .bd-c-del { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 0 4px; font-weight: 500; }
 .bd-c-del:hover { color: #ff8f8f; }

@@ -151,20 +151,26 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-interface Who { name: string | null; badge: { name: string; color: string | null } | null }
+interface Who { name: string | null; img: string | null; badge: { name: string; color: string | null } | null }
 
-// 작성자 정보(닉네임 + 장착 칭호). 후기 게시판 표시와 관리자의 자유게시판 작성자 확인용.
+// 작성자 정보(닉네임 + 프로필 사진 + 장착 칭호). 후기 게시판, 스트리머(관리자) 계정 표시, 관리자의 자유게시판 작성자 확인용.
 async function loadWho(admin: Admin, cids: string[]): Promise<Map<string, Who>> {
   const m = new Map<string, Who>();
   if (!cids.length) return m;
-  const { data: us } = await admin.from("users").select("channel_id, channel_name, selected_title_id").in("channel_id", cids);
+  const { data: us } = await admin.from("users").select("channel_id, channel_name, profile_image_url, selected_title_id").in("channel_id", cids);
   const tids = [...new Set((us ?? []).map((u: any) => u.selected_title_id).filter(Boolean))];
   const titles = new Map<string, { name: string; color: string | null }>();
   if (tids.length) {
     const { data: ts } = await admin.from("titles").select("id, name, color").in("id", tids);
     for (const t of ts ?? []) titles.set(t.id, { name: t.name, color: t.color ?? null });
   }
-  for (const u of us ?? []) m.set(u.channel_id, { name: u.channel_name, badge: u.selected_title_id ? titles.get(u.selected_title_id) ?? null : null });
+  for (const u of us ?? []) {
+    m.set(u.channel_id, {
+      name: u.channel_name,
+      img: u.profile_image_url ?? null,
+      badge: u.selected_title_id ? titles.get(u.selected_title_id) ?? null : null,
+    });
+  }
   return m;
 }
 
@@ -174,9 +180,17 @@ function broadcastLabel(key: string | null): string | null {
   return m ? `${Number(m[1])}/${Number(m[2])}` : null;
 }
 
+// 누구를 실명으로 보여줄지: 후기 게시판은 전원, 자유게시판은 스트리머(관리자) 계정만(관리자가 익명이면 의미가 없어서).
+// 그 외 자유게시판 작성자는 익명이고, 관리자에게만 adminName으로 닉네임을 따로 알려줌.
+function whoToLoad(review: boolean, isAdmin: boolean, cids: string[]) {
+  if (review || isAdmin) return cids;
+  return cids.filter((c) => c === OWNER_CHANNEL_ID);
+}
+
 async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean) {
   const board = body.board;
   if (board !== "free" && board !== "review") return json({ error: "invalid_board" }, 400);
+  const review = board === "review";
   const page = Math.max(0, Math.min(Number(body.page) || 0, 10000));
   const { data: posts, error, count } = await admin
     .from("board_posts")
@@ -195,7 +209,7 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
     const [{ data: cs }, { data: ims }, rw] = await Promise.all([
       admin.from("board_comments").select("post_id").in("post_id", ids),
       admin.from("board_images").select("post_id").in("post_id", ids),
-      board === "review"
+      review
         ? admin.from("board_review_rewards").select("post_id").in("post_id", ids).eq("revoked", false)
         : Promise.resolve({ data: [] as any[] }),
     ]);
@@ -203,17 +217,20 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
     for (const i of ims ?? []) withImages.add(i.post_id);
     for (const r of rw.data ?? []) paid.add(r.post_id);
   }
-  const who = board === "review" || isAdmin ? await loadWho(admin, [...new Set(slice.map((p: any) => p.channel_id))]) : new Map<string, Who>();
+  const who = await loadWho(admin, whoToLoad(review, isAdmin, [...new Set(slice.map((p: any) => p.channel_id as string))]));
   return json({
     posts: slice.map((p: any) => {
       const w = who.get(p.channel_id);
+      const staff = p.channel_id === OWNER_CHANNEL_ID;
+      const named = review || staff;
       return {
         id: p.id,
         title: p.title,
         preview: String(p.body).replace(/\s+/g, " ").trim().slice(0, 120),
-        author: board === "review" ? (w?.name ?? "알 수 없음") : "익명",
-        badge: board === "review" ? (w?.badge ?? null) : null,
-        adminName: board === "free" && isAdmin ? (w?.name ?? "알 수 없음") : null,
+        author: named ? (w?.name ?? "알 수 없음") : "익명",
+        staff,
+        badge: named ? (w?.badge ?? null) : null,
+        adminName: !named && isAdmin ? (w?.name ?? "알 수 없음") : null,
         broadcast: broadcastLabel(p.broadcast_key),
         paid: paid.has(p.id),
         commentCount: commentCounts.get(p.id) ?? 0,
@@ -239,15 +256,17 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
   ]);
   const comments = cs ?? [];
   const review = p.board === "review";
-  const who = review || isAdmin
-    ? await loadWho(admin, [...new Set([p.channel_id, ...comments.map((c: any) => c.channel_id)])])
-    : new Map<string, Who>();
+  const who = await loadWho(admin, whoToLoad(review, isAdmin, [...new Set([p.channel_id as string, ...comments.map((c: any) => c.channel_id as string)])]));
   // 자유게시판 익명 번호: 글쓴이는 "익명(글쓴이)", 나머지는 이 글 안에서 처음 나온 순서대로 익명 1, 익명 2…
+  // 스트리머 계정은 번호를 안 매기고 닉네임으로 보여줌.
   const anonNo = new Map<string, number>();
   const view = (cid: string) => {
     const w = who.get(cid);
-    if (review) return { author: w?.name ?? "알 수 없음", avatar: null as string | null, op: cid === p.channel_id, badge: w?.badge ?? null, adminName: null as string | null };
+    const staff = cid === OWNER_CHANNEL_ID;
     const op = cid === p.channel_id;
+    if (review || staff) {
+      return { author: w?.name ?? "알 수 없음", avatar: null as string | null, avatarImg: w?.img ?? null, op, staff, badge: w?.badge ?? null, adminName: null as string | null };
+    }
     let n = 0;
     if (!op) {
       if (!anonNo.has(cid)) anonNo.set(cid, anonNo.size + 1);
@@ -256,16 +275,19 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
     return {
       author: op ? "익명(글쓴이)" : `익명 ${n}`,
       avatar: op ? "글쓴이" : `익${n}`,
+      avatarImg: null as string | null,
       op,
+      staff: false,
       badge: null,
       adminName: isAdmin ? (w?.name ?? "알 수 없음") : null,
     };
   };
-  const pv = review ? view(p.channel_id) : { author: "익명", adminName: isAdmin ? (who.get(p.channel_id)?.name ?? "알 수 없음") : null, badge: null as any };
+  const pv = view(p.channel_id);
+  const postAuthor = review || pv.staff ? pv.author : "익명";
   return json({
     post: {
       id: p.id, board: p.board, title: p.title, body: p.body,
-      author: pv.author, badge: pv.badge, adminName: pv.adminName,
+      author: postAuthor, staff: pv.staff, badge: pv.badge, avatarImg: pv.avatarImg, adminName: pv.adminName,
       broadcast: broadcastLabel(p.broadcast_key), paid: (rw.data ?? []).length > 0,
       createdAt: p.created_at, updatedAt: p.updated_at,
       mine: me !== null && p.channel_id === me, canDelete: isAdmin || (me !== null && p.channel_id === me),
