@@ -92,6 +92,28 @@ function eligibleBroadcastKey(w: LiveWindow): string | null {
   return Date.now() - closed <= REVIEW_WINDOW_MS ? w.openDate : null;
 }
 
+// 후기 보상 대상 방송 키. 1) 치지직이 지금 방송 중이라고 하면 그 방송, 2) 아니면 우리가 1분마다 남기는 방송 기록
+// (broadcast_sessions, live-tracker 함수)의 마지막 방송이 아직 켜져 있거나 끝난 지 6시간 이내면 그 방송,
+// 3) 기록이 없으면 예전처럼 치지직의 종료 시각으로 판단.
+async function reviewBroadcastKey(admin: Admin): Promise<{ key: string | null; isLive: boolean }> {
+  const w = await getLiveWindow();
+  if (w.isLive && w.openDate) return { key: w.openDate, isLive: true };
+  const { data: s } = await admin
+    .from("broadcast_sessions")
+    .select("open_date, last_seen_live_at, closed_at")
+    .order("last_seen_live_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (s) {
+    const lastSeen = Date.parse(s.last_seen_live_at);
+    if (!s.closed_at && Date.now() - lastSeen < 3 * 60 * 1000) return { key: s.open_date, isLive: true };
+    const ended = Date.parse(s.closed_at ?? s.last_seen_live_at);
+    if (Date.now() - ended <= REVIEW_WINDOW_MS) return { key: s.open_date, isLive: false };
+    return { key: null, isLive: false };
+  }
+  return { key: eligibleBroadcastKey(w), isLive: false };
+}
+
 function cleanText(v: unknown, max: number, min = 1): string | null {
   if (typeof v !== "string") return null;
   const t = v.replace(/\r\n/g, "\n").trim();
@@ -330,14 +352,13 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
 }
 
 async function reviewStatus(admin: Admin, me: string | null) {
-  const w = await getLiveWindow();
-  const key = eligibleBroadcastKey(w);
+  const { key, isLive } = await reviewBroadcastKey(admin);
   let already = false;
   if (key && me) {
     const { data } = await admin.from("board_review_rewards").select("channel_id").eq("channel_id", me).eq("broadcast_key", key).maybeSingle();
     already = !!data;
   }
-  return json({ isLive: w.isLive, eligible: key !== null, alreadyRewarded: already, reward: REVIEW_REWARD });
+  return json({ isLive, eligible: key !== null, alreadyRewarded: already, reward: REVIEW_REWARD });
 }
 
 async function uploadUrls(admin: Admin, body: any) {
@@ -374,7 +395,7 @@ async function createPost(admin: Admin, body: any, user: { channel_id: string })
   if (await tooFast(admin, "board_posts", user.channel_id, POST_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
 
   let key: string | null = null;
-  if (board === "review") key = eligibleBroadcastKey(await getLiveWindow());
+  if (board === "review") key = (await reviewBroadcastKey(admin)).key;
 
   const { data, error } = await admin
     .from("board_posts")
