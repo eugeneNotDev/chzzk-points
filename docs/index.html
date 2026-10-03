@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=92">
+<link rel="stylesheet" href="assets/css/style.css?v=93">
 </head>
 <body>
   <script>
@@ -107,13 +107,17 @@
     <main class="main-content">
       <h1 class="brand-heading home-heading">유진 팬보드</h1>
 
-      <div class="card">
-        <div id="status-skeleton" class="skeleton skeleton-pill"></div>
-        <div id="status-badge" class="status-badge offline" hidden>
-          <span class="dot"></span>
-          <span id="status-text"></span>
+      <div class="card hm-live">
+        <div class="hm-live-top">
+          <div id="status-skeleton" class="skeleton skeleton-pill"></div>
+          <div id="status-badge" class="status-badge offline" hidden>
+            <span class="dot"></span>
+            <span id="status-text"></span>
+          </div>
+          <p id="live-title" class="live-title" hidden></p>
         </div>
-        <p id="live-title" class="live-title" hidden></p>
+        <!-- 오늘 방송(방송 스케줄 — broadcast_schedule). 오늘 일정이 없거나 쉬는 날이면 다음 방송을 한 줄 더 보여줌. -->
+        <div class="hm-sched" id="home-sched" hidden></div>
       </div>
 
       <div class="card">
@@ -130,6 +134,23 @@
           <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
         </ul>
         <p id="notice-empty" class="empty-state" hidden>등록된 공지사항이 없어요.</p>
+      </div>
+
+      <!-- 게시판 새 글(자유게시판 + 방송 후기 최신 5개). 익명·신고 숨김은 board 함수가 그대로 처리. -->
+      <div class="card">
+        <div class="card-header">
+          <h2>게시판 새 글</h2>
+          <div class="hm-tabs" id="home-board-tabs">
+            <button type="button" class="on" data-b="all">전체</button>
+            <button type="button" data-b="free">자유</button>
+            <button type="button" data-b="review">후기</button>
+          </div>
+        </div>
+        <ul class="hm-posts" id="home-posts">
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+          <li class="skeleton-row"><span class="skeleton skeleton-line grow"></span></li>
+        </ul>
+        <p id="home-posts-empty" class="empty-state" hidden>아직 게시판에 글이 없어요.</p>
       </div>
 
       <div class="card">
@@ -218,6 +239,127 @@
         skeletonEl.hidden = true;
         badgeEl.hidden = false;
       }
+    }
+
+    // 오늘 방송 — 방송 스케줄(broadcast_schedule, 공개 읽기)에서 오늘(한국 시간) 일정과, 오늘이 쉬는 날이거나
+    // 일정이 없으면 가장 가까운 다음 방송을 보여줌. 등록된 일정이 하나도 없으면 줄 자체를 숨김.
+    const WEEK_KO = ["일", "월", "화", "수", "목", "금", "토"];
+    const ARROW_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>`;
+    function schedTimeChip(row, extraStyle = "") {
+      return row.start_time
+        ? `<span class="hm-time"${extraStyle}>${escapeHtml(row.start_time)}</span>`
+        : `<span class="hm-time tbd"${extraStyle}>미정</span>`;
+    }
+    async function loadHomeSchedule() {
+      const el = document.getElementById("home-sched");
+      if (!el) return;
+      const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Seoul" }).format(new Date());
+      const { data, error } = await supabase
+        .from("broadcast_schedule")
+        .select("day, kind, start_time, title")
+        .gte("day", today)
+        .order("day", { ascending: true })
+        .limit(14);
+      if (error || !document.getElementById("home-sched")) return;
+      const rows = data ?? [];
+      const todayRow = rows.find((r) => r.day === today);
+      const next = rows.find((r) => r.day > today && r.kind === "live");
+      if (!todayRow && !next) { el.hidden = true; return; }
+      const [y, m, d] = today.split("-").map(Number);
+      const wd = WEEK_KO[new Date(y, m - 1, d).getDay()];
+      let main;
+      if (todayRow && todayRow.kind === "live") main = `${schedTimeChip(todayRow)}${escapeHtml(todayRow.title)}`;
+      else if (todayRow) main = "🌙 오늘은 쉬는 날이에요";
+      else main = `<span class="muted">오늘은 등록된 일정이 없어요</span>`;
+      let nextHtml = "";
+      if (next && !(todayRow && todayRow.kind === "live")) {
+        const [ny, nm, nd] = next.day.split("-").map(Number);
+        nextHtml = `<div class="hm-next">다음 방송 · ${nm}/${nd} (${WEEK_KO[new Date(ny, nm - 1, nd).getDay()]}) ${schedTimeChip(next, ' style="margin:0 4px"')}${escapeHtml(next.title)}</div>`;
+      }
+      el.innerHTML = `
+        <div class="hm-sched-date"><div class="d">${d}</div><div class="w">${wd}요일</div></div>
+        <div class="hm-sched-body"><div class="hm-sched-label">오늘 방송</div><div class="hm-sched-title">${main}</div>${nextHtml}</div>
+        <a href="schedule.html" class="pill-link hm-sched-more">스케줄${ARROW_SVG}</a>`;
+      el.hidden = false;
+    }
+
+    // 게시판 새 글 — board 함수의 list(게시판별 첫 페이지)를 받아서 최신 5개. "전체"는 두 게시판을 합쳐 최신순.
+    // 신고로 가려진 글은 뺌. 글을 누르면 그 글로 바로 이동(board.js가 __boardOpenPost를 보고 글을 엶).
+    const HOME_POSTS_LIMIT = 5;
+    const BOARD_PAGE = { free: "board-free.html", review: "board-review.html" };
+    const boardListCache = new Map();
+    let homeBoardTab = "all";
+    async function fetchBoardList(board) {
+      if (boardListCache.has(board)) return boardListCache.get(board);
+      const res = await authFetch(`${FUNCTIONS_BASE_URL}/board`, { method: "POST", body: JSON.stringify({ action: "list", board, page: 0 }) });
+      if (!res.ok) throw new Error(`board list ${res.status}`);
+      const data = await res.json();
+      const posts = (data.posts ?? []).filter((p) => !p.hidden).map((p) => ({ ...p, board }));
+      boardListCache.set(board, posts);
+      return posts;
+    }
+    function homeRelTime(iso) {
+      const diff = Date.now() - new Date(iso).getTime();
+      if (diff < 60_000) return "방금 전";
+      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
+      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+      if (diff < 172_800_000) return "어제";
+      if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`;
+      const k = new Date(new Date(iso).getTime() + 9 * 3_600_000);
+      return `${k.getUTCMonth() + 1}.${k.getUTCDate()}`;
+    }
+    async function loadHomePosts() {
+      const listEl = document.getElementById("home-posts");
+      const emptyEl = document.getElementById("home-posts-empty");
+      if (!listEl) return;
+      const tab = homeBoardTab;
+      let posts;
+      try {
+        if (tab === "all") {
+          const [a, b] = await Promise.all([fetchBoardList("free"), fetchBoardList("review")]);
+          posts = [...a, ...b].sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+        } else {
+          posts = await fetchBoardList(tab);
+        }
+      } catch (err) {
+        console.error("[index] 게시판 새 글 조회 실패", err);
+        posts = null;
+      }
+      if (tab !== homeBoardTab || !document.getElementById("home-posts")) return;
+      if (!posts) {
+        listEl.innerHTML = "";
+        emptyEl.textContent = "게시판 글을 불러오지 못했어요.";
+        emptyEl.hidden = false;
+        return;
+      }
+      posts = posts.slice(0, HOME_POSTS_LIMIT);
+      emptyEl.textContent = "아직 게시판에 글이 없어요.";
+      emptyEl.hidden = posts.length > 0;
+      listEl.innerHTML = posts.map((p) => `
+        <li><a class="hm-post" href="${BOARD_PAGE[p.board]}?post=${p.id}" data-board="${p.board}" data-post="${p.id}">
+          <span class="hm-chip${p.board === "review" ? " review" : ""}">${p.board === "review" ? "후기" : "자유"}</span>
+          <span class="hm-pt">${escapeHtml(p.title)}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
+          <span class="hm-pm">${homeRelTime(p.createdAt)}</span>
+        </a></li>`).join("");
+    }
+    function setupHomePosts() {
+      const tabsEl = document.getElementById("home-board-tabs");
+      tabsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-b]");
+        if (!btn) return;
+        homeBoardTab = btn.dataset.b;
+        tabsEl.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+        loadHomePosts();
+      });
+      document.getElementById("home-posts").addEventListener("click", (e) => {
+        const a = e.target.closest("a.hm-post");
+        if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        // spa-router가 board 페이지 스크립트를 실행하는 시점엔 주소가 아직 홈이라, 열 글 번호를 전역으로 넘겨줌
+        window.__boardOpenPost = Number(a.dataset.post);
+        if (typeof spaNavigate === "function") spaNavigate(a.getAttribute("href"));
+        else location.href = a.getAttribute("href");
+      });
     }
 
     // 홈 화면은 최신 공지 몇 개만 제목으로 보여주는 미리보기. 제목을 누르면 다른 페이지로
@@ -374,7 +516,8 @@
       initNoticeBadge();
       verifySessionInBackground();
       setupNoticeModal();
-      await Promise.all([loadBroadcastStatus(), loadNoticePreview(), loadRankingPreview()]);
+      setupHomePosts();
+      await Promise.all([loadBroadcastStatus(), loadHomeSchedule(), loadNoticePreview(), loadHomePosts(), loadRankingPreview()]);
 
       // 실시간 갱신: 공지 미리보기 + 랭킹 미리보기 둘 다 구독함. 랭킹은 points_ledger가
       // RLS로 막혀있어서 직접 구독 못 하고, 대신 트리거가 채워주는 ranking_pings(공개 읽기

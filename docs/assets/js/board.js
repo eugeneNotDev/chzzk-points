@@ -504,7 +504,10 @@ export function initBoard(board) {
   // 스크립트가 실행되는 시점의 주소가 아직 "이전 페이지"라서, 주소가 이 게시판일 때만 읽음.
   const here = location.pathname.split("/").pop() === PAGE_FILE;
   const q = here ? new URLSearchParams(location.search) : new URLSearchParams();
-  const postId = Number(q.get("post"));
+  // 홈의 "게시판 새 글"에서 넘어올 때는 주소가 아직 홈이라 전역으로 받은 글 번호를 씀(index.html 참고)
+  const pending = Number(window.__boardOpenPost);
+  window.__boardOpenPost = null;
+  const postId = !here && pending > 0 ? pending : Number(q.get("post"));
   if (Number.isSafeInteger(postId) && postId > 0) showPost(postId, { thenEdit: q.get("edit") === "1" });
   else if (q.get("write") === "1" && isLoggedIn()) showEditor(null);
   else showList(Math.max(0, (Number(q.get("page")) || 1) - 1));
