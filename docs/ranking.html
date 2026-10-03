@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=100">
+<link rel="stylesheet" href="assets/css/style.css?v=101">
 </head>
 <body>
   <script>
@@ -111,6 +111,16 @@
     <main class="main-content">
       <h1 class="brand-heading">포인트 랭킹</h1>
 
+      <!-- 명예의 전당 — 매달 1위 기록(0061_hall_of_fame.sql, hall_of_fame()). -->
+      <div class="card">
+        <div class="card-header">
+          <h2>👑 명예의 전당</h2>
+          <span class="muted" style="font-size: 0.8rem">매달 1위 기록</span>
+        </div>
+        <div class="hof" id="hof-list"><div class="hof-empty">불러오는 중...</div></div>
+        <p class="hof-note">매달 1일 0시에 지난달 말 보유 포인트 1위가 기록돼요. 랭킹 비공개 상태면 이름이 가려져요.</p>
+      </div>
+
       <div class="card">
         <ol class="ranking-list" id="ranking-list">
           <li class="skeleton-row"><span class="skeleton skeleton-avatar"></span><span class="skeleton skeleton-line grow"></span></li>
@@ -198,6 +208,29 @@
       }
     }
 
+    async function loadHallOfFame(supabase) {
+      const el = document.getElementById("hof-list");
+      if (!el) return;
+      const { data, error } = await supabase.rpc("hall_of_fame");
+      if (!document.getElementById("hof-list")) return;
+      if (error) {
+        console.error("[ranking] 명예의 전당 조회 실패", error);
+        el.innerHTML = `<div class="hof-empty">명예의 전당을 불러오지 못했어요.</div>`;
+        return;
+      }
+      if (!data || data.length === 0) {
+        el.innerHTML = `<div class="hof-empty">11월 1일부터 매달 1위가 여기에 기록돼요</div>`;
+        return;
+      }
+      el.innerHTML = data
+        .map((r, i) => {
+          const [y, m] = String(r.month).split("-").map(Number);
+          const name = r.is_public && r.channel_name ? escapeHtml(r.channel_name) : `<span class="hof-private">비공개</span>`;
+          return `<div class="hof-card${i === 0 ? " latest" : ""}"><div class="hof-crown">👑</div><div class="hof-month">${y}년 ${m}월</div><div class="hof-name">${name}</div><div class="hof-pts">${Number(r.points).toLocaleString("ko-KR")}P</div></div>`;
+        })
+        .join("");
+    }
+
     (async () => {
       renderSidebarUser();
       initSidebarToggle();
@@ -207,6 +240,7 @@
       verifySessionInBackground();
 
       const { supabase } = await import("./assets/js/supabase-client.js");
+      loadHallOfFame(supabase);
       await loadRanking(supabase);
 
       // 관리자만: 이름 클릭 → 유저 상세 모달. 일반 유저는 data-admin-channel-id가 없어서 아무 일도 안 일어남.

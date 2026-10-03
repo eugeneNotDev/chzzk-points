@@ -3583,3 +3583,15 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
   .sg-check span { display: none; }
   .sg-check { padding: 6px; }
 }
+
+/* 명예의 전당(ranking.html) — 매달 1위 기록 */
+.hof { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.hof-card { flex: 0 0 150px; border-radius: 14px; padding: 14px; background: var(--surface-2); position: relative; overflow: hidden; box-sizing: border-box; }
+.hof-card.latest { background: linear-gradient(160deg, rgba(242, 194, 48, 0.22), rgba(242, 194, 48, 0.04) 70%), var(--surface-2); box-shadow: inset 0 0 0 1px rgba(242, 194, 48, 0.35); }
+.hof-crown { font-size: 1.3rem; }
+.hof-month { font-size: 0.74rem; color: var(--muted); margin-top: 6px; font-weight: 700; }
+.hof-name { font-weight: 800; font-size: 1rem; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hof-private { color: var(--muted); font-weight: 700; }
+.hof-pts { font-size: 0.78rem; color: var(--gold-text); font-weight: 700; margin-top: 4px; }
+.hof-empty { flex: 1; text-align: center; color: var(--muted); font-size: 0.86rem; padding: 18px 0; border: 1px dashed var(--border); border-radius: 14px; }
+.hof-note { font-size: 0.76rem; color: var(--muted); margin: 10px 0 0; }
