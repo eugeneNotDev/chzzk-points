@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=102">
+<link rel="stylesheet" href="assets/css/style.css?v=103">
 </head>
 <body>
   <script>
@@ -272,13 +272,13 @@
       const [y, m, d] = today.split("-").map(Number);
       const wd = WEEK_KO[new Date(y, m - 1, d).getDay()];
       let main;
-      if (todayRow && todayRow.kind === "live") main = `${schedTimeChip(todayRow)}${escapeHtml(todayRow.title)}`;
+      if (todayRow && todayRow.kind === "live") main = `${schedTimeChip(todayRow)}<span class="tx">${escapeHtml(todayRow.title)}</span>`;
       else if (todayRow) main = "🌙 오늘은 쉬는 날이에요";
       else main = `<span class="muted">오늘은 등록된 일정이 없어요</span>`;
       let nextHtml = "";
       if (next && !(todayRow && todayRow.kind === "live")) {
         const [ny, nm, nd] = next.day.split("-").map(Number);
-        nextHtml = `<div class="hm-next">다음 방송 · ${nm}/${nd} (${WEEK_KO[new Date(ny, nm - 1, nd).getDay()]}) ${schedTimeChip(next, ' style="margin:0 4px"')}${escapeHtml(next.title)}</div>`;
+        nextHtml = `<div class="hm-next"><span>다음 방송 · ${nm}/${nd} (${WEEK_KO[new Date(ny, nm - 1, nd).getDay()]})</span>${schedTimeChip(next)}<span class="tx">${escapeHtml(next.title)}</span></div>`;
       }
       el.innerHTML = `
         <div class="hm-sched-date"><div class="d">${d}</div><div class="w">${wd}요일</div></div>

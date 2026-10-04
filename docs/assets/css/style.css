@@ -807,6 +807,8 @@ ul.notice-list, ol.notice-list {
   font-weight: 700;
   letter-spacing: 0.02em;
   vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 
 /* 상단 고정 공지 — 제목 앞 "고정" 표시만 붙임(줄 배경 하이라이트는 없음, 0042_notice_pin.sql). */
@@ -823,6 +825,8 @@ ul.notice-list, ol.notice-list {
   font-weight: 700;
   vertical-align: middle;
   line-height: 1.4;
+  position: relative;
+  top: -1px;
 }
 .notice-form-toggles { display: inline-flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 
@@ -3170,7 +3174,7 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .sched-cell.live { background: linear-gradient(180deg, rgba(0, 229, 160, 0.13), rgba(0, 229, 160, 0.04) 70%), var(--surface-2); box-shadow: inset 0 0 0 1px rgba(0, 229, 160, 0.22); }
 .sched-cell.live.tbdc { background: linear-gradient(180deg, rgba(245, 185, 74, 0.13), rgba(245, 185, 74, 0.04) 70%), var(--surface-2); box-shadow: inset 0 0 0 1px rgba(245, 185, 74, 0.25); }
 .sched-cell.sel { box-shadow: inset 0 0 0 2px var(--accent); }
-.sched-cell.off .sched-num { color: var(--muted); }
+.sched-cell.off:not(.today) .sched-num { color: var(--muted); }
 .sched-off { font-size: 0.76rem; color: var(--muted); display: flex; align-items: center; gap: 5px; font-weight: 600; }
 .sched-cell.past:not(.today) { opacity: 0.5; }
 .sched-cell.other.past:not(.today) { opacity: 0.32; }
@@ -3363,11 +3367,13 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .hm-sched-date .w { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
 .hm-sched-body { flex: 1; min-width: 0; }
 .hm-sched-label { font-size: 0.72rem; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
-.hm-sched-title { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hm-time { display: inline-block; font-size: 0.72rem; font-weight: 800; color: var(--accent); background: var(--accent-dim); border-radius: 999px; padding: 2px 9px; margin-right: 6px; vertical-align: 1px; }
+.hm-sched-title { font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.hm-sched-title > .muted, .hm-sched-title > .tx, .hm-next > .tx { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.hm-time { flex: 0 0 auto; display: inline-flex; align-items: center; font-size: 0.72rem; font-weight: 800; line-height: 1.5; color: var(--accent); background: var(--accent-dim); border-radius: 999px; padding: 1px 9px; }
 .hm-time.tbd { color: var(--amber-text); background: rgba(245, 185, 74, 0.14); }
 .hm-sched-more { flex: 0 0 auto; }
-.hm-next { font-size: 0.78rem; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hm-next { font-size: 0.78rem; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.hm-next > span:first-child { flex: 0 0 auto; }
 .hm-tabs { display: flex; gap: 4px; }
 .hm-tabs button { background: transparent; border: 0; color: var(--muted); font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
 .hm-tabs button:hover { color: var(--text); background: var(--surface-2); }
