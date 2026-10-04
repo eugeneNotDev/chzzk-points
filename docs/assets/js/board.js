@@ -256,7 +256,7 @@ export function initBoard(board) {
       <div class="bd-post">
         <div class="bd-meta" style="margin-bottom:10px">${p.avatarImg ? `<img class="bd-mini-av" src="${esc(p.avatarImg)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}${adminHiddenChip(p)}${reportBtnHtml(p, "post")}</div>
         ${p.hidden && !p.title ? `<div class="bd-body">${veilHtml("글")}</div>` : `
-        <h2>${esc(p.title)}${review ? ` <span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
+        <h2><span class="tt">${esc(p.title)}</span>${review ? `<span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
         <div class="bd-body">${esc(p.body)}</div>`}
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
         ${p.mine || p.canDelete ? `<div class="bd-actions">
