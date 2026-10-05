@@ -3298,9 +3298,11 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-rwrap { margin: 0 0 12px 44px; padding-left: 16px; }
 .bd-rto { font-size: 0.72rem; color: var(--muted); margin: 2px 0 5px; }
 .bd-rto b { color: var(--text-dim); }
-.bd-rform { display: flex; gap: 6px; }
-.bd-rform input { flex: 1; min-width: 0; font-size: 0.86rem; padding: 9px 12px; }
-.bd-rform button { flex: 0 0 auto; padding: 0 14px; font-size: 0.84rem; }
+.bd-rform { display: flex; align-items: flex-end; gap: 6px; }
+.bd-rform textarea { min-height: 38px; height: 38px; font-size: 0.86rem; padding: 9px 12px; }
+.bd-rform button { flex: 0 0 auto; height: 38px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.84rem; font-weight: 700; }
+.bd-rform button.secondary { font-weight: 500; }
+.bd-rform button.secondary:focus:not(:focus-visible) { border-color: var(--border); color: var(--text-dim); }
 .bd-rstatus:empty { display: none; }
 .bd-rstatus { color: var(--red-text); }
 @media (max-width: 640px) {
@@ -3317,8 +3319,10 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-cm .t { font-size: 0.9rem; line-height: 1.55; margin-top: 3px; white-space: pre-wrap; word-break: break-word; }
 .bd-c-del { margin-left: auto; background: transparent; border: 0; color: var(--muted); font-size: 0.74rem; padding: 0 4px; font-weight: 500; }
 .bd-c-del:hover { color: var(--red-text); background: transparent; }
-.bd-form { display: flex; gap: 8px; margin-top: 6px; }
-.bd-form input { flex: 1; }
+.bd-form { display: flex; align-items: flex-end; gap: 8px; margin-top: 6px; }
+.bd-form textarea, .bd-rform textarea { flex: 1; min-width: 0; font-weight: 400; box-sizing: border-box; margin: 0; resize: none; overflow-y: auto; line-height: 1.45; display: block; }
+.bd-form textarea { min-height: 44px; height: 44px; padding: 11px 12px; }
+.bd-form button { flex: 0 0 auto; height: 44px; padding: 0 20px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
 .bd-note { font-size: 0.76rem; color: var(--muted); margin-top: 8px; }
 .bd-editor .notice-title-input { width: 100%; margin-bottom: 10px; }
 .bd-body-input { resize: vertical; min-height: 180px; }

@@ -78,6 +78,26 @@ function whoHtml(name, badge, mine, staff) {
   return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
 }
 // 댓글 아바타: 실명(후기 게시판/스트리머)은 프로필 사진, 익명은 "글쓴이"/"익1" 글자. 사진이 안 뜨면 첫 글자로.
+// 댓글·답글 입력칸: Enter = 등록, Shift+Enter = 줄바꿈(한글 조합 중 Enter는 무시). 줄 수에 맞춰 높이가 늘어남.
+function fitTextarea(ta) {
+  ta.style.height = "auto";
+  ta.style.height = Math.min(ta.scrollHeight + 2, 160) + "px";
+}
+function bindCommentTextareas(root) {
+  if (root.dataset.taBound) return;
+  root.dataset.taBound = "1";
+  root.addEventListener("keydown", (e) => {
+    const ta = e.target.closest && e.target.closest("textarea.bd-ta");
+    if (!ta || e.key !== "Enter" || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    const f = ta.closest("form");
+    if (f) f.requestSubmit();
+  });
+  root.addEventListener("input", (e) => {
+    const ta = e.target.closest && e.target.closest("textarea.bd-ta");
+    if (ta) fitTextarea(ta);
+  });
+}
 // 댓글 + 답글(한 단계). 서버가 id 순서로 평평하게 주면 원댓글(parentId 없음) 아래에 답글을 묶음.
 function commentThreadsHtml(list) {
   const tops = list.filter((c) => !c.parentId);
@@ -297,7 +317,7 @@ export function initBoard(board) {
         <div class="bd-cm-h">댓글 ${data.comments.filter((c) => !c.deleted).length}</div>
         <div id="bd-clist">${commentThreadsHtml(data.comments)}</div>
         <form class="bd-form" id="bd-cform">
-          <input type="text" id="bd-cinput" class="notice-title-input" maxlength="500" placeholder="${!isLoggedIn() ? "로그인하면 댓글을 쓸 수 있어요" : review ? "댓글 남기기" : isAdmin() ? "댓글 남기기 (스트리머 계정은 닉네임으로 보여요)" : "익명으로 댓글 남기기"}" ${isLoggedIn() ? "" : "disabled"}>
+          <textarea id="bd-cinput" class="notice-title-input bd-ta" rows="1" maxlength="500" placeholder="${!isLoggedIn() ? "로그인하면 댓글을 쓸 수 있어요" : review ? "댓글 남기기" : isAdmin() ? "댓글 남기기 (스트리머 계정은 닉네임으로 보여요)" : "익명으로 댓글 남기기"}" ${isLoggedIn() ? "" : "disabled"}></textarea>
           <button type="submit">${isLoggedIn() ? "등록" : "로그인"}</button>
         </form>
         ${review ? "" : `<div class="bd-note">같은 글 안에서는 같은 사람이 같은 익명 번호로 보여요.</div>`}
@@ -342,6 +362,7 @@ export function initBoard(board) {
       try { await call({ action: "comment", postId: p.id, body: text }); showPost(p.id); }
       catch (err) { btn.disabled = false; statusEl.textContent = errText(err); statusEl.style.color = "#ff8f8f"; }
     });
+    bindCommentTextareas(root);
     const clist = document.getElementById("bd-clist");
     clist.addEventListener("click", async (e) => {
       const rb = e.target.closest(".bd-reply-btn");
@@ -356,7 +377,7 @@ export function initBoard(board) {
       const f = e.target.closest(".bd-rform");
       if (!f) return;
       e.preventDefault();
-      const input = f.querySelector("input");
+      const input = f.querySelector("textarea");
       const text = input.value.trim();
       if (!text) return;
       const btn = f.querySelector("button[type=submit]");
@@ -382,11 +403,11 @@ export function initBoard(board) {
       const to = rb.dataset.name;
       wrap.innerHTML = `<div class="bd-rto">↳ <b>${esc(to)}</b>님에게 답글</div>
         <form class="bd-rform" data-parent="${parent}" data-reply-to="${rb.dataset.cid}">
-          <input type="text" class="notice-title-input" maxlength="500" placeholder="${board === "review" || isAdmin() ? "답글 남기기" : "익명으로 답글 남기기"}">
+          <textarea class="notice-title-input bd-ta" rows="1" maxlength="500" placeholder="${board === "review" || isAdmin() ? "답글 남기기" : "익명으로 답글 남기기"}"></textarea>
           <button type="button" class="secondary bd-rcancel">취소</button><button type="submit">등록</button>
         </form><div class="bd-note bd-rstatus"></div>`;
       thread.appendChild(wrap);
-      wrap.querySelector("input").focus();
+      wrap.querySelector("textarea").focus();
     }
   }
 
