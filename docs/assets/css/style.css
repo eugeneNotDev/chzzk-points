@@ -3280,6 +3280,33 @@ button.secondary.game-chip:disabled:hover { border-color: var(--border); color: 
 .bd-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 .bd-cm-h { font-weight: 800; margin: 0 0 12px; font-size: 0.95rem; }
 .bd-cm { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.bd-thread { border-top: 1px solid var(--border); }
+.bd-thread > .bd-cm { border-top: 0; }
+.bd-cm-act { display: flex; gap: 10px; margin-top: 5px; }
+.bd-cm-act button { background: transparent; border: 0; padding: 0; color: var(--muted); font-size: 0.76rem; font-weight: 600; }
+.bd-cm-act button:hover:not(:disabled) { color: var(--text); background: transparent; filter: none; }
+.bd-cm-act button.on { color: var(--accent); }
+.bd-replies { margin: 0 0 6px 44px; border-left: 2px solid var(--border); padding-left: 14px; }
+.bd-cm.bd-rp { gap: 10px; padding: 10px 0; border-top: 0; }
+.bd-cm.bd-rp + .bd-cm.bd-rp { border-top: 1px dashed var(--border); }
+.bd-cm.bd-rp .bd-av { flex: 0 0 26px; height: 26px; font-size: 0.6rem; }
+.bd-cm.bd-rp .bd-av.op { font-size: 0.5rem; }
+.bd-cm.bd-rp .t { font-size: 0.88rem; margin-top: 2px; }
+.bd-at { color: var(--accent); font-weight: 700; margin-right: 5px; }
+.bd-av.gone { background: var(--surface-2); opacity: 0.6; }
+.bd-gone { color: var(--muted); margin-top: 6px !important; }
+.bd-rwrap { margin: 0 0 12px 44px; padding-left: 16px; }
+.bd-rto { font-size: 0.72rem; color: var(--muted); margin: 2px 0 5px; }
+.bd-rto b { color: var(--text-dim); }
+.bd-rform { display: flex; gap: 6px; }
+.bd-rform input { flex: 1; min-width: 0; font-size: 0.86rem; padding: 9px 12px; }
+.bd-rform button { flex: 0 0 auto; padding: 0 14px; font-size: 0.84rem; }
+.bd-rstatus:empty { display: none; }
+.bd-rstatus { color: var(--red-text); }
+@media (max-width: 640px) {
+  .bd-replies { margin-left: 20px; padding-left: 10px; }
+  .bd-rwrap { margin-left: 20px; padding-left: 12px; }
+}
 .bd-cm-main { flex: 1; min-width: 0; }
 .bd-av { flex: 0 0 32px; height: 32px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; color: var(--text-dim); line-height: 1.1; text-align: center; overflow: hidden; }
 .bd-av.op { background: var(--accent-dim); color: var(--accent); font-size: 0.6rem; }

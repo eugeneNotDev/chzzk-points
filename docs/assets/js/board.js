@@ -78,6 +78,35 @@ function whoHtml(name, badge, mine, staff) {
   return `<span class="who${mine ? " me" : ""}">${b}${esc(name)}</span>`;
 }
 // 댓글 아바타: 실명(후기 게시판/스트리머)은 프로필 사진, 익명은 "글쓴이"/"익1" 글자. 사진이 안 뜨면 첫 글자로.
+// 댓글 + 답글(한 단계). 서버가 id 순서로 평평하게 주면 원댓글(parentId 없음) 아래에 답글을 묶음.
+function commentThreadsHtml(list) {
+  const tops = list.filter((c) => !c.parentId);
+  const kids = new Map();
+  for (const c of list) if (c.parentId) { if (!kids.has(c.parentId)) kids.set(c.parentId, []); kids.get(c.parentId).push(c); }
+  return tops.map((c, i) => {
+    const rs = kids.get(c.id) || [];
+    return `<div class="bd-thread" data-thread="${c.id}"${i === 0 ? ` style="border-top:0"` : ""}>
+      ${commentHtml(c, c.id, false)}
+      ${rs.length ? `<div class="bd-replies">${rs.map((r) => commentHtml(r, c.id, true)).join("")}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+function commentHtml(c, parentId, isReply) {
+  if (c.deleted) {
+    return `<div class="bd-cm${isReply ? " bd-rp" : ""}"><div class="bd-av gone"></div><div class="bd-cm-main"><div class="t bd-gone">삭제된 댓글이에요</div></div></div>`;
+  }
+  const name = authorOf(c);
+  const replyBtn = c.hidden && !c.body ? "" : `<div class="bd-cm-act"><button type="button" class="bd-reply-btn" data-parent="${parentId}" data-cid="${c.id}" data-name="${esc(name)}">답글 쓰기</button></div>`;
+  return `<div class="bd-cm${isReply ? " bd-rp" : ""}">
+    ${avatarHtml(c)}
+    <div class="bd-cm-main">
+      <div class="bd-meta">${whoHtml(name, c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}${adminHiddenChip(c)}${reportBtnHtml(c, "comment")}
+        ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
+      ${c.hidden && !c.body ? `<div class="t">${veilHtml("댓글")}</div>` : `<div class="t">${c.replyTo ? `<span class="bd-at">@${esc(c.replyTo)}</span>` : ""}${esc(c.body)}</div>`}
+      ${replyBtn}
+    </div>
+  </div>`;
+}
 function avatarHtml(c) {
   const fb = c.avatar ?? (c.author || "?").charAt(0);
   if (c.avatarImg) return `<div class="bd-av img${c.staff ? " staff" : ""}"><img src="${esc(c.avatarImg)}" alt="" referrerpolicy="no-referrer" data-fb="${esc(fb)}"></div>`;
@@ -265,16 +294,8 @@ export function initBoard(board) {
         </div>` : ""}
       </div>
       <div class="bd-post">
-        <div class="bd-cm-h">댓글 ${data.comments.length}</div>
-        <div id="bd-clist">${data.comments.map((c, i) => `
-          <div class="bd-cm"${i === 0 ? ` style="border-top:0"` : ""}>
-            ${avatarHtml(c)}
-            <div class="bd-cm-main">
-              <div class="bd-meta">${whoHtml(authorOf(c), c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}${adminHiddenChip(c)}${reportBtnHtml(c, "comment")}
-                ${c.canDelete ? `<button type="button" class="bd-c-del" data-cid="${c.id}">삭제</button>` : ""}</div>
-              ${c.hidden && !c.body ? `<div class="t">${veilHtml("댓글")}</div>` : `<div class="t">${esc(c.body)}</div>`}
-            </div>
-          </div>`).join("")}</div>
+        <div class="bd-cm-h">댓글 ${data.comments.filter((c) => !c.deleted).length}</div>
+        <div id="bd-clist">${commentThreadsHtml(data.comments)}</div>
         <form class="bd-form" id="bd-cform">
           <input type="text" id="bd-cinput" class="notice-title-input" maxlength="500" placeholder="${!isLoggedIn() ? "로그인하면 댓글을 쓸 수 있어요" : review ? "댓글 남기기" : isAdmin() ? "댓글 남기기 (스트리머 계정은 닉네임으로 보여요)" : "익명으로 댓글 남기기"}" ${isLoggedIn() ? "" : "disabled"}>
           <button type="submit">${isLoggedIn() ? "등록" : "로그인"}</button>
@@ -321,12 +342,52 @@ export function initBoard(board) {
       try { await call({ action: "comment", postId: p.id, body: text }); showPost(p.id); }
       catch (err) { btn.disabled = false; statusEl.textContent = errText(err); statusEl.style.color = "#ff8f8f"; }
     });
-    document.getElementById("bd-clist").addEventListener("click", async (e) => {
+    const clist = document.getElementById("bd-clist");
+    clist.addEventListener("click", async (e) => {
+      const rb = e.target.closest(".bd-reply-btn");
+      if (rb) { toggleReplyForm(rb); return; }
+      if (e.target.closest(".bd-rcancel")) { closeReplyForm(); return; }
       const b = e.target.closest(".bd-c-del");
       if (!b || !confirm("댓글을 삭제할까요?")) return;
       try { await call({ action: "delete-comment", id: Number(b.dataset.cid) }); showPost(p.id); }
       catch (err) { alert(errText(err)); }
     });
+    clist.addEventListener("submit", async (e) => {
+      const f = e.target.closest(".bd-rform");
+      if (!f) return;
+      e.preventDefault();
+      const input = f.querySelector("input");
+      const text = input.value.trim();
+      if (!text) return;
+      const btn = f.querySelector("button[type=submit]");
+      btn.disabled = true;
+      try { await call({ action: "comment", postId: p.id, body: text, parentId: Number(f.dataset.parent), replyToId: Number(f.dataset.replyTo) }); showPost(p.id); }
+      catch (err) { btn.disabled = false; const st = f.nextElementSibling; if (st && st.classList.contains("bd-rstatus")) { st.textContent = errText(err); } }
+    });
+    // 답글 입력칸 — 한 번에 하나만 열림. 원댓글 묶음 맨 아래(답글들 다음)에 붙음.
+    function closeReplyForm() {
+      clist.querySelectorAll(".bd-rwrap").forEach((w) => w.remove());
+      clist.querySelectorAll(".bd-reply-btn.on").forEach((x) => x.classList.remove("on"));
+    }
+    function toggleReplyForm(rb) {
+      const was = rb.classList.contains("on");
+      closeReplyForm();
+      if (was) return;
+      if (!isLoggedIn()) { startLogin(); return; }
+      rb.classList.add("on");
+      const parent = rb.dataset.parent;
+      const thread = clist.querySelector(`.bd-thread[data-thread="${parent}"]`);
+      const wrap = document.createElement("div");
+      wrap.className = "bd-rwrap";
+      const to = rb.dataset.name;
+      wrap.innerHTML = `<div class="bd-rto">↳ <b>${esc(to)}</b>님에게 답글</div>
+        <form class="bd-rform" data-parent="${parent}" data-reply-to="${rb.dataset.cid}">
+          <input type="text" class="notice-title-input" maxlength="500" placeholder="${board === "review" || isAdmin() ? "답글 남기기" : "익명으로 답글 남기기"}">
+          <button type="button" class="secondary bd-rcancel">취소</button><button type="submit">등록</button>
+        </form><div class="bd-note bd-rstatus"></div>`;
+      thread.appendChild(wrap);
+      wrap.querySelector("input").focus();
+    }
   }
 
   // ---------- 신고 창 ----------

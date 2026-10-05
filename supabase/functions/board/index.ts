@@ -9,8 +9,8 @@
 // create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 6시간 이내 + 첫 후기면 rewarded=100)
 // update         { id, title, body, images? } → { ok }
 // delete         { id }                      → { ok, revoked }  (보상 받은 후기면 100P 회수)
-// comment        { postId, body }            → { ok }
-// delete-comment { id }                      → { ok }
+// comment        { postId, body, parentId?, replyToId? } → { ok }  (답글: parentId=원댓글, replyToId=실제로 답한 댓글 — 0062_board_replies.sql)
+// delete-comment { id }                      → { ok }  (답글 달린 원댓글은 "삭제된 댓글" 자리만 남김)
 // upload-urls    { files: [{fileName,sizeBytes}] } → { uploads: [{path,token,signedUrl}] }
 // review-status  {}                          → { isLive, eligible, alreadyRewarded, reward }
 // report         { targetType: "post"|"comment", targetId, reason, memo? } → { ok, hidden }  (0057_board_reports.sql)
@@ -243,7 +243,7 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   const paid = new Set<number>();
   if (ids.length) {
     const [{ data: cs }, { data: ims }, rw] = await Promise.all([
-      admin.from("board_comments").select("post_id").in("post_id", ids),
+      admin.from("board_comments").select("post_id").in("post_id", ids).eq("deleted", false),
       admin.from("board_images").select("post_id").in("post_id", ids),
       review
         ? admin.from("board_review_rewards").select("post_id").in("post_id", ids).eq("revoked", false)
@@ -290,7 +290,7 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
   if (!p) return json({ error: "not_found" }, 404);
   const [{ data: ims }, { data: cs }, rw] = await Promise.all([
     admin.from("board_images").select("storage_path").eq("post_id", id).order("sort_order"),
-    admin.from("board_comments").select("id, channel_id, body, created_at, hidden").eq("post_id", id).order("id"),
+    admin.from("board_comments").select("id, channel_id, body, created_at, hidden, parent_id, reply_to_id, deleted").eq("post_id", id).order("id"),
     admin.from("board_review_rewards").select("post_id").eq("post_id", id).eq("revoked", false),
   ]);
   const comments = cs ?? [];
@@ -334,6 +334,24 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
       .eq("post_id", id);
     for (const r of mine ?? []) (r.target_type === "post" ? reportedPost : reportedComments).add(r.target_id);
   }
+  // 댓글 — 익명 번호가 지워진 댓글 때문에 밀리지 않게 전부 view()를 거친 뒤, 지워진 댓글은 작성자·본문을 비움.
+  const viewById = new Map<number, ReturnType<typeof view>>();
+  for (const c of comments as any[]) viewById.set(c.id, view(c.channel_id));
+  const byId = new Map<number, any>((comments as any[]).map((c) => [c.id, c]));
+  const commentViews = (comments as any[]).map((c) => {
+    const v = viewById.get(c.id)!;
+    const rt = c.reply_to_id && c.reply_to_id !== c.parent_id ? byId.get(c.reply_to_id) : null;
+    const replyTo = rt ? (rt.deleted ? "삭제된 댓글" : viewById.get(rt.id)!.author) : null;
+    if (c.deleted) {
+      return { id: c.id, parentId: c.parent_id ?? null, deleted: true, body: "", createdAt: c.created_at, author: null, avatar: null, avatarImg: null, op: false, staff: false, badge: null, adminName: null, mine: false, canDelete: false, hidden: false, reported: false, replyTo: null };
+    }
+    return {
+      id: c.id, parentId: c.parent_id ?? null, deleted: false, replyTo,
+      body: c.hidden && !isAdmin ? "" : c.body, hidden: !!c.hidden, reported: reportedComments.has(c.id),
+      createdAt: c.created_at, ...v,
+      mine: me !== null && c.channel_id === me, canDelete: isAdmin || (me !== null && c.channel_id === me),
+    };
+  });
   const postVeiled = p.hidden && !isAdmin;
   return json({
     post: {
@@ -345,11 +363,7 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
       mine: me !== null && p.channel_id === me, canDelete: isAdmin || (me !== null && p.channel_id === me),
     },
     images: postVeiled ? [] : (ims ?? []).map((i: any) => ({ path: i.storage_path, url: imageUrl(i.storage_path) })),
-    comments: comments.map((c: any) => ({
-      id: c.id, body: c.hidden && !isAdmin ? "" : c.body, hidden: !!c.hidden, reported: reportedComments.has(c.id),
-      createdAt: c.created_at, ...view(c.channel_id),
-      mine: me !== null && c.channel_id === me, canDelete: isAdmin || (me !== null && c.channel_id === me),
-    })),
+    comments: commentViews,
   });
 }
 
@@ -489,8 +503,25 @@ async function addComment(admin: Admin, body: any, me: string) {
   if (!Number.isSafeInteger(postId) || postId <= 0) return json({ error: "invalid_id" }, 400);
   if (!text) return json({ error: "invalid_body" }, 400);
   if (!(await loadPost(admin, postId))) return json({ error: "not_found" }, 404);
+  // 답글: 원댓글은 최상위 댓글이어야 하고(답글의 답글은 같은 원댓글 아래로), 실제로 답한 댓글은 그 묶음 안에 있어야 함.
+  let parentId: number | null = null;
+  let replyToId: number | null = null;
+  if (body.parentId !== undefined && body.parentId !== null) {
+    parentId = Number(body.parentId);
+    if (!Number.isSafeInteger(parentId) || parentId <= 0) return json({ error: "invalid_id" }, 400);
+    const { data: parent } = await admin.from("board_comments").select("id, post_id, parent_id, deleted").eq("id", parentId).maybeSingle();
+    if (!parent || parent.post_id !== postId || parent.parent_id !== null || parent.deleted) return json({ error: "not_found" }, 404);
+    replyToId = parentId;
+    if (body.replyToId !== undefined && body.replyToId !== null && Number(body.replyToId) !== parentId) {
+      const rid = Number(body.replyToId);
+      if (!Number.isSafeInteger(rid) || rid <= 0) return json({ error: "invalid_id" }, 400);
+      const { data: rt } = await admin.from("board_comments").select("id, parent_id, deleted").eq("id", rid).maybeSingle();
+      if (!rt || rt.parent_id !== parentId || rt.deleted) return json({ error: "not_found" }, 404);
+      replyToId = rid;
+    }
+  }
   if (await tooFast(admin, "board_comments", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
-  const { error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text });
+  const { error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId });
   if (error) throw new Error(`board_comments insert 실패: ${error.message}`);
   return json({ ok: true });
 }
@@ -498,11 +529,25 @@ async function addComment(admin: Admin, body: any, me: string) {
 async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boolean) {
   const id = Number(body.id);
   if (!Number.isSafeInteger(id) || id <= 0) return json({ error: "invalid_id" }, 400);
-  const { data: c } = await admin.from("board_comments").select("id, channel_id").eq("id", id).maybeSingle();
-  if (!c) return json({ error: "not_found" }, 404);
+  const { data: c } = await admin.from("board_comments").select("id, channel_id, parent_id, deleted").eq("id", id).maybeSingle();
+  if (!c || c.deleted) return json({ error: "not_found" }, 404);
   if (c.channel_id !== me && !isAdmin) return json({ error: "forbidden" }, 403);
-  const { error } = await admin.from("board_comments").delete().eq("id", id);
+  // 답글이 달린 원댓글은 자리만 남기고(본문 비움), 아니면 행을 지움.
+  const { count: replyCount } = c.parent_id === null
+    ? await admin.from("board_comments").select("id", { count: "exact", head: true }).eq("parent_id", id)
+    : { count: 0 };
+  const { error } = (replyCount ?? 0) > 0
+    ? await admin.from("board_comments").update({ deleted: true, body: "" }).eq("id", id)
+    : await admin.from("board_comments").delete().eq("id", id);
   if (error) throw new Error(`board_comments delete 실패: ${error.message}`);
+  // 답글을 지워서 "삭제된 원댓글" 아래 답글이 하나도 안 남았으면 그 자리도 정리.
+  if (c.parent_id !== null) {
+    const { data: parent } = await admin.from("board_comments").select("id, deleted").eq("id", c.parent_id).maybeSingle();
+    if (parent?.deleted) {
+      const { count: left } = await admin.from("board_comments").select("id", { count: "exact", head: true }).eq("parent_id", parent.id);
+      if ((left ?? 0) === 0) await admin.from("board_comments").delete().eq("id", parent.id);
+    }
+  }
   await closeReports(admin, { type: "comment", id }, c.channel_id === me ? "author_deleted" : "deleted");
   return json({ ok: true });
 }
@@ -533,8 +578,8 @@ async function reportTarget(admin: Admin, body: any, me: string) {
     if (!p) return json({ error: "not_found" }, 404);
     author = p.channel_id; postId = p.id; board = p.board; snapTitle = p.title; snapBody = String(p.body).slice(0, 500);
   } else {
-    const { data: c } = await admin.from("board_comments").select("id, post_id, channel_id, body").eq("id", targetId).maybeSingle();
-    if (!c) return json({ error: "not_found" }, 404);
+    const { data: c } = await admin.from("board_comments").select("id, post_id, channel_id, body, deleted").eq("id", targetId).maybeSingle();
+    if (!c || c.deleted) return json({ error: "not_found" }, 404);
     const { data: p } = await admin.from("board_posts").select("board, title").eq("id", c.post_id).maybeSingle();
     if (!p) return json({ error: "not_found" }, 404);
     author = c.channel_id; postId = c.post_id; board = p.board; snapTitle = p.title; snapBody = String(c.body).slice(0, 500);
@@ -663,14 +708,14 @@ async function myActivity(admin: Admin, me: string) {
   const [{ data: posts }, { count: postCount }, { data: comments }, { count: commentCount }, { data: rewards }] = await Promise.all([
     admin.from("board_posts").select("id, board, title, created_at, broadcast_key, hidden").eq("channel_id", me).order("id", { ascending: false }).limit(50),
     admin.from("board_posts").select("id", { count: "exact", head: true }).eq("channel_id", me),
-    admin.from("board_comments").select("id, post_id, body, created_at, hidden").eq("channel_id", me).order("id", { ascending: false }).limit(50),
-    admin.from("board_comments").select("id", { count: "exact", head: true }).eq("channel_id", me),
+    admin.from("board_comments").select("id, post_id, body, created_at, hidden").eq("channel_id", me).eq("deleted", false).order("id", { ascending: false }).limit(50),
+    admin.from("board_comments").select("id", { count: "exact", head: true }).eq("channel_id", me).eq("deleted", false),
     admin.from("board_review_rewards").select("post_id, amount").eq("channel_id", me).eq("revoked", false),
   ]);
   const postIds = (posts ?? []).map((p: any) => p.id);
   const commentCounts = new Map<number, number>();
   if (postIds.length) {
-    const { data: cs } = await admin.from("board_comments").select("post_id").in("post_id", postIds);
+    const { data: cs } = await admin.from("board_comments").select("post_id").in("post_id", postIds).eq("deleted", false);
     for (const c of cs ?? []) commentCounts.set(c.post_id, (commentCounts.get(c.post_id) ?? 0) + 1);
   }
   const paid = new Set((rewards ?? []).map((r: any) => r.post_id));
