@@ -241,7 +241,7 @@ export function initBoard(board) {
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span><span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>` : `
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
-          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen, p.mine) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
+          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${p.hasImages ? IMG_ICON : ""}${isNew(p.createdAt, p.id, seen, p.mine) ? `<span class="new">N</span>` : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");

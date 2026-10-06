@@ -348,7 +348,7 @@
       listEl.innerHTML = posts.map((p) => `
         <li><a class="hm-post" href="${BOARD_PAGE[p.board]}?post=${p.id}" data-board="${p.board}" data-post="${p.id}">
           <span class="hm-chip${p.board === "review" ? " review" : ""}">${p.board === "review" ? "후기" : "자유"}</span>
-          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${isNewPost(p) ? `<span class="hm-new">N</span>` : ""}${p.hasImages ? HOME_IMG_ICON : ""}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
+          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${p.hasImages ? HOME_IMG_ICON : ""}${isNewPost(p) ? `<span class="hm-new">N</span>` : ""}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
           <span class="hm-pm">${homeRelTime(p.createdAt)}</span>
         </a></li>`).join("");
     }
