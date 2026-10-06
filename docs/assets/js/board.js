@@ -70,6 +70,7 @@ function markSeen(id) {
 const NEW_WINDOW_MS = 24 * 3_600_000;
 const isNew = (iso, id, seen, mine) => !mine && Date.now() - new Date(iso).getTime() < NEW_WINDOW_MS && !seen.has(id);
 
+const HEART_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.1 5 6.6 5c2.1 0 3.6 1.2 5.4 3.2C13.8 6.2 15.3 5 17.4 5c3.5 0 5.4 3.6 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg>`;
 const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
 
@@ -81,6 +82,36 @@ function whoHtml(name, badge, mine, staff) {
 }
 // 댓글 아바타: 실명(후기 게시판/스트리머)은 프로필 사진, 익명은 "글쓴이"/"익1" 글자. 사진이 안 뜨면 첫 글자로.
 // 댓글·답글 입력칸: Enter = 등록, Shift+Enter = 줄바꿈(한글 조합 중 Enter는 무시). 줄 수에 맞춰 높이가 늘어남.
+// 좋아요(글·댓글) — 누르면 바로 바뀌고(낙관적), 서버 응답 개수로 맞춤. 내 글·댓글은 못 누름.
+function bindLikes(root) {
+  if (root.dataset.likeBound) return;
+  root.dataset.likeBound = "1";
+  root.addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("[data-like]");
+    if (!b || b.disabled) return;
+    if (!isLoggedIn()) { startLogin(); return; }
+    if (b.classList.contains("own")) { b.classList.add("shake"); setTimeout(() => b.classList.remove("shake"), 400); return; }
+    const n = b.querySelector(".n");
+    const before = Number(n.textContent || 0);
+    const on = !b.classList.contains("on");
+    const isPost = b.dataset.like === "post";
+    const show = (cnt) => { n.textContent = isPost ? String(cnt) : cnt ? String(cnt) : ""; };
+    b.classList.toggle("on", on);
+    show(Math.max(0, before + (on ? 1 : -1)));
+    b.disabled = true;
+    try {
+      const r = await call({ action: "like", targetType: b.dataset.like, targetId: Number(b.dataset.id), on });
+      b.classList.toggle("on", r.liked);
+      show(r.count);
+    } catch (err) {
+      b.classList.toggle("on", !on);
+      show(before);
+      if (err.code !== "own_target") alert(errText(err));
+    } finally {
+      b.disabled = false;
+    }
+  });
+}
 function fitTextarea(ta) {
   ta.style.height = "auto";
   ta.style.height = Math.min(ta.scrollHeight + 2, 160) + "px";
@@ -118,8 +149,9 @@ function commentHtml(c, parentId, isReply) {
     return `<div class="bd-cm${isReply ? " bd-rp" : ""}"><div class="bd-av gone"></div><div class="bd-cm-main"><div class="t bd-gone">삭제된 댓글이에요</div></div></div>`;
   }
   const name = authorOf(c);
-  const replyBtn = c.hidden && !c.body ? "" : `<div class="bd-cm-act"><button type="button" class="bd-reply-btn" data-parent="${parentId}" data-cid="${c.id}" data-name="${esc(name)}">답글 쓰기</button></div>`;
-  return `<div class="bd-cm${isReply ? " bd-rp" : ""}">
+  const likeBtn = c.mine && !c.likeCount ? "" : `<button type="button" class="bd-clike${c.liked ? " on" : ""}${c.mine ? " own" : ""}" data-like="comment" data-id="${c.id}" aria-label="좋아요">${HEART_ICON}<span class="n">${c.likeCount ? c.likeCount : ""}</span></button>`;
+  const replyBtn = c.hidden && !c.body ? "" : `<div class="bd-cm-act">${likeBtn}<button type="button" class="bd-reply-btn" data-parent="${parentId}" data-cid="${c.id}" data-name="${esc(name)}">답글 쓰기</button></div>`;
+  return `<div class="bd-cm${isReply ? " bd-rp" : ""}" data-cmt="${c.id}">
     ${avatarHtml(c)}
     <div class="bd-cm-main">
       <div class="bd-meta">${whoHtml(name, c.badge, c.mine, c.staff)}<span class="dot">·</span><span>${fmtTime(c.createdAt)}</span>${admChip(c.adminName, c.author)}${adminHiddenChip(c)}${reportBtnHtml(c, "comment")}
@@ -243,7 +275,7 @@ export function initBoard(board) {
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
           <div class="bd-title"><span class="tt">${esc(p.title)}</span>${p.hasImages ? IMG_ICON : ""}${isNew(p.createdAt, p.id, seen, p.mine) ? `<span class="new">N</span>` : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
-          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
+          <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}${p.likeCount ? `<span class="lk">${HEART_ICON} ${p.likeCount}</span>` : ""}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
     }
     renderPager(data.total, data.pageSize);
@@ -286,9 +318,11 @@ export function initBoard(board) {
   }
 
   // ---------- 글 보기 ----------
-  async function showPost(id, { thenEdit = false } = {}) {
+  // soft: 댓글 등록·삭제 뒤 다시 그릴 때 — "불러오는 중" 화면 없이 바꿔치기하고 스크롤 위치 유지(focus = 새 댓글로 이동).
+  async function showPost(id, { thenEdit = false, soft = false, focus = null } = {}) {
     curView = "post";
-    root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1></div><div class="bd-post"><div class="bd-empty">불러오는 중...</div></div>`;
+    const keepY = soft ? window.scrollY : null;
+    if (!soft) root.innerHTML = `<div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1></div><div class="bd-post"><div class="bd-empty">불러오는 중...</div></div>`;
     let data;
     try {
       data = await call({ action: "get", id });
@@ -310,6 +344,7 @@ export function initBoard(board) {
         <h2><span class="tt">${esc(p.title)}</span>${review ? `<span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
         <div class="bd-body">${esc(p.body)}</div>`}
         ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
+        ${p.hidden && !p.title ? "" : `<div class="bd-like-row"><button type="button" class="bd-like${p.liked ? " on" : ""}${p.mine ? " own" : ""}" data-like="post" data-id="${p.id}"${p.mine ? ` title="내 글에는 좋아요를 누를 수 없어요"` : ""}>${HEART_ICON}<span>좋아요</span><span class="n">${p.likeCount || 0}</span></button></div>`}
         ${p.mine || p.canDelete ? `<div class="bd-actions">
           ${p.mine ? `<button type="button" class="secondary" id="bd-edit">수정</button>` : ""}
           ${p.canDelete ? `<button type="button" class="secondary danger" id="bd-del">삭제</button>` : ""}
@@ -361,7 +396,7 @@ export function initBoard(board) {
       if (!text) return;
       const btn = e.target.querySelector("button");
       btn.disabled = true;
-      try { await call({ action: "comment", postId: p.id, body: text }); showPost(p.id); }
+      try { const r = await call({ action: "comment", postId: p.id, body: text }); showPost(p.id, { soft: true, focus: r.id }); }
       catch (err) { btn.disabled = false; statusEl.textContent = errText(err); statusEl.style.color = "#ff8f8f"; }
     });
     bindCommentTextareas(root);
@@ -372,7 +407,7 @@ export function initBoard(board) {
       if (e.target.closest(".bd-rcancel")) { closeReplyForm(); return; }
       const b = e.target.closest(".bd-c-del");
       if (!b || !confirm("댓글을 삭제할까요?")) return;
-      try { await call({ action: "delete-comment", id: Number(b.dataset.cid) }); showPost(p.id); }
+      try { await call({ action: "delete-comment", id: Number(b.dataset.cid) }); showPost(p.id, { soft: true }); }
       catch (err) { alert(errText(err)); }
     });
     clist.addEventListener("submit", async (e) => {
@@ -384,9 +419,20 @@ export function initBoard(board) {
       if (!text) return;
       const btn = f.querySelector("button[type=submit]");
       btn.disabled = true;
-      try { await call({ action: "comment", postId: p.id, body: text, parentId: Number(f.dataset.parent), replyToId: Number(f.dataset.replyTo) }); showPost(p.id); }
+      try { const r = await call({ action: "comment", postId: p.id, body: text, parentId: Number(f.dataset.parent), replyToId: Number(f.dataset.replyTo) }); showPost(p.id, { soft: true, focus: r.id }); }
       catch (err) { btn.disabled = false; const st = f.nextElementSibling; if (st && st.classList.contains("bd-rstatus")) { st.textContent = errText(err); } }
     });
+    bindLikes(root);
+    if (soft) {
+      window.scrollTo(0, keepY);
+      const el = focus ? root.querySelector(`[data-cmt="${focus}"]`) : null;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        if (r.top < 70 || r.bottom > window.innerHeight - 20) el.scrollIntoView({ block: "center" });
+        el.classList.add("bd-flash");
+        setTimeout(() => el.classList.remove("bd-flash"), 1600);
+      }
+    }
     // 답글 입력칸 — 한 번에 하나만 열림. 원댓글 묶음 맨 아래(답글들 다음)에 붙음.
     function closeReplyForm() {
       clist.querySelectorAll(".bd-rwrap").forEach((w) => w.remove());

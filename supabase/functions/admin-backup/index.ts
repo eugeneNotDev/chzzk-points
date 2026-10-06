@@ -23,7 +23,7 @@ const TABLES = [
   "roulette_outcomes", "roulette_spins", "rps_games", "odd_even_games", "free_box_draws",
   "stream_codes", "stream_code_redemptions", "stream_code_failures",
   "notices", "notice_attachments", "broadcast_schedule", "broadcast_sessions",
-  "board_posts", "board_comments", "board_images", "board_review_rewards", "board_reports", "song_requests",
+  "board_posts", "board_comments", "board_images", "board_review_rewards", "board_reports", "board_post_likes", "board_comment_likes", "song_requests",
   "egg_progress",
 ];
 

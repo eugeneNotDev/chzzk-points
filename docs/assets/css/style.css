@@ -3639,3 +3639,28 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 .neg-balance-note { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255, 107, 107, 0.1); color: var(--red-text); font-size: 0.8rem; line-height: 1.5; text-align: center; }
 .hm-pt .hm-imgico { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
 .hm-pt .hm-new { flex: 0 0 auto; font-size: 0.62rem; font-weight: 800; line-height: 1.5; color: var(--accent-text); background: var(--accent); border-radius: 4px; padding: 0 5px; }
+
+/* 게시판 좋아요(0063_board_likes.sql) */
+.bd-like-row { display: flex; justify-content: center; margin: 22px 0 4px; }
+.bd-like { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 999px; padding: 9px 20px; font-weight: 700; font-size: 0.9rem; }
+.bd-like svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.bd-like .n { font-variant-numeric: tabular-nums; }
+.bd-like:hover:not(:disabled):not(.own) { border-color: #ff6b8a; color: #ff6b8a; background: transparent; filter: none; }
+.bd-like.on { border-color: rgba(255, 107, 138, 0.5); background: rgba(255, 107, 138, 0.12); color: #ff6b8a; }
+.bd-like.on svg, .bd-clike.on svg, .bd-meta .lk svg { fill: currentColor; }
+.bd-like.own, .bd-clike.own { cursor: default; }
+.bd-like.own:hover { background: transparent; filter: none; }
+.bd-like:disabled, .bd-clike:disabled { background: transparent; color: inherit; cursor: default; }
+.bd-like.on:disabled { background: rgba(255, 107, 138, 0.12); color: #ff6b8a; }
+.bd-cm-act .bd-clike { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.bd-cm-act .bd-clike svg { width: 14px; height: 14px; }
+.bd-cm-act .bd-clike:hover:not(:disabled):not(.own) { color: #ff6b8a; }
+.bd-cm-act .bd-clike.on, .bd-cm-act .bd-clike.on:disabled { color: #ff6b8a; }
+.bd-cm-act .bd-clike .n:empty { display: none; }
+.bd-meta .lk { display: inline-flex; align-items: center; gap: 3px; color: #ff6b8a; margin-left: auto; }
+.bd-meta .lk svg { width: 13px; height: 13px; }
+.bd-meta .lk + .cm { margin-left: 10px; }
+.shake { animation: bd-shake 0.35s; }
+@keyframes bd-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.bd-cm.bd-flash { animation: bd-flash 1.6s ease-out; border-radius: 10px; }
+@keyframes bd-flash { 0% { background: rgba(0, 229, 160, 0.16); } 100% { background: transparent; } }

@@ -13,6 +13,7 @@
 // delete-comment { id }                      → { ok }  (답글 달린 원댓글은 "삭제된 댓글" 자리만 남김)
 // upload-urls    { files: [{fileName,sizeBytes}] } → { uploads: [{path,token,signedUrl}] }
 // review-status  {}                          → { isLive, eligible, alreadyRewarded, reward }
+// like           { targetType: "post"|"comment", targetId, on: boolean } → { liked, count }  (0063_board_likes.sql, 내 글·댓글은 불가)
 // report         { targetType: "post"|"comment", targetId, reason, memo? } → { ok, hidden }  (0057_board_reports.sql)
 //                서로 다른 5명이 신고(처리 안 된 신고 기준)하면 자동으로 가림. 본인 글·스트리머 글은 신고 불가, 같은 대상은 1번만.
 // my-activity    {}                          → { posts, comments, postCount, commentCount, rewardTotal }  (로그인 필수, 마이페이지 "내 활동")
@@ -177,6 +178,7 @@ Deno.serve(async (req: Request) => {
     if (action === "comment") return await addComment(admin, body, me);
     if (action === "delete-comment") return await deleteComment(admin, body, me, isAdmin);
     if (action === "report") return await reportTarget(admin, body, me);
+    if (action === "like") return await likeTarget(admin, body, me);
     if (action === "my-activity") return await myActivity(admin, me);
     if (action === "admin-reports") return isAdmin ? await adminReports(admin, body) : json({ error: "forbidden" }, 403);
     if (action === "admin-resolve") return isAdmin ? await adminResolve(admin, body) : json({ error: "forbidden" }, 403);
@@ -239,9 +241,12 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   const ids = slice.map((p: any) => p.id);
 
   const commentCounts = new Map<number, number>();
+  const likeCounts = new Map<number, number>();
   const withImages = new Set<number>();
   const paid = new Set<number>();
   if (ids.length) {
+    const { data: lks } = await admin.from("board_post_likes").select("post_id").in("post_id", ids);
+    for (const l of lks ?? []) likeCounts.set(l.post_id, (likeCounts.get(l.post_id) ?? 0) + 1);
     const [{ data: cs }, { data: ims }, rw] = await Promise.all([
       admin.from("board_comments").select("post_id").in("post_id", ids).eq("deleted", false),
       admin.from("board_images").select("post_id").in("post_id", ids),
@@ -273,6 +278,7 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
         broadcast: broadcastLabel(p.broadcast_key),
         paid: paid.has(p.id),
         commentCount: commentCounts.get(p.id) ?? 0,
+        likeCount: likeCounts.get(p.id) ?? 0,
         hasImages: !veiled && withImages.has(p.id),
         createdAt: p.created_at,
         mine: me !== null && p.channel_id === me,
@@ -335,6 +341,20 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
     for (const r of mine ?? []) (r.target_type === "post" ? reportedPost : reportedComments).add(r.target_id);
   }
   // 댓글 — 익명 번호가 지워진 댓글 때문에 밀리지 않게 전부 view()를 거친 뒤, 지워진 댓글은 작성자·본문을 비움.
+  // 좋아요 개수 + 내가 눌렀는지(누가 눌렀는지는 안 내려줌)
+  const commentIds = (comments as any[]).map((c) => c.id);
+  const [{ data: pl }, { data: cl }] = await Promise.all([
+    admin.from("board_post_likes").select("channel_id").eq("post_id", id),
+    commentIds.length ? admin.from("board_comment_likes").select("comment_id, channel_id").in("comment_id", commentIds) : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const postLikeCount = (pl ?? []).length;
+  const postLiked = me !== null && (pl ?? []).some((l: any) => l.channel_id === me);
+  const cLikeCount = new Map<number, number>();
+  const cLiked = new Set<number>();
+  for (const l of (cl ?? []) as any[]) {
+    cLikeCount.set(l.comment_id, (cLikeCount.get(l.comment_id) ?? 0) + 1);
+    if (me !== null && l.channel_id === me) cLiked.add(l.comment_id);
+  }
   const viewById = new Map<number, ReturnType<typeof view>>();
   for (const c of comments as any[]) viewById.set(c.id, view(c.channel_id));
   const byId = new Map<number, any>((comments as any[]).map((c) => [c.id, c]));
@@ -349,6 +369,7 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
       id: c.id, parentId: c.parent_id ?? null, deleted: false, replyTo,
       body: c.hidden && !isAdmin ? "" : c.body, hidden: !!c.hidden, reported: reportedComments.has(c.id),
       createdAt: c.created_at, ...v,
+      likeCount: cLikeCount.get(c.id) ?? 0, liked: cLiked.has(c.id),
       mine: me !== null && c.channel_id === me, canDelete: isAdmin || (me !== null && c.channel_id === me),
     };
   });
@@ -360,6 +381,7 @@ async function getPost(admin: Admin, body: any, me: string | null, isAdmin: bool
       author: postAuthor, staff: pv.staff, badge: pv.badge, avatarImg: pv.avatarImg, adminName: pv.adminName,
       broadcast: broadcastLabel(p.broadcast_key), paid: (rw.data ?? []).length > 0,
       createdAt: p.created_at, updatedAt: p.updated_at,
+      likeCount: postLikeCount, liked: postLiked,
       mine: me !== null && p.channel_id === me, canDelete: isAdmin || (me !== null && p.channel_id === me),
     },
     images: postVeiled ? [] : (ims ?? []).map((i: any) => ({ path: i.storage_path, url: imageUrl(i.storage_path) })),
@@ -521,9 +543,9 @@ async function addComment(admin: Admin, body: any, me: string) {
     }
   }
   if (await tooFast(admin, "board_comments", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
-  const { error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId });
+  const { data: ins, error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId }).select("id").single();
   if (error) throw new Error(`board_comments insert 실패: ${error.message}`);
-  return json({ ok: true });
+  return json({ ok: true, id: ins.id });
 }
 
 async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boolean) {
@@ -555,6 +577,35 @@ async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boole
 // ---------- 신고 ----------
 
 // 대기 중(resolution null)인 신고들을 처리 완료로 표시. { postId }면 그 글 + 그 글의 댓글 신고 전부, { type, id }면 그 대상만.
+// ---------- 좋아요 ----------
+async function likeTarget(admin: Admin, body: any, me: string) {
+  const type = body.targetType;
+  const targetId = Number(body.targetId);
+  const on = body.on === true;
+  if (type !== "post" && type !== "comment") return json({ error: "invalid_target" }, 400);
+  if (!Number.isSafeInteger(targetId) || targetId <= 0) return json({ error: "invalid_target" }, 400);
+  const table = type === "post" ? "board_post_likes" : "board_comment_likes";
+  const col = type === "post" ? "post_id" : "comment_id";
+  if (type === "post") {
+    const { data: p } = await admin.from("board_posts").select("id, channel_id, hidden").eq("id", targetId).maybeSingle();
+    if (!p || p.hidden) return json({ error: "not_found" }, 404);
+    if (p.channel_id === me) return json({ error: "own_target" }, 400);
+  } else {
+    const { data: c } = await admin.from("board_comments").select("id, channel_id, hidden, deleted").eq("id", targetId).maybeSingle();
+    if (!c || c.hidden || c.deleted) return json({ error: "not_found" }, 404);
+    if (c.channel_id === me) return json({ error: "own_target" }, 400);
+  }
+  if (on) {
+    const { error } = await admin.from(table).upsert({ [col]: targetId, channel_id: me }, { onConflict: `${col},channel_id`, ignoreDuplicates: true });
+    if (error) throw new Error(`${table} insert 실패: ${error.message}`);
+  } else {
+    const { error } = await admin.from(table).delete().eq(col, targetId).eq("channel_id", me);
+    if (error) throw new Error(`${table} delete 실패: ${error.message}`);
+  }
+  const { count } = await admin.from(table).select("channel_id", { count: "exact", head: true }).eq(col, targetId);
+  return json({ liked: on, count: count ?? 0 });
+}
+
 async function closeReports(admin: Admin, target: { postId?: number; type?: string; id?: number }, resolution: string) {
   let q = admin.from("board_reports").update({ resolution, resolved_at: new Date().toISOString() }).is("resolution", null);
   if (target.postId) q = q.eq("post_id", target.postId);
