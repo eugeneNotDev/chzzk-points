@@ -66,7 +66,9 @@ function markSeen(id) {
     localStorage.setItem(SEEN_KEY, JSON.stringify(arr));
   } catch { /* 저장 못 해도 N 표시만 계속 남을 뿐 */ }
 }
-const isNew = (iso, id, seen) => Date.now() - new Date(iso).getTime() < 3_600_000 && !seen.has(id);
+// N 표시: 올라온 지 24시간 이내 + 이 브라우저에서 아직 안 열어본 글(내 글 제외).
+const NEW_WINDOW_MS = 24 * 3_600_000;
+const isNew = (iso, id, seen, mine) => !mine && Date.now() - new Date(iso).getTime() < NEW_WINDOW_MS && !seen.has(id);
 
 const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
@@ -239,7 +241,7 @@ export function initBoard(board) {
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span><span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>` : `
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
-          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
+          <div class="bd-title"><span class="tt">${esc(p.title)}</span>${isNew(p.createdAt, p.id, seen, p.mine) ? `<span class="new">N</span>` : ""}${p.hasImages ? IMG_ICON : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
           <div class="bd-prev">${esc(p.preview)}</div>
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
