@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=108">
+<link rel="stylesheet" href="assets/css/style.css?v=109">
 </head>
 <body>
   <script>
@@ -341,10 +341,14 @@
       posts = posts.slice(0, HOME_POSTS_LIMIT);
       emptyEl.textContent = "아직 게시판에 글이 없어요.";
       emptyEl.hidden = posts.length > 0;
+      // N 표시 — 게시판 목록(board.js isNew)과 같은 기준: 올라온 지 1시간 이내 + 이 브라우저에서 아직 안 열어본 글.
+      let seen = new Set();
+      try { seen = new Set(JSON.parse(localStorage.getItem("chzzk_board_seen") || "[]")); } catch (e) {}
+      const isNewPost = (p) => Date.now() - new Date(p.createdAt).getTime() < 3_600_000 && !seen.has(p.id);
       listEl.innerHTML = posts.map((p) => `
         <li><a class="hm-post" href="${BOARD_PAGE[p.board]}?post=${p.id}" data-board="${p.board}" data-post="${p.id}">
           <span class="hm-chip${p.board === "review" ? " review" : ""}">${p.board === "review" ? "후기" : "자유"}</span>
-          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${p.hasImages ? HOME_IMG_ICON : ""}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
+          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${isNewPost(p) ? `<span class="hm-new">N</span>` : ""}${p.hasImages ? HOME_IMG_ICON : ""}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
           <span class="hm-pm">${homeRelTime(p.createdAt)}</span>
         </a></li>`).join("");
     }

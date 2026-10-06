@@ -3638,3 +3638,4 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 #balance-value.neg { color: var(--red-text); }
 .neg-balance-note { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255, 107, 107, 0.1); color: var(--red-text); font-size: 0.8rem; line-height: 1.5; text-align: center; }
 .hm-pt .hm-imgico { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
+.hm-pt .hm-new { flex: 0 0 auto; font-size: 0.62rem; font-weight: 800; line-height: 1.5; color: var(--accent-text); background: var(--accent); border-radius: 4px; padding: 0 5px; }
