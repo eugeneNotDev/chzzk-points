@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=106">
+<link rel="stylesheet" href="assets/css/style.css?v=108">
 </head>
 <body>
   <script>
@@ -290,6 +290,8 @@
     // 게시판 새 글 — board 함수의 list(게시판별 첫 페이지)를 받아서 최신 5개. "전체"는 두 게시판을 합쳐 최신순.
     // 신고로 가려진 글은 뺌. 글을 누르면 그 글로 바로 이동(board.js가 __boardOpenPost를 보고 글을 엶).
     const HOME_POSTS_LIMIT = 5;
+    // 사진 첨부 글 표시 — 게시판 목록(board.js IMG_ICON)과 같은 아이콘.
+    const HOME_IMG_ICON = `<svg class="hm-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
     const BOARD_PAGE = { free: "board-free.html", review: "board-review.html" };
     const boardListCache = new Map();
     let homeBoardTab = "all";
@@ -342,7 +344,7 @@
       listEl.innerHTML = posts.map((p) => `
         <li><a class="hm-post" href="${BOARD_PAGE[p.board]}?post=${p.id}" data-board="${p.board}" data-post="${p.id}">
           <span class="hm-chip${p.board === "review" ? " review" : ""}">${p.board === "review" ? "후기" : "자유"}</span>
-          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
+          <span class="hm-pt"><span class="tt">${escapeHtml(p.title)}</span>${p.hasImages ? HOME_IMG_ICON : ""}${p.commentCount ? `<span class="cc">[${p.commentCount}]</span>` : ""}</span>
           <span class="hm-pm">${homeRelTime(p.createdAt)}</span>
         </a></li>`).join("");
     }

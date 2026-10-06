@@ -3633,3 +3633,8 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 .hof-pts { font-size: 0.78rem; color: var(--gold-text); font-weight: 700; margin-top: 4px; }
 .hof-empty { flex: 1; text-align: center; color: var(--muted); font-size: 0.86rem; padding: 18px 0; border: 1px dashed var(--border); border-radius: 14px; }
 .hof-note { font-size: 0.76rem; color: var(--muted); margin: 10px 0 0; }
+
+/* 마이너스 잔액(관리자 차감·후기 보상 회수) */
+#balance-value.neg { color: var(--red-text); }
+.neg-balance-note { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: rgba(255, 107, 107, 0.1); color: var(--red-text); font-size: 0.8rem; line-height: 1.5; text-align: center; }
+.hm-pt .hm-imgico { width: 14px; height: 14px; flex: 0 0 auto; color: var(--accent); }
