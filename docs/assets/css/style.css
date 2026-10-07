@@ -3664,3 +3664,20 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 @keyframes bd-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
 .bd-cm.bd-flash { animation: bd-flash 1.6s ease-out; border-radius: 10px; }
 @keyframes bd-flash { 0% { background: rgba(0, 229, 160, 0.16); } 100% { background: transparent; } }
+
+/* 글쓰기 — 본문 칸 안에 사진이 바로 보이는 편집칸(board.js showEditor). 저장은 글 + [[사진:n]] 표시. */
+.bd-rich { font-weight: 400; min-height: 260px; max-height: 65vh; overflow-y: auto; line-height: 1.6; white-space: pre-wrap; word-break: break-word; cursor: text; outline: none; }
+.bd-rich.empty::before { content: attr(data-ph); color: var(--muted); pointer-events: none; position: absolute; }
+.bd-rich { position: relative; }
+.bd-rich:focus { border-color: var(--accent); }
+.bd-ed-img { position: relative; margin: 10px 0; display: block; max-width: 100%; user-select: none; }
+.bd-ed-img img { display: block; max-width: 100%; max-height: 420px; border-radius: 10px; }
+.bd-ed-rm { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 1rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.bd-ed-rm:hover:not(:disabled) { background: rgba(220, 50, 50, 0.9); filter: none; }
+.bd-ed-tools { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; }
+.bd-ed-tools .bd-add-img { width: auto; height: auto; flex-direction: row; gap: 6px; padding: 8px 14px; aspect-ratio: auto; }
+.bd-ed-tools .bd-add-img .bd-imgico { width: 18px; height: 18px; }
+.bd-ed-hint { font-size: 0.76rem; color: var(--muted); }
+/* 글 보기 — 본문 사이 사진 */
+.bd-inline-img { display: block; margin: 14px 0; max-width: 100%; }
+.bd-inline-img img { display: block; max-width: 100%; max-height: 720px; border-radius: 12px; }

@@ -70,6 +70,30 @@ function markSeen(id) {
 const NEW_WINDOW_MS = 24 * 3_600_000;
 const isNew = (iso, id, seen, mine) => !mine && Date.now() - new Date(iso).getTime() < NEW_WINDOW_MS && !seen.has(id);
 
+// 본문 속 사진 자리 표시(글쓰기 편집칸이 저장할 때 넣음). n = 이 글 사진의 순서(1부터).
+const IMG_MARK_RE = /\[\[사진:(\d+)\]\]/;
+const IMG_MARK_RE_G = /\[\[사진:\d+\]\]/g;
+function imgLinkHtml(i) {
+  return `<a class="bd-inline-img" href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`;
+}
+// 글 본문 + 사진: [[사진:n]] 자리에 그 사진, 표시가 없는 사진(예전 글 포함)은 맨 아래 묶음.
+function bodyWithImagesHtml(body, images) {
+  const parts = String(body).split(new RegExp(IMG_MARK_RE.source));
+  const used = new Set();
+  let html = "";
+  parts.forEach((seg, i) => {
+    if (i % 2 === 1) {
+      const im = images[Number(seg) - 1];
+      if (im && !used.has(Number(seg))) { used.add(Number(seg)); html += imgLinkHtml(im); }
+      return;
+    }
+    const t = seg.replace(/^\n+/, "").replace(/\n+$/, "");
+    if (t) html += `<div class="bd-body">${esc(t)}</div>`;
+  });
+  const rest = images.filter((_, i) => !used.has(i + 1));
+  if (rest.length) html += `<div class="bd-images">${rest.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>`;
+  return html;
+}
 const HEART_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.1 5 6.6 5c2.1 0 3.6 1.2 5.4 3.2C13.8 6.2 15.3 5 17.4 5c3.5 0 5.4 3.6 4.1 6.8C19.5 16.4 12 21 12 21z"/></svg>`;
 const CM_ICON = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>`;
 const IMG_ICON = `<svg class="bd-imgico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="사진 있음"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>`;
@@ -274,7 +298,7 @@ export function initBoard(board) {
         </a>` : `
         <a class="bd-item" tabindex="0" role="button" data-id="${p.id}">
           <div class="bd-title"><span class="tt">${esc(p.title)}</span>${p.hasImages ? IMG_ICON : ""}${isNew(p.createdAt, p.id, seen, p.mine) ? `<span class="new">N</span>` : ""}${chipsHtml(p)}${adminHiddenChip(p)}</div>
-          <div class="bd-prev">${esc(p.preview)}</div>
+          <div class="bd-prev">${esc(String(p.preview || "").replace(/\[\[사진:\d*\]?\]?/g, " ").replace(/\[\[[^\]]*$/, "").replace(/\s+/g, " ").trim())}</div>
           <div class="bd-meta">${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}</span>${admChip(p.adminName, p.author)}${p.likeCount ? `<span class="lk">${HEART_ICON} ${p.likeCount}</span>` : ""}<span class="cm">${CM_ICON} ${p.commentCount}</span></div>
         </a>`).join("");
     }
@@ -342,8 +366,7 @@ export function initBoard(board) {
         <div class="bd-meta" style="margin-bottom:10px">${p.avatarImg ? `<img class="bd-mini-av" src="${esc(p.avatarImg)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}${whoHtml(authorOf(p), p.badge, p.mine, p.staff)}<span class="dot">·</span><span>${fmtTime(p.createdAt)}${p.updatedAt !== p.createdAt ? " · 수정됨" : ""}</span>${admChip(p.adminName, p.author)}${adminHiddenChip(p)}${reportBtnHtml(p, "post")}</div>
         ${p.hidden && !p.title ? `<div class="bd-body">${veilHtml("글")}</div>` : `
         <h2><span class="tt">${esc(p.title)}</span>${review ? `<span class="bd-chips">${chipsHtml(p)}</span>` : ""}</h2>
-        <div class="bd-body">${esc(p.body)}</div>`}
-        ${data.images.length ? `<div class="bd-images">${data.images.map((i) => `<a href="${esc(i.url)}" target="_blank" rel="noopener"><img src="${esc(i.url)}" alt="" loading="lazy"></a>`).join("")}</div>` : ""}
+        ${bodyWithImagesHtml(p.body, data.images)}`}
         ${p.hidden && !p.title ? "" : `<div class="bd-like-row"><button type="button" class="bd-like${p.liked ? " on" : ""}${p.mine ? " own" : ""}" data-like="post" data-id="${p.id}"${p.mine ? ` title="내 글에는 좋아요를 누를 수 없어요"` : ""}>${HEART_ICON}<span>좋아요</span><span class="n">${p.likeCount || 0}</span></button></div>`}
         ${p.mine || p.canDelete ? `<div class="bd-actions">
           ${p.mine ? `<button type="button" class="secondary" id="bd-edit">수정</button>` : ""}
@@ -510,91 +533,222 @@ export function initBoard(board) {
   function showEditor(existing) {
     const editing = !!existing;
     curView = "editor";
-    // 이미지 항목: {path?, url, file?}  — 기존(path 있음) / 새로 고른 것(file 있음)
-    let imgs = editing ? existing.images.map((i) => ({ path: i.path, url: i.url })) : [];
+    // 이미지 항목: {key, path?, url, file?} — 기존(path 있음) / 새로 고른 것(file 있음). 본문 편집칸 안에 사진이 바로 보이고,
+    // 저장할 때 편집칸을 "글 + [[사진:n]] 표시"로 바꿔서 보냄(n = 저장되는 사진 순서). 표시 없는 사진은 글 맨 아래.
+    let keySeq = 0;
+    const imgs = editing ? existing.images.map((i) => ({ key: ++keySeq, path: i.path, url: i.url })) : [];
     root.innerHTML = `
       <div class="bd-top"><h1 class="brand-heading">${cfg.name}</h1><button type="button" class="bd-write secondary" id="bd-back">${editing ? "취소" : "목록"}</button></div>
       <p class="bd-sub">${editing ? "글을 수정해요." : board === "free" && isAdmin() ? "스트리머 계정으로 쓴 글은 익명이 아니라 닉네임으로 보여요." : cfg.sub}</p>
       ${!editing && board === "review" ? `<div class="bd-banner" id="bd-banner" hidden></div>` : ""}
       <div class="bd-post bd-editor">
         <input type="text" id="bd-title" class="notice-title-input" maxlength="60" placeholder="제목 (최대 60자)" value="${editing ? esc(existing.post.title) : ""}">
-        <textarea id="bd-body" class="notice-title-input bd-body-input" maxlength="5000" rows="10" placeholder="내용을 입력하세요 (최대 5000자)">${editing ? esc(existing.post.body) : ""}</textarea>
-        <div class="bd-img-row" id="bd-imgs"></div>
+        <div id="bd-body" class="notice-title-input bd-body-input bd-rich" contenteditable="true" role="textbox" aria-multiline="true" data-ph="내용을 입력하세요 (최대 5000자)"></div>
+        <div class="bd-ed-tools"><button type="button" class="bd-add-img" id="bd-add-img">${IMG_ICON}<span id="bd-img-count">사진 0/${MAX_IMAGES}</span></button><span class="bd-ed-hint">사진은 글 쓰던 자리에 들어가요</span></div>
         <input type="file" id="bd-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
         <p class="bd-note" id="bd-status"></p>
         <div class="bd-editor-actions"><button type="button" class="secondary" id="bd-cancel">취소</button><button type="button" id="bd-save">${editing ? "수정 완료" : "등록"}</button></div>
       </div>`;
     if (!editing && board === "review") loadBanner();
     const statusEl = document.getElementById("bd-status");
-    const imgsEl = document.getElementById("bd-imgs");
+    const ed = document.getElementById("bd-body");
     const setStatus = (t, err = false) => { statusEl.textContent = t; statusEl.style.color = err ? "#ff8f8f" : ""; };
-    function renderImgs() {
-      imgsEl.innerHTML = imgs.map((im, i) => `<div class="bd-thumb"><img src="${esc(im.url)}" alt=""><button type="button" data-rm="${i}" aria-label="삭제">×</button></div>`).join("") +
-        (imgs.length < MAX_IMAGES ? `<button type="button" class="bd-add-img" id="bd-add-img">${IMG_ICON}<span>사진 ${imgs.length}/${MAX_IMAGES}</span></button>` : "");
-      const add = document.getElementById("bd-add-img");
-      if (add) add.addEventListener("click", () => document.getElementById("bd-file").click());
+    const figHtml = (im) => `<figure class="bd-ed-img" contenteditable="false" data-k="${im.key}"><img src="${esc(im.url)}" alt=""><button type="button" class="bd-ed-rm" aria-label="사진 빼기">×</button></figure>`;
+    const lineHtml = (t) => `<div>${t ? esc(t) : "<br>"}</div>`;
+
+    // 기존 글 불러오기: [[사진:n]] 자리에 사진, 표시 없는 사진은 맨 아래.
+    if (editing) {
+      const used = new Set();
+      const parts = String(existing.post.body).split(IMG_MARK_RE);
+      let html = "";
+      parts.forEach((seg, i) => {
+        if (i % 2 === 1) {
+          const im = imgs[Number(seg) - 1];
+          if (im && !used.has(im.key)) { used.add(im.key); html += figHtml(im); }
+          return;
+        }
+        const lines = seg.replace(/^\n/, "").replace(/\n$/, "").split("\n");
+        if (seg.length) html += lines.map(lineHtml).join("");
+      });
+      for (const im of imgs) if (!used.has(im.key)) html += figHtml(im);
+      ed.innerHTML = html || lineHtml("");
+    } else {
+      ed.innerHTML = lineHtml("");
     }
-    renderImgs();
-    imgsEl.addEventListener("click", (e) => {
-      const rm = e.target.closest("[data-rm]");
+
+    const countImgs = () => ed.querySelectorAll("figure.bd-ed-img").length;
+    const updateCount = () => {
+      const n = countImgs();
+      document.getElementById("bd-img-count").textContent = `사진 ${n}/${MAX_IMAGES}`;
+      document.getElementById("bd-add-img").disabled = n >= MAX_IMAGES;
+      ed.classList.toggle("empty", !ed.textContent.trim() && n === 0);
+    };
+    updateCount();
+
+    // 마지막 커서 위치 기억 — 사진 버튼을 누르면 편집칸 포커스가 빠지므로.
+    let savedRange = null;
+    const remember = () => {
+      const sel = window.getSelection();
+      if (sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer)) savedRange = sel.getRangeAt(0).cloneRange();
+    };
+    document.addEventListener("selectionchange", remember);
+    ed.addEventListener("input", updateCount);
+    // 붙여넣기는 글자만(서식·외부 이미지 차단). 사진 파일을 붙여넣으면 사진으로 넣어줌.
+    ed.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const files = Array.from(e.clipboardData?.files || []).filter((f) => f.type.startsWith("image/"));
+      if (files.length) { addFiles(files); return; }
+      const text = (e.clipboardData?.getData("text/plain") || "").replace(/\r\n/g, "\n");
+      document.execCommand("insertText", false, text);
+    });
+    ed.addEventListener("drop", (e) => {
+      const files = Array.from(e.dataTransfer?.files || []).filter((f) => f.type.startsWith("image/"));
+      e.preventDefault();
+      if (files.length) addFiles(files);
+    });
+    ed.addEventListener("click", (e) => {
+      const rm = e.target.closest(".bd-ed-rm");
       if (!rm) return;
-      const [gone] = imgs.splice(Number(rm.dataset.rm), 1);
-      if (gone.file) URL.revokeObjectURL(gone.url);
-      renderImgs();
+      const fig = rm.closest("figure");
+      const im = imgs.find((x) => x.key === Number(fig.dataset.k));
+      if (im && im.file) URL.revokeObjectURL(im.url);
+      fig.remove();
+      updateCount();
     });
-    document.getElementById("bd-file").addEventListener("change", (e) => {
-      for (const f of Array.from(e.target.files)) {
-        if (imgs.length >= MAX_IMAGES) break;
-        if (!/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { setStatus("jpg, png, gif, webp 이미지만 올릴 수 있어요.", true); continue; }
-        imgs.push({ file: f, url: URL.createObjectURL(f) });
+
+    function insertFigures(list) {
+      const frag = document.createDocumentFragment();
+      for (const im of list) {
+        const t = document.createElement("template");
+        t.innerHTML = figHtml(im);
+        frag.appendChild(t.content.firstChild);
       }
+      const after = document.createElement("div");
+      after.innerHTML = "<br>";
+      frag.appendChild(after);
+      // 커서가 있던 줄 바로 아래에 넣음(줄 중간이면 그 줄 뒤). 커서 기록이 없으면 맨 끝.
+      let block = null;
+      if (savedRange && ed.contains(savedRange.startContainer)) {
+        block = savedRange.startContainer;
+        while (block && block.parentNode !== ed) block = block.parentNode;
+      }
+      if (block && block !== ed) {
+        // 빈 줄이면 그 줄을 사진으로 바꿔치기
+        if (block.nodeName === "DIV" && !block.textContent.trim() && !block.querySelector("figure")) block.replaceWith(frag);
+        else block.after(frag);
+      } else {
+        ed.appendChild(frag);
+      }
+      const r = document.createRange();
+      r.setStart(after, 0);
+      r.collapse(true);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      savedRange = r.cloneRange();
+      updateCount();
+    }
+    function addFiles(files) {
+      const room = MAX_IMAGES - countImgs();
+      const added = [];
+      for (const f of files) {
+        if (added.length >= room) { setStatus(`사진은 최대 ${MAX_IMAGES}장까지 올릴 수 있어요.`, true); break; }
+        if (!/^image\/(jpeg|png|gif|webp)$/.test(f.type)) { setStatus("jpg, png, gif, webp 이미지만 올릴 수 있어요.", true); continue; }
+        const im = { key: ++keySeq, file: f, url: URL.createObjectURL(f) };
+        imgs.push(im);
+        added.push(im);
+      }
+      if (added.length) insertFigures(added);
+    }
+    document.getElementById("bd-add-img").addEventListener("mousedown", (e) => e.preventDefault()); // 커서 유지
+    document.getElementById("bd-add-img").addEventListener("click", () => document.getElementById("bd-file").click());
+    document.getElementById("bd-file").addEventListener("change", (e) => {
+      addFiles(Array.from(e.target.files));
       e.target.value = "";
-      renderImgs();
     });
-    const back = () => goBack(() => (editing ? showPost(existing.post.id) : showList()));
+
+    // 편집칸 → { text, order(사진 key 순서) }. 줄(div/p/br) 단위로 줄바꿈, 사진은 [[사진:n]] 한 줄.
+    function serialize() {
+      const order = [];
+      const lines = [];
+      let cur = "";
+      const flush = () => { lines.push(cur); cur = ""; };
+      const walk = (node, isBlock) => {
+        for (const ch of Array.from(node.childNodes)) {
+          if (ch.nodeType === 3) { cur += ch.textContent.replace(/ /g, " "); continue; }
+          if (ch.nodeType !== 1) continue;
+          if (ch.matches("figure.bd-ed-img")) {
+            if (cur) flush();
+            order.push(Number(ch.dataset.k));
+            lines.push(`[[사진:${order.length}]]`);
+            continue;
+          }
+          if (ch.nodeName === "BR") { flush(); continue; }
+          const block = /^(DIV|P|LI|H\d|BLOCKQUOTE)$/.test(ch.nodeName);
+          if (block && cur) flush();
+          walk(ch, block);
+          if (block) {
+            // <div><br></div> 처럼 빈 줄은 위의 BR에서 이미 한 줄 처리됨
+            if (cur || !ch.querySelector("br, figure")) flush();
+          }
+        }
+      };
+      walk(ed, true);
+      if (cur) flush();
+      const text = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+      return { text, order };
+    }
+
+    const back = () => {
+      document.removeEventListener("selectionchange", remember);
+      goBack(() => (editing ? showPost(existing.post.id) : showList()));
+    };
     document.getElementById("bd-back").addEventListener("click", back);
     document.getElementById("bd-cancel").addEventListener("click", back);
     const saveBtn = document.getElementById("bd-save");
     saveBtn.addEventListener("click", async () => {
       const title = document.getElementById("bd-title").value.trim();
-      const text = document.getElementById("bd-body").value.trim();
+      const { text, order } = serialize();
+      const plain = text.replace(IMG_MARK_RE_G, "").trim();
       if (!title) { setStatus("제목을 입력해주세요.", true); return; }
-      if (!text) { setStatus("내용을 입력해주세요.", true); return; }
+      if (!plain && !order.length) { setStatus("내용을 입력해주세요.", true); return; }
+      if (text.length > 5000) { setStatus("내용이 너무 길어요. (최대 5000자)", true); return; }
+      const chosen = order.map((k) => imgs.find((x) => x.key === k)).filter(Boolean);
       saveBtn.disabled = true;
       try {
-        let paths = imgs.filter((i) => i.path).map((i) => i.path);
-        const fresh = imgs.filter((i) => i.file);
+        const fresh = chosen.filter((i) => i.file);
+        let uploads = [];
         if (fresh.length) {
           setStatus("사진 올리는 중...");
           const files = await Promise.all(fresh.map((i) => shrinkImage(i.file)));
-          const { uploads } = await call({ action: "upload-urls", files: files.map((f) => ({ fileName: f.name, sizeBytes: f.size })) });
+          ({ uploads } = await call({ action: "upload-urls", files: files.map((f) => ({ fileName: f.name, sizeBytes: f.size })) }));
           for (let i = 0; i < files.length; i++) {
             const { error } = await supabase.storage.from(BUCKET).uploadToSignedUrl(uploads[i].path, uploads[i].token, files[i], { contentType: files[i].type });
             if (error) throw new Error("upload_failed");
           }
-          // 순서 유지: 기존/새 이미지를 화면에 보이던 순서대로
-          let k = 0;
-          paths = imgs.map((im) => (im.path ? im.path : uploads[k++].path));
         }
+        let k = 0;
+        const paths = chosen.map((im) => (im.path ? im.path : uploads[k++].path));
         setStatus("저장 중...");
+        document.removeEventListener("selectionchange", remember);
         if (editing) {
           await call({ action: "update", id: existing.post.id, title, body: text, images: paths });
-          // 글 보기 → 수정으로 들어온 기록이면 뒤로 돌아가면서 글을 새로 불러옴
           if (history.state && history.state.fromBoard) history.back();
           else { setUrl({ post: String(existing.post.id) }, false); showPost(existing.post.id); }
         } else {
           const r = await call({ action: "create", board, title, body: text, images: paths });
           if (r.rewarded) { alert(`후기 보상 ${r.rewarded}P가 지급됐어요!`); refreshPoints(); }
-          // 글쓰기 기록을 새 글 보기로 바꿔치기 → 뒤로가기하면 목록
           setUrl({ post: String(r.id) }, false, { fromBoard: !!(history.state && history.state.fromBoard) });
           showPost(r.id);
         }
       } catch (e) {
         saveBtn.disabled = false;
+        document.addEventListener("selectionchange", remember);
         setStatus(e.code ? errText(e) : "저장하지 못했어요. 다시 시도해주세요.", true);
       }
     });
   }
+
 
   function refreshPoints() {
     try { if (typeof verifySessionInBackground === "function") verifySessionInBackground(); } catch { /* 무시 */ }
