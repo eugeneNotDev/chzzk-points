@@ -3689,7 +3689,9 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 .rk-nm { display: inline-flex; flex-direction: column; align-items: flex-start; min-width: min(3.5em, 100%); }
 .rk-nm > .rk-sp { margin: 0 0 1px; font-size: 0.7em; line-height: 1.1; }
 ol.ranking-list li:has(.rk-nm) { padding-top: 5.5px; padding-bottom: 5.5px; }
-ol.ranking-list .name:has(.rk-nm), .title-sp-preview-name:has(.rk-nm) { display: flex; align-items: center; }
+/* 이름 칸은 특수 칭호가 없어도 항상 가로 묶음(flex, 세로 가운데) — 예전처럼 글줄 안에 배지를 놓으면(vertical-align:middle)
+   한글 글자 높이 기준이 안 맞아서 배지가 닉네임보다 1~2px 낮아 보였음. */
+ol.ranking-list .name, .title-sp-preview-name { display: flex; align-items: center; }
 /* 장착 칭호 ↔ 닉네임 간격 — 특수 칭호 있는 줄/없는 줄 똑같이 이 값 하나로. */
 .rk-shop { margin-right: 0.35em; } /* 배지 글자 크기(0.78em) 기준이라 약 4.4px — 예전 띄어쓰기 한 칸과 비슷 */
 /* 배지 바깥으로 튀어나오는 꾸밈이 있는 디자인은 그만큼 더 띄워서 "눈에 보이는" 간격을 맞춤(실측 기준, 기본 배지 ≈ 5.5px):
@@ -3701,8 +3703,8 @@ ol.ranking-list .name:has(.rk-nm), .title-sp-preview-name:has(.rk-nm) { display:
 :root[data-theme="light"] .rk-shop.title-badge--glass { margin-right: calc(0.35em + 2px); }
 :root[data-theme="light"] .rk-shop.title-badge--glass.title-badge--starred { margin-right: calc(0.35em + 3.5px); }
 :root[data-theme="light"] .rk-shop.title-badge--glow.title-badge--starred { margin-right: calc(0.35em + 3.5px); }
-.name:has(.rk-nm) > .title-badge, .title-sp-preview-name:has(.rk-nm) > .title-badge { flex: 0 1 auto; min-width: 0; }
-.name:has(.rk-nm) > .title-badge .tb-text, .title-sp-preview-name:has(.rk-nm) > .title-badge .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+ol.ranking-list .name > .title-badge, .title-sp-preview-name > .title-badge { flex: 0 1 auto; min-width: 0; }
+ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-badge .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rk-sp { display: flex; align-items: center; column-gap: 4px; font-weight: 800; letter-spacing: 0.01em; }
 .rk-sp-item { display: inline-flex; align-items: center; gap: 2px; color: var(--sp, #f5c542); white-space: nowrap; }
 .rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; position: relative; top: -0.09em; } /* 한글은 글자 윗부분이 높아서 가운데 정렬만 하면 아이콘이 1px쯤 낮아 보임 */
