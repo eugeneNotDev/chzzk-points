@@ -3692,6 +3692,9 @@ ol.ranking-list li:has(.rk-nm) { padding-top: 5.5px; padding-bottom: 5.5px; }
 /* 이름 칸은 특수 칭호가 없어도 항상 가로 묶음(flex, 세로 가운데) — 예전처럼 글줄 안에 배지를 놓으면(vertical-align:middle)
    한글 글자 높이 기준이 안 맞아서 배지가 닉네임보다 1~2px 낮아 보였음. */
 ol.ranking-list .name, .title-sp-preview-name { display: flex; align-items: center; }
+/* 상자 가운데 정렬만 하면 사용자 PC(윈도우 글꼴)에서 배지·"비공개" 표시가 닉네임보다 1px쯤 높아 보여서(실측) 1px 내림.
+   특수 칭호가 있는 줄은 [특수 칭호/닉네임] 묶음 가운데에 맞추는 거라 그대로 둠. */
+ol.ranking-list .name:not(:has(.rk-nm)) > .rk-shop, ol.ranking-list .name > .rank-private-tag { position: relative; top: 1px; }
 /* 장착 칭호 ↔ 닉네임 간격 — 특수 칭호 있는 줄/없는 줄 똑같이 이 값 하나로. */
 .rk-shop { margin-right: 0.35em; } /* 배지 글자 크기(0.78em) 기준이라 약 4.4px — 예전 띄어쓰기 한 칸과 비슷 */
 /* 배지 바깥으로 튀어나오는 꾸밈이 있는 디자인은 그만큼 더 띄워서 "눈에 보이는" 간격을 맞춤(실측 기준, 기본 배지 ≈ 5.5px):
