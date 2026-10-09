@@ -729,9 +729,12 @@ function specialTitleLineHtml(list) {
 // 줄 높이가 달라져서 비공개 유저가 티 나지 않게 똑같이 뺌(관리자는 유저 상세 모달에서 확인).
 function rankingNameHtml(row, isMe) {
   const name = `${escapeHtmlForAuth(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}`;
+  const front = `${rankingPrivateTagHtml(row)}${renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color)}`;
   const sp = row.is_public === false ? "" : specialTitleLineHtml(row.special_titles);
-  const nameBlock = sp ? `<span class="rk-nm">${sp}<span class="rk-nm-text">${name}</span></span>` : name;
-  return `${rankingPrivateTagHtml(row)}${renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color)}${nameBlock}`;
+  if (!sp) return `${front}${name}`;
+  // 3줄 격자: [빈칸|특수 칭호] / [장착 칭호|닉네임] / [빈칸|빈칸(윗줄과 같은 높이)] — 아래에도 같은 높이를 둬서
+  // 닉네임 줄이 순위 숫자·포인트와 같은 높이(가운데)에 오게 함.
+  return `<span class="rk-grid${front.trim() ? "" : " rk-grid--solo"}"><span class="rk-sp-cell">${sp}</span>${front.trim() ? `<span class="rk-front">${front.trim()}</span>` : ""}<span class="rk-nm-text">${name}</span></span>`;
 }
 
 // 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.
@@ -825,9 +828,19 @@ function rankingPrivateTagHtml(row) {
 //  - 반짝이 별: 체크하면 모서리에 반짝이 별
 // 전부 서로 같이 쓸 수 있음(무지개만 두 번째 색이랑 같이 안 됨). 아래 미리보기는 실제 배지 모양 그대로.
 //   const picker = createTitleColorPicker(hostEl, { initialColor, getPreviewName: () => input.value });
+//   특수 칭호 지급 폼은 { mode: "special" } — 랭킹에서 배지가 아니라 닉네임 윗줄 "글자"로만 보여서
+//   글자에 안 먹는 옵션(유리/빛나는 테두리 디자인, 반짝이 별, 배경+글자 섞기)은 숨기고, 미리보기도 랭킹 한 줄 모양.
 //   picker.getColor() → 저장할 값 / picker.setColor(값) / picker.refreshPreview()
-function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
-  let state = parseTitleStyle(initialColor);
+function createTitleColorPicker(hostEl, { initialColor, getPreviewName, mode = "badge" } = {}) {
+  const special = mode === "special";
+  const designs = special
+    ? [{ id: "basic", name: "기본" }, { id: "shine", name: "금속 광택" }]
+    : TITLE_DESIGNS;
+  // 특수 칭호에서 못 쓰는 값은 기본값으로(디자인은 기본/광택만, 별 없음, 두 가지 색은 그라데이션만).
+  const normalize = (st) => (special
+    ? { ...st, design: st.design === "shine" ? "shine" : "basic", star: false, mix: "grad" }
+    : st);
+  let state = normalize(parseTitleStyle(initialColor));
   // 색상표(input[type=color])는 일반 색만 다룰 수 있어서, 무지개일 땐 마지막 일반 색을 기억해둠.
   let lastHex = state.color === "rainbow" ? DEFAULT_TITLE_COLOR : state.color;
   // 두 가지 색을 껐다 켜도 전에 고른 두 번째 색이 돌아오게 기억
@@ -853,7 +866,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
       </div>
       <div class="title-duo-bar">
         <label class="title-option-toggle title-duo-toggle"><input type="checkbox" class="title-duo-input"> 두 가지 색 섞기</label>
-        <div class="title-mix-options" role="radiogroup" aria-label="섞는 방식">
+        <div class="title-mix-options" role="radiogroup" aria-label="섞는 방식"${special ? " hidden" : ""}>
           ${TITLE_MIX_MODES.map((m) => `<button type="button" class="title-mix-option" role="radio" data-mix="${m.id}">${m.name}</button>`).join("")}
         </div>
         <button type="button" class="title-duo-swap" title="두 색 순서 바꾸기">⇄ 순서 바꾸기</button>
@@ -866,7 +879,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
       <div class="title-design-row">
         <span class="title-design-label">디자인</span>
         <div class="title-design-options" role="radiogroup" aria-label="칭호 디자인">
-          ${TITLE_DESIGNS.map((d) => `
+          ${designs.map((d) => `
             <button type="button" class="title-design-option" role="radio" data-design="${d.id}">
               <span class="title-design-sample"></span><span class="title-design-name">${d.name}</span>
             </button>`).join("")}
@@ -878,7 +891,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
           <span class="title-icon-current"></span>
           <svg class="title-icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
         </button>
-        <label class="title-option-toggle"><input type="checkbox" class="title-star-input"> 반짝이 별</label>
+        <label class="title-option-toggle"${special ? " hidden" : ""}><input type="checkbox" class="title-star-input"> 반짝이 별</label>
       </div>
       <dialog class="title-icon-dialog" aria-label="아이콘 고르기">
         <div class="title-icon-dialog-head">
@@ -893,11 +906,20 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
           ${TITLE_ICONS.map((i, idx) => `${idx === 0 || TITLE_ICONS[idx - 1].group !== i.group ? `<span class="title-icon-group-label">${i.group}</span>` : ""}<button type="button" class="title-icon-option" role="radio" data-icon="${i.id}" title="${i.name}" aria-label="${i.name}">${titleIconSvg(i.id, "title-icon-glyph")}</button>`).join("")}
         </div>
       </dialog>
+      ${special ? `
+      <div class="title-color-preview title-color-preview--special">
+        <span class="title-color-preview-label">랭킹 미리보기</span>
+        <span class="title-sp-preview-row">
+          <span class="title-sp-preview-rank">1</span>
+          <span class="title-sp-preview-name"></span>
+          <span class="title-sp-preview-points">12,345P</span>
+        </span>
+      </div>` : `
       <div class="title-color-preview">
         <span class="title-color-preview-label">미리보기</span>
         <span class="title-color-preview-badge"></span>
         <span class="title-color-preview-name">닉네임</span>
-      </div>
+      </div>`}
     </div>`;
   const group1 = hostEl.querySelector('.title-color-group[data-group="1"]');
   const group2 = hostEl.querySelector('.title-color-group[data-group="2"]');
@@ -919,6 +941,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   const iconButtons = Array.from(hostEl.querySelectorAll(".title-icon-option"));
   const starInput = hostEl.querySelector(".title-star-input");
   const badgeSlot = hostEl.querySelector(".title-color-preview-badge");
+  const spPreviewSlot = hostEl.querySelector(".title-sp-preview-name");
 
   function setGroupColor(group, value) {
     if (group === "1") {
@@ -968,8 +991,9 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
       const on = b.dataset.design === state.design;
       b.classList.toggle("is-selected", on);
       b.setAttribute("aria-checked", on ? "true" : "false");
-      b.querySelector(".title-design-sample").innerHTML =
-        titleBadgeHtml("가나", composeTitleStyle({ ...state, design: b.dataset.design, icon: null, star: false }));
+      b.querySelector(".title-design-sample").innerHTML = special
+        ? specialTitleLineHtml([{ name: "가나다", color: composeTitleStyle({ ...state, design: b.dataset.design, icon: null, star: false }) }])
+        : titleBadgeHtml("가나", composeTitleStyle({ ...state, design: b.dataset.design, icon: null, star: false }));
     });
     const currentIcon = TITLE_ICON_MAP.get(state.icon);
     iconCurrent.innerHTML = currentIcon
@@ -983,8 +1007,15 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
     });
     starInput.checked = state.star;
     const name = (getPreviewName ? String(getPreviewName() || "") : "").trim() || "칭호";
-    badgeSlot.innerHTML = titleBadgeHtml(name, composeTitleStyle(state));
-    iconDialogPreview.innerHTML = badgeSlot.innerHTML;
+    if (special) {
+      const line = [{ name, color: composeTitleStyle(state) }];
+      // 실제 랭킹과 같은 함수로 — 장착 칭호 예시 배지 + 닉네임, 그 위에 특수 칭호 한 줄.
+      spPreviewSlot.innerHTML = rankingNameHtml({ channel_name: "닉네임", is_public: true, shop_title_name: "장착 칭호", shop_title_color: "#868e96", special_titles: line }, false);
+      iconDialogPreview.innerHTML = specialTitleLineHtml(line);
+    } else {
+      badgeSlot.innerHTML = titleBadgeHtml(name, composeTitleStyle(state));
+      iconDialogPreview.innerHTML = badgeSlot.innerHTML;
+    }
   }
 
   // HEX 칸: 올바른 코드가 되는 순간 바로 반영(입력 중인 글자는 건드리지 않음), 칸을 벗어날 때
@@ -1048,7 +1079,7 @@ function createTitleColorPicker(hostEl, { initialColor, getPreviewName } = {}) {
   return {
     getColor: () => composeTitleStyle(state),
     setColor: (value) => {
-      state = parseTitleStyle(value);
+      state = normalize(parseTitleStyle(value));
       lastHex = state.color === "rainbow" ? DEFAULT_TITLE_COLOR : state.color;
       lastHex2 = state.color2 || "#5dc8ff";
       if (iconDialog.open) iconDialog.close();

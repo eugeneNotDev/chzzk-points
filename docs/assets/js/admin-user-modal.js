@@ -165,9 +165,9 @@
             <button type="submit" id="user-detail-grant-submit-btn">지급하기</button>
           </div>
         </form>
-        <!-- 특수 칭호 — 랭킹에서 장착 칭호 "앞"에 항상 붙음(유저가 장착/해제하지 않음). "지난달 1위"는 자동이라 여기 안 뜸. -->
+        <!-- 특수 칭호 — 랭킹에서 닉네임 윗줄 작은 글씨로 항상 보임(유저가 장착/해제하지 않음). "지난달 1위"는 자동이라 여기 안 뜸. -->
         <h4 class="admin-user-section-heading">특수 칭호</h4>
-        <p class="muted admin-grant-existing-help">랭킹에서 장착 칭호 앞에 항상 표시돼요. 유저가 끄거나 바꿀 수 없어요.</p>
+        <p class="muted admin-grant-existing-help">랭킹에서 닉네임 위에 작은 글씨로 항상 표시돼요. 유저가 끄거나 바꿀 수 없어요. (비공개 유저는 안 보임)</p>
         <div class="admin-user-title-list" id="user-detail-special-list"></div>
         <p id="user-detail-special-empty" class="muted" hidden>지급한 특수 칭호가 없어요.</p>
         <form id="user-detail-special-form" class="admin-title-grant-form" autocomplete="off">
@@ -450,7 +450,7 @@
       }
     });
 
-    // 특수 칭호(랭킹에서 장착 칭호 앞에 항상 붙음) — admin-special-title 함수(0054_special_titles.sql).
+    // 특수 칭호(랭킹에서 닉네임 윗줄에 항상 보임) — admin-special-title 함수(0054_special_titles.sql).
     const ADMIN_SPECIAL_TITLE_URL = `${FUNCTIONS_BASE_URL}/admin-special-title`;
     const specialListEl = document.getElementById("user-detail-special-list");
     const specialEmptyEl = document.getElementById("user-detail-special-empty");
@@ -461,6 +461,7 @@
     const specialColorPicker = createTitleColorPicker(document.getElementById("user-detail-special-color"), {
       initialColor: DEFAULT_TITLE_COLOR,
       getPreviewName: () => specialNameInput.value,
+      mode: "special",
     });
     specialNameInput.addEventListener("input", () => specialColorPicker.refreshPreview());
 
@@ -473,7 +474,7 @@
       specialEmptyEl.hidden = list.length > 0;
       specialListEl.innerHTML = list.map((t) => `
         <span class="admin-user-title-chip">
-          ${titleBadgeHtml(t.name, t.color)}
+          ${specialTitleLineHtml([t])}
           <button type="button" class="secondary" data-revoke-special-id="${escapeHtml(t.id)}" data-title-name="${escapeHtml(t.name)}">회수</button>
         </span>`).join("");
       specialListEl.querySelectorAll("button[data-revoke-special-id]").forEach((btn) => {
@@ -549,7 +550,7 @@
         renderSpecialTitles(data.titles ?? []);
         specialNameInput.value = "";
         specialColorPicker.setColor(DEFAULT_TITLE_COLOR);
-        setSpecialStatus("특수 칭호를 지급했어요. 랭킹에서 장착 칭호 앞에 보여요.", "ok");
+        setSpecialStatus("특수 칭호를 지급했어요. 랭킹에서 닉네임 위에 보여요.", "ok");
         if (onChanged) onChanged();
       } catch (err) {
         console.error("[admin] 특수 칭호 지급 실패", err);
