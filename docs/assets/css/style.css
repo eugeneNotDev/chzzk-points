@@ -3694,7 +3694,7 @@ ol.ranking-list .name:has(.rk-nm), .title-sp-preview-name:has(.rk-nm) { display:
 .name:has(.rk-nm) > .title-badge .tb-text, .title-sp-preview-name:has(.rk-nm) > .title-badge .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rk-sp { display: flex; align-items: center; column-gap: 4px; font-weight: 800; letter-spacing: 0.01em; }
 .rk-sp-item { display: inline-flex; align-items: center; gap: 2px; color: var(--sp, #f5c542); white-space: nowrap; }
-.rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; position: relative; top: -0.09em; } /* 한글은 글자 윗부분이 높아서 가운데 정렬만 하면 아이콘이 1px쯤 낮아 보임 */
 .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .rk-sp-item--rainbow { color: #ffd43b; }
 .rk-sp-item--rainbow .rk-sp-text {
