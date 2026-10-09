@@ -678,9 +678,10 @@ function titleBadgeHtml(name, value) {
   return `<span class="${classes.join(" ")}"${styleAttr}>${sweep}${icon ? titleIconSvg(icon) : ""}<span class="tb-text">${escapeHtmlForAuth(name)}</span>${star ? TITLE_STARS_HTML : ""}</span>`;
 }
 
-// 랭킹/홈에서 이름 앞에 붙이는 장착 칭호(뒤에 한 칸 띄움).
+// 랭킹/홈에서 이름 앞에 붙이는 장착 칭호. 닉네임과의 간격은 띄어쓰기 대신 CSS(.rk-shop margin)로 —
+// 특수 칭호가 있는 줄(가로 묶음이라 띄어쓰기가 사라짐)과 없는 줄의 간격이 똑같게.
 function renderShopTitleBadgeHtml(shopName, color) {
-  return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
+  return shopName ? titleBadgeHtml(shopName, color).replace('class="title-badge', 'class="title-badge rk-shop') : "";
 }
 
 // 특수 칭호(지난달 1위 + 관리자 지급, 0054_special_titles.sql) — 배지가 아니라 닉네임 "윗줄"에 작은 글씨로.
