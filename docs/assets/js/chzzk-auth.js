@@ -732,9 +732,9 @@ function rankingNameHtml(row, isMe) {
   const front = `${rankingPrivateTagHtml(row)}${renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color)}`;
   const sp = row.is_public === false ? "" : specialTitleLineHtml(row.special_titles);
   if (!sp) return `${front}${name}`;
-  // 특수 칭호는 닉네임 바로 위에 "떠 있는" 한 줄(position:absolute) — 줄 높이를 안 늘리고 그 줄의 위쪽 여백 안에 들어감.
-  // 그래서 특수 칭호가 있든 없든 랭킹 모든 줄 높이가 같음(대신 그 줄만 위 여백을 조금 더, 아래 여백을 조금 덜 — style.css).
-  return `${front}<span class="rk-nm">${name}${sp}</span>`;
+  // [특수 칭호 / 닉네임] 2줄 묶음 — 이 묶음 전체가 줄 가운데에 오고, 순위·장착 칭호·포인트도 그 가운데에 맞춤.
+  // 그 줄은 위아래 여백을 줄여서 다른 줄과 높이가 같게(style.css).
+  return `${front}<span class="rk-nm">${sp}<span class="rk-nm-text">${name}</span></span>`;
 }
 
 // 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.
