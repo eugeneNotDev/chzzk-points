@@ -3,7 +3,8 @@
 //
 // GET  → { pending: [...], recent: [...], link: { tokenSaved, tokenUpdatedAt, lastDonationAt } }
 //   pending: 관리자 확인을 기다리는 익명 후원(1만 치즈 이상) — { id, amount, points, donationType, message, createdAt }
-//   recent: 최근 처리된 후원 30건 — { id, status, nickname, channelId, channelName, amount, points, createdAt }
+//   recent: 최근 처리된 후원 30건 — { id, status, nickname, channelId, channelName, amount, points, donationType, createdAt }
+//     (미션 후원은 성공 전까지 mission_pending, 실패·거절이면 mission_failed — 0064 참고)
 //   link: 후원 연동 상태 — 유진님 치지직 토큰이 저장돼 있는지, 마지막으로 후원 알림이 들어온 시각
 // POST { action: "assign", id, channelId } → { points }  익명 후원을 그 유저에게 10% 적립
 // POST { action: "dismiss", id }           → { ok: true } 적립 없이 목록에서 치움
@@ -52,7 +53,7 @@ Deno.serve(async (req: Request) => {
           .order("created_at", { ascending: true }),
         admin
           .from("donations")
-          .select("id, status, donator_nickname, credited_channel_id, amount, points, created_at")
+          .select("id, status, donator_nickname, credited_channel_id, amount, points, donation_type, created_at")
           .neq("status", "anonymous_pending")
           .order("created_at", { ascending: false })
           .limit(RECENT_LIMIT),
@@ -93,6 +94,7 @@ Deno.serve(async (req: Request) => {
           channelName: r.credited_channel_id ? names.get(r.credited_channel_id) ?? null : null,
           amount: r.amount,
           points: r.points,
+          donationType: r.donation_type,
           createdAt: r.created_at,
         })),
         link: {

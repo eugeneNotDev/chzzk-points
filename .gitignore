@@ -18,6 +18,7 @@ supabase/.temp
 tools/donation-relay/config.json
 tools/donation-relay/node_modules/
 tools/donation-relay/pending.json
+tools/donation-relay/chat-events.log
 
 # Claude 결과물(초안 스크린샷 등) — 저장소에 안 올림
 Claude outputs/

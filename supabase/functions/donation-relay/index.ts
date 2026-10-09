@@ -9,6 +9,14 @@
 // POST { action: "donation", eventKey, donation: { channelId, donatorChannelId, donatorNickname,
 //        payAmount, donationType, donationText } }
 //                                             → { status, points, ... }  (0046_donation_points.sql 참고)
+// --- 아래 셋은 방송 PC 프로그램이 치지직 채팅창(읽기 전용)에서 받아 넘기는 것(공식 API엔 이 이벤트가 없음) ---
+// POST { action: "mission-part", missionId, eventKey, donation: { donatorChannelId, donatorNickname, payAmount,
+//        kind: "MISSION"|"MISSION_JOIN", missionText } }
+//                                             → 미션 걸기/그룹 미션 참여 기록(아직 적립 안 함, 0064 참고)
+// POST { action: "mission-result", missionId, success, creator?: { donatorChannelId, donatorNickname, payAmount, missionText } }
+//                                             → 성공이면 그 미션 기록들을 일반 후원 규칙으로 적립, 실패면 적립 없음
+// POST { action: "gift", giftId, donation: { donatorChannelId, donatorNickname, quantity, tierNo } }
+//                                             → 구독권 선물: 개수 × SUB_GIFT_PRICE를 후원 금액으로 보고 일반 후원처럼 처리
 // 오류: 401 unauthorized(비밀번호 틀림) / 409 no_streamer_token(유진님이 사이트에 한 번 로그인해야 함)
 //       / 502 chzzk_failed(치지직 쪽 오류)
 //
@@ -20,6 +28,9 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const CHZZK_API = "https://openapi.chzzk.naver.com";
 const REFRESH_MARGIN_MS = 60 * 60 * 1000; // 만료 1시간 전부터 미리 갱신
+// 구독권 선물 1장을 몇 원으로 칠지(티어별). "2장 이상이면 1만 원 이상 → 적립" 기준에 맞춰 1티어 5,000으로 둠.
+const SUB_GIFT_PRICE: Record<number, number> = { 1: 5000, 2: 15000 };
+const MAX_GIFT_QUANTITY = 1000;
 
 type Admin = ReturnType<typeof getAdminClient>;
 
@@ -161,6 +172,67 @@ Deno.serve(async (req: Request) => {
       });
       if (error) throw new Error(`record_donation 실패: ${error.message}`);
       return json(data, 200);
+    }
+
+    if (body.action === "mission-part") {
+      const missionId = str(body.missionId, 80);
+      const eventKey = str(body.eventKey, 100);
+      const d = body.donation ?? {};
+      const amount = Number(d.payAmount);
+      if (!missionId || !eventKey || !Number.isFinite(amount) || amount < 0) return json({ error: "invalid_donation" }, 400);
+      const { data, error } = await admin.rpc("record_mission_part", {
+        p_event_key: eventKey,
+        p_mission_id: missionId,
+        p_donator_channel_id: str(d.donatorChannelId, 100),
+        p_donator_nickname: str(d.donatorNickname, 100),
+        p_amount: Math.trunc(amount),
+        p_donation_type: d.kind === "MISSION_JOIN" ? "MISSION_JOIN" : "MISSION",
+        p_message: str(d.missionText, 500),
+      });
+      if (error) throw new Error(`record_mission_part 실패: ${error.message}`);
+      return json(data, 200);
+    }
+
+    if (body.action === "mission-result") {
+      const missionId = str(body.missionId, 80);
+      if (!missionId || typeof body.success !== "boolean") return json({ error: "invalid_mission" }, 400);
+      // 미션 건 사람 기록을 프로그램이 놓쳤을 수도 있어서(프로그램을 늦게 켠 경우 등) 결과에 같이 오면 먼저 기록.
+      const c = body.creator;
+      if (c && Number.isFinite(Number(c.payAmount)) && Number(c.payAmount) >= 0) {
+        const { error } = await admin.rpc("record_mission_part", {
+          p_event_key: `m:${missionId}:c`,
+          p_mission_id: missionId,
+          p_donator_channel_id: str(c.donatorChannelId, 100),
+          p_donator_nickname: str(c.donatorNickname, 100),
+          p_amount: Math.trunc(Number(c.payAmount)),
+          p_donation_type: "MISSION",
+          p_message: str(c.missionText, 500),
+        });
+        if (error) throw new Error(`record_mission_part 실패: ${error.message}`);
+      }
+      const { data, error } = await admin.rpc("resolve_mission", { p_mission_id: missionId, p_success: body.success });
+      if (error) throw new Error(`resolve_mission 실패: ${error.message}`);
+      return json(data, 200);
+    }
+
+    if (body.action === "gift") {
+      const giftId = str(body.giftId, 80);
+      const d = body.donation ?? {};
+      const quantity = Math.trunc(Number(d.quantity ?? 1));
+      const price = SUB_GIFT_PRICE[Number(d.tierNo) === 2 ? 2 : 1];
+      if (!giftId || !Number.isFinite(quantity) || quantity < 1 || quantity > MAX_GIFT_QUANTITY) {
+        return json({ error: "invalid_gift" }, 400);
+      }
+      const { data, error } = await admin.rpc("record_donation", {
+        p_event_key: `g:${giftId}`,
+        p_donator_channel_id: str(d.donatorChannelId, 100),
+        p_donator_nickname: str(d.donatorNickname, 100),
+        p_amount: quantity * price,
+        p_donation_type: "SUB_GIFT",
+        p_message: `구독권 선물 ${quantity}장`,
+      });
+      if (error) throw new Error(`record_donation 실패: ${error.message}`);
+      return json({ ...data, quantity, amount: quantity * price }, 200);
     }
 
     return json({ error: "unknown_action" }, 400);

@@ -1347,7 +1347,11 @@
       dismissed: "익명 · 적립 안 함",
       below_min: "1만 치즈 미만",
       not_member: "미가입자",
+      mission_pending: "미션 진행 중",
+      mission_failed: "미션 실패 · 적립 없음",
     };
+    const DONATION_TYPE_LABEL = { VIDEO: "영상 후원", MISSION: "미션 후원", MISSION_JOIN: "미션 참여", SUB_GIFT: "구독권 선물" };
+    const donationTypePrefix = (t) => (DONATION_TYPE_LABEL[t] ? `${DONATION_TYPE_LABEL[t]} · ` : "");
     const donationPendingEl = document.getElementById("donation-pending-list");
 
     async function loadDonations() {
@@ -1390,8 +1394,8 @@
       donationPendingEl.innerHTML = list.map((d) => `
         <div class="donation-row" data-id="${d.id}">
           <div class="donation-row-head">
-            <strong>${d.amount.toLocaleString("ko-KR")}치즈 → ${d.points.toLocaleString("ko-KR")}P</strong>
-            <span class="muted">${d.donationType === "VIDEO" ? "영상 후원 · " : ""}${formatDateTime(d.createdAt)}</span>
+            <strong>${d.amount.toLocaleString("ko-KR")}${d.donationType === "SUB_GIFT" ? "원 상당" : "치즈"} → ${d.points.toLocaleString("ko-KR")}P</strong>
+            <span class="muted">${donationTypePrefix(d.donationType)}${formatDateTime(d.createdAt)}</span>
           </div>
           ${d.message ? `<p class="donation-message">"${escapeHtml(d.message)}"</p>` : ""}
           <div class="donation-assign">
@@ -1412,7 +1416,7 @@
           <div class="points-log-row${d.points > 0 ? "" : " is-processed"}">
             <div class="points-log-who">
               <strong>${escapeHtml(who)}</strong>
-              <span class="points-log-reason">${escapeHtml(DONATION_STATUS_LABEL[d.status] || d.status)} · ${d.amount.toLocaleString("ko-KR")}치즈</span>
+              <span class="points-log-reason">${escapeHtml(donationTypePrefix(d.donationType))}${escapeHtml(DONATION_STATUS_LABEL[d.status] || d.status)} · ${d.amount.toLocaleString("ko-KR")}${d.donationType === "SUB_GIFT" ? "원 상당" : "치즈"}</span>
             </div>
             ${points}
             <div class="points-log-time">${formatDateTime(d.createdAt)}</div>
