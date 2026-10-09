@@ -3681,3 +3681,25 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 /* 글 보기 — 본문 사이 사진 */
 .bd-inline-img { display: block; margin: 14px 0; max-width: 100%; }
 .bd-inline-img img { display: block; max-width: 100%; max-height: 720px; border-radius: 12px; }
+
+/* 랭킹 특수 칭호(지난달 1위·관리자 지급) — 배지 대신 닉네임 바로 위 작은 글씨 한 줄(rankingNameHtml, chzzk-auth.js).
+   닉네임 묶음을 세로 2줄 inline-flex로 만들고 줄 맨 아래에 맞춰서, 앞의 장착 칭호 배지는 닉네임 줄 높이에 그대로 옴.
+   비공개 유저는 이 줄이 아예 안 생김(줄 높이도 그대로). */
+.rk-nm { display: inline-flex; flex-direction: column; align-items: flex-start; vertical-align: bottom; max-width: 100%; }
+.rk-nm-text { line-height: inherit; }
+.rk-sp { display: inline-flex; flex-wrap: wrap; align-items: center; column-gap: 4px; margin-bottom: 1px; font-size: 0.72em; font-weight: 800; line-height: 1.25; letter-spacing: 0.01em; }
+.rk-sp-item { display: inline-flex; align-items: center; gap: 2px; color: var(--sp, #f5c542); white-space: nowrap; }
+.rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
+.rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rk-sp-item--rainbow { color: #ffd43b; }
+.rk-sp-item--rainbow .rk-sp-text {
+  background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: title-badge-rainbow 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .rk-sp-item--rainbow .rk-sp-text { animation: none; } }
+.rk-sp-dot { color: var(--muted); font-weight: 400; }
+:root[data-theme="light"] .rk-sp-item { color: var(--sp-l, var(--sp, #b07800)); }
+:root[data-theme="light"] .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad-l, var(--sp-grad)); -webkit-background-clip: text; background-clip: text; }
+:root[data-theme="light"] .rk-sp-item--rainbow { color: #e8a400; }

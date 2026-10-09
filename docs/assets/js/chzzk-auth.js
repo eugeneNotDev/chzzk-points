@@ -683,11 +683,55 @@ function renderShopTitleBadgeHtml(shopName, color) {
   return shopName ? `${titleBadgeHtml(shopName, color)} ` : "";
 }
 
-// 특수 칭호(지난달 1위 + 관리자 지급, 0054_special_titles.sql) — 장착 칭호 "앞"에 항상 붙는 배지들.
-// list는 랭킹 행의 special_titles([{ name, color }] 또는 null). 배지마다 뒤에 한 칸 띄움.
-function renderSpecialTitleBadgesHtml(list) {
+// 특수 칭호(지난달 1위 + 관리자 지급, 0054_special_titles.sql) — 배지가 아니라 닉네임 "윗줄"에 작은 글씨로.
+// list는 랭킹 행의 special_titles([{ name, color }] 또는 null). 여러 개면 " · "로 이어 붙임.
+// 색은 칭호마다 고른 색 그대로(아이콘도), 어두운 색은 배경에 묻혀서 밝게 올림. 무지개/두 가지 색은 글자 그라데이션.
+function specialTitleLineHtml(list) {
   if (!Array.isArray(list) || list.length === 0) return "";
-  return list.map((t) => `${titleBadgeHtml(t.name, t.color)} `).join("");
+  // 어두운 배경(기본)에선 너무 어두운 색을 밝게, 밝은 테마에선 너무 밝은 색(금색 등)을 어둡게 — 둘 다 만들어서 CSS가 고름.
+  const forDark = (hex) => (hexLuminance(hex) < 0.18 ? mixHex(hex, "#ffffff", 0.45) : hex);
+  const forLight = (hex) => {
+    let c = hex;
+    for (let i = 0; i < 4 && hexLuminance(c) > 0.25; i++) c = mixHex(c, "#000000", 0.25);
+    return c;
+  };
+  const gradOf = (c1, c2, shine) => (c2
+    ? `linear-gradient(90deg,${c1},${c2})`
+    : shine
+      ? `linear-gradient(90deg,${mixHex(c1, "#ffffff", 0.45)},${c1} 45%,${mixHex(c1, "#ffffff", 0.3)} 70%,${c1})`
+      : "");
+  const items = list.map((t) => {
+    const { color, color2, design, icon } = parseTitleStyle(t.color);
+    let cls = "rk-sp-item";
+    let style = "";
+    if (color === "rainbow") {
+      cls += " rk-sp-item--rainbow";
+    } else {
+      const d1 = forDark(color);
+      const l1 = forLight(color);
+      const vars = [`--sp:${d1}`, `--sp-l:${l1}`];
+      if (color2 || design === "shine") {
+        cls += " rk-sp-item--grad";
+        vars.push(`--sp-grad:${gradOf(d1, color2 ? forDark(color2) : null, true)}`);
+        // 밝은 테마에선 반짝 효과(흰빛 섞기)를 빼고 진한 색끼리만 — 흰 배경에서 글자가 날아가지 않게.
+        vars.push(`--sp-grad-l:linear-gradient(90deg,${l1},${color2 ? forLight(color2) : mixHex(l1, "#000000", 0.2)})`);
+      }
+      style = ` style="${vars.join(";")}"`;
+    }
+    return `<span class="${cls}"${style}>${icon ? titleIconSvg(icon, "rk-sp-icon") : ""}<span class="rk-sp-text">${escapeHtmlForAuth(t.name)}</span></span>`;
+  });
+  return `<span class="rk-sp">${items.join(`<span class="rk-sp-dot" aria-hidden="true">·</span>`)}</span>`;
+}
+
+// 랭킹 이름 칸 내용(ranking.html/index.html 공용): [비공개 표시][장착 칭호 배지] + 닉네임.
+// 특수 칭호가 있으면 닉네임 바로 위에 작은 글씨 한 줄(이름 칸만 2줄이 되고 배지는 닉네임 줄에 맞춤).
+// 비공개 유저는 특수 칭호를 안 보여줌 — 공개 랭킹은 뷰에서 이미 null로 오고, 관리자 화면(admin_view)도
+// 줄 높이가 달라져서 비공개 유저가 티 나지 않게 똑같이 뺌(관리자는 유저 상세 모달에서 확인).
+function rankingNameHtml(row, isMe) {
+  const name = `${escapeHtmlForAuth(row.channel_name || "(이름 없음)")}${isMe ? " (나)" : ""}`;
+  const sp = row.is_public === false ? "" : specialTitleLineHtml(row.special_titles);
+  const nameBlock = sp ? `<span class="rk-nm">${sp}<span class="rk-nm-text">${name}</span></span>` : name;
+  return `${rankingPrivateTagHtml(row)}${renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color)}${nameBlock}`;
 }
 
 // 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.

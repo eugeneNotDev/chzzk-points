@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=111">
+<link rel="stylesheet" href="assets/css/style.css?v=112">
 </head>
 <body>
   <script>
@@ -134,7 +134,7 @@
     </main>
   </div>
 
-  <script src="assets/js/chzzk-auth.js?v=49"></script>
+  <script src="assets/js/chzzk-auth.js?v=50"></script>
   <script src="assets/js/spa-router.js?v=16"></script>
   <script>
   // index.html과 같은 이유로 IIFE + 동적 import() 사용 (spa-router.js가 페이지 이동마다
@@ -154,12 +154,8 @@
     function renderRankingRow(row, i) {
       const isMe = isMyRankingRow(row);
       const isPrivate = row.is_public === false;
-      const shopBadge = renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color);
-      // 특수 칭호(지난달 1위·관리자 지급)는 장착 칭호 앞에 항상 붙음(renderSpecialTitleBadgesHtml, chzzk-auth.js).
-      const specialBadges = renderSpecialTitleBadgesHtml(row.special_titles);
-      // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급 자체는
-      // 그대로 있고 마이페이지 "등급" 칸에서 보임.
-      const coloredName = escapeHtml(row.channel_name || "(이름 없음)");
+      // 이름 칸 = [장착 칭호] + 닉네임, 특수 칭호는 닉네임 윗줄 작은 글씨(rankingNameHtml, chzzk-auth.js 공용).
+      // 등급(브론즈~다이아) 이름 색은 목록에서 안 씀 — 이름은 전부 흰색으로 통일(요청사항). 등급은 마이페이지 "등급" 칸에서 보임.
       // 관리자 화면(admin_view)에서만 이름을 눌러 그 유저의 상세 모달(내역·칭호·미니게임 차단)을 엶. 일반 유저에겐
       // 아무 표시/반응도 없음(admin_view 행은 관리자 API로만 내려옴).
       const adminClickAttrs = row.admin_view && row.channel_id
@@ -168,7 +164,7 @@
       return `
         <li class="${isMe ? "me" : ""}">
           <span class="rank">${i + 1}</span>
-          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}"${adminClickAttrs}>${rankingPrivateTagHtml(row)}${specialBadges}${shopBadge}${coloredName}${isMe ? " (나)" : ""}</span>
+          <span class="name${isPrivate && !row.admin_view ? " is-private" : ""}"${adminClickAttrs}>${rankingNameHtml(row, isMe)}</span>
           <span class="points">${row.total_points.toLocaleString("ko-KR")}P</span>
         </li>`;
     }
