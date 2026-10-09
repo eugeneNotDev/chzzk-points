@@ -724,7 +724,7 @@ function specialTitleLineHtml(list) {
 }
 
 // 랭킹 이름 칸 내용(ranking.html/index.html 공용): [비공개 표시][장착 칭호 배지] + 닉네임.
-// 특수 칭호가 있으면 닉네임 바로 위에 작은 글씨 한 줄(이름 칸만 2줄이 되고 배지는 닉네임 줄에 맞춤).
+// 특수 칭호가 있으면 닉네임 바로 위에 작은 글씨 한 줄.
 // 비공개 유저는 특수 칭호를 안 보여줌 — 공개 랭킹은 뷰에서 이미 null로 오고, 관리자 화면(admin_view)도
 // 줄 높이가 달라져서 비공개 유저가 티 나지 않게 똑같이 뺌(관리자는 유저 상세 모달에서 확인).
 function rankingNameHtml(row, isMe) {
@@ -732,9 +732,9 @@ function rankingNameHtml(row, isMe) {
   const front = `${rankingPrivateTagHtml(row)}${renderShopTitleBadgeHtml(row.shop_title_name, row.shop_title_color)}`;
   const sp = row.is_public === false ? "" : specialTitleLineHtml(row.special_titles);
   if (!sp) return `${front}${name}`;
-  // 3줄 격자: [빈칸|특수 칭호] / [장착 칭호|닉네임] / [빈칸|빈칸(윗줄과 같은 높이)] — 아래에도 같은 높이를 둬서
-  // 닉네임 줄이 순위 숫자·포인트와 같은 높이(가운데)에 오게 함.
-  return `<span class="rk-grid${front.trim() ? "" : " rk-grid--solo"}"><span class="rk-sp-cell">${sp}</span>${front.trim() ? `<span class="rk-front">${front.trim()}</span>` : ""}<span class="rk-nm-text">${name}</span></span>`;
+  // 특수 칭호는 닉네임 바로 위에 "떠 있는" 한 줄(position:absolute) — 줄 높이를 안 늘리고 그 줄의 위쪽 여백 안에 들어감.
+  // 그래서 특수 칭호가 있든 없든 랭킹 모든 줄 높이가 같음(대신 그 줄만 위 여백을 조금 더, 아래 여백을 조금 덜 — style.css).
+  return `${front}<span class="rk-nm">${name}${sp}</span>`;
 }
 
 // 랭킹 실시간 갱신 조절기 — ranking.html/index.html이 ranking_pings 신호를 받을 때 씀.

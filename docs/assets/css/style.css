@@ -3683,19 +3683,19 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 .bd-inline-img img { display: block; max-width: 100%; max-height: 720px; border-radius: 12px; }
 
 /* 랭킹 특수 칭호(지난달 1위·관리자 지급) — 배지 대신 닉네임 바로 위 작은 글씨 한 줄(rankingNameHtml, chzzk-auth.js).
-   3줄 격자: [빈칸|특수 칭호] / [장착 칭호|닉네임] / [빈칸|빈칸] — 위·아래 줄을 같은 높이(1fr)로 둬서 닉네임 줄이
-   순위 숫자·포인트와 같은 높이에 오고, 위로만 벌어져 보이지 않게 함. 위아래로 조금(-6px) 줄 여백에 겹쳐서 줄이 덜 커짐.
-   비공개 유저는 이 격자가 아예 안 생김(줄 높이도 그대로). */
-.rk-grid { display: grid; grid-template-columns: auto minmax(min(4em, 100%), 1fr); grid-template-rows: 1fr auto 1fr; column-gap: 6px; align-items: center; margin-block: -6px; }
-.rk-grid--solo { grid-template-columns: minmax(0, 1fr); }
-.rk-sp-cell { grid-column: 2; grid-row: 1; align-self: end; min-width: 0; }
-.rk-grid--solo .rk-sp-cell, .rk-grid--solo .rk-nm-text { grid-column: 1; }
-.rk-front { grid-column: 1; grid-row: 2; display: flex; align-items: center; min-width: 0; }
-/* 좁은 화면 + 긴 칭호·닉네임이면 닉네임 칸(최소 4글자 폭)을 지키고 장착 칭호 배지를 "…"로 줄임 — 전체 이름은 마이페이지에 있음. */
-.rk-front .title-badge { max-width: 100%; min-width: 0; }
-.rk-front .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.rk-nm-text { grid-column: 2; grid-row: 2; min-width: 0; }
-.rk-sp { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; margin-bottom: 1px; font-size: 0.72em; font-weight: 800; line-height: 1.25; letter-spacing: 0.01em; }
+   글씨는 닉네임 위에 떠 있고(absolute) 줄 높이에는 안 들어감 → 특수 칭호가 있는 줄도 다른 줄과 높이가 똑같음.
+   대신 그 줄은 위 여백을 늘리고 아래 여백을 같은 만큼 줄여서(합은 그대로) 글씨 들어갈 자리를 만듦 — 순위·닉네임·포인트는
+   다 같이 조금 내려가서 서로 높이는 계속 맞음. 비공개 유저는 특수 칭호 자체가 안 붙어서 보통 줄 그대로. */
+.rk-nm { position: relative; }
+.rk-nm > .rk-sp { position: absolute; left: 0; bottom: 100%; margin: 0 0 -2px; flex-wrap: nowrap; white-space: nowrap; font-size: 0.7em; line-height: 1.1; }
+ol.ranking-list li:has(.rk-nm) { padding-top: 18px; padding-bottom: 6px; }
+/* 이름 칸을 [장착 칭호][닉네임] 가로 묶음으로 — 좁은 화면에서 닉네임이 길어도 배지 아래로 떨어지지 않고 옆에서 줄바꿈되게
+   (떨어지면 위에 뜬 특수 칭호 글씨가 배지랑 겹침). 공간이 모자라면 배지 글자를 "…"로 줄임(전체는 마이페이지에서 보임). */
+ol.ranking-list .name:has(.rk-nm), .title-sp-preview-name:has(.rk-nm) { display: flex; align-items: center; gap: 0.3em; }
+.name:has(.rk-nm) > .title-badge, .title-sp-preview-name:has(.rk-nm) > .title-badge { flex: 0 1 auto; min-width: 0; }
+.name:has(.rk-nm) > .title-badge .tb-text, .title-sp-preview-name:has(.rk-nm) > .title-badge .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rk-nm { min-width: min(3.5em, 100%); }
+.rk-sp { display: flex; align-items: center; column-gap: 4px; font-weight: 800; letter-spacing: 0.01em; }
 .rk-sp-item { display: inline-flex; align-items: center; gap: 2px; color: var(--sp, #f5c542); white-space: nowrap; }
 .rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; }
 .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -3709,7 +3709,7 @@ body.sidebar-collapsed .sidebar .theme-toggle-btn .tt-switch { display: none; }
 @media (prefers-reduced-motion: reduce) { .rk-sp-item--rainbow .rk-sp-text { animation: none; } }
 .rk-sp-dot { color: var(--muted); font-weight: 400; }
 /* 관리자 특수 칭호 지급 폼 — 랭킹 한 줄 모양 미리보기(createTitleColorPicker mode:"special"). */
-.title-sp-preview-row { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 10px 4px; }
+.title-sp-preview-row { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 18px 4px 6px; }
 .title-sp-preview-rank { width: 20px; text-align: center; color: var(--muted); font-weight: 600; }
 .title-sp-preview-name { flex: 1; min-width: 0; }
 .title-sp-preview-points { color: var(--muted); font-size: 0.9em; font-weight: 600; }
