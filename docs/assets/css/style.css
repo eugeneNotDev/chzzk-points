@@ -3692,6 +3692,7 @@ ol.ranking-list li:has(.rk-nm) { padding-top: 5.5px; padding-bottom: 5.5px; }
 ol.ranking-list .name:has(.rk-nm), .title-sp-preview-name:has(.rk-nm) { display: flex; align-items: center; }
 /* 장착 칭호 ↔ 닉네임 간격 — 특수 칭호 있는 줄/없는 줄 똑같이 이 값 하나로. */
 .rk-shop { margin-right: 0.35em; } /* 배지 글자 크기(0.78em) 기준이라 약 4.4px — 예전 띄어쓰기 한 칸과 비슷 */
+.rk-shop.title-badge--glow { margin-right: calc(0.35em + 2.5px); } /* 빛나는 테두리는 테두리가 배지 밖으로 1.5px + 빛 번짐이 있어서 그만큼 더 띄움 */
 .name:has(.rk-nm) > .title-badge, .title-sp-preview-name:has(.rk-nm) > .title-badge { flex: 0 1 auto; min-width: 0; }
 .name:has(.rk-nm) > .title-badge .tb-text, .title-sp-preview-name:has(.rk-nm) > .title-badge .tb-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rk-sp { display: flex; align-items: center; column-gap: 4px; font-weight: 800; letter-spacing: 0.01em; }
