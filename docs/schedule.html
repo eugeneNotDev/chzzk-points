@@ -362,7 +362,7 @@
     const tpMins = document.getElementById("tp-m");
     const tpSeg = document.getElementById("tp-seg");
     const tpTbdWrap = document.getElementById("tp-tbd-wrap");
-    let tpH24 = 20;
+    let tpH24 = 19;
     let tpMin = 0;
     tpHours.innerHTML = [1,2,3,4,5,6,7,8,9,10,11,12].map((h) => `<button type="button" data-h="${h}">${h}</button>`).join("");
     tpMins.innerHTML = [0,5,10,15,20,25,30,35,40,45,50,55].map((mm) => `<button type="button" data-m="${mm}">${pad(mm)}</button>`).join("");
@@ -429,7 +429,7 @@
       const [y, m, d] = day.split("-").map(Number);
       document.getElementById("sched-modal-title").textContent = `${m}월 ${d}일 (${WEEK[new Date(y, m - 1, d).getDay()]}) 스케줄`;
       setKind(row ? row.kind : "live");
-      const st = row && row.start_time ? row.start_time : "20:00";
+      const st = row && row.start_time ? row.start_time : "19:00"; // 새로 등록할 때 기본 오후 7시(보통 방송 시작 시간)
       tpSet(Number(st.slice(0, 2)), Math.round(Number(st.slice(3, 5)) / 5) * 5 % 60);
       tbdInput.checked = !!row && row.kind === "live" && !row.start_time;
       syncTbd();
