@@ -1,5 +1,31 @@
 // 유진 팬보드 앱(홈 화면 설치)용 서비스 워커 — chzzk-auth.js의 setupAppMode가 등록함.
 // 페이지·파일을 저장(캐시)하지 않음: fetch를 가로채지 않아서 사이트는 항상 평소처럼 최신으로 불러옴.
-// 방송 알림(푸시)은 다음 단계에서 여기에 추가.
+// 하는 일은 방송 알림(웹 푸시) 받기/누르기뿐 — 보내는 쪽은 Supabase push 함수.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data ? event.data.text() : "" }; }
+  const title = data.title || "유진 팬보드";
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || "",
+    icon: "assets/img/app-icon-192.png",
+    badge: "assets/img/app-icon-192.png",
+    tag: data.tag || "live",
+    renotify: true,
+    data: { url: data.url || "./" },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "./";
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const w of wins) {
+      if (w.url === url && "focus" in w) return w.focus();
+    }
+    return self.clients.openWindow(url);
+  })());
+});

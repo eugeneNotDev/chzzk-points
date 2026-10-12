@@ -3741,3 +3741,7 @@ ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-b
 .app-install-btn { margin-top: 12px; }
 .app-install-ok { margin: 0; color: var(--accent); font-weight: 700; }
 .app-install-steps { margin: 0; padding-left: 1.2em; line-height: 1.7; color: var(--text-dim); }
+.push-divider { height: 1px; background: var(--border); margin: 16px 0 14px; }
+.push-section .toggle-row .muted { margin: 2px 0 0; }
+.push-section .push-status:empty { display: none; }
+.push-test-btn { margin-top: 10px; }

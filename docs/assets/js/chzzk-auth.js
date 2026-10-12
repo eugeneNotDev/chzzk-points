@@ -1847,6 +1847,119 @@ function setupAppMode() {
 }
 setupAppMode();
 
+// ── 방송 알림(웹 푸시) ── 보내는 쪽: Supabase push 함수(0065_push_notifications.sql). 받는 쪽: sw.js.
+// VAPID 공개키(공개해도 되는 값). 짝이 되는 비밀키는 DB(app_secrets)에만 있음.
+const VAPID_PUBLIC_KEY = "BES4148X2XksCDdVlj_nvE-ssFjVhcP566hsxfBOblJxdpRdeaVDOmwPvJlEpTvojLjWH8fw5Q6fBQFu6bmPR_I";
+const PUSH_URL = `${FUNCTIONS_BASE_URL}/push`;
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+function vapidKeyBytes() {
+  const s = VAPID_PUBLIC_KEY.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(s + "===".slice((s.length + 3) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+async function getPushSubscription() {
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? await reg.pushManager.getSubscription() : null;
+}
+// 알림 켜기 — 브라우저 허용 창 → 구독 → 서버에 저장. 실패하면 이유(문자열)를 던짐.
+async function enableLivePush() {
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") throw new Error(perm === "denied" ? "denied" : "dismissed");
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKeyBytes() });
+  const res = await authFetch(PUSH_URL, { method: "POST", body: JSON.stringify({ action: "subscribe", subscription: sub.toJSON() }) });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))).error || `http_${res.status}`;
+    throw new Error(err);
+  }
+}
+async function disableLivePush() {
+  const sub = await getPushSubscription();
+  if (!sub) return;
+  await authFetch(PUSH_URL, { method: "POST", body: JSON.stringify({ action: "unsubscribe", endpoint: sub.endpoint }) }).catch(() => {});
+  await sub.unsubscribe().catch(() => {});
+}
+
+function pushSectionHtml(isIos) {
+  if (!isLoggedIn()) return "";
+  let inner;
+  if (isIos && !pwaIsStandalone()) {
+    inner = `<p class="muted">아이폰은 위 방법대로 <b>홈 화면에 추가한 앱</b>에서 알림을 켤 수 있어요.</p>`;
+  } else if (!pushSupported()) {
+    inner = `<p class="muted">이 브라우저는 알림을 지원하지 않아요. 크롬(안드로이드)이나 홈 화면에 추가한 앱(아이폰)에서 켜 주세요.</p>`;
+  } else {
+    inner = `<div class="toggle-row"><div><strong>방송 시작하면 알림 받기</strong><p class="muted push-desc">방송이 켜지면 이 기기로 알림이 와요.</p></div>
+      <label class="switch"><input type="checkbox" class="push-toggle" disabled><span class="slider"></span></label></div>
+      <p class="status-msg push-status"></p>
+      ${isAdmin() ? `<button type="button" class="secondary push-test-btn">나에게 테스트 알림 보내기</button>` : ""}`;
+  }
+  return `<div class="push-section"><div class="push-divider"></div>${inner}</div>`;
+}
+
+function bindPushSection(slot) {
+  const toggle = slot.querySelector(".push-toggle");
+  if (!toggle) return;
+  const statusEl = slot.querySelector(".push-status");
+  const testBtn = slot.querySelector(".push-test-btn");
+  const setStatus = (text, kind = "") => { statusEl.textContent = text; statusEl.className = `status-msg push-status${kind ? ` ${kind}` : ""}`; };
+  (async () => {
+    try {
+      const sub = await getPushSubscription();
+      let on = false;
+      if (sub && Notification.permission === "granted") {
+        const res = await authFetch(PUSH_URL, { method: "POST", body: JSON.stringify({ action: "status", endpoint: sub.endpoint }) });
+        on = res.ok && (await res.json()).subscribed === true;
+      }
+      toggle.checked = on;
+      if (Notification.permission === "denied") setStatus("이 기기에서 알림이 차단돼 있어요. 휴대폰 설정 → 알림에서 허용해 주세요.", "error");
+    } catch { /* 상태 확인 실패 — 꺼진 걸로 둠 */ }
+    toggle.disabled = false;
+  })();
+  toggle.addEventListener("change", async () => {
+    toggle.disabled = true;
+    try {
+      if (toggle.checked) {
+        setStatus("알림을 켜는 중…");
+        await enableLivePush();
+        setStatus("알림을 켰어요. 방송이 시작되면 알려드릴게요.", "ok");
+      } else {
+        await disableLivePush();
+        setStatus("알림을 껐어요.", "ok");
+      }
+    } catch (err) {
+      toggle.checked = false;
+      const code = err && err.message;
+      setStatus(
+        code === "denied" ? "알림이 차단돼 있어요. 휴대폰 설정 → 알림에서 허용한 뒤 다시 켜 주세요."
+          : code === "dismissed" ? "알림 허용을 눌러야 켜져요."
+          : code === "not_open" ? "아직 준비 중인 기능이에요."
+          : code === "too_many_devices" ? "알림은 기기 10개까지 켤 수 있어요."
+          : "알림을 켜지 못했어요. 잠시 후 다시 시도해 주세요.",
+        "error",
+      );
+      console.warn("[push]", err);
+    }
+    toggle.disabled = false;
+  });
+  if (testBtn) testBtn.addEventListener("click", async () => {
+    testBtn.disabled = true;
+    try {
+      const res = await authFetch(PUSH_URL, { method: "POST", body: JSON.stringify({ action: "test" }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || String(res.status));
+      setStatus(data.total ? `테스트 알림을 보냈어요 (기기 ${data.sent}/${data.total}).` : "알림 켠 기기가 없어요. 먼저 위 스위치를 켜 주세요.", data.sent ? "ok" : "error");
+    } catch (err) {
+      setStatus("테스트 알림을 보내지 못했어요.", "error");
+      console.warn("[push test]", err);
+    }
+    testBtn.disabled = false;
+  });
+}
+
 // 마이페이지 "앱으로 설치" 카드. 기기/브라우저에 맞는 설치 방법을 보여줌.
 function renderAppInstallCard(slot) {
   if (!slot) return;
@@ -1869,7 +1982,8 @@ function renderAppInstallCard(slot) {
   } else {
     body = `<p class="muted">브라우저 메뉴(⋮)에서 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 눌러 주세요. 이미 설치했다면 홈 화면 아이콘으로 열면 돼요.</p>`;
   }
-  slot.innerHTML = `<div class="card app-install-card"><div class="app-install-head"><img src="assets/img/app-icon-192.png" alt="" class="app-install-icon"><div><strong>앱으로 설치</strong>${testTag}</div></div>${body}</div>`;
+  slot.innerHTML = `<div class="card app-install-card"><div class="app-install-head"><img src="assets/img/app-icon-192.png" alt="" class="app-install-icon"><div><strong>앱으로 설치</strong>${testTag}</div></div>${body}${pushSectionHtml(isIos)}</div>`;
+  bindPushSection(slot);
   const btn = slot.querySelector(".app-install-btn");
   if (btn) btn.addEventListener("click", async () => {
     if (!pwaInstallPrompt) return;

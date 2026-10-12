@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.songs]
 verify_jwt = false
+
+[functions.push]
+verify_jwt = false
