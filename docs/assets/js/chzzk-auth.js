@@ -1807,9 +1807,9 @@ initThemeToggle();
 
 // ── 앱(홈 화면 설치, PWA) ────────────────────────────────────────────────────────────────
 // 사이트를 휴대폰 홈 화면에 앱처럼 설치하는 기능. 스토어 등록 없이 브라우저의 "앱 설치/홈 화면에 추가"로 받음.
-// 테스트 중엔 관리자 계정에서만 켜짐(PWA_PUBLIC = false) — 시청자에겐 설치 안내도 안 뜨고 브라우저가 앱으로 인식하지도 않음.
-// 공개할 땐 PWA_PUBLIC만 true로 바꾸면 됨. 서비스 워커(sw.js)는 페이지를 저장(캐시)하지 않음 — 업데이트가 늦게 보이는 문제 방지.
-const PWA_PUBLIC = false;
+// PWA_PUBLIC = false면 관리자 계정에서만 켜짐(테스트용) — 시청자에겐 설치 안내도 안 뜨고 브라우저가 앱으로 인식하지도 않음.
+// 2026-10 공개(true). 서버 push 함수의 PUSH_PUBLIC과 같이 맞출 것. 서비스 워커(sw.js)는 페이지를 저장(캐시)하지 않음 — 업데이트가 늦게 보이는 문제 방지.
+const PWA_PUBLIC = true;
 let pwaInstallPrompt = null;
 function pwaEnabled() {
   return PWA_PUBLIC || isAdmin();

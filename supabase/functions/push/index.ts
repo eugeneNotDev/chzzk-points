@@ -8,7 +8,7 @@
 // DB 트리거(broadcast_sessions에 새 방송이 들어올 때, x-push-key 헤더)에서 부름:
 //   POST { action: "live", openDate }  → 알림 켠 모든 기기로 "방송 시작" 알림(방송마다 한 번)
 //
-// 테스트 중엔 PUSH_PUBLIC = false — 관리자 계정만 알림을 켤 수 있음(사이트의 PWA_PUBLIC과 같이 바꿀 것).
+// PUSH_PUBLIC = false면 관리자 계정만 알림을 켤 수 있음(테스트용). 2026-10 공개(true) — 사이트의 PWA_PUBLIC과 같이 맞출 것.
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|not_open
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
@@ -17,7 +17,7 @@ import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { sendPush, type VapidKeys } from "../_shared/webpush.ts";
 
-const PUSH_PUBLIC = false;
+const PUSH_PUBLIC = true;
 const MAX_PER_USER = 10; // 한 사람이 알림 켤 수 있는 기기 수
 const LIVE_URL = `https://chzzk.naver.com/live/${OWNER_CHANNEL_ID}`;
 
