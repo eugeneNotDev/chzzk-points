@@ -1805,6 +1805,81 @@ function initThemeToggle() {
 }
 initThemeToggle();
 
+// ── 앱(홈 화면 설치, PWA) ────────────────────────────────────────────────────────────────
+// 사이트를 휴대폰 홈 화면에 앱처럼 설치하는 기능. 스토어 등록 없이 브라우저의 "앱 설치/홈 화면에 추가"로 받음.
+// 테스트 중엔 관리자 계정에서만 켜짐(PWA_PUBLIC = false) — 시청자에겐 설치 안내도 안 뜨고 브라우저가 앱으로 인식하지도 않음.
+// 공개할 땐 PWA_PUBLIC만 true로 바꾸면 됨. 서비스 워커(sw.js)는 페이지를 저장(캐시)하지 않음 — 업데이트가 늦게 보이는 문제 방지.
+const PWA_PUBLIC = false;
+let pwaInstallPrompt = null;
+function pwaEnabled() {
+  return PWA_PUBLIC || isAdmin();
+}
+function pwaIsStandalone() {
+  return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+}
+function setupAppMode() {
+  if (!pwaEnabled()) return;
+  const head = document.head;
+  const add = (tag, attrs) => {
+    const el = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    head.appendChild(el);
+  };
+  if (!head.querySelector('link[rel="manifest"]')) {
+    add("link", { rel: "manifest", href: "manifest.webmanifest" });
+    add("link", { rel: "apple-touch-icon", href: "assets/img/app-icon-180.png" });
+    add("meta", { name: "theme-color", content: "#0c0e11" });
+    add("meta", { name: "apple-mobile-web-app-title", content: "유진 팬보드" });
+    add("meta", { name: "apple-mobile-web-app-status-bar-style", content: "black" });
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js", { scope: "./" }).catch((err) => console.warn("[app] 서비스 워커 등록 실패", err));
+  }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    pwaInstallPrompt = e;
+    document.querySelectorAll("[data-app-install-slot]").forEach((el) => renderAppInstallCard(el));
+  });
+  window.addEventListener("appinstalled", () => {
+    pwaInstallPrompt = null;
+    document.querySelectorAll("[data-app-install-slot]").forEach((el) => renderAppInstallCard(el));
+  });
+}
+setupAppMode();
+
+// 마이페이지 "앱으로 설치" 카드. 기기/브라우저에 맞는 설치 방법을 보여줌.
+function renderAppInstallCard(slot) {
+  if (!slot) return;
+  if (!pwaEnabled()) { slot.innerHTML = ""; slot.hidden = true; return; }
+  slot.hidden = false;
+  slot.setAttribute("data-app-install-slot", "");
+  const ua = navigator.userAgent || "";
+  const isIos = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const inApp = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|everytimeApp|DaumApps|; wv\)/i.test(ua);
+  const testTag = PWA_PUBLIC ? "" : `<span class="app-test-tag">테스트 중 · 관리자에게만 보여요</span>`;
+  let body;
+  if (pwaIsStandalone()) {
+    body = `<p class="app-install-ok">앱으로 실행 중이에요.</p>`;
+  } else if (inApp) {
+    body = `<p class="muted">지금은 다른 앱 안의 브라우저라 설치가 안 돼요. 오른쪽 위 메뉴에서 <b>다른 브라우저로 열기</b>(크롬·사파리)를 누른 뒤 다시 들어와 주세요.</p>`;
+  } else if (pwaInstallPrompt) {
+    body = `<p class="muted">홈 화면에 아이콘이 생기고, 주소창 없이 앱처럼 열려요.</p><button type="button" class="app-install-btn">앱 설치하기</button>`;
+  } else if (isIos) {
+    body = `<ol class="app-install-steps"><li>사파리 아래쪽 <b>공유 버튼</b>(네모에 위 화살표)을 눌러요.</li><li><b>홈 화면에 추가</b>를 눌러요.</li><li>홈 화면에 생긴 <b>유진 팬보드</b> 아이콘으로 열면 돼요.</li></ol>`;
+  } else {
+    body = `<p class="muted">브라우저 메뉴(⋮)에서 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 눌러 주세요. 이미 설치했다면 홈 화면 아이콘으로 열면 돼요.</p>`;
+  }
+  slot.innerHTML = `<div class="card app-install-card"><div class="app-install-head"><img src="assets/img/app-icon-192.png" alt="" class="app-install-icon"><div><strong>앱으로 설치</strong>${testTag}</div></div>${body}</div>`;
+  const btn = slot.querySelector(".app-install-btn");
+  if (btn) btn.addEventListener("click", async () => {
+    if (!pwaInstallPrompt) return;
+    pwaInstallPrompt.prompt();
+    try { await pwaInstallPrompt.userChoice; } catch { /* 무시 */ }
+    pwaInstallPrompt = null;
+    renderAppInstallCard(slot);
+  });
+}
+
 // 입력칸 자동완성 끄기 — 브라우저가 예전에 입력했던 값(상품명, 제목 등)을 드롭다운으로 추천하는
 // 걸 사이트 전체에서 막음. 페이지마다 일일이 속성을 다는 대신 여기서 한 번에: 지금 있는 입력칸 +
 // 나중에 생기는 입력칸(SPA 페이지 전환, 모달/목록을 JS로 그리는 경우)까지 MutationObserver로 잡음.

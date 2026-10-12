@@ -3731,3 +3731,13 @@ ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-b
 :root[data-theme="light"] .rk-sp-item { color: var(--sp-l, var(--sp, #b07800)); }
 :root[data-theme="light"] .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad-l, var(--sp-grad)); -webkit-background-clip: text; background-clip: text; }
 :root[data-theme="light"] .rk-sp-item--rainbow { color: #e8a400; }
+
+/* 마이페이지 "앱으로 설치" 카드(renderAppInstallCard, chzzk-auth.js) */
+.app-install-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.app-install-head strong { display: block; font-size: 1rem; }
+.app-install-icon { width: 44px; height: 44px; border-radius: 11px; flex: 0 0 auto; }
+.app-test-tag { display: inline-block; margin-top: 3px; font-size: 0.72rem; font-weight: 700; color: var(--amber-text); background: rgba(245, 185, 74, 0.14); border-radius: 999px; padding: 1px 8px; }
+.app-install-card .muted { margin: 0; line-height: 1.55; }
+.app-install-btn { margin-top: 12px; }
+.app-install-ok { margin: 0; color: var(--accent); font-weight: 700; }
+.app-install-steps { margin: 0; padding-left: 1.2em; line-height: 1.7; color: var(--text-dim); }
