@@ -21,7 +21,9 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "./";
+  let url = (event.notification.data && event.notification.data.url) || "./";
+  // 치지직 방송 주소는 바로 열면 앱이 아니라 웹으로 열려서, 치지직 앱을 열어주는 중간 페이지로 보냄(open-live.html).
+  if (/^https:\/\/chzzk\.naver\.com\/live\//.test(url)) url = "open-live.html";
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const w of wins) {

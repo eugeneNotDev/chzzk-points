@@ -3763,3 +3763,12 @@ ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-b
 .ptr.loading svg { animation: ptr-spin 0.7s linear infinite; }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
 @media (min-width: 721px) { .ptr { top: 18px; } }
+
+/* 방송 알림 → 치지직 앱 열기 중간 페이지(open-live.html) */
+.open-live-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.open-live { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px 20px; text-align: center; max-width: 360px; width: 100%; }
+.open-live h1 { margin: 6px 0 0; }
+.open-live .muted { margin: 0 0 8px; }
+.open-live-icon { width: 72px; height: 72px; border-radius: 18px; }
+.open-live-btn { display: block; width: 100%; padding: 13px 16px; border-radius: 12px; background: var(--accent); color: var(--accent-text); font-weight: 800; text-decoration: none; text-align: center; }
+.open-live-sub { color: var(--muted); font-size: 0.9rem; padding: 6px; }
