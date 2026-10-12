@@ -3772,3 +3772,6 @@ ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-b
 .open-live-icon { width: 72px; height: 72px; border-radius: 18px; }
 .open-live-btn { display: block; width: 100%; padding: 13px 16px; border-radius: 12px; background: var(--accent); color: var(--accent-text); font-weight: 800; text-decoration: none; text-align: center; }
 .open-live-sub { color: var(--muted); font-size: 0.9rem; padding: 6px; }
+.open-live-test { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.open-live-test p { margin: 0 0 4px; font-size: 0.82rem; color: var(--muted); }
+.open-live-test .button { display: block; padding: 11px; border-radius: 10px; text-decoration: none; text-align: center; font-size: 0.88rem; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }

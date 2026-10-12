@@ -13,7 +13,7 @@
     document.documentElement.dataset.theme = t;
   })();
 </script>
-<link rel="stylesheet" href="assets/css/style.css?v=127">
+<link rel="stylesheet" href="assets/css/style.css?v=128">
 </head>
 <body class="open-live-page">
   <!-- 방송 알림을 눌렀을 때 오는 중간 페이지(sw.js). 알림에서 바로 치지직 주소를 열면 앱이 아니라 웹(크롬)으로 열려서,
@@ -21,29 +21,42 @@
   <main class="open-live">
     <img src="assets/img/app-icon-192.png" alt="" class="open-live-icon">
     <h1>유진 방송 시작!</h1>
-    <p class="muted" id="open-live-msg">치지직 앱을 여는 중이에요…</p>
+    <p class="muted">아래 버튼을 누르면 방송으로 가요.</p>
     <a class="button open-live-btn" id="open-live-app">치지직 앱으로 보기</a>
     <a class="open-live-sub" id="open-live-web">웹으로 보기</a>
     <a class="open-live-sub" href="index.html">팬보드로 가기</a>
+    <div class="open-live-test" id="open-live-test" hidden>
+      <p><b>관리자 테스트</b> — 어느 버튼이 치지직 앱의 방송 화면으로 바로 가는지 알려주세요.</p>
+      <a class="button secondary" id="t1">1. 앱 지정 + chzzk.naver.com</a>
+      <a class="button secondary" id="t2">2. 앱 지정 + m.chzzk.naver.com</a>
+      <a class="button secondary" id="t3">3. 링크 그대로(https)</a>
+      <a class="button secondary" id="t4">4. 치지직 앱만 실행(첫 화면)</a>
+    </div>
   </main>
   <script>
+    // 자동으로 넘기지 않음 — 예전엔 열리자마자 이동했는데, 앱이 안 열리고 웹으로 넘어간 뒤 닫기(X)를 누르면
+    // 이 페이지로 돌아와서 또 이동하는 무한 반복이 생겼음. 이제 버튼을 눌렀을 때만 이동.
     (function () {
       var CHANNEL = "37a1acfaa35d56311bf428dc96142e9f";
+      var PKG = "com.navercorp.game.android.community"; // 치지직 안드로이드 앱(구글 플레이 기준)
       var web = "https://chzzk.naver.com/live/" + CHANNEL;
       var isAndroid = /Android/i.test(navigator.userAgent);
-      // 안드로이드: 치지직 앱(패키지 com.navercorp.game.android.community)으로 같은 방송 주소를 엶. 앱이 없으면 웹 주소로.
-      var intent = "intent://chzzk.naver.com/live/" + CHANNEL +
-        "#Intent;scheme=https;package=com.navercorp.game.android.community;S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
-      var appLink = document.getElementById("open-live-app");
-      appLink.href = isAndroid ? intent : web;
+      function intentFor(host, fallback) {
+        return "intent://" + host + "/live/" + CHANNEL + "#Intent;scheme=https;package=" + PKG +
+          (fallback ? ";S.browser_fallback_url=" + encodeURIComponent(web) : "") + ";end";
+      }
+      document.getElementById("open-live-app").href = isAndroid ? intentFor("chzzk.naver.com", true) : web;
       document.getElementById("open-live-web").href = web;
-      if (isAndroid) {
-        location.href = intent;
-        setTimeout(function () {
-          document.getElementById("open-live-msg").textContent = "앱이 안 열리면 아래 버튼을 눌러 주세요.";
-        }, 1500);
-      } else {
-        document.getElementById("open-live-msg").textContent = "아래 버튼을 누르면 방송으로 가요.";
+      var isOwner = false;
+      try {
+        isOwner = localStorage.getItem("chzzk_points_channel_id") === CHANNEL;
+      } catch (e) {}
+      if (isOwner && isAndroid) {
+        document.getElementById("open-live-test").hidden = false;
+        document.getElementById("t1").href = intentFor("chzzk.naver.com", false);
+        document.getElementById("t2").href = intentFor("m.chzzk.naver.com", false);
+        document.getElementById("t3").href = web;
+        document.getElementById("t4").href = "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=" + PKG + ";end";
       }
     })();
   </script>
