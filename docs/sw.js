@@ -11,7 +11,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "",
     icon: "assets/img/app-icon-192.png",
-    badge: "assets/img/app-icon-192.png",
+    // 안드로이드 상단바(알림 접기 전)에 뜨는 작은 아이콘 — 색은 무시되고 모양(투명도)만 쓰여서 흰 단색 아이콘을 따로 둠
+    badge: "assets/img/app-badge-96.png",
     tag: data.tag || "live",
     renotify: true,
     data: { url: data.url || "./" },
