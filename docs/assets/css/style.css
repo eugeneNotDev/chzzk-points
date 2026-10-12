@@ -79,6 +79,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar {
   height: 0;
 }
 
+/* 휴대폰에서 링크·버튼을 누를 때 생기는 네모 반투명 박스(탭 하이라이트) 끔 — 앱처럼 보이게. */
+html { -webkit-tap-highlight-color: transparent; }
+
 body {
   margin: 0;
   font-family: system-ui, "Noto Sans KR", sans-serif;
@@ -3745,3 +3748,18 @@ ol.ranking-list .name > .title-badge .tb-text, .title-sp-preview-name > .title-b
 .push-section .toggle-row .muted { margin: 2px 0 0; }
 .push-section .push-status:empty { display: none; }
 .push-test-btn { margin-top: 10px; }
+
+/* 상단바 포인트·프로필 누를 때 — 네모 박스 대신 살짝 흐려지게 */
+.m-topbar-profile, .m-brand { -webkit-tap-highlight-color: transparent; transition: opacity 0.12s; }
+.m-topbar-profile:active, .m-brand:active { opacity: 0.6; }
+.m-topbar-profile:focus:not(:focus-visible), .m-brand:focus:not(:focus-visible) { outline: none; }
+
+/* 앱에서 당겨서 새로고침(setupPullToRefresh, chzzk-auth.js) */
+.ptr { position: fixed; left: 50%; top: 58px; z-index: 60; width: 36px; height: 36px; margin-top: -40px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); opacity: 0; transform: translate(-50%, 0); pointer-events: none; }
+.ptr svg { width: 18px; height: 18px; }
+.ptr.ready { color: var(--accent); }
+.ptr.ptr-back { transition: transform 0.2s, opacity 0.2s; }
+.ptr.loading { color: var(--accent); opacity: 1; }
+.ptr.loading svg { animation: ptr-spin 0.7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+@media (min-width: 721px) { .ptr { top: 18px; } }
