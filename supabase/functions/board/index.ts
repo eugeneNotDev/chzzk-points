@@ -6,7 +6,7 @@
 //
 // list           { board, page? }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
 // get            { id }                      → { post, images:[url], comments:[...] }
-// create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 6시간 이내 + 첫 후기면 rewarded=100)
+// create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 12시간 이내 + 첫 후기면 rewarded=100)
 // update         { id, title, body, images? } → { ok }
 // delete         { id }                      → { ok, revoked }  (보상 받은 후기면 100P 회수)
 // comment        { postId, body, parentId?, replyToId? } → { ok }  (답글: parentId=원댓글, replyToId=실제로 답한 댓글 — 0062_board_replies.sql)
@@ -29,7 +29,7 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 const BUCKET = "board-images";
 const PAGE_SIZE = 20;
 const REVIEW_REWARD = 100;
-const REVIEW_WINDOW_MS = 6 * 60 * 60 * 1000;
+const REVIEW_WINDOW_MS = 12 * 60 * 60 * 1000;
 const MAX_TITLE = 60;
 const MAX_BODY = 5000;
 const MAX_COMMENT = 500;
@@ -84,7 +84,7 @@ async function getLiveWindow(): Promise<LiveWindow> {
   return v;
 }
 
-// 후기 보상 대상 방송 키(= openDate). 방송 중이거나, 끝난 지 6시간 이내면 키를 돌려주고 아니면 null.
+// 후기 보상 대상 방송 키(= openDate). 방송 중이거나, 끝난 지 12시간 이내면 키를 돌려주고 아니면 null.
 function eligibleBroadcastKey(w: LiveWindow): string | null {
   if (!w.openDate) return null;
   if (w.isLive) return w.openDate;
@@ -95,7 +95,7 @@ function eligibleBroadcastKey(w: LiveWindow): string | null {
 }
 
 // 후기 보상 대상 방송 키. 1) 치지직이 지금 방송 중이라고 하면 그 방송, 2) 아니면 우리가 1분마다 남기는 방송 기록
-// (broadcast_sessions, live-tracker 함수)의 마지막 방송이 아직 켜져 있거나 끝난 지 6시간 이내면 그 방송,
+// (broadcast_sessions, live-tracker 함수)의 마지막 방송이 아직 켜져 있거나 끝난 지 12시간 이내면 그 방송,
 // 3) 기록이 없으면 예전처럼 치지직의 종료 시각으로 판단.
 async function reviewBroadcastKey(admin: Admin): Promise<{ key: string | null; isLive: boolean }> {
   const w = await getLiveWindow();

@@ -325,14 +325,14 @@ export function initBoard(board) {
       let title, sub, dim = false;
       if (s.eligible && !s.alreadyRewarded) {
         title = `${s.isLive ? "지금 방송 중!" : "이번 방송"} 후기를 남기면 ${s.reward}P!`;
-        sub = "방송 중이거나 종료 후 6시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
+        sub = "방송 중이거나 종료 후 12시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
       } else if (s.eligible) {
         title = "이번 방송 후기 보상은 이미 받았어요";
         sub = "다음 방송 때 첫 후기를 남기면 또 받을 수 있어요.";
         dim = true;
       } else {
         title = `방송 후기를 남기면 ${s.reward}P!`;
-        sub = "방송 중이거나 종료 후 6시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
+        sub = "방송 중이거나 종료 후 12시간 안에, 방송마다 첫 후기 한 번만 지급돼요.";
         dim = true;
       }
       el.className = `bd-banner${dim ? " dim" : ""}`;
