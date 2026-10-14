@@ -224,9 +224,10 @@
 }
 
 /* ── 팝업(dialog) ── */
+/* 크기는 화면 너비·높이에 맞춰 늘어남 — 작은 노트북에선 그대로, 큰 모니터에선 넓고 길게. */
 .modal {
-  width: min(640px, calc(100vw - 32px));
-  max-height: min(86vh, 900px);
+  width: min(calc(100vw - 32px), clamp(560px, 44vw, 760px));
+  max-height: min(88vh, 1100px);
   padding: 0;
   border: 1px solid var(--c-border);
   border-radius: var(--r-xl);
@@ -246,7 +247,8 @@
   backdrop-filter: blur(2px);
 }
 .modal-wide {
-  width: min(880px, calc(100vw - 32px));
+  width: min(calc(100vw - 32px), clamp(720px, 62vw, 1120px));
+  max-height: min(92vh, 1300px);
 }
 .modal-head {
   flex: none;

@@ -119,7 +119,7 @@ export default function Notice() {
       <Modal
         open={!!viewing}
         onClose={closeView}
-        wide={!!viewing?.notice_attachments.some((a) => a.kind === "image")}
+        wide
         title={viewing?.title || "(제목 없음)"}
         subtitle={viewing ? fmtDate(viewing.created_at) : undefined}
         actions={
