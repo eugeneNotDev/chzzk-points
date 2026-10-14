@@ -3,6 +3,7 @@
   flex: none;
 }
 .btn {
+  box-sizing: border-box;
   width: 100%;
   height: 42px;
   display: flex;
@@ -41,7 +42,8 @@
   left: 0;
   right: 0;
   z-index: 40;
-  min-width: 140px;
+  /* 펼친 목록 폭 = 선택 버튼 폭(left/right 0) — 버튼보다 튀어나오지 않게 */
+  box-sizing: border-box;
   margin: 0;
   padding: 5px;
   list-style: none;

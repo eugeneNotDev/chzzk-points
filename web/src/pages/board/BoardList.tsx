@@ -42,7 +42,18 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
   const q = useQuery({
     queryKey: ["board", "list", board, page, search, field, token],
     placeholderData: (p) => p,
-    queryFn: () => boardCall<{ posts: ListPost[]; total: number; pageSize: number }>({ action: "list", board, page, size: PAGE_SIZE, ...(search ? { q: search, field } : {}) }),
+    queryFn: async () => {
+      type R = { posts: ListPost[]; total: number; pageSize: number };
+      const extra = search ? { q: search, field } : {};
+      const r = await boardCall<R>({ action: "list", board, page, size: PAGE_SIZE, ...extra });
+      if (r.pageSize === PAGE_SIZE) return r;
+      // 서버 함수가 아직 예전 버전(한 페이지 20개 고정)이면, 그 안에서 10개씩 잘라서 보여줌 — 배포 전후 모두 10개씩.
+      const ps = r.pageSize || 20;
+      const serverPage = Math.floor((page * PAGE_SIZE) / ps);
+      const r2 = serverPage === page ? r : await boardCall<R>({ action: "list", board, page: serverPage, ...extra });
+      const offset = page * PAGE_SIZE - serverPage * ps;
+      return { posts: r2.posts.slice(offset, offset + PAGE_SIZE), total: r2.total, pageSize: PAGE_SIZE };
+    },
   });
   // 페이지 이동 주소 — 검색 중이면 검색어를 유지
   const pageUrl = (p: number) => {
