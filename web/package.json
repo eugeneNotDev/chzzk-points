@@ -1,0 +1,27 @@
+{
+  "name": "eugene-fanboard-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/copy-routes.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "@tanstack/react-query": "^5.104.2",
+    "lucide-react": "^1.56.0",
+    "motion": "^12.23.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.9.0",
+    "vite": "^7.1.0"
+  }
+}

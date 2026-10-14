@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0a0c0f" />
+    <title>유진 팬보드 (베타)</title>
+    <link rel="icon" href="/assets/img/app-icon-192.png" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap" />
+    <script>
+      // 테마를 화면이 그려지기 전에 먼저 적용(깜빡임 방지). 저장 키는 기존 사이트와 같음.
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("chzzk_points_theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
+    <script type="module" crossorigin src="/beta/assets/index-DBbFHSOL.js"></script>
+    <link rel="modulepreload" crossorigin href="/beta/assets/react-Bzw9wjtW.js">
+    <link rel="modulepreload" crossorigin href="/beta/assets/data-CtLc7Oaq.js">
+    <link rel="modulepreload" crossorigin href="/beta/assets/motion-D2bVE4Ot.js">
+    <link rel="stylesheet" crossorigin href="/beta/assets/index-Dg6i8oZe.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,99 @@
+/* 디자인 토큰 — 색·간격·모서리·글자 크기를 전부 여기서 정함.
+   화면 코드에는 색을 직접 쓰지 않고 var(--c-...)만 씀 → 톤을 바꿀 땐 이 파일만 고치면 사이트 전체에 반영.
+   다크가 기본, 라이트는 아래 [data-theme="light"]에서 같은 이름을 덮어씀(기존 사이트와 같은 저장 키 사용). */
+
+:root {
+  /* 바탕 단계: 페이지 < 사이드바 < 카드 < 카드 안 칸 < hover */
+  --c-bg: #0a0c0f;
+  --c-sidebar: #0f1216;
+  --c-surface: #14181d;
+  --c-surface-2: #0f1216;
+  --c-surface-3: #1e232a;
+  --c-hover: #181c22;
+  --c-border: #1f242c;
+  --c-border-strong: #2e353f;
+
+  /* 글자 단계 */
+  --c-text: #f1f4f6;
+  --c-text-2: #aeb6be;
+  --c-text-3: #8a939c;
+  --c-text-4: #6e7781;
+
+  /* 포인트 컬러(치지직 느낌 초록) */
+  --c-accent: #00e5a0;
+  --c-accent-hover: #3dffc4;
+  --c-accent-ink: #03130d; /* 초록 위 글자 */
+  --c-accent-soft: rgba(0, 229, 160, 0.12);
+
+  /* 상태 색 */
+  --c-live: #e5212d;
+  --c-live-text: #ff6b74;
+  --c-live-soft: rgba(255, 59, 71, 0.14);
+  --c-gold: #f2c230;
+  --c-gold-soft: rgba(242, 194, 48, 0.12);
+  --c-silver: #c9d1d9;
+  --c-bronze: #d49a6a;
+  --c-pink: #ff7ba6;
+  --c-pink-soft: rgba(255, 107, 157, 0.14);
+  --c-blue: #8fbcff;
+  --c-blue-soft: rgba(143, 188, 255, 0.14);
+  --c-amber: #f5b94a;
+  --c-danger: #ff5a5a;
+
+  /* 모서리 */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 24px;
+
+  /* 간격 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+
+  /* 글꼴 */
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-num: "Outfit", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+
+  --sidebar-w: 240px;
+  --content-max: 1120px;
+  --mobile-bar-h: 64px;
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --c-bg: #f4f6f8;
+  --c-sidebar: #ffffff;
+  --c-surface: #ffffff;
+  --c-surface-2: #f1f3f5;
+  --c-surface-3: #e9ecef;
+  --c-hover: #f1f3f5;
+  --c-border: #e3e7eb;
+  --c-border-strong: #cfd5db;
+
+  --c-text: #14171b;
+  --c-text-2: #4a525b;
+  --c-text-3: #5f6872;
+  --c-text-4: #7a838c;
+
+  --c-accent: #00b07a;
+  --c-accent-hover: #009466;
+  --c-accent-ink: #ffffff;
+  --c-accent-soft: rgba(0, 176, 122, 0.12);
+
+  --c-live-text: #d9303b;
+  --c-gold: #b8860b;
+  --c-silver: #7d8792;
+  --c-bronze: #a8693a;
+  --c-pink: #d6336c;
+  --c-blue: #2f6fd6;
+  --c-amber: #b7791f;
+
+  color-scheme: light;
+}
