@@ -3,6 +3,20 @@
 @import "./notice-html.css";
 @import "./components.css";
 
+/* 제목·로고 글꼴(고도체) — 기존 사이트와 같은 눈누 CDN 파일. 막히면 Pretendard로 대체돼서 레이아웃은 안 깨짐. */
+@font-face {
+  font-family: "Godo";
+  src: url("https://cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff2") format("woff2");
+  font-weight: 400 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Godo";
+  src: url("https://cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff2") format("woff2");
+  font-weight: 700 900;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -10,6 +24,17 @@
 }
 
 html,
+/* 스크롤바는 숨김(스크롤은 그대로 됨) — 기존 사이트와 같게 */
+html,
+body,
+* {
+  scrollbar-width: none;
+}
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 body {
   margin: 0;
   background: var(--c-bg);
@@ -17,6 +42,7 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
 }

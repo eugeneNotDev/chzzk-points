@@ -71,6 +71,8 @@
   color: var(--c-live-text);
 }
 .headline {
+  font-family: var(--font-logo);
+  letter-spacing: 0;
   font-size: 26px;
   font-weight: 800;
   line-height: 1.3;
@@ -78,8 +80,15 @@
   word-break: keep-all;
 }
 .sub {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.memo {
+  margin-top: -4px;
   font-size: 14px;
-  color: var(--c-text-2);
+  color: var(--c-text-3);
+  white-space: pre-wrap;
 }
 .heroActions {
   display: flex;

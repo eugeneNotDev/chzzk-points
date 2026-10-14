@@ -117,7 +117,7 @@ export function isBoardPostNew(p: BoardPost) {
   }
 }
 
-export type ScheduleRow = { day: string; kind: "live" | "off" | string; start_time: string | null; title: string | null };
+export type ScheduleRow = { day: string; kind: "live" | "off" | string; start_time: string | null; title: string | null; memo: string | null };
 
 export function useUpcomingSchedule() {
   return useQuery({
@@ -127,7 +127,7 @@ export function useUpcomingSchedule() {
       const today = kstToday();
       const { data, error } = await supabase
         .from("broadcast_schedule")
-        .select("day, kind, start_time, title")
+        .select("day, kind, start_time, title, memo")
         .gte("day", today)
         .order("day", { ascending: true })
         .limit(14);

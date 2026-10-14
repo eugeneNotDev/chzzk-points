@@ -4,7 +4,7 @@
 // 전부 POST { action, ... }. 읽기(list/get/review-status)는 로그인 없이도 되지만, 로그인하면 "내 글" 여부와
 // (관리자면) 자유게시판 작성자 닉네임이 같이 옴. 쓰기는 로그인 필수(+ 차단 유저 불가).
 //
-// list           { board, page? }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
+// list           { board, page?, q?, field?("title"|"all"|"author") }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
 // get            { id }                      → { post, images:[url], comments:[...] }
 // create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 12시간 이내 + 첫 후기면 rewarded=100)
 // update         { id, title, body, images? } → { ok }
@@ -230,10 +230,33 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   if (board !== "free" && board !== "review") return json({ error: "invalid_board" }, 400);
   const review = board === "review";
   const page = Math.max(0, Math.min(Number(body.page) || 0, 10000));
-  const { data: posts, error, count } = await admin
+  // 검색(선택) — q: 검색어(최대 40자), field: "title"(제목) | "all"(제목+내용) | "author"(작성자 — 방송 후기만, 자유게시판은 익명이라 안 됨).
+  // ilike 특수문자(% _ \)는 글자 그대로 찾게 이스케이프, or() 문법을 깨는 , ( ) " 는 공백으로 바꿈.
+  const q = String(body.q ?? "").replace(/[,()"]/g, " ").trim().slice(0, 40);
+  const field = body.field === "all" || body.field === "author" ? body.field : "title";
+  let query = admin
     .from("board_posts")
     .select("id, title, body, channel_id, created_at, broadcast_key, hidden", { count: "exact" })
-    .eq("board", board)
+    .eq("board", board);
+  if (q) {
+    const pat = `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+    // 신고로 가려진 글은 일반 사용자 검색 결과에 안 나옴(가려진 내용이 검색으로 새지 않게)
+    if (!isAdmin) query = query.eq("hidden", false);
+    if (field === "author") {
+      if (!review) return json({ posts: [], total: 0, pageSize: PAGE_SIZE });
+      const { data: us } = await admin.from("users").select("channel_id").ilike("channel_name", pat).limit(200);
+      const cids = (us ?? []).map((u: any) => u.channel_id);
+      if (!cids.length) return json({ posts: [], total: 0, pageSize: PAGE_SIZE });
+      query = query.in("channel_id", cids);
+    } else if (field === "all") {
+      // or() 안의 큰따옴표 값은 백슬래시가 한 번 더 풀리므로 두 번 씀
+      const qp = pat.replace(/\\/g, "\\\\");
+      query = query.or(`title.ilike."${qp}",body.ilike."${qp}"`);
+    } else {
+      query = query.ilike("title", pat);
+    }
+  }
+  const { data: posts, error, count } = await query
     .order("id", { ascending: false })
     .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
   if (error) throw new Error(`board_posts 조회 실패: ${error.message}`);

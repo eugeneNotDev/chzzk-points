@@ -4,7 +4,8 @@
 .title-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.12em 0.55em;
+  /* 위·아래 여백을 살짝 다르게 — Pretendard 한글이 보통 크기(배율 100%)에서 칸 안 위쪽으로 쏠려 보여서 아래로 1px 정도 내림 */
+  padding: 0.16em 0.55em 0.08em;
   border-radius: 5px;
   background: var(--badge-bg, var(--c-accent));
   color: var(--badge-fg, var(--c-accent-ink));

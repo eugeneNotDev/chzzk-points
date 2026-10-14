@@ -505,6 +505,8 @@
   flex-wrap: wrap;
 }
 .codeBig {
+  font-family: var(--font-logo);
+  letter-spacing: 0;
   padding: 10px 18px;
   border-radius: var(--r-md);
   background: var(--c-accent-soft);

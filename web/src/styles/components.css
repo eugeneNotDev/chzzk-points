@@ -256,6 +256,8 @@
   border-bottom: 1px solid var(--c-border);
 }
 .modal-head h3 {
+  font-family: var(--font-logo);
+  letter-spacing: 0;
   font-size: 19px;
   font-weight: 800;
   line-height: 1.35;
@@ -332,6 +334,8 @@
   min-width: 0;
 }
 .page-title {
+  font-family: var(--font-logo);
+  letter-spacing: 0;
   display: none; /* PC는 상단바에 제목이 있어서 모바일에서만 */
   font-size: 22px;
   font-weight: 800;

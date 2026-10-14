@@ -1,5 +1,5 @@
 // 게시판(자유게시판 board-free.html / 방송 후기 board-review.html) — 주소로 화면이 바뀜.
-//   ?page=N 목록 · ?post=ID 글 보기 · ?post=ID&edit=1 수정 · ?write=1 글쓰기
+//   ?page=N 목록(?q=검색어&field=title|all|author) · ?post=ID 글 보기 · ?post=ID&edit=1 수정 · ?write=1 글쓰기
 // 브라우저 뒤로가기가 자연스럽게 목록 ↔ 글로 오가게 주소(history)를 씀.
 import { useSearchParams } from "react-router-dom";
 import type { BoardKind } from "../../lib/board";
@@ -15,7 +15,14 @@ export function BoardPage({ board }: { board: BoardKind }) {
     if (params.get("edit") === "1") return <PostEditor board={board} editId={postId} />;
     return <PostView board={board} id={postId} />;
   }
-  return <BoardList board={board} page={Math.max(0, (Number(params.get("page")) || 1) - 1)} />;
+  return (
+    <BoardList
+      board={board}
+      page={Math.max(0, (Number(params.get("page")) || 1) - 1)}
+      q={(params.get("q") || "").trim()}
+      field={params.get("field") === "all" || params.get("field") === "author" ? (params.get("field") as "all" | "author") : "title"}
+    />
+  );
 }
 
 export function FreeBoard() {

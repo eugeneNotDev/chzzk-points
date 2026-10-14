@@ -127,6 +127,43 @@ function PointsChip() {
   );
 }
 
+// 모바일 "더보기" — 기존 사이트처럼 아이콘 바둑판(한 화면에 전부 보이게). 하단 탭에 있는 메뉴는 뺌.
+function MoreSheet({ onClose }: { onClose: () => void }) {
+  const { isAdmin } = useAuth();
+  const newNotice = useHasNewNotice();
+  const { theme, toggle } = useTheme();
+  const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin));
+  return (
+    <div className={styles.sheetBackdrop} onClick={onClose}>
+      <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="더보기" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.grabber} aria-hidden="true" />
+        <UserBox />
+        <nav className={styles.sheetGrid} aria-label="전체 메뉴">
+          {items.map((it) => (
+            <NavLink key={it.path} to={`/${it.path}`} end onClick={onClose} className={({ isActive }) => `${styles.sheetItem} ${isActive ? styles.sheetItemOn : ""}`}>
+              <span className={styles.sheetIcon}>
+                <it.icon size={22} aria-hidden="true" />
+                {it.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
+              </span>
+              <span>{it.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className={styles.sheetFoot}>
+          <button type="button" className={styles.sheetFootBtn} onClick={toggle}>
+            {theme === "dark" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
+            {theme === "dark" ? "라이트 모드" : "다크 모드"}
+          </button>
+          <button type="button" className={styles.sheetFootBtn} onClick={onClose}>
+            <X size={17} aria-hidden="true" />
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppLayout() {
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -191,20 +228,7 @@ export function AppLayout() {
         </button>
       </nav>
 
-      {sheetOpen && (
-        <div className={styles.sheetBackdrop} onClick={() => setSheetOpen(false)}>
-          <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="전체 메뉴" onClick={(e) => e.stopPropagation()}>
-            <div className={styles.sheetHead}>
-              <span className={styles.sheetTitle}>전체 메뉴</span>
-              <button type="button" className={styles.iconBtn} aria-label="닫기" onClick={() => setSheetOpen(false)}>
-                <X size={20} aria-hidden="true" />
-              </button>
-            </div>
-            <UserBox />
-            <NavList onNavigate={() => setSheetOpen(false)} />
-          </div>
-        </div>
-      )}
+      {sheetOpen && <MoreSheet onClose={() => setSheetOpen(false)} />}
     </div>
   );
 }

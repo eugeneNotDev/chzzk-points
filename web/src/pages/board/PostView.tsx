@@ -311,16 +311,15 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
   }, [flash]);
 
   const back = () => goBackOr(nav, cfg.path);
+  // 모바일에선 게시판 이름(PageHead), 그 아래 왼쪽에 "← 목록"
   const head = (
-    <PageHead
-      title={cfg.name}
-      actions={
-        <button type="button" className="btn btn-ghost" onClick={back}>
-          <ArrowLeft size={18} aria-hidden="true" />
-          목록
-        </button>
-      }
-    />
+    <>
+      <PageHead title={cfg.name} />
+      <button type="button" className={styles.backBtn} onClick={back}>
+        <ArrowLeft size={18} aria-hidden="true" />
+        목록
+      </button>
+    </>
   );
 
   if (q.isLoading)

@@ -106,6 +106,61 @@
   font-weight: 500;
 }
 
+/* ---------- 목록 아래: 검색 + 글쓰기 ---------- */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--c-border);
+}
+.searchForm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 520px;
+  min-width: 0;
+}
+.searchField {
+  width: 128px;
+  flex: none;
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 14px;
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  font-size: 14px;
+}
+.searchInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text-2);
+  font-size: 14px;
+}
+.clearSearch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--c-text-3);
+  font-size: 13px;
+  text-decoration: none;
+}
+.clearSearch:hover {
+  color: var(--c-text);
+}
+
 /* ---------- 후기 보상 배너 ---------- */
 .banner {
   display: flex;
@@ -148,6 +203,27 @@
 }
 
 /* ---------- 글 보기 ---------- */
+.backBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin: -4px 0 -6px -8px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--c-text-2);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.backBtn:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
 .post .meta {
   margin-bottom: 12px;
 }
@@ -158,6 +234,8 @@
   gap: 8px;
 }
 .postTitle {
+  font-family: var(--font-logo);
+  letter-spacing: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -549,6 +627,23 @@
 }
 
 @media (max-width: 720px) {
+  .footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding: 12px 14px 16px;
+  }
+  .footer > :global(.btn) {
+    align-self: flex-end;
+  }
+  .searchForm {
+    max-width: none;
+  }
+  .searchField {
+    width: 104px;
+  }
+  .searchLabel {
+    display: none;
+  }
   .item {
     padding: 13px 14px;
   }

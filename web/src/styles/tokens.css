@@ -59,7 +59,10 @@
 
   /* 글꼴 */
   --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-num: "Outfit", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  /* 숫자 전용 글꼴(Outfit) — 사이트에 같이 묶어서 배포 */
+  --font-num: "Outfit Variable", "Pretendard Variable", Pretendard, system-ui, sans-serif;
+  /* 제목·로고용(고도체) — 기존 사이트와 같은 글꼴. @font-face는 global.css */
+  --font-logo: "Godo", "Pretendard Variable", Pretendard, system-ui, sans-serif;
 
   --sidebar-w: 240px;
   --content-max: 1120px;

@@ -38,15 +38,13 @@ export function PostEditor({ board, editId }: { board: BoardKind; editId?: numbe
   });
   const nav = useNavigate();
   const head = (
-    <PageHead
-      title={cfg.name}
-      actions={
-        <button type="button" className="btn btn-ghost" onClick={() => nav(-1)}>
-          <ArrowLeft size={18} aria-hidden="true" />
-          {editId ? "취소" : "목록"}
-        </button>
-      }
-    />
+    <>
+      <PageHead title={cfg.name} />
+      <button type="button" className={styles.backBtn} onClick={() => nav(-1)}>
+        <ArrowLeft size={18} aria-hidden="true" />
+        {editId ? "취소" : "목록"}
+      </button>
+    </>
   );
   if (!isLoggedIn)
     return (

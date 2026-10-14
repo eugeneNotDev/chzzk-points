@@ -1,3 +1,6 @@
+// 글꼴(Pretendard)은 사이트에 같이 묶어서 배포 — 외부 CDN이 막히거나 느려도 글꼴이 바뀌지 않게. 글자 범위별로 쪼개져 있어서 필요한 조각만 받음.
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+import "@fontsource-variable/outfit";
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";

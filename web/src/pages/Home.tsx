@@ -28,6 +28,8 @@ function LiveHero() {
   let kicker: string;
   let headline: string;
   let sub: string | null = null;
+  // 스케줄의 방송 내용(memo) — 예: 방제 "양치기 소년의 이야기" + 내용 "저스트 채팅 & 카페 탐방"
+  let memo: string | null = null;
   if (status.isLoading) {
     kicker = "방송 상태 확인 중";
     headline = "";
@@ -39,6 +41,7 @@ function LiveHero() {
     kicker = "오늘 방송";
     headline = today.start_time ? `오늘 ${today.start_time}에 만나요` : "오늘 방송이 있어요";
     sub = today.title;
+    memo = today.memo;
   } else if (today) {
     kicker = "오늘은 쉬는 날";
     headline = "오늘은 방송이 없어요";
@@ -47,6 +50,7 @@ function LiveHero() {
     kicker = "다음 방송";
     headline = `${dayLabel(next.day)} ${next.start_time ?? ""}`.trim();
     sub = next.title;
+    memo = next.memo;
   } else {
     kicker = "방송 준비 중";
     headline = "방송이 시작되면 알려드릴게요";
@@ -67,6 +71,7 @@ function LiveHero() {
         <span className={`${styles.kicker} ${live ? styles.kickerLive : ""}`}>{kicker}</span>
         {status.isLoading ? <span className="skeleton" style={{ height: 32, width: "70%" }} /> : <h2 className={styles.headline}>{headline}</h2>}
         {sub && <p className={styles.sub}>{sub}</p>}
+        {memo && <p className={styles.memo}>{memo}</p>}
         <div className={styles.heroActions}>
           <a href={CHZZK_CHANNEL_URL} target="_blank" rel="noopener" className={styles.btnPrimary}>
             <Play size={16} fill="currentColor" aria-hidden="true" />
