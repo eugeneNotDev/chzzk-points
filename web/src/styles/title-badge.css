@@ -4,15 +4,18 @@
 .title-badge {
   display: inline-flex;
   align-items: center;
-  /* 위·아래 여백을 살짝 다르게 — Pretendard 한글이 보통 크기(배율 100%)에서 칸 안 위쪽으로 쏠려 보여서 아래로 1px 정도 내림 */
-  padding: 0.16em 0.55em 0.08em;
+  /* 크기·줄높이·위아래 여백을 정수 px로 반올림 — 소수점 px이면 배율 100%(PC) 화면에서 칸과 글자가
+     따로 반올림돼서 글자가 위로 쏠려 보임(확대하거나 폰처럼 고해상도면 티가 안 남). */
+  padding: round(0.12em, 1px) 0.55em;
   border-radius: 5px;
   background: var(--badge-bg, var(--c-accent));
   color: var(--badge-fg, var(--c-accent-ink));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 1px 2px rgba(0, 0, 0, 0.35);
   font-size: 0.78em;
+  font-size: round(0.78em, 1px);
   font-weight: 700;
   line-height: 1.45;
+  line-height: round(1.5em, 2px);
   letter-spacing: 0.01em;
   
   vertical-align: middle;

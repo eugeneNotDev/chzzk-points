@@ -60,7 +60,6 @@
 }
 .nameLine > :global(.title-badge) {
   flex: none;
-  font-size: 16px;
   margin-bottom: 1px;
 }
 .nameCol {
@@ -85,6 +84,7 @@
   flex: none;
   font-size: 10px;
   font-weight: 700;
+  line-height: 14px;
   color: var(--c-text-3);
   border: 1px solid var(--c-border-strong);
   border-radius: 4px;
