@@ -1,0 +1,203 @@
+.balance {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.balance .muted {
+  font-size: 13px;
+}
+.balance b {
+  font-size: 28px;
+  font-weight: 700;
+}
+.balance small {
+  margin-left: 2px;
+  font-size: 16px;
+  color: var(--c-text-3);
+}
+
+.adminCard {
+  border-style: dashed;
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.title {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.countdown {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--c-surface-2);
+  font-size: 13px;
+  color: var(--c-text-2);
+}
+.countdown b {
+  color: var(--c-text);
+}
+.urgent {
+  background: var(--c-live-soft);
+  color: var(--c-live-text);
+  animation: pulse 1s ease-in-out infinite;
+}
+.urgent b {
+  color: var(--c-live-text);
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  font-size: 14px;
+  font-weight: 600;
+}
+.win {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.lose {
+  color: var(--c-text-3);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 18px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+.option:disabled {
+  cursor: default;
+}
+.option:not(:disabled):hover {
+  border-color: var(--c-border-strong);
+}
+.bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--c-blue) 14%, transparent);
+  transition: width 0.5s ease;
+}
+.on {
+  border-color: var(--c-accent);
+}
+.on .bar {
+  background: color-mix(in srgb, var(--c-accent) 18%, transparent);
+}
+.winner {
+  border-color: var(--c-accent);
+}
+.winner .bar {
+  background: color-mix(in srgb, var(--c-accent) 22%, transparent);
+}
+.loser {
+  opacity: 0.55;
+}
+.optLabel {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  word-break: keep-all;
+}
+.optStats {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.optStats b {
+  font-size: 17px;
+  color: var(--c-text);
+}
+.myBet {
+  font-size: 14px;
+  color: var(--c-text-2);
+}
+.betForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.optRow {
+  display: flex;
+  gap: 6px;
+}
+.betList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.betList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--c-border);
+}
+.betWho {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -1,0 +1,567 @@
+.gameLayout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+.stageCard {
+  flex: 3 1 460px;
+  min-width: 0;
+  border-radius: var(--r-2xl);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+.side {
+  flex: 2 1 300px;
+  min-width: 0;
+}
+
+/* 참여 제한 */
+.lock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  border: 1px dashed var(--c-border-strong);
+  text-align: center;
+}
+.lock svg {
+  color: var(--c-text-3);
+}
+.lock p {
+  font-size: 14px;
+  white-space: pre-line;
+}
+.lockBar {
+  width: min(320px, 100%);
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  overflow: hidden;
+}
+.lockBar span {
+  display: block;
+  height: 100%;
+  background: var(--c-accent);
+}
+
+/* 걸 포인트 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px 24px;
+}
+.balanceRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.balanceRow .muted {
+  font-size: 13px;
+}
+.balanceRow b {
+  font-size: 22px;
+  font-weight: 700;
+}
+.balanceRow small {
+  margin-left: 2px;
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+.betField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.betField .muted {
+  font-size: 12px;
+}
+.betField input {
+  height: 56px;
+  padding: 0 44px 0 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: right;
+}
+.betField input:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+.betField input:disabled {
+  opacity: 0.5;
+}
+.betField input.bad {
+  border-color: var(--c-danger);
+}
+.unit {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hint {
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+.hintBad {
+  color: var(--c-red-text);
+}
+
+/* 결과 */
+.result {
+  --c: var(--c-text-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+  animation: pop 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+.result strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--c);
+}
+.result .muted {
+  font-size: 13px;
+}
+.error {
+  --c: var(--c-danger);
+}
+.error strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.jackpot {
+  box-shadow: 0 0 24px color-mix(in srgb, var(--c-gold) 45%, transparent);
+}
+.note {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--c-text-2);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+}
+
+/* 최근 기록 */
+.recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.recent li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--c-border);
+}
+.recentTag {
+  --c: var(--c-text-3);
+  flex: none;
+  min-width: 44px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--c);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+.recentMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+}
+.recentMain .muted {
+  font-size: 11px;
+}
+.recent b {
+  flex: none;
+  font-size: 14px;
+}
+.plusText {
+  color: var(--c-accent);
+}
+.minusText {
+  color: var(--c-red-text);
+}
+
+/* ── 룰렛 ── */
+.reelView {
+  position: relative;
+  height: 170px;
+  overflow: hidden;
+  background: var(--c-surface-2);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+.reel {
+  position: absolute;
+  top: 35px;
+  left: 0;
+  display: flex;
+  gap: 8px;
+  will-change: transform;
+}
+.tile {
+  --c: #6b7480;
+  flex: none;
+  width: 88px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 85%, #fff), var(--c));
+  color: #fff;
+  font-size: 22px;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.tileGold {
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2), 0 0 18px color-mix(in srgb, var(--c-gold) 60%, transparent);
+}
+.tileHit {
+  animation: hit 0.6s ease-out;
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+@keyframes hit {
+  30% {
+    transform: scale(1.12);
+  }
+}
+.marker {
+  position: absolute;
+  top: 18px;
+  bottom: 18px;
+  left: 50%;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--c-accent);
+  box-shadow: 0 0 12px var(--c-accent);
+}
+.marker::before,
+.marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  border: 8px solid transparent;
+  transform: translateX(-50%);
+}
+.marker::before {
+  top: -6px;
+  border-top-color: var(--c-accent);
+}
+.marker::after {
+  bottom: -6px;
+  border-bottom-color: var(--c-accent);
+}
+
+/* ── 가위바위보 ── */
+.rpsStage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  min-height: 220px;
+  padding: 24px;
+  background: var(--c-surface-2);
+}
+.rpsSide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.hand {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--c-surface);
+  border: 2px solid var(--c-border);
+  color: var(--c-text);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.handMe {
+  color: var(--c-accent);
+}
+.handWin {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+  transform: scale(1.06);
+}
+.handLose {
+  opacity: 0.45;
+}
+.shake {
+  animation: shake 0.22s ease-in-out infinite;
+}
+@keyframes shake {
+  25% {
+    transform: translateY(-6px) rotate(-6deg);
+  }
+  75% {
+    transform: translateY(4px) rotate(6deg);
+  }
+}
+.vs {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-text-4);
+}
+.picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.08s;
+}
+.pick:hover:not(:disabled) {
+  border-color: var(--c-accent);
+}
+.pick:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.pick:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── 홀짝 ── */
+.oeStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 260px;
+  padding: 28px 24px 16px;
+  background: var(--c-surface-2);
+}
+.deck {
+  position: relative;
+  width: 130px;
+  height: 180px;
+  perspective: 900px;
+}
+.ghost {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: #1d3a6e;
+  border: 3px solid #fff2;
+  opacity: 0;
+}
+.shuffling .ghost {
+  opacity: 1;
+}
+.shuffling .ghostL {
+  animation: shufL 0.32s ease-in-out infinite;
+}
+.shuffling .ghostR {
+  animation: shufR 0.32s ease-in-out infinite;
+}
+@keyframes shufL {
+  50% {
+    transform: translateX(-46px) rotate(-8deg);
+  }
+}
+@keyframes shufR {
+  50% {
+    transform: translateX(46px) rotate(8deg);
+  }
+}
+.flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.72s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+.flipOpen {
+  transform: rotateY(180deg);
+}
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+.back {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 6px, transparent 6px 12px),
+    linear-gradient(160deg, #2b5aa8, #1d3a6e);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 44px;
+}
+.front {
+  transform: rotateY(180deg);
+  background: #fbfbf8;
+  color: #1b1d21;
+  border: 1px solid #ddd;
+}
+.red {
+  color: #d6303b;
+}
+.corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+.corner svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.tl {
+  top: 8px;
+  left: 8px;
+}
+.br {
+  bottom: 8px;
+  right: 8px;
+  transform: rotate(180deg);
+}
+.cardNum {
+  font-size: 44px;
+  font-weight: 800;
+}
+.bigSuit {
+  position: absolute;
+  bottom: 30px;
+  opacity: 0.18;
+}
+.bigSuit svg {
+  width: 52px;
+  height: 52px;
+  fill: currentColor;
+}
+.reveal {
+  min-height: 24px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.oddText {
+  color: #ff7a7a;
+}
+.evenText {
+  color: var(--c-blue);
+}
+.oePicks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.oePick {
+  position: relative;
+  height: 72px;
+  border: 2px solid transparent;
+  border-radius: var(--r-lg);
+  color: #fff;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s, opacity 0.12s, box-shadow 0.12s;
+}
+.odd {
+  background: linear-gradient(160deg, #ff6b74, #d6303b);
+}
+.even {
+  background: linear-gradient(160deg, #5aa2ff, #2f6fd6);
+}
+.oePick:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+.oePick:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.oePick:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.chosen {
+  opacity: 1 !important;
+  border-color: #fff;
+}
+.mine {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
+
+@media (max-width: 599px) {
+  .panel {
+    padding: 16px;
+  }
+  .hand {
+    width: 96px;
+    height: 96px;
+  }
+  .rpsStage {
+    gap: 12px;
+  }
+}

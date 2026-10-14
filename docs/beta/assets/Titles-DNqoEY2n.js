@@ -1,0 +1,1 @@
+import{j as t}from"./data-jFRD77ew.js";import{ShopPage as o}from"./Shop-BmWt71i5.js";import"./react-BeuB7wyB.js";import"./index--wl70L8U.js";import"./ui-C7r1clG6.js";import"./check-S-zmsFDD.js";import"./plus-BxUHt12k.js";function a(){return t.jsx(o,{kind:"title"})}export{a as default};
