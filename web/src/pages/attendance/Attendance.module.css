@@ -1,0 +1,302 @@
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+.checkCard {
+  flex: 2 1 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.calCard {
+  flex: 3 1 440px;
+}
+
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text-2);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-text-4);
+}
+.dotLive {
+  background: var(--c-live);
+  box-shadow: 0 0 0 4px var(--c-live-soft);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+.checkBtn {
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.stats span {
+  font-size: 12px;
+}
+.stats b {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pHead {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.soon {
+  color: var(--c-accent);
+  font-weight: 700;
+}
+.bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c-accent);
+  transition: width 0.4s ease;
+}
+
+/* 달력 */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.month {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 110px;
+  text-align: center;
+}
+.monthCount {
+  margin-left: auto;
+  font-size: 13px;
+}
+.monthCount b {
+  color: var(--c-text);
+}
+.dow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.cell {
+  position: relative;
+  aspect-ratio: 1 / 0.9;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: var(--c-surface-2);
+}
+.n {
+  font-size: 12px;
+  font-weight: 700;
+}
+.sun .n,
+.dow .sun {
+  color: #ff7a7a;
+}
+.sat .n,
+.dow .sat {
+  color: var(--c-blue);
+}
+.other {
+  opacity: 0.3;
+}
+.past:not(.done) {
+  opacity: 0.6;
+}
+.today {
+  box-shadow: inset 0 0 0 1.5px var(--c-accent);
+}
+.liveDay::after {
+  content: "";
+  position: absolute;
+  right: 7px;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  opacity: 0.7;
+}
+.done {
+  background: var(--c-accent-soft);
+}
+.stamp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stamp svg {
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  animation: stamp 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+@keyframes stamp {
+  from {
+    transform: scale(1.8) rotate(-20deg);
+    opacity: 0;
+  }
+}
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legStamp {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+.legDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  opacity: 0.7;
+}
+
+/* 방송 코드 */
+.codeTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.codeForm {
+  display: flex;
+  gap: 8px;
+}
+.codeInput {
+  flex: 1;
+  font-family: var(--font-num);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.codeInput::placeholder {
+  letter-spacing: 0;
+  font-weight: 400;
+  text-transform: none;
+}
+.codeResult {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  font-size: 14px;
+}
+.codeResult b {
+  font-size: 20px;
+  font-weight: 800;
+}
+.codeOk {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.codeOk span {
+  color: var(--c-text);
+}
+.codeErr {
+  background: color-mix(in srgb, var(--c-danger) 12%, transparent);
+  color: var(--c-red-text);
+}
+.doc {
+  margin: 0;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: #05070a;
+  color: #b8f5d8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.docFoot {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+
+@media (max-width: 599px) {
+  .cell {
+    padding: 4px 5px;
+    border-radius: 8px;
+  }
+  .stamp svg {
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+  }
+}

@@ -1,0 +1,95 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.content {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--c-text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.plain {
+  white-space: pre-wrap;
+}
+
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.thumb {
+  position: relative;
+  display: block;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--c-surface-2);
+}
+.thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.dl {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.thumb:hover .dl,
+.dl:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .dl {
+    opacity: 1;
+  }
+}
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: 14px;
+}
+a.fileRow:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.fileName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-text);
+}
+.fileSize {
+  flex: none;
+  font-size: 12px;
+  color: var(--c-text-4);
+}
+.fileDl {
+  flex: none;
+  color: var(--c-text-3);
+}

@@ -2,21 +2,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, CircleCheck, Gift, Image as ImageIcon, Play, Store, Ticket, type LucideIcon } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
-import { SpecialTitleLine, TitleBadge } from "../components/TitleBadge";
+import { RankingList } from "../components/RankingList";
 import { useAuth } from "../lib/auth";
 import { BRAND_MARK_URL, CHZZK_CHANNEL_URL } from "../lib/config";
 import { fmt, relTime, shortDate, WEEK_KO } from "../lib/format";
 import { useFreeBox } from "../lib/freeBox";
-import {
-  isBoardPostNew,
-  isMyRankingRow,
-  isNoticeNew,
-  useBoardPreview,
-  useNoticePreview,
-  useRanking,
-  useUpcomingSchedule,
-} from "../lib/homeData";
+import { isBoardPostNew, useBoardPreview, useNoticePreview, useRanking, useUpcomingSchedule } from "../lib/homeData";
+import { isNoticeNew, useNoticeReadVersion } from "../lib/notices";
 import { useBroadcastStatus } from "../lib/queries";
+import { useTableRefetch } from "../lib/realtime";
 import styles from "./Home.module.css";
 
 function dayLabel(day: string) {
@@ -118,6 +112,8 @@ function QuickTiles() {
 
 function NoticePreview() {
   const q = useNoticePreview(5);
+  useNoticeReadVersion();
+  useTableRefetch("notices", [["notices"]]);
   return (
     <Card title="공지사항" moreTo="/notice.html" flush className={styles.notices}>
       {q.isLoading && <ListSkeleton rows={4} />}
@@ -135,41 +131,15 @@ function NoticePreview() {
   );
 }
 
-const RANK_COLORS = ["var(--c-gold)", "var(--c-silver)", "var(--c-bronze)"];
-
 function RankingPreview() {
-  const { channelId } = useAuth();
   const q = useRanking(5);
+  useTableRefetch("ranking_pings", [["ranking"]], { event: "INSERT", minIntervalMs: 8000, settleMs: 800 });
   return (
     <Card title="포인트 랭킹" moreTo="/ranking.html" flush className={styles.ranking}>
       {q.isLoading && <ListSkeleton rows={5} avatar />}
       {q.isError && <EmptyState>랭킹을 불러오지 못했어요.</EmptyState>}
       {q.data && q.data.length === 0 && <EmptyState>아직 랭킹에 등록된 유저가 없어요.</EmptyState>}
-      <ol className={styles.rankList}>
-        {q.data?.map((r, i) => {
-          const me = isMyRankingRow(r, channelId);
-          const isPrivate = r.is_public === false;
-          return (
-            <li key={r.channel_id + i} className={`${styles.rankRow} ${me ? styles.me : ""}`}>
-              <span className={`${styles.rankNo} num`} style={{ color: RANK_COLORS[i] ?? "var(--c-text-4)" }}>
-                {i + 1}
-              </span>
-              <span className={styles.rankName}>
-                {!isPrivate && <SpecialTitleLine list={r.special_titles} />}
-                <span className={styles.rankNameLine}>
-                  {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
-                  {r.shop_title_name && <TitleBadge name={r.shop_title_name} value={r.shop_title_color} className="rk-shop" />}
-                  <span className={`${styles.rankNameText} ${isPrivate && !r.admin_view ? styles.muted : ""}`}>
-                    {r.channel_name || "(이름 없음)"}
-                    {me && " (나)"}
-                  </span>
-                </span>
-              </span>
-              <span className={`${styles.rankPoints} num`}>{fmt(r.total_points)}P</span>
-            </li>
-          );
-        })}
-      </ol>
+      {q.data && <RankingList rows={q.data} />}
     </Card>
   );
 }

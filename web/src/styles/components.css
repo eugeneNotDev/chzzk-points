@@ -1,0 +1,397 @@
+/* 사이트 전체에서 같이 쓰는 기본 부품 — 버튼·입력칸·팝업·태그 등.
+   화면마다 따로 만들지 않고 이 클래스들을 써서 모양을 통일함. */
+
+/* ── 버튼 ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-md);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, transform 0.08s, opacity 0.12s;
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.btn:hover:not(:disabled) {
+  background: var(--c-border-strong);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--c-accent-hover);
+}
+.btn-danger {
+  background: color-mix(in srgb, var(--c-danger) 16%, transparent);
+  color: var(--c-red-text);
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--c-danger) 26%, transparent);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--c-text-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.btn-sm {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.btn-lg {
+  height: 52px;
+  font-size: 16px;
+  border-radius: 14px;
+}
+.btn-block {
+  width: 100%;
+}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+}
+
+.link-btn {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--c-text-3);
+  font-size: 13px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  color: var(--c-text);
+  text-decoration: underline;
+}
+
+/* ── 입력칸 ── */
+.input,
+.textarea,
+.select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--c-text-4);
+}
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
+}
+.textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.select {
+  appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a939c' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-2);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--c-accent);
+}
+
+/* ── 상태 메시지 ── */
+.status {
+  font-size: 14px;
+  color: var(--c-text-2);
+  min-height: 1em;
+}
+.status:empty {
+  display: none;
+}
+.status.error {
+  color: var(--c-red-text);
+}
+.status.ok {
+  color: var(--c-accent);
+}
+
+/* ── 작은 태그 ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+}
+.tag-accent {
+  color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.tag-live {
+  color: var(--c-live-text);
+  background: var(--c-live-soft);
+}
+.tag-gold {
+  color: var(--c-gold);
+  background: var(--c-gold-soft);
+}
+.tag-blue {
+  color: var(--c-blue);
+  background: var(--c-blue-soft);
+}
+
+/* ── 세그먼트(탭 버튼 묶음) ── */
+.segment {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--c-surface-2);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.segment button {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-text-3);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.segment button[aria-selected="true"],
+.segment button.on {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+  font-weight: 700;
+}
+
+/* ── 팝업(dialog) ── */
+.modal {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.modal[open] {
+  display: flex;
+  flex-direction: column;
+  animation: modal-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.modal-wide {
+  width: min(880px, calc(100vw - 32px));
+}
+.modal-head {
+  flex: none;
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid var(--c-border);
+}
+.modal-head h3 {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.modal-head p {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+  outline: none;
+}
+.modal-actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--c-border);
+}
+.modal-actions .spacer {
+  flex: 1;
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+@media (max-width: 599px) {
+  .modal,
+  .modal-wide {
+    width: 100vw;
+    max-width: 100vw;
+    max-height: 92vh;
+    margin: auto 0 0;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+  .modal-head,
+  .modal-body,
+  .modal-actions {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .modal-actions {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── 페이지 머리말 ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.page-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.page-title {
+  display: none; /* PC는 상단바에 제목이 있어서 모바일에서만 */
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.page-desc {
+  font-size: 14px;
+  color: var(--c-text-2);
+}
+.page-desc:empty {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .page-title {
+    display: block;
+  }
+}
+
+/* ── 목록 한 줄 ── */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.12s;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.list-row:hover {
+  background: var(--c-hover);
+}
+.list-row-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-row-meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--c-text-4);
+}
+.muted {
+  color: var(--c-text-3);
+}
+
+/* 로그인 필요 안내 */
+.login-needed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--c-text-2);
+}

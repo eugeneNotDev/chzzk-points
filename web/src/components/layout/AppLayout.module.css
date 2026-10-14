@@ -78,6 +78,16 @@
   color: var(--c-accent);
   font-weight: 700;
 }
+.newDot {
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--c-live);
+}
+.newDot + .soon {
+  margin-left: 8px;
+}
 .soon {
   margin-left: auto;
   font-size: 10px;

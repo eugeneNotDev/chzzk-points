@@ -39,6 +39,7 @@
   --c-blue-soft: rgba(143, 188, 255, 0.14);
   --c-amber: #f5b94a;
   --c-danger: #ff5a5a;
+  --c-red-text: #ff8a8a;
 
   /* 모서리 */
   --r-sm: 8px;
@@ -94,6 +95,8 @@
   --c-pink: #d6336c;
   --c-blue: #2f6fd6;
   --c-amber: #b7791f;
+  --c-danger: #d9303b;
+  --c-red-text: #d9303b;
 
   color-scheme: light;
 }

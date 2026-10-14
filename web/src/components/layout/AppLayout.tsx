@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Bell, LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
+import { isReady } from "../../routes";
+import { useHasNewNotice } from "../../lib/notices";
 import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
 import { useTheme } from "../../lib/theme";
@@ -18,6 +20,7 @@ function currentItem(pathname: string): NavItem | undefined {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin } = useAuth();
+  const newNotice = useHasNewNotice();
   return (
     <nav aria-label="사이트 메뉴" className={styles.nav}>
       {NAV_GROUPS.map((g, gi) => {
@@ -36,7 +39,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <item.icon size={18} strokeWidth={2} aria-hidden="true" />
                 <span>{item.label}</span>
-                {!item.ready && <span className={styles.soon}>준비 중</span>}
+                {item.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
+                {!isReady(item.path) && <span className={styles.soon}>준비 중</span>}
               </NavLink>
             ))}
           </div>

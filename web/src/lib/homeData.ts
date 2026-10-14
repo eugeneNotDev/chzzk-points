@@ -26,18 +26,6 @@ export function useNoticePreview(limit = 5) {
   });
 }
 
-// 공지 NEW — 올라온 지 3일 안 됐고 이 기기에서 아직 안 열어본 글(기존 사이트와 같은 기준·같은 저장 키).
-export function isNoticeNew(n: NoticeRow) {
-  const age = Date.now() - new Date(n.created_at).getTime();
-  if (!(age > -5 * 60_000 && age < 3 * 86_400_000)) return false;
-  try {
-    const ids = JSON.parse(readStorage(STORAGE.noticeReadIds) || "[]");
-    return !(Array.isArray(ids) && ids.map(String).includes(String(n.id)));
-  } catch {
-    return true;
-  }
-}
-
 export type RankingRow = {
   channel_id: string;
   channel_name: string | null;

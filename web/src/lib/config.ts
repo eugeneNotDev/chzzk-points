@@ -18,6 +18,18 @@ export const API = {
   broadcastStatus: `${FUNCTIONS_BASE_URL}/broadcast-status`,
   board: `${FUNCTIONS_BASE_URL}/board`,
   freeBox: `${FUNCTIONS_BASE_URL}/free-box`,
+  notices: `${FUNCTIONS_BASE_URL}/notices`,
+  attendance: `${FUNCTIONS_BASE_URL}/attendance-check`,
+  streamCode: `${FUNCTIONS_BASE_URL}/stream-code`,
+  admin: `${FUNCTIONS_BASE_URL}/admin`,
+  shopItems: `${FUNCTIONS_BASE_URL}/shop-items`,
+  spendPoints: `${FUNCTIONS_BASE_URL}/spend-points`,
+  predictions: `${FUNCTIONS_BASE_URL}/predictions`,
+  roulette: `${FUNCTIONS_BASE_URL}/roulette`,
+  rps: `${FUNCTIONS_BASE_URL}/rps`,
+  oddEven: `${FUNCTIONS_BASE_URL}/odd-even`,
+  songs: `${FUNCTIONS_BASE_URL}/songs`,
+  push: `${FUNCTIONS_BASE_URL}/push`,
   adminRanking: `${FUNCTIONS_BASE_URL}/admin-ranking`,
 } as const;
 
