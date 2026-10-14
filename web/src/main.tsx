@@ -8,10 +8,12 @@ import Home from "./pages/Home";
 import ComingSoon from "./pages/ComingSoon";
 import { PAGES } from "./routes";
 import { setupAppMode } from "./lib/pwa";
+import { handleOAuthCallback } from "./lib/auth";
 import { setupPullToRefresh } from "./lib/pullToRefresh";
 import "./styles/global.css";
 
 setupAppMode();
+handleOAuthCallback();
 setupPullToRefresh();
 
 const queryClient = new QueryClient({

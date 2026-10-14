@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/copy-routes.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:live": "tsc --noEmit && vite build --mode live && node scripts/copy-routes.mjs --live"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -31,6 +31,11 @@ export const API = {
   songs: `${FUNCTIONS_BASE_URL}/songs`,
   push: `${FUNCTIONS_BASE_URL}/push`,
   adminRanking: `${FUNCTIONS_BASE_URL}/admin-ranking`,
+  adminBackup: `${FUNCTIONS_BASE_URL}/admin-backup`,
+  adminDonations: `${FUNCTIONS_BASE_URL}/admin-donations`,
+  adminMinigameBlock: `${FUNCTIONS_BASE_URL}/admin-minigame-block`,
+  adminSpecialTitle: `${FUNCTIONS_BASE_URL}/admin-special-title`,
+  adminStreamCodes: `${FUNCTIONS_BASE_URL}/admin-stream-codes`,
 } as const;
 
 export const OWNER_CHANNEL_ID = "37a1acfaa35d56311bf428dc96142e9f";

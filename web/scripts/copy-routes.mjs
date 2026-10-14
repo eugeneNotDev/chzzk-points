@@ -11,6 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nav = readFileSync(resolve(root, "src/nav.ts"), "utf8");
 const files = [...new Set([...nav.matchAll(/path:\s*"([a-z0-9-]+\.html)"/g)].map((m) => m[1]))];
 
-const outDir = resolve(root, "../docs/beta");
+// --live(교체 빌드)면 docs/ 바로 아래, 아니면 베타(docs/beta/)
+const outDir = resolve(root, process.argv.includes("--live") ? "../docs" : "../docs/beta");
 for (const file of files) copyFileSync(resolve(outDir, "index.html"), resolve(outDir, file));
 console.log(`[copy-routes] ${files.length}개 주소에 index.html 복사: ${files.join(", ")}`);

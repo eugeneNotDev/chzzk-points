@@ -18,6 +18,7 @@ export const PAGES: Record<string, LazyExoticComponent<ComponentType>> = {
   "board-free.html": lazy(() => import("./pages/board/Board").then((m) => ({ default: m.FreeBoard }))),
   "board-review.html": lazy(() => import("./pages/board/Board").then((m) => ({ default: m.ReviewBoard }))),
   "songs.html": lazy(() => import("./pages/songs/Songs")),
+  "admin.html": lazy(() => import("./pages/admin/Admin")),
 };
 
 export const isReady = (path: string) => path === "" || path in PAGES;

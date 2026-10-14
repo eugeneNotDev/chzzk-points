@@ -5,7 +5,7 @@
 // 구독 중인 화면이 전부 다시 그려짐.
 
 import { useSyncExternalStore } from "react";
-import { CHZZK_CLIENT_ID, CHZZK_REDIRECT_URI, OWNER_CHANNEL_ID, STORAGE } from "./config";
+import { API, CHZZK_CLIENT_ID, CHZZK_REDIRECT_URI, OWNER_CHANNEL_ID, STORAGE } from "./config";
 import { readStorage, writeStorage } from "./storage";
 
 export type AuthState = {
@@ -66,6 +66,69 @@ export function startLogin() {
   }
   const params = new URLSearchParams({ clientId: CHZZK_CLIENT_ID, redirectUri: CHZZK_REDIRECT_URI, state });
   location.href = `https://chzzk.naver.com/account-interlock?${params.toString()}`;
+}
+
+// 치지직 로그인 후 돌아오면 주소에 ?code=&state= 가 붙어 있음 → oauth-callback에 교환해서 토큰 저장.
+// (교체 전 베타에선 로그인 후 기존 사이트 홈으로 돌아가서 거기서 처리됨. 교체 후엔 이 함수가 처리.)
+// 치지직 토큰이 거절되면(409 chzzk_token_rejected) 2분 안에 2번까지만 자동으로 다시 로그인.
+const LOGIN_RETRY_KEY = "chzzk_points_login_retry";
+export async function handleOAuthCallback() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get("code");
+  const state = params.get("state");
+  if (!code || !state) return;
+  let saved: string | null = null;
+  try {
+    saved = sessionStorage.getItem(STORAGE.oauthState);
+    sessionStorage.removeItem(STORAGE.oauthState);
+  } catch {
+    /* 무시 */
+  }
+  // 성공이든 실패든 주소는 정리(새로고침 때 code 재사용 방지)
+  params.delete("code");
+  params.delete("state");
+  const rest = params.toString();
+  history.replaceState(null, "", location.pathname + (rest ? `?${rest}` : "") + location.hash);
+  if (!saved || saved !== state) {
+    console.error("[auth] OAuth state가 일치하지 않아요. 다시 로그인해 주세요.");
+    return;
+  }
+  try {
+    const res = await fetch(API.oauthCallback, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, state }) });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      if (res.status === 403 && body.error === "banned") {
+        sessionStorage.removeItem(LOGIN_RETRY_KEY);
+        alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+        return;
+      }
+      if (res.status === 409 && body.error === "chzzk_token_rejected") {
+        let retry = { at: 0, count: 0 };
+        try {
+          retry = { ...retry, ...JSON.parse(sessionStorage.getItem(LOGIN_RETRY_KEY) || "{}") };
+        } catch {
+          /* 무시 */
+        }
+        if (Date.now() - retry.at > 2 * 60_000) retry = { at: Date.now(), count: 0 };
+        if (retry.count < 2) {
+          sessionStorage.setItem(LOGIN_RETRY_KEY, JSON.stringify({ at: retry.at, count: retry.count + 1 }));
+          startLogin();
+          return;
+        }
+      }
+      sessionStorage.removeItem(LOGIN_RETRY_KEY);
+      alert("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    sessionStorage.removeItem(LOGIN_RETRY_KEY);
+    writeStorage(STORAGE.token, String(body.token ?? ""));
+    writeStorage(STORAGE.channelId, String(body.channelId ?? ""));
+    writeStorage(STORAGE.channelName, String(body.channelName ?? ""));
+    saveProfileImage(body.profileImageUrl);
+    emit();
+  } catch (err) {
+    console.error("[auth] 로그인 처리 중 오류", err);
+  }
 }
 
 export function logout() {

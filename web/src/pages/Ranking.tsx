@@ -1,5 +1,5 @@
 // 포인트 랭킹 — 명예의 전당(매달 1위) + 상위 50명. 포인트가 움직이면 실시간으로 다시 불러옴.
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
 import { PageHead } from "../components/ui";
@@ -51,7 +51,8 @@ function HallOfFame() {
 
 export default function Ranking() {
   const q = useRanking(50);
-  const adminModal = useAdminUserModal();
+  const qc = useQueryClient();
+  const adminModal = useAdminUserModal(() => qc.invalidateQueries({ queryKey: ["ranking"] }));
   useTableRefetch("ranking_pings", [["ranking"]], { event: "INSERT", minIntervalMs: 8000, settleMs: 800 });
 
   return (
