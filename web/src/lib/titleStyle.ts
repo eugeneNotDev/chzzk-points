@@ -96,3 +96,58 @@ export function spForLight(hex: string) {
   for (let i = 0; i < 4 && hexLuminance(c) > 0.25; i++) c = mixHex(c, "#000000", 0.25);
   return c;
 }
+
+export function composeTitleStyle({ color, color2, mix, design, icon, star }: TitleStyle) {
+  const isHex = (c: string | null) => /^#[0-9a-fA-F]{6}$/.test(c || "");
+  const c = color === "rainbow" ? "rainbow" : isHex(color) ? color.toLowerCase() : DEFAULT_TITLE_COLOR;
+  const c2 = c !== "rainbow" && isHex(color2) ? color2!.toLowerCase() : null; // 무지개는 두 번째 색이랑 같이 안 씀
+  const d = DESIGNS.has(design) ? design : "basic";
+  const ic = icon && TITLE_ICON_MAP.has(icon) ? icon : null;
+  if (d === "basic" && !ic && !star && !c2) return c;
+  let colorPart = c === "rainbow" ? "rainbow" : c.slice(1);
+  if (c2) colorPart += `${mix === "ink" ? "-t-" : "-"}${c2.slice(1)}`;
+  const tokens = [d !== "basic" ? d : null, ic, star ? "star" : null].filter(Boolean) as string[];
+  if (!tokens.length) tokens.push("basic");
+  return [...tokens, colorPart].join("-");
+}
+
+// "#abc", "abc123" 같이 대충 친 값을 "#rrggbb"로. 형식이 틀리면 null.
+export function parseHexColorInput(text: string) {
+  const t = String(text || "").trim().replace(/^#/, "");
+  if (/^[0-9a-fA-F]{6}$/.test(t)) return `#${t.toLowerCase()}`;
+  if (/^[0-9a-fA-F]{3}$/.test(t)) return `#${t.split("").map((ch) => ch + ch).join("").toLowerCase()}`;
+  return null;
+}
+
+export function titleBadgeTextColor(value: string) {
+  const { color, color2 } = parseTitleStyle(value);
+  if (color === "rainbow") return "#ffffff";
+  return textColorOn(color2 ? mixHex(color, color2, 0.5) : color);
+}
+
+export { DEFAULT_TITLE_COLOR };
+
+export const TITLE_COLOR_PRESETS = [
+  { name: "민트", value: "#00e5a0" },
+  { name: "하늘", value: "#5dc8ff" },
+  { name: "파랑", value: "#4c6ef5" },
+  { name: "보라", value: "#9b6bff" },
+  { name: "핑크", value: "#ff6bb5" },
+  { name: "빨강", value: "#ff4d5a" },
+  { name: "주황", value: "#ff922b" },
+  { name: "노랑", value: "#ffd43b" },
+  { name: "연두", value: "#94d82d" },
+  { name: "흰색", value: "#f1f3f5" },
+  { name: "회색", value: "#868e96" },
+  { name: "검정", value: "#1b1d21" },
+  { name: "금", value: "#f2c230" },
+  { name: "은", value: "#c9d1d9" },
+  { name: "동", value: "#cd7f32" },
+  { name: "무지개", value: "rainbow" },
+];
+export const TITLE_DESIGNS = [
+  { id: "basic", name: "기본" },
+  { id: "shine", name: "메탈 반짝" },
+  { id: "glow", name: "빛나는 테두리" },
+  { id: "glass", name: "유리" },
+] as const;

@@ -1,0 +1,187 @@
+.topRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.balance {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.balance .muted {
+  font-size: 13px;
+}
+.balance b {
+  font-size: 28px;
+  font-weight: 700;
+}
+.balance small {
+  margin-left: 2px;
+  font-size: 16px;
+  color: var(--c-text-3);
+}
+
+.adminBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--c-border-strong);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover {
+  border-color: var(--c-border-strong);
+}
+.titleStage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 108px;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--c-accent) 14%, transparent), transparent 70%),
+    var(--c-surface-2);
+  font-size: 22px;
+}
+.cardBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 18px 8px;
+}
+.name {
+  font-size: 16px;
+  font-weight: 800;
+  word-break: keep-all;
+}
+.desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--c-text-2);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.cardFoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px 18px;
+}
+.cost {
+  font-size: 20px;
+  font-weight: 700;
+}
+.cost small {
+  margin-left: 1px;
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+.useBtn {
+  margin-left: auto;
+  height: 40px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+.owned {
+  border-color: color-mix(in srgb, var(--c-accent) 40%, transparent);
+}
+.soldOut .titleStage,
+.soldOut .cardBody {
+  opacity: 0.55;
+}
+.inactiveCard {
+  opacity: 0.75;
+  border-style: dashed;
+}
+.adminRow {
+  display: flex;
+  gap: 14px;
+  padding: 10px 18px 14px;
+  border-top: 1px solid var(--c-border);
+}
+
+.inactive summary {
+  cursor: pointer;
+  padding: 8px 2px 12px;
+  font-size: 14px;
+  color: var(--c-text-3);
+}
+
+/* 순서 변경 */
+.reordering .card {
+  cursor: grab;
+  user-select: none;
+}
+.sortable {
+  touch-action: auto;
+}
+.dragging {
+  z-index: 10;
+  opacity: 0.9;
+}
+.dragging .card {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  border-color: var(--c-accent);
+  cursor: grabbing;
+}
+.handle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+  cursor: grab;
+  touch-action: none;
+}
+
+/* 상품 편집 */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.formRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}

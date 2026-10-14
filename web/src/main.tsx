@@ -7,7 +7,12 @@ import { ALL_NAV_ITEMS } from "./nav";
 import Home from "./pages/Home";
 import ComingSoon from "./pages/ComingSoon";
 import { PAGES } from "./routes";
+import { setupAppMode } from "./lib/pwa";
+import { setupPullToRefresh } from "./lib/pullToRefresh";
 import "./styles/global.css";
+
+setupAppMode();
+setupPullToRefresh();
 
 const queryClient = new QueryClient({
   defaultOptions: {

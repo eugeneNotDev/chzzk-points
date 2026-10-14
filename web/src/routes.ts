@@ -8,6 +8,9 @@ export const PAGES: Record<string, LazyExoticComponent<ComponentType>> = {
   "attendance.html": lazy(() => import("./pages/attendance/Attendance")),
   "ranking.html": lazy(() => import("./pages/Ranking")),
   "freebox.html": lazy(() => import("./pages/Freebox")),
+  "mypage.html": lazy(() => import("./pages/mypage/MyPage")),
+  "shop.html": lazy(() => import("./pages/shop/Shop")),
+  "titles.html": lazy(() => import("./pages/shop/Titles")),
 };
 
 export const isReady = (path: string) => path === "" || path in PAGES;

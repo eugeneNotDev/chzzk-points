@@ -1,0 +1,271 @@
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px 32px;
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1 1 240px;
+}
+.whoText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.whoText .muted {
+  font-size: 13px;
+}
+.name {
+  font-size: 20px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats {
+  flex: 2 1 420px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  min-width: 0;
+}
+.stat > .muted {
+  font-size: 12px;
+}
+.statVal {
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+.balance {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.balance small {
+  margin-left: 2px;
+  font-size: 15px;
+  color: var(--c-text-3);
+}
+.neg {
+  color: var(--c-red-text);
+}
+.negNote {
+  flex-basis: 100%;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-danger) 12%, transparent);
+  color: var(--c-red-text);
+  font-size: 13px;
+}
+
+.cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+.col {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.collapseHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.collapseHead h2 {
+  font-size: 17px;
+  font-weight: 800;
+}
+.collapseHead svg {
+  margin-left: auto;
+  color: var(--c-text-3);
+  transition: transform 0.2s;
+}
+.rot {
+  transform: rotate(180deg);
+}
+.collapseBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.link {
+  color: var(--c-accent);
+  font-weight: 600;
+}
+.titleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.titleItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1px solid transparent;
+}
+.titleSel {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.titleBadge {
+  font-size: 18px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+.toggleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.toggleText .muted {
+  font-size: 13px;
+}
+
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.log li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-top: 1px solid var(--c-border);
+}
+.logMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.logReason {
+  font-size: 14px;
+  font-weight: 600;
+  word-break: keep-all;
+}
+.logTime {
+  font-size: 12px;
+  color: var(--c-text-4);
+}
+.logAmt {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 12px;
+}
+.logAmt b {
+  font-size: 15px;
+  font-weight: 700;
+}
+.plus {
+  color: var(--c-accent);
+}
+.minus {
+  color: var(--c-red-text);
+}
+
+.maStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+.maStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.maStats span {
+  font-size: 12px;
+}
+.maStats b {
+  font-size: 18px;
+}
+.maItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+}
+.maItem:hover {
+  background: var(--c-hover);
+}
+.maMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.maTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.cc {
+  color: var(--c-accent);
+  font-size: 13px;
+}
+
+@media (max-width: 599px) {
+  .stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .stats .stat:first-child {
+    grid-column: span 2;
+  }
+}

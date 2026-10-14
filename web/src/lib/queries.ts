@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { API, STORAGE } from "./config";
 import { apiFetch, saveProfileImage, useAuth } from "./auth";
 import { writeStorage } from "./storage";
+import { supabase } from "./supabase";
 
 export type Me = {
   channelId: string;
@@ -14,8 +15,24 @@ export type Me = {
   tierTitleName: string | null;
   tierTitleColor: string | null;
   selectedTitleId: string | null;
+  purchasedTitleIds?: string[];
   rankKey?: string;
 };
+
+export type TitleRow = { id: string; name: string; color: string; kind: string };
+
+// 칭호 목록(titles 테이블, 공개 읽기) — 마이페이지 장착 목록·요약 카드에서 씀.
+export function useTitles() {
+  return useQuery({
+    queryKey: ["titles"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("titles").select("id, name, color, kind").order("sort_order", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TitleRow[];
+    },
+  });
+}
 
 export function useMe() {
   const { isLoggedIn, token } = useAuth();
