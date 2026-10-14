@@ -10,6 +10,7 @@ import { supabase } from "../lib/supabase";
 import { fmt } from "../lib/format";
 import { useAdminUserModal } from "./admin/useAdminUserModal";
 import styles from "./Ranking.module.css";
+import { SkeletonList } from "../components/Skeleton";
 
 type Hof = { month: string; channel_name: string | null; points: number; is_public: boolean };
 
@@ -60,7 +61,7 @@ export default function Ranking() {
       <PageHead title="포인트 랭킹" desc="보유 포인트 상위 50명이에요. 마이페이지에서 랭킹 공개 여부를 바꿀 수 있어요." />
       <HallOfFame />
       <Card flush>
-        {q.isLoading && <p className="muted" style={{ padding: 16 }}>불러오는 중...</p>}
+        {q.isLoading && <SkeletonList rows={10} variant="rank" />}
         {q.isError && <EmptyState>랭킹을 불러오지 못했어요.</EmptyState>}
         {q.data?.length === 0 && <EmptyState>아직 랭킹에 등록된 유저가 없어요.</EmptyState>}
         {q.data && <RankingList rows={q.data} onAdminClick={adminModal.open} />}

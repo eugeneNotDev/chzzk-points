@@ -16,6 +16,8 @@ import { ShopItemCard } from "./ShopItemCard";
 import { ShopItemEditor } from "./ShopItemEditor";
 import { ReorderGrid } from "./ReorderGrid";
 import styles from "./Shop.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 export function ShopPage({ kind }: { kind: "general" | "title" }) {
   const { isLoggedIn, isAdmin } = useAuth();
@@ -97,7 +99,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
       await updateShopItem(item.id, { isActive: item.is_active === false });
       await refresh();
     } catch {
-      alert("판매 상태를 바꾸지 못했어요.");
+      alertDialog("판매 상태를 바꾸지 못했어요.");
     } finally {
       setBusyId(null);
     }
@@ -114,13 +116,13 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
     } else {
       msg = `"${item.name}" 상품을 완전히 삭제할까요?\n\n과거 구매 로그(포인트 내역)에는 영향 없어요. 잠깐 내리기만 하려면 "판매 중지"를 쓰세요.`;
     }
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
     try {
       const d = await deleteShopItem(item.id);
       setStatus({ text: d.revokedOwners ? `"${item.name}" 삭제 완료 — ${d.revokedOwners}명에게서 칭호를 회수했어요.` : `"${item.name}" 삭제 완료.` });
       refresh();
     } catch {
-      alert("삭제에 실패했어요.");
+      alertDialog("삭제에 실패했어요.");
     }
   }
 
@@ -186,7 +188,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
         <div className={styles.balance}>
           <span className="muted">보유 포인트</span>
           <b className="num">
-            {me.data ? fmt(me.data.balance) : "···"}
+            {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"}
             <small>P</small>
           </b>
         </div>

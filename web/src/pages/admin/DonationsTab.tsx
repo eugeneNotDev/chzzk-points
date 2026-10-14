@@ -8,6 +8,7 @@ import { ApiError, apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { adminCall, fmtDateTime, num, type AdminUser } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 type Pending = { id: number; amount: number; points: number; donationType: string | null; message: string | null; createdAt: string };
 type Recent = { id: number; status: string; nickname: string | null; channelId: string | null; channelName: string | null; amount: number; points: number; donationType: string | null; createdAt: string };
@@ -109,22 +110,22 @@ function PendingRow({ p, onDone }: { p: Pending; onDone: () => void }) {
     }
   };
   const assign = async (u: AdminUser) => {
-    if (!confirm(`${u.channelName}님에게 ${num(p.points)}P를 적립할까요?`)) return;
+    if (!(await confirmDialog(`${u.channelName}님에게 ${num(p.points)}P를 적립할까요?`))) return;
     setBusy(true);
     try {
       await apiFetch(API.adminDonations, { body: { action: "assign", id: p.id, channelId: u.channelId } });
     } catch (e) {
-      alert(e instanceof ApiError && e.body.error === "not_pending" ? "이미 처리된 후원이에요." : "적립에 실패했어요.");
+      alertDialog(e instanceof ApiError && e.body.error === "not_pending" ? "이미 처리된 후원이에요." : "적립에 실패했어요.");
     }
     setBusy(false);
     onDone();
   };
   const dismiss = async () => {
-    if (!confirm("이 익명 후원은 적립하지 않고 목록에서 뺄까요?")) return;
+    if (!(await confirmDialog("이 익명 후원은 적립하지 않고 목록에서 뺄까요?"))) return;
     try {
       await apiFetch(API.adminDonations, { body: { action: "dismiss", id: p.id } });
     } catch {
-      alert("처리에 실패했어요.");
+      alertDialog("처리에 실패했어요.");
     }
     onDone();
   };

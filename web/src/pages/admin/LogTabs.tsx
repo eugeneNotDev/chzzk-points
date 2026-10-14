@@ -7,6 +7,7 @@ import { Pagination } from "../../components/Pagination";
 import { adminCall, fmtDateTime, num, type LogEntry, type Paged } from "../../lib/admin";
 import { LogRow } from "./LogRow";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 function SearchCard({ title, desc, onSearch }: { title: string; desc?: ReactNode; onSearch: (q: string) => void }) {
   const [input, setInput] = useState("");
@@ -92,24 +93,24 @@ export function SpendTab() {
   const checked = selectable.filter((e) => selected.has(e.id)).length;
 
   const setOne = async (e: LogEntry, processed: boolean) => {
-    if (!processed && !confirm("처리완료를 취소할까요?")) return;
+    if (!processed && !(await confirmDialog("처리완료를 취소할까요?", { danger: true }))) return;
     try {
       await adminCall({ action: "set-processed", id: e.id, processed });
       qc.setQueryData<Paged & { entries: LogEntry[] }>(key, (d) => d && { ...d, entries: d.entries.map((x) => (x.id === e.id ? { ...x, processed } : x)) });
     } catch {
-      alert(processed ? "처리완료 표시에 실패했어요." : "되돌리기에 실패했어요.");
+      alertDialog(processed ? "처리완료 표시에 실패했어요." : "되돌리기에 실패했어요.");
     }
   };
   const bulk = async (processed: boolean) => {
     const ids = [...selected];
     if (!ids.length) return;
-    if (!confirm(`선택한 ${ids.length}개 항목을 ${processed ? "처리완료로" : "처리안함으로"} 표시할까요?`)) return;
+    if (!(await confirmDialog(`선택한 ${ids.length}개 항목을 ${processed ? "처리완료로" : "처리안함으로"} 표시할까요?`))) return;
     try {
       await adminCall({ action: "bulk-set-processed", ids, processed });
       setSelected(new Set());
       qc.invalidateQueries({ queryKey: ["admin", "spend-log"] });
     } catch {
-      alert("일괄 처리에 실패했어요.");
+      alertDialog("일괄 처리에 실패했어요.");
     }
   };
 

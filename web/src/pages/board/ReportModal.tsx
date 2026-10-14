@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../../components/ui";
 import { REPORT_REASONS, boardCall, boardErrCode, boardErrText } from "../../lib/board";
 import styles from "./Board.module.css";
+import { toast } from "../../lib/dialog";
 
 export type ReportTarget = { type: "post" | "comment"; id: number };
 
@@ -26,7 +27,7 @@ export function ReportModal({ target, preview, onClose, onDone }: { target: Repo
     try {
       const r = await boardCall<{ hidden?: boolean }>({ action: "report", targetType: target.type, targetId: target.id, reason, memo });
       onClose();
-      alert(r.hidden ? `신고했어요. 신고가 누적되어 이 ${what}은 가려졌어요.` : "신고했어요. 운영자가 확인할게요.");
+      toast(r.hidden ? `신고했어요. 신고가 누적되어 이 ${what}은 가려졌어요.` : "신고했어요. 운영자가 확인할게요.");
       onDone();
     } catch (e) {
       setBusy(false);

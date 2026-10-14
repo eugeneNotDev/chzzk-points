@@ -107,38 +107,130 @@
   font-weight: 500;
 }
 
-/* ---------- 목록 아래: 검색 + 글쓰기 ---------- */
-.footer {
+/* ---------- 목록 아래: 글 수·글쓰기 / 페이지 번호·검색 칸 ---------- */
+.listBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 14px 18px 18px;
-  border-top: 1px solid var(--c-border);
+  gap: 12px;
+  margin-top: -8px;
 }
-.searchForm {
+.totalText {
+  color: var(--c-text-3);
+  font-size: 14px;
+}
+.totalText b {
+  color: var(--c-text);
+  font-weight: 700;
+}
+.listBar :global(.btn) {
+  margin-left: auto;
+}
+.bottomBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 20px 24px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.pager {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1;
-  max-width: 520px;
-  min-width: 0;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pg,
+.pgArrow {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--c-text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pg:hover,
+.pgArrow:hover:not(:disabled) {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.pg[aria-current="page"] {
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-weight: 800;
+}
+.pgArrow {
+  border: 1px solid var(--c-border);
+}
+.pgArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.searchForm {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .searchField {
-  width: 128px;
-  flex: none;
-  min-height: 40px;
-  padding-top: 7px;
-  padding-bottom: 7px;
-  font-size: 14px;
+  width: 132px;
+}
+.searchBox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 42px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.searchBox:focus-within {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-soft);
 }
 .searchInput {
   flex: 1;
   min-width: 0;
-  min-height: 40px;
-  padding-top: 7px;
-  padding-bottom: 7px;
+  height: 100%;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  font: inherit;
   font-size: 14px;
+  outline: none;
+}
+.searchInput::placeholder {
+  color: var(--c-text-4);
+}
+.searchBtn {
+  flex: none;
+  width: 40px;
+  height: 34px;
+  margin-right: 4px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  cursor: pointer;
+}
+.searchBtn:hover {
+  background: var(--c-accent-hover);
 }
 .searchInfo {
   display: flex;
@@ -209,11 +301,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
-  margin: -4px 0 -6px -8px;
-  padding: 0 10px 0 6px;
+  height: 32px;
+  margin: -4px 0 -8px;
+  padding: 0;
   border: 0;
-  border-radius: var(--r-sm);
   background: none;
   color: var(--c-text-2);
   font: inherit;
@@ -222,7 +313,6 @@
   cursor: pointer;
 }
 .backBtn:hover {
-  background: var(--c-hover);
   color: var(--c-text);
 }
 .post .meta {
@@ -257,6 +347,13 @@
   line-height: 1.75;
   font-size: 15px;
   color: var(--c-text);
+}
+.imgBtn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
 }
 .inlineImg {
   display: block;
@@ -628,22 +725,11 @@
 }
 
 @media (max-width: 720px) {
-  .footer {
-    flex-direction: column-reverse;
-    align-items: stretch;
-    padding: 12px 14px 16px;
-  }
-  .footer > :global(.btn) {
-    align-self: flex-end;
-  }
-  .searchForm {
-    max-width: none;
+  .bottomBox {
+    padding: 18px 14px 20px;
   }
   .searchField {
-    width: 104px;
-  }
-  .searchLabel {
-    display: none;
+    width: 108px;
   }
   .item {
     padding: 13px 14px;

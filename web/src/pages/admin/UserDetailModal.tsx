@@ -9,6 +9,7 @@ import { adminCall, fmtDateTime, num, type UserDetail } from "../../lib/admin";
 import { LogRow } from "./LogRow";
 import { TitlesModal } from "./TitlesModal";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 type Block = { blocked: boolean; forever: boolean; until: string | null };
 const DURATION_LABEL: Record<string, string> = { day: "하루", week: "일주일", month: "한 달", forever: "계속" };
@@ -111,13 +112,13 @@ function MinigameBlock({ channelId, name }: { channelId: string; name: string })
   const set = async (dur: string) => {
     const msg =
       dur === "off" ? `${name}님의 미니게임 차단을 풀까요?` : `${name}님의 미니게임 참여를 ${DURATION_LABEL[dur]} 막을까요?\n(룰렛·가위바위보·홀짝 불가, 무료 뽑기·투표는 가능)`;
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
     setBusy(true);
     try {
       const r = await apiFetch<Block>(API.adminMinigameBlock, { body: { channelId, duration: dur } });
       qc.setQueryData(key, r);
     } catch {
-      alert("변경하지 못했어요.");
+      alertDialog("변경하지 못했어요.");
     } finally {
       setBusy(false);
     }

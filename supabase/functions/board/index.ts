@@ -4,7 +4,7 @@
 // 전부 POST { action, ... }. 읽기(list/get/review-status)는 로그인 없이도 되지만, 로그인하면 "내 글" 여부와
 // (관리자면) 자유게시판 작성자 닉네임이 같이 옴. 쓰기는 로그인 필수(+ 차단 유저 불가).
 //
-// list           { board, page?, q?, field?("title"|"all"|"author") }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
+// list           { board, page?, size?(10|15|20|30, 기본 20), q?, field?("title"|"all"|"author") }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
 // get            { id }                      → { post, images:[url], comments:[...] }
 // create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 12시간 이내 + 첫 후기면 rewarded=100)
 // update         { id, title, body, images? } → { ok }
@@ -16,6 +16,8 @@
 // like           { targetType: "post"|"comment", targetId, on: boolean } → { liked, count }  (0063_board_likes.sql, 내 글·댓글은 불가)
 // report         { targetType: "post"|"comment", targetId, reason, memo? } → { ok, hidden }  (0057_board_reports.sql)
 //                서로 다른 5명이 신고(처리 안 된 신고 기준)하면 자동으로 가림. 본인 글·스트리머 글은 신고 불가, 같은 대상은 1번만.
+// notifications  {}                          → { items: [{id,kind:"comment"|"reply",postId,board,postTitle,body,author,createdAt}] }
+//                최근 30일 — 내 글에 달린 남의 댓글 + 내 댓글에 달린 남의 답글(최신 30개, 로그인 필수). 읽음 여부는 화면(브라우저)이 기억.
 // my-activity    {}                          → { posts, comments, postCount, commentCount, rewardTotal }  (로그인 필수, 마이페이지 "내 활동")
 // admin-reports  { status: "open"|"done" }   → { items: [...], openCount }   (관리자 전용, 대상별로 묶어서)
 // admin-resolve  { targetType, targetId, resolve: "restore"|"dismiss"|"delete" } → { ok }  (관리자 전용)
@@ -180,6 +182,7 @@ Deno.serve(async (req: Request) => {
     if (action === "report") return await reportTarget(admin, body, me);
     if (action === "like") return await likeTarget(admin, body, me);
     if (action === "my-activity") return await myActivity(admin, me);
+    if (action === "notifications") return await notifications(admin, me);
     if (action === "admin-reports") return isAdmin ? await adminReports(admin, body) : json({ error: "forbidden" }, 403);
     if (action === "admin-resolve") return isAdmin ? await adminResolve(admin, body) : json({ error: "forbidden" }, 403);
     return json({ error: "invalid_action" }, 400);
@@ -230,6 +233,8 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   if (board !== "free" && board !== "review") return json({ error: "invalid_board" }, 400);
   const review = board === "review";
   const page = Math.max(0, Math.min(Number(body.page) || 0, 10000));
+  // 한 페이지 글 수 — 새 사이트는 10개(size: 10), 예전 화면은 안 보내서 기본 20개 그대로.
+  const size = [10, 15, 20, 30].includes(Number(body.size)) ? Number(body.size) : PAGE_SIZE;
   // 검색(선택) — q: 검색어(최대 40자), field: "title"(제목) | "all"(제목+내용) | "author"(작성자 — 방송 후기만, 자유게시판은 익명이라 안 됨).
   // ilike 특수문자(% _ \)는 글자 그대로 찾게 이스케이프, or() 문법을 깨는 , ( ) " 는 공백으로 바꿈.
   const q = String(body.q ?? "").replace(/[,()"]/g, " ").trim().slice(0, 40);
@@ -243,10 +248,10 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
     // 신고로 가려진 글은 일반 사용자 검색 결과에 안 나옴(가려진 내용이 검색으로 새지 않게)
     if (!isAdmin) query = query.eq("hidden", false);
     if (field === "author") {
-      if (!review) return json({ posts: [], total: 0, pageSize: PAGE_SIZE });
+      if (!review) return json({ posts: [], total: 0, pageSize: size });
       const { data: us } = await admin.from("users").select("channel_id").ilike("channel_name", pat).limit(200);
       const cids = (us ?? []).map((u: any) => u.channel_id);
-      if (!cids.length) return json({ posts: [], total: 0, pageSize: PAGE_SIZE });
+      if (!cids.length) return json({ posts: [], total: 0, pageSize: size });
       query = query.in("channel_id", cids);
     } else if (field === "all") {
       // or() 안의 큰따옴표 값은 백슬래시가 한 번 더 풀리므로 두 번 씀
@@ -258,7 +263,7 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   }
   const { data: posts, error, count } = await query
     .order("id", { ascending: false })
-    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    .range(page * size, page * size + size - 1);
   if (error) throw new Error(`board_posts 조회 실패: ${error.message}`);
   const slice = posts ?? [];
   const ids = slice.map((p: any) => p.id);
@@ -308,7 +313,7 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
       };
     }),
     total: count ?? slice.length,
-    pageSize: PAGE_SIZE,
+    pageSize: size,
   });
 }
 
@@ -814,5 +819,58 @@ async function myActivity(admin: Admin, me: string) {
     postCount: postCount ?? 0,
     commentCount: commentCount ?? 0,
     rewardTotal: (rewards ?? []).reduce((a: number, r: any) => a + (r.amount ?? 0), 0),
+  });
+}
+
+// 알림 종 — 내 글에 달린 남의 댓글, 내 댓글에 달린 남의 답글(최근 30일, 최신 30개).
+// 자유게시판은 익명이라 작성자를 "익명"으로(스트리머 계정만 닉네임), 방송 후기는 닉네임.
+// 삭제됐거나 신고로 가려진 댓글은 뺌. 읽음 여부는 따로 저장하지 않고 화면이 마지막으로 본 시각으로 판단.
+async function notifications(admin: Admin, me: string) {
+  const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const [{ data: myPosts }, { data: myComments }] = await Promise.all([
+    admin.from("board_posts").select("id").eq("channel_id", me).order("id", { ascending: false }).limit(300),
+    admin.from("board_comments").select("id").eq("channel_id", me).gte("created_at", since).order("id", { ascending: false }).limit(300),
+  ]);
+  const postIds = (myPosts ?? []).map((p: any) => p.id);
+  const commentIds = (myComments ?? []).map((c: any) => c.id);
+  const cols = "id, post_id, channel_id, body, created_at, reply_to_id";
+  const [onPosts, replies] = await Promise.all([
+    postIds.length
+      ? admin.from("board_comments").select(cols).in("post_id", postIds).neq("channel_id", me).eq("deleted", false).eq("hidden", false)
+          .gte("created_at", since).order("id", { ascending: false }).limit(30)
+      : Promise.resolve({ data: [] as any[] }),
+    commentIds.length
+      ? admin.from("board_comments").select(cols).in("reply_to_id", commentIds).neq("channel_id", me).eq("deleted", false).eq("hidden", false)
+          .gte("created_at", since).order("id", { ascending: false }).limit(30)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+  const byId = new Map<number, any>();
+  // 답글이 내 글에도 달린 거면 "답글"로 보여줌(더 구체적이라)
+  for (const c of onPosts.data ?? []) byId.set(c.id, { ...c, kind: "comment" });
+  for (const c of replies.data ?? []) byId.set(c.id, { ...c, kind: "reply" });
+  const list = [...byId.values()].sort((a, b) => b.id - a.id).slice(0, 30);
+  if (!list.length) return json({ items: [] });
+
+  const { data: posts } = await admin.from("board_posts").select("id, board, title").in("id", [...new Set(list.map((c) => c.post_id))]);
+  const postMap = new Map((posts ?? []).map((p: any) => [p.id, p]));
+  const named = list.filter((c) => postMap.get(c.post_id)?.board === "review" || c.channel_id === OWNER_CHANNEL_ID).map((c) => c.channel_id);
+  const who = await loadWho(admin, [...new Set(named)]);
+  return json({
+    items: list
+      .filter((c) => postMap.has(c.post_id))
+      .map((c) => {
+        const p: any = postMap.get(c.post_id);
+        const showName = p.board === "review" || c.channel_id === OWNER_CHANNEL_ID;
+        return {
+          id: c.id,
+          kind: c.kind,
+          postId: c.post_id,
+          board: p.board,
+          postTitle: p.title,
+          body: String(c.body).replace(/\s+/g, " ").trim().slice(0, 80),
+          author: showName ? (who.get(c.channel_id)?.name ?? "알 수 없음") : "익명",
+          createdAt: c.created_at,
+        };
+      }),
   });
 }

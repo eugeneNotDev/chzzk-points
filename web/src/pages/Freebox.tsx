@@ -9,6 +9,7 @@ import { ApiError, getToken, startLogin, useAuth } from "../lib/auth";
 import { fmt, formatLeft, kstToday } from "../lib/format";
 import { openFreeBox, useFreeBox, type FreeBoxState } from "../lib/freeBox";
 import styles from "./Freebox.module.css";
+import { AnimatedNumber } from "../components/AnimatedNumber";
 
 type Phase = "ready" | "opening" | "opened" | "done";
 
@@ -215,7 +216,7 @@ export default function Freebox() {
           <Card>
             <span className={styles.balLabel}>보유 포인트</span>
             <div className={`${styles.balance} num`}>
-              {q.data ? fmt(q.data.balance) : "···"}
+              {q.data ? <AnimatedNumber value={q.data.balance} /> : "···"}
               <span>P</span>
             </div>
             {q.data?.openedToday && q.data.todayPoints != null && <span className={styles.todayChip}>오늘 +{fmt(q.data.todayPoints)}P 받음</span>}

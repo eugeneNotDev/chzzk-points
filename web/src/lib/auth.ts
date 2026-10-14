@@ -7,6 +7,7 @@
 import { useSyncExternalStore } from "react";
 import { API, CHZZK_CLIENT_ID, CHZZK_REDIRECT_URI, OWNER_CHANNEL_ID, STORAGE } from "./config";
 import { readStorage, writeStorage } from "./storage";
+import { alertDialog } from "./dialog";
 
 export type AuthState = {
   token: string | null;
@@ -99,7 +100,7 @@ export async function handleOAuthCallback() {
     if (!res.ok) {
       if (res.status === 403 && body.error === "banned") {
         sessionStorage.removeItem(LOGIN_RETRY_KEY);
-        alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+        alertDialog("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
         return;
       }
       if (res.status === 409 && body.error === "chzzk_token_rejected") {
@@ -117,7 +118,7 @@ export async function handleOAuthCallback() {
         }
       }
       sessionStorage.removeItem(LOGIN_RETRY_KEY);
-      alert("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      alertDialog("로그인에 실패했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
     sessionStorage.removeItem(LOGIN_RETRY_KEY);
@@ -184,7 +185,7 @@ export async function apiFetch<T>(url: string, options: { method?: string; body?
     logout();
   } else if (res.status === 403 && data.error === "banned" && getToken()) {
     logout();
-    alert("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
+    alertDialog("이용이 제한된 계정이에요. 문의가 필요하면 스트리머에게 직접 연락해주세요.");
   }
   if (!res.ok) throw new ApiError(res.status, data);
 

@@ -12,6 +12,7 @@ import { fmt } from "../../lib/format";
 import { useMe } from "../../lib/queries";
 import { PredictAdmin } from "./PredictAdmin";
 import styles from "./Predict.module.css";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 export type PredictionOption = { id: number; label: string; totalAmount: number; percent: number; multiplier: number };
 export type Prediction = {
@@ -125,7 +126,7 @@ export default function Predict() {
       <div className={styles.balance}>
         <span className="muted">보유 포인트</span>
         <b className="num">
-          {me.data ? fmt(me.data.balance) : "···"}
+          {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"}
           <small>P</small>
         </b>
       </div>

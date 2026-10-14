@@ -9,6 +9,7 @@ import { ApiError, apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmtDateTime, num } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog, copyDialog } from "../../lib/dialog";
 
 type Code = { id: number; code: string; points: number; pointsMax: number | null; maxUses: number | null; usedCount: number; expiresAt: string | null; endedAt: string | null; createdAt: string };
 type CodesData = { active: Code | null; past: Code[]; page: number; totalPages: number; overlayUrl: string | null; serverNow: string };
@@ -72,7 +73,7 @@ export function CodesTab() {
     if (maxUses.trim() && !isPosInt(maxUses)) return setMsg({ text: ERR.invalid_max_uses });
     if (minutes.trim() && !isPosInt(minutes)) return setMsg({ text: ERR.invalid_minutes });
     if (random && (!isPosInt(pointsMax) || Number(pointsMax) <= Number(points))) return setMsg({ text: ERR.invalid_points_max });
-    if (d?.active && left > 0 && !confirm(`진행 중인 코드(${d.active.code})를 끝내고 새 코드를 만들까요?`)) return;
+    if (d?.active && left > 0 && !(await confirmDialog(`진행 중인 코드(${d.active.code})를 끝내고 새 코드를 만들까요?`))) return;
     setBusy(true);
     try {
       const r = await apiFetch<{ code: string }>(API.adminStreamCodes, {
@@ -101,11 +102,11 @@ export function CodesTab() {
 
   const end = async () => {
     const a = d?.active;
-    if (!a || !confirm(`코드 ${a.code}를 지금 종료할까요? 종료하면 더 이상 입력할 수 없어요.`)) return;
+    if (!a || !(await confirmDialog(`코드 ${a.code}를 지금 종료할까요? 종료하면 더 이상 입력할 수 없어요.`, { danger: true }))) return;
     try {
       await apiFetch(API.adminStreamCodes, { body: { action: "end", id: a.id } });
     } catch (er) {
-      if (!(er instanceof ApiError && er.body.error === "not_active")) alert("종료하지 못했어요.");
+      if (!(er instanceof ApiError && er.body.error === "not_active")) alertDialog("종료하지 못했어요.");
     }
     reload();
   };
@@ -117,7 +118,7 @@ export function CodesTab() {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      prompt("아래 주소를 복사해서 OBS 브라우저 소스 URL에 넣어주세요.", d.overlayUrl);
+      copyDialog("아래 주소를 복사해서 OBS 브라우저 소스 URL에 넣어주세요.", d.overlayUrl);
     }
   };
 

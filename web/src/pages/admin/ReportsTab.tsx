@@ -8,6 +8,8 @@ import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmtDateTime } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { confirmDialog } from "../../lib/dialog";
+import { SkeletonList } from "../../components/Skeleton";
 
 type ReportItem = {
   targetType: "post" | "comment";
@@ -42,7 +44,7 @@ export function ReportsTab() {
   const resolve = async (it: ReportItem, action: "restore" | "dismiss" | "delete") => {
     const what = it.targetType === "post" ? "글" : "댓글";
     const ask = action === "delete" ? `이 ${what}을 삭제할까요? (보상 받은 후기면 100P가 회수돼요)` : action === "restore" ? "숨김을 해제하고 다시 보이게 할까요?" : "문제없음으로 처리할까요?";
-    if (!confirm(ask)) return;
+    if (!(await confirmDialog(ask))) return;
     setErr("");
     try {
       await apiFetch(API.board, { body: { action: "admin-resolve", targetType: it.targetType, targetId: it.targetId, resolve: action } });
@@ -64,7 +66,7 @@ export function ReportsTab() {
         </button>
       </div>
       {err && <p className="status error">{err}</p>}
-      {q.isLoading && <p className="muted">불러오는 중...</p>}
+      {q.isLoading && <SkeletonList rows={3} />}
       {q.isError && <p className="status error">신고 목록을 불러오지 못했어요.</p>}
       {q.data && q.data.items.length === 0 && (
         <Card>

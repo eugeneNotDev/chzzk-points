@@ -8,6 +8,7 @@ import { PageHead } from "../../components/ui";
 import { ApiError, apiFetch, startLogin, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import styles from "./Songs.module.css";
+import { SkeletonList } from "../../components/Skeleton";
 
 type Song = { id: number; title: string; artist: string; requester: string | null; createdAt: string; mine: boolean };
 type SongList = { items: Song[]; canRequest: boolean; requestedToday: boolean; isAdmin: boolean; loggedIn: boolean };
@@ -191,7 +192,7 @@ export default function Songs() {
             </span>
           </div>
         )}
-        {q.isLoading && <p className="muted" style={{ padding: 16 }}>불러오는 중...</p>}
+        {q.isLoading && <SkeletonList rows={4} variant="row" />}
         {q.isError && <EmptyState>리스트를 불러오지 못했어요.</EmptyState>}
         {s && s.items.length === 0 && (
           <EmptyState>

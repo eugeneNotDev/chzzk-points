@@ -10,6 +10,7 @@ import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
 import { formatCountdown, useNow, type PredictionOption } from "./Predict";
 import styles from "./Predict.module.css";
+import { confirmDialog } from "../../lib/dialog";
 
 type AdminPrediction = { id: number; title: string; status: string; closesAt: string; options: PredictionOption[]; bets?: { channelName: string | null; optionId: number; amount: number }[] };
 
@@ -38,7 +39,7 @@ export function PredictAdmin() {
   };
 
   async function cancel() {
-    if (!p || !confirm("진행 중인 투표를 취소할까요? 걸린 포인트는 전액 환불돼요.")) return;
+    if (!p || !(await confirmDialog("진행 중인 투표를 취소할까요? 걸린 포인트는 전액 환불돼요.", { danger: true }))) return;
     setMsg({ text: "처리 중..." });
     try {
       await adminCall({ action: "cancel-prediction", predictionId: p.id });

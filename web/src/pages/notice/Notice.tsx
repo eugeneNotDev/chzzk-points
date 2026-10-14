@@ -12,6 +12,8 @@ import { deleteNotice, isNoticeNew, markNoticeRead, setNoticePin, useNoticeReadV
 import { useTableRefetch } from "../../lib/realtime";
 import { NoticeEditor } from "./NoticeEditor";
 import styles from "./Notice.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
+import { SkeletonList } from "../../components/Skeleton";
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -44,13 +46,13 @@ export default function Notice() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["notices"] });
 
   async function onDelete(n: NoticeT) {
-    if (!confirm("이 공지를 삭제할까요?")) return;
+    if (!(await confirmDialog("이 공지를 삭제할까요?", { danger: true }))) return;
     try {
       await deleteNotice(n.id);
       if (viewId === n.id) closeView();
       refresh();
     } catch {
-      alert("삭제에 실패했어요.");
+      alertDialog("삭제에 실패했어요.");
     }
   }
   async function onPin(n: NoticeT) {
@@ -59,7 +61,7 @@ export default function Notice() {
       await setNoticePin(n.id, !n.pinned_at);
       await refresh();
     } catch {
-      alert(n.pinned_at ? "고정 해제에 실패했어요." : "고정에 실패했어요.");
+      alertDialog(n.pinned_at ? "고정 해제에 실패했어요." : "고정에 실패했어요.");
     } finally {
       setBusy(false);
     }
@@ -81,7 +83,7 @@ export default function Notice() {
       />
 
       <Card flush>
-        {q.isLoading && <p className="muted" style={{ padding: 16 }}>불러오는 중...</p>}
+        {q.isLoading && <SkeletonList rows={6} variant="row" />}
         {q.isError && <EmptyState>공지사항을 불러오지 못했어요.</EmptyState>}
         {q.data?.length === 0 && <EmptyState>등록된 공지사항이 없어요.</EmptyState>}
         <ul className={styles.list}>

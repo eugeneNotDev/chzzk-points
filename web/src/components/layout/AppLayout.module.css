@@ -453,3 +453,19 @@
     font-weight: 700;
   }
 }
+
+/* 페이지 전환 — 새 화면이 살짝 아래에서 떠오르며 나타남 */
+.pageFade {
+  animation: pageIn 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pageFade {
+    animation: none;
+  }
+}

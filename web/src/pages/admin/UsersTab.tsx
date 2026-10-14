@@ -7,11 +7,12 @@ import { Pagination } from "../../components/Pagination";
 import { adminCall, num, type AdminUser, type Paged } from "../../lib/admin";
 import { useAdminUserModal } from "./useAdminUserModal";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 const askAmount = (raw: string) => {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) {
-    alert("지급/차감할 수량을 1 이상 숫자로 입력해주세요.");
+    alertDialog("지급/차감할 수량을 1 이상 숫자로 입력해주세요.");
     return null;
   }
   return Math.trunc(n);
@@ -105,7 +106,7 @@ function UserRow({ u, checked, onCheck, onOpen, onChanged }: { u: AdminUser; che
       setAmount("");
       onChanged();
     } catch {
-      alert("포인트 지급/차감에 실패했어요.");
+      alertDialog("포인트 지급/차감에 실패했어요.");
     } finally {
       setBusy(false);
     }
@@ -116,13 +117,13 @@ function UserRow({ u, checked, onCheck, onOpen, onChanged }: { u: AdminUser; che
     const msg = next
       ? "이 유저를 밴할까요?\n재로그인이 막히고 랭킹에서도 빠지며, 보유 포인트와 칭호가 전부 초기화돼요.\n(나중에 밴을 풀어도 초기화된 내용은 되돌아오지 않아요)"
       : "밴을 해제할까요? (포인트·칭호는 초기화된 상태 그대로 유지돼요)";
-    if (!confirm(msg)) return;
+    if (!(await confirmDialog(msg))) return;
     setBusy(true);
     try {
       await adminCall({ action: "set-ban", channelId: u.channelId, banned: next });
       onChanged();
     } catch {
-      alert("밴 처리에 실패했어요.");
+      alertDialog("밴 처리에 실패했어요.");
     } finally {
       setBusy(false);
     }
@@ -167,9 +168,9 @@ function BulkCard({ selected, onDone }: { selected: Set<string>; onDone: (clearS
     const verb = sign > 0 ? "지급" : "차감";
     const ids = [...selected];
     if (target === "selected") {
-      if (!ids.length) return alert("선택된 유저가 없어요.");
-      if (!confirm(`선택한 ${ids.length}명에게 ${num(n)}P를 ${verb}할까요?`)) return;
-    } else if (!confirm(`전체 유저에게 ${num(n)}P를 ${verb}할까요?\n(밴 처리된 유저와 관리자 계정은 제외돼요)`)) return;
+      if (!ids.length) return alertDialog("선택된 유저가 없어요.");
+      if (!(await confirmDialog(`선택한 ${ids.length}명에게 ${num(n)}P를 ${verb}할까요?`))) return;
+    } else if (!(await confirmDialog(`전체 유저에게 ${num(n)}P를 ${verb}할까요?\n(밴 처리된 유저와 관리자 계정은 제외돼요)`, { danger: true }))) return;
     setBusy(true);
     setMsg({ text: "처리 중...", ok: true });
     try {

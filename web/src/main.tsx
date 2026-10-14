@@ -12,6 +12,7 @@ import ComingSoon from "./pages/ComingSoon";
 import { PAGES } from "./routes";
 import { setupAppMode } from "./lib/pwa";
 import { handleOAuthCallback } from "./lib/auth";
+import { DialogHost } from "./components/DialogHost";
 import { setupPullToRefresh } from "./lib/pullToRefresh";
 import "./styles/global.css";
 
@@ -64,6 +65,7 @@ createRoot(document.getElementById("root")!).render(
           </Route>
         </Routes>
       </BrowserRouter>
+      <DialogHost />
     </QueryClientProvider>
   </StrictMode>,
 );

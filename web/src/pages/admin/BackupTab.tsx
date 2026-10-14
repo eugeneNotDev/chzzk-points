@@ -7,6 +7,7 @@ import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmtDateTime } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { SkeletonList } from "../../components/Skeleton";
 
 type Backup = { path: string; kind: "auto" | "manual"; createdAt: string; sizeBytes: number | null };
 const fmtBytes = (n: number | null) => (n == null ? "-" : n >= 1048576 ? `${(n / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`);
@@ -60,7 +61,7 @@ export function BackupTab() {
         가끔 하나씩 내려받아 PC에 따로 보관해 두면 더 안전해요. (사이트 저장소 폴더에는 넣지 마세요.)
       </p>
       {msg && <p className={`status ${msg.ok ? "ok" : "error"}`}>{msg.text}</p>}
-      {q.isLoading && <p className="muted">불러오는 중...</p>}
+      {q.isLoading && <SkeletonList rows={3} variant="row" />}
       {q.isError && <p className="status error">백업 목록을 불러오지 못했어요.</p>}
       {q.data && q.data.items.length === 0 && <EmptyState>아직 백업이 없어요.</EmptyState>}
       <div className={styles.bkList}>

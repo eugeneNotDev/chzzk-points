@@ -1,22 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { EyeOff, Heart, Image as ImageIcon, MessageCircle, PenLine, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, EyeOff, Heart, Image as ImageIcon, MessageCircle, PenLine, Search, X } from "lucide-react";
+import { Select, type SelectOption } from "../../components/Select";
 import { Card, EmptyState } from "../../components/Card";
 import { PageHead } from "../../components/ui";
-import { TitleBadge } from "../../components/TitleBadge";
 import { startLogin, useAuth } from "../../lib/auth";
 import { BOARD_CFG, boardCall, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
 import styles from "./Board.module.css";
+import { SkeletonList } from "../../components/Skeleton";
 
-export function Who({ name, badge, mine }: { name: string; badge: ListPost["badge"]; mine?: boolean }) {
-  return (
-    <span className={`${styles.who} ${mine ? styles.me : ""}`}>
-      {badge && <TitleBadge name={badge.name} value={badge.color} />}
-      {name}
-    </span>
-  );
+// 작성자 이름 — 게시판에선 칭호를 안 붙임(칭호는 랭킹에서만). badge는 서버가 주지만 일부러 안 씀.
+export function Who({ name, mine }: { name: string; badge?: ListPost["badge"]; mine?: boolean }) {
+  return <span className={`${styles.who} ${mine ? styles.me : ""}`}>{name}</span>;
 }
 
 export function AdminChip({ adminName, shown }: { adminName: string | null; shown: string | null }) {
@@ -26,6 +23,18 @@ export function AdminChip({ adminName, shown }: { adminName: string | null; show
 
 type Field = "title" | "all" | "author";
 
+const narrowMq = typeof window !== "undefined" ? window.matchMedia("(max-width: 599px)") : null;
+function useNarrow() {
+  return useSyncExternalStore(
+    (cb) => {
+      narrowMq?.addEventListener("change", cb);
+      return () => narrowMq?.removeEventListener("change", cb);
+    },
+    () => !!narrowMq?.matches,
+  );
+}
+const PAGE_SIZE = 10;
+
 export function BoardList({ board, page, q: search, field }: { board: BoardKind; page: number; q: string; field: Field }) {
   const cfg = BOARD_CFG[board];
   const { isLoggedIn, token } = useAuth();
@@ -33,7 +42,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
   const q = useQuery({
     queryKey: ["board", "list", board, page, search, field, token],
     placeholderData: (p) => p,
-    queryFn: () => boardCall<{ posts: ListPost[]; total: number; pageSize: number }>({ action: "list", board, page, ...(search ? { q: search, field } : {}) }),
+    queryFn: () => boardCall<{ posts: ListPost[]; total: number; pageSize: number }>({ action: "list", board, page, size: PAGE_SIZE, ...(search ? { q: search, field } : {}) }),
   });
   // 페이지 이동 주소 — 검색 중이면 검색어를 유지
   const pageUrl = (p: number) => {
@@ -48,8 +57,10 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
   };
   const seen = loadSeen();
   const pages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
-  const start = Math.max(0, Math.min(page - 2, pages - 5));
-  const end = Math.min(pages, start + 5);
+  // 페이지 번호는 10개씩 묶음(1~10, 11~20 …) — 네이버 카페처럼. 폰에선 한 줄에 들어가게 5개씩.
+  const group = useNarrow() ? 5 : 10;
+  const start = Math.floor(page / group) * group;
+  const end = Math.min(pages, start + group);
 
   return (
     <div className="page">
@@ -57,7 +68,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
       {board === "review" && <ReviewBanner />}
 
       <Card flush>
-        {q.isLoading && <p className="muted" style={{ padding: 16 }}>불러오는 중...</p>}
+        {q.isLoading && <SkeletonList rows={6} />}
         {q.isError && <EmptyState>글 목록을 불러오지 못했어요.</EmptyState>}
         {search && q.data && (
           <div className={styles.searchInfo}>
@@ -119,26 +130,40 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
             );
           })}
         </ul>
-        {pages > 1 && (
-          <nav className="pagination" aria-label="페이지">
-            <button type="button" disabled={page === 0} onClick={() => nav(pageUrl(page - 1))}>
-              이전
-            </button>
-            {Array.from({ length: end - start }, (_, i) => start + i).map((i) => (
-              <button key={i} type="button" aria-current={i === page ? "page" : undefined} onClick={() => nav(pageUrl(i))}>
-                {i + 1}
-              </button>
-            ))}
-            <button type="button" disabled={page >= pages - 1} onClick={() => nav(pageUrl(page + 1))}>
-              다음
-            </button>
-          </nav>
+      </Card>
+
+      {/* 목록 바로 아래 오른쪽: 글 수 · 글쓰기 */}
+      <div className={styles.listBar}>
+        {q.data && (
+          <span className={styles.totalText}>
+            {search ? "검색 결과" : "전체"} <b className="num">{q.data.total.toLocaleString("ko-KR")}</b>개의 글
+          </span>
         )}
-        <BoardFooter
+        <button type="button" className="btn btn-primary" onClick={() => (isLoggedIn ? nav(`${cfg.path}?write=1`) : startLogin())}>
+          <PenLine size={17} aria-hidden="true" />
+          {cfg.write}
+        </button>
+      </div>
+
+      {/* 따로 떨어진 칸: 페이지 번호 + 검색 */}
+      <section className={styles.bottomBox} aria-label="페이지 이동·검색">
+        <nav className={styles.pager} aria-label="페이지">
+          <button type="button" className={styles.pgArrow} disabled={start === 0} onClick={() => nav(pageUrl(start - 1))} aria-label="이전 페이지 묶음">
+            <ChevronLeft size={16} aria-hidden="true" />
+          </button>
+          {Array.from({ length: Math.max(1, end - start) }, (_, i) => start + i).map((i) => (
+            <button key={i} type="button" className={`${styles.pg} num`} aria-current={i === page ? "page" : undefined} onClick={() => nav(pageUrl(i))}>
+              {i + 1}
+            </button>
+          ))}
+          <button type="button" className={styles.pgArrow} disabled={end >= pages} onClick={() => nav(pageUrl(end))} aria-label="다음 페이지 묶음">
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </nav>
+        <BoardSearch
           board={board}
           search={search}
           field={field}
-          onWrite={() => (isLoggedIn ? nav(`${cfg.path}?write=1`) : startLogin())}
           onSearch={(text, f) => {
             const sp = new URLSearchParams();
             if (text) {
@@ -149,57 +174,40 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
             nav(qs ? `${cfg.path}?${qs}` : cfg.path);
           }}
         />
-      </Card>
+      </section>
     </div>
   );
 }
 
-// 목록 맨 아래 — [검색 범위][검색어][검색]  ……  [글쓰기] (네이버 카페처럼)
-function BoardFooter({
-  board,
-  search,
-  field,
-  onWrite,
-  onSearch,
-}: {
-  board: BoardKind;
-  search: string;
-  field: Field;
-  onWrite: () => void;
-  onSearch: (q: string, field: Field) => void;
-}) {
-  const cfg = BOARD_CFG[board];
+// 검색 — [검색 범위 ▾][검색어 🔍] (가운데 정렬)
+function BoardSearch({ board, search, field, onSearch }: { board: BoardKind; search: string; field: Field; onSearch: (q: string, field: Field) => void }) {
   const [text, setText] = useState(search);
   const [f, setF] = useState<Field>(field);
   useEffect(() => {
     setText(search);
     setF(field);
   }, [search, field]);
+  const options: SelectOption<Field>[] = [
+    { value: "title", label: "제목" },
+    { value: "all", label: "제목+내용" },
+    ...(board === "review" ? [{ value: "author" as Field, label: "작성자" }] : []),
+  ];
   return (
-    <div className={styles.footer}>
-      <form
-        className={styles.searchForm}
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSearch(text.trim(), f);
-        }}
-      >
-        <select className={`select ${styles.searchField}`} value={f} onChange={(e) => setF(e.target.value as Field)} aria-label="검색 범위">
-          <option value="title">제목</option>
-          <option value="all">제목+내용</option>
-          {board === "review" && <option value="author">작성자</option>}
-        </select>
-        <input className={`input ${styles.searchInput}`} maxLength={40} placeholder="검색어를 입력하세요" value={text} onChange={(e) => setText(e.target.value)} aria-label="검색어" />
-        <button type="submit" className="btn btn-ghost" aria-label="검색">
-          <Search size={17} aria-hidden="true" />
-          <span className={styles.searchLabel}>검색</span>
+    <form
+      className={styles.searchForm}
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSearch(text.trim(), f);
+      }}
+    >
+      <Select value={f} options={options} onChange={setF} label="검색 범위" className={styles.searchField} up />
+      <div className={styles.searchBox}>
+        <input className={styles.searchInput} maxLength={40} placeholder="검색어를 입력하세요" value={text} onChange={(e) => setText(e.target.value)} aria-label="검색어" />
+        <button type="submit" className={styles.searchBtn} aria-label="검색">
+          <Search size={18} aria-hidden="true" />
         </button>
-      </form>
-      <button type="button" className="btn btn-primary" onClick={onWrite}>
-        <PenLine size={17} aria-hidden="true" />
-        {cfg.write}
-      </button>
-    </div>
+      </div>
+    </form>
   );
 }

@@ -14,6 +14,7 @@ import { API } from "../../lib/config";
 import { fmt, relTime } from "../../lib/format";
 import { useMe, useTitles, type Me } from "../../lib/queries";
 import styles from "./MyPage.module.css";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 type LogEntry = { id: number; amount: number; reason: string; createdAt: string; balanceAfter?: number };
 type Activity = {
@@ -63,7 +64,7 @@ export default function MyPage() {
           <div className={styles.stat}>
             <span className="muted">현재 포인트</span>
             <b className={`num ${styles.balance} ${profile && profile.balance < 0 ? styles.neg : ""}`}>
-              {profile ? fmt(profile.balance) : "···"}
+              {profile ? <AnimatedNumber value={profile.balance} /> : "···"}
               <small>P</small>
             </b>
           </div>

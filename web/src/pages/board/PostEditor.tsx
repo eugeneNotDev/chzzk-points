@@ -24,6 +24,8 @@ import {
 } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
 import styles from "./Board.module.css";
+import { toast } from "../../lib/dialog";
+import { SkeletonPost } from "../../components/Skeleton";
 
 type Img = { key: number; path?: string; url: string; file?: File };
 
@@ -57,7 +59,7 @@ export function PostEditor({ board, editId }: { board: BoardKind; editId?: numbe
     return (
       <div className="page">
         {head}
-        <Card>{q.isLoading ? <p className="muted">불러오는 중...</p> : <EmptyState>글을 불러오지 못했어요.</EmptyState>}</Card>
+        <Card>{q.isLoading ? <SkeletonPost /> : <EmptyState>글을 불러오지 못했어요.</EmptyState>}</Card>
       </div>
     );
   if (editId && q.data && !q.data.post.mine)
@@ -276,7 +278,7 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
       } else {
         const r = await boardCall<{ id: number; rewarded?: number }>({ action: "create", board, title: t, body: text, images: paths });
         if (r.rewarded) {
-          alert(`후기 보상 ${r.rewarded}P가 지급됐어요!`);
+          toast(`후기 보상 ${r.rewarded}P가 지급됐어요!`);
           qc.invalidateQueries({ queryKey: ["me"] });
         }
         qc.invalidateQueries({ queryKey: ["board", "review-status"] });

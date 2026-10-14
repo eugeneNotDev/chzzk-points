@@ -3,18 +3,19 @@
 import { useState } from "react";
 import { adminCall, fmtDateTime, num, type LogEntry } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 export function LogRow({ e, onUndone, showName = true }: { e: LogEntry; onUndone?: () => void; showName?: boolean }) {
   const [busy, setBusy] = useState(false);
   const positive = e.amount > 0;
   const undo = async () => {
-    if (!confirm("이 지급/차감 내역을 취소할까요? 반대 방향으로 포인트가 다시 조정돼요.")) return;
+    if (!(await confirmDialog("이 지급/차감 내역을 취소할까요? 반대 방향으로 포인트가 다시 조정돼요.", { danger: true }))) return;
     setBusy(true);
     try {
       await adminCall({ action: "undo-adjustment", id: e.id });
       onUndone?.();
     } catch {
-      alert("실행취소에 실패했어요.");
+      alertDialog("실행취소에 실패했어요.");
       setBusy(false);
     }
   };

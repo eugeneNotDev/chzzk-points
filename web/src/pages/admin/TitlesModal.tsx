@@ -11,6 +11,7 @@ import { supabase } from "../../lib/supabase";
 import { DEFAULT_TITLE_COLOR } from "../../lib/titleStyle";
 import { adminCall, type OwnedTitle } from "../../lib/admin";
 import styles from "./Admin.module.css";
+import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 type Grantable = { id: string; name: string; color: string; kind: "shop" | "custom" };
 type Special = { id: number; name: string; color: string; grantedAt: string };
@@ -105,13 +106,13 @@ export function TitlesModal({
   };
 
   const revoke = async (t: OwnedTitle) => {
-    if (!confirm(`"${t.name}" 칭호를 이 유저에게서 회수할까요?`)) return;
+    if (!(await confirmDialog(`"${t.name}" 칭호를 이 유저에게서 회수할까요?`, { danger: true }))) return;
     try {
       await adminCall({ action: "revoke-title", channelId, titleId: t.id });
       await afterTitleChange();
       setMsg({ text: `"${t.name}" 칭호를 회수했어요.`, ok: true });
     } catch {
-      alert("칭호를 회수하지 못했어요.");
+      alertDialog("칭호를 회수하지 못했어요.");
     }
   };
 
@@ -162,7 +163,7 @@ export function TitlesModal({
     }
   };
   const revokeSpecial = async (t: Special) => {
-    if (!confirm(`"${t.name}" 특수 칭호를 회수할까요?`)) return;
+    if (!(await confirmDialog(`"${t.name}" 특수 칭호를 회수할까요?`, { danger: true }))) return;
     try {
       const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, action: "revoke", id: t.id } });
       qc.setQueryData(spKey, r);
@@ -170,7 +171,7 @@ export function TitlesModal({
       qc.invalidateQueries({ queryKey: ["ranking"] });
       onChanged();
     } catch {
-      alert("특수 칭호를 회수하지 못했어요.");
+      alertDialog("특수 칭호를 회수하지 못했어요.");
     }
   };
 

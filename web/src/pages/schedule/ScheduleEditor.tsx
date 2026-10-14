@@ -6,6 +6,7 @@ import { FUNCTIONS_BASE_URL } from "../../lib/config";
 import { WEEK_KO } from "../../lib/format";
 import type { SchedRow } from "./Schedule";
 import styles from "./Schedule.module.css";
+import { confirmDialog } from "../../lib/dialog";
 
 const URL_ = `${FUNCTIONS_BASE_URL}/admin-schedule`;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -78,7 +79,7 @@ export function ScheduleEditor({ day, row, onClose, onSaved }: { day: string | n
               type="button"
               className="btn btn-danger"
               disabled={busy}
-              onClick={() => confirm("이 날 일정을 삭제할까요?") && submit({ date: day, action: "delete" })}
+              onClick={async () => (await confirmDialog("이 날 일정을 삭제할까요?", { danger: true })) && submit({ date: day, action: "delete" })}
             >
               삭제
             </button>

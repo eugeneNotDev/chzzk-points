@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Bell, LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
 import { isReady } from "../../routes";
 import { useHasNewNotice } from "../../lib/notices";
@@ -8,8 +8,9 @@ import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
 import { useTheme } from "../../lib/theme";
 import { BRAND_MARK_URL } from "../../lib/config";
-import { fmt } from "../../lib/format";
+import { AnimatedNumber } from "../AnimatedNumber";
 import { Avatar } from "../Avatar";
+import { NotificationBell } from "./NotificationBell";
 import styles from "./AppLayout.module.css";
 
 function currentItem(pathname: string): NavItem | undefined {
@@ -69,7 +70,7 @@ function UserBox() {
           <span className={styles.userName} style={me.data?.tierTitleColor ? { color: me.data.tierTitleColor } : undefined}>
             {auth.channelName || "(이름 없음)"}
           </span>
-          <span className={`${styles.userPoints} num`}>{me.data ? `${fmt(me.data.balance)} P` : "··· P"}</span>
+          <span className={`${styles.userPoints} num`}>{me.data ? <><AnimatedNumber value={me.data.balance} /> P</> : "··· P"}</span>
         </span>
       </Link>
       <button type="button" className={styles.iconBtn} aria-label="로그아웃" title="로그아웃" onClick={logout}>
@@ -122,7 +123,7 @@ function PointsChip() {
   return (
     <span className={`${styles.pointsChip} num`}>
       <span className={styles.dot} aria-hidden="true" />
-      {me.data ? fmt(me.data.balance) : "···"} P
+      {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} P
     </span>
   );
 }
@@ -200,15 +201,16 @@ export function AppLayout() {
           <h1 className={`${styles.pageTitle} ${styles.desktopOnly}`}>{item?.label ?? ""}</h1>
           <div className={styles.topActions}>
             <PointsChip />
-            <button type="button" className={`${styles.iconBtn} ${styles.desktopOnly}`} aria-label="알림 (준비 중)" disabled>
-              <Bell size={20} aria-hidden="true" />
-            </button>
+            <NotificationBell />
             <ThemeButton />
             <TopUser />
           </div>
         </header>
         <main className={styles.content}>
-          <Outlet />
+          {/* 메뉴를 옮길 때마다 새 화면이 살짝 떠오르며 나타남(주소의 ?뒤 값만 바뀌는 건 제외) */}
+          <div key={location.pathname} className={styles.pageFade}>
+            <Outlet />
+          </div>
         </main>
       </div>
 

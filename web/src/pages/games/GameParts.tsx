@@ -5,6 +5,7 @@ import { Card, EmptyState } from "../../components/Card";
 import { fmt } from "../../lib/format";
 import { MIN_BET, type GameStateBase, type Minigame } from "./useMinigame";
 import styles from "./Games.module.css";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 export function GameLock({ state }: { state: GameStateBase | undefined }) {
   if (!state || state.eligible) return null;
@@ -44,7 +45,7 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
       <div className={styles.balanceRow}>
         <span className="muted">보유 포인트</span>
         <b className="num">
-          {fmt(game.balance)}
+          <AnimatedNumber value={game.balance} />
           <small>P</small>
         </b>
       </div>

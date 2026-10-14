@@ -19,8 +19,11 @@ import {
   type FullPost,
 } from "../../lib/board";
 import { AdminChip, Who } from "./BoardList";
+import { Lightbox } from "../../components/Lightbox";
 import { ReportModal, type ReportTarget } from "./ReportModal";
 import styles from "./Board.module.css";
+import { alertDialog, confirmDialog, toast } from "../../lib/dialog";
+import { SkeletonPost } from "../../components/Skeleton";
 
 const authorOf = (x: { adminName: string | null; author: string | null }) => x.adminName || x.author || "";
 
@@ -32,19 +35,26 @@ function goBackOr(nav: ReturnType<typeof useNavigate>, fallback: string) {
 
 // 본문 + 사진: [[사진:n]] 자리에 그 사진, 표시가 없는 사진(예전 글 포함)은 맨 아래 묶음.
 function PostBody({ body, images }: { body: string; images: FullPost["images"] }) {
+  // 누르면 크게 보기 — 넘기는 순서는 글에 보이는 순서(본문 속 사진 → 맨 아래 묶음)
+  const [view, setView] = useState<number | null>(null);
   const parts = String(body).split(new RegExp(IMG_MARK_RE.source));
   const used = new Set<number>();
+  const order: string[] = [];
+  const imgBtn = (url: string, key: string | number, cls?: string) => {
+    const idx = order.push(url) - 1;
+    return (
+      <button key={key} type="button" className={`${styles.imgBtn} ${cls ?? ""}`} onClick={() => setView(idx)} aria-label="사진 크게 보기">
+        <img src={url} alt="" loading="lazy" />
+      </button>
+    );
+  };
   const out = parts.map((seg, i) => {
     if (i % 2 === 1) {
       const n = Number(seg);
       const im = images[n - 1];
       if (!im || used.has(n)) return null;
       used.add(n);
-      return (
-        <a key={i} className={styles.inlineImg} href={im.url} target="_blank" rel="noopener noreferrer">
-          <img src={im.url} alt="" loading="lazy" />
-        </a>
-      );
+      return imgBtn(im.url, i, styles.inlineImg);
     }
     const t = seg.replace(/^\n+/, "").replace(/\n+$/, "");
     return t ? (
@@ -54,18 +64,12 @@ function PostBody({ body, images }: { body: string; images: FullPost["images"] }
     ) : null;
   });
   const rest = images.filter((_, i) => !used.has(i + 1));
+  const restEls = rest.map((im) => imgBtn(im.url, im.path));
   return (
     <>
       {out}
-      {rest.length > 0 && (
-        <div className={styles.images}>
-          {rest.map((im) => (
-            <a key={im.path} href={im.url} target="_blank" rel="noopener noreferrer">
-              <img src={im.url} alt="" loading="lazy" />
-            </a>
-          ))}
-        </div>
-      )}
+      {rest.length > 0 && <div className={styles.images}>{restEls}</div>}
+      <Lightbox images={order} index={view} onIndex={setView} onClose={() => setView(null)} />
     </>
   );
 }
@@ -93,7 +97,7 @@ function LikeButton({ type, id, liked, count, own, big }: { type: "post" | "comm
       setState({ liked: r.liked, count: r.count });
     } catch (e) {
       setState(before);
-      if (boardErrCode(e) !== "own_target") alert(boardErrText(e));
+      if (boardErrCode(e) !== "own_target") alertDialog(boardErrText(e));
     } finally {
       setBusy(false);
     }
@@ -327,7 +331,7 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
       <div className="page">
         {head}
         <Card>
-          <p className="muted">불러오는 중...</p>
+          <SkeletonPost />
         </Card>
       </div>
     );
@@ -351,28 +355,28 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
 
   const del = async () => {
     const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?";
-    if (!confirm(warn)) return;
+    if (!(await confirmDialog(warn))) return;
     setDeleting(true);
     try {
       const r = await boardCall<{ revoked?: number }>({ action: "delete", id: p.id });
       if (r.revoked) {
-        alert(`삭제했어요. 보상 ${r.revoked}P가 회수됐어요.`);
+        toast(`삭제했어요. 보상 ${r.revoked}P가 회수됐어요.`, "info");
         qc.invalidateQueries({ queryKey: ["me"] });
       }
       qc.invalidateQueries({ queryKey: ["board", "list", board] });
       back();
     } catch (e) {
       setDeleting(false);
-      alert(boardErrText(e));
+      alertDialog(boardErrText(e));
     }
   };
   const delComment = async (cid: number) => {
-    if (!confirm("댓글을 삭제할까요?")) return;
+    if (!(await confirmDialog("댓글을 삭제할까요?", { danger: true }))) return;
     try {
       await boardCall({ action: "delete-comment", id: cid });
       refetchKeep();
     } catch (e) {
-      alert(boardErrText(e));
+      alertDialog(boardErrText(e));
     }
   };
   const toggleReply = (parent: number, c: BoardComment) => {

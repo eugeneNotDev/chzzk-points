@@ -1,0 +1,102 @@
+.dialog {
+  width: min(400px, calc(100vw - 40px));
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+.dialog[open] {
+  animation: pop 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.body {
+  padding: 24px 24px 8px;
+}
+.title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 800;
+}
+.message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--c-text-2);
+  white-space: pre-line;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.title + .message {
+  font-size: 14.5px;
+}
+.copy {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px 20px;
+}
+.actions :global(.btn) {
+  min-width: 76px;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* 토스트 — 화면 아래 가운데(모바일은 하단 탭바 위) */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 200;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.ok svg {
+  color: var(--c-accent);
+}
+.error svg {
+  color: var(--c-red-text);
+}
+.info svg {
+  color: var(--c-blue);
+}
+@media (max-width: 1023px) {
+  .toasts {
+    bottom: calc(var(--mobile-bar-h) + 16px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 599px) {
+  .dialog {
+    width: calc(100vw - 32px);
+  }
+}
