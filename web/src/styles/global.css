@@ -80,26 +80,27 @@ p {
 
 /* 로딩 자리표시(스켈레톤) */
 /* Lucian UX/UI Prompt #079 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#079
-   뼈대(스켈레톤) — 화면의 모든 뼈대를 빛 한 줄기가 같은 박자로 훑고 지나감.
-   원본은 뼈대마다 가로 위치만큼 빛 시작점을 당겨 맞추는데, 여기선 배경을 화면 기준(fixed)으로 깔아서 같은 효과.
-   불러오기가 끝나면 .bloom 안의 줄들이 위에서부터 차례로 제 모습으로 바뀜(components/Skeleton useBloom). */
+   뼈대(스켈레톤) — 빛 한 줄기가 1.6초마다 뼈대 묶음(카드 하나) 위를 훑고 지나감. 원본처럼 묶음 안의 뼈대들은
+   각자 가로 위치만큼 빛 시작점을 당겨서(--sx) 같은 박자로 빛이 지나가고(components/Skeleton useSkelAlign),
+   묶음 너비(--gw)만큼만 지나가서 작은 칸도 매번 빛을 받음. 묶음 밖 낱개 뼈대는 자기 칸 기준.
+   불러오기가 끝나면 .bloom 안의 줄들이 위에서부터 차례로 제 모습으로 바뀜(useBloom). */
 .skeleton {
   display: block;
   border-radius: var(--r-sm);
   background:
-    linear-gradient(100deg, transparent 28%, color-mix(in srgb, var(--c-surface-3), var(--c-text) 7%) 45%, transparent 62%) 0 0 / 700px 100% no-repeat fixed,
+    linear-gradient(100deg, transparent 28%, color-mix(in srgb, var(--c-surface-3), var(--c-text) 7%) 45%, transparent 62%) calc(var(--sx, 0px) - 700px) 0 / 700px 100% no-repeat,
     var(--c-surface-2);
   animation: skeleton 1.6s linear infinite;
 }
 @keyframes skeleton {
   from {
     background-position:
-      -700px 0,
+      calc(var(--sx, 0px) - 700px) 0,
       0 0;
   }
   to {
     background-position:
-      calc(100vw + 700px) 0,
+      calc(var(--sx, 0px) + var(--gw, 700px)) 0,
       0 0;
   }
 }

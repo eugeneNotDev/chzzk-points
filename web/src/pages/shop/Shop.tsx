@@ -2,7 +2,7 @@
 //  - 일반 상품: 쿨타임, 방송 중 전용, 사면 OBS 오버레이 알림
 //  - 칭호 상품: 한 번 사면 보유, 한정 수량(품절), 산 칭호는 마이페이지에서 장착
 //  - 관리자: 상품 추가/수정/판매 중지/삭제, 순서 변경(끌어서 놓기)
-import { SkelInline } from "../../components/Skeleton";
+import { SkelGroup, SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -232,11 +232,11 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
       </p>
 
       {itemsQ.isLoading && (
-        <div className={styles.grid}>
+        <SkelGroup className={styles.grid}>
           {[0, 1, 2].map((i) => (
             <span key={i} className="skeleton" style={{ height: 200, borderRadius: 20 }} />
           ))}
-        </div>
+        </SkelGroup>
       )}
       {itemsQ.isError && <LoadError what="상품 목록" onRetry={() => itemsQ.refetch()} />}
       {itemsQ.data && active.length === 0 && (

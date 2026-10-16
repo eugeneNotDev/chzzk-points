@@ -10,6 +10,7 @@ import { ALL_NAV_ITEMS } from "./nav";
 import Home from "./pages/Home";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import { SkelGroup } from "./components/Skeleton";
 import { PAGES } from "./routes";
 import { setupAppMode } from "./lib/pwa";
 import { handleOAuthCallback } from "./lib/auth";
@@ -29,10 +30,10 @@ const queryClient = new QueryClient({
 
 function PageLoading() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <SkelGroup style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <span className="skeleton" style={{ height: 120, borderRadius: 20 }} />
       <span className="skeleton" style={{ height: 320, borderRadius: 20 }} />
-    </div>
+    </SkelGroup>
   );
 }
 
