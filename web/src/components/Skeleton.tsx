@@ -35,7 +35,7 @@ export function useBloom(loading: boolean) {
 
 const line = (style: CSSProperties) => <span className="skeleton" style={style} />;
 
-export function SkeletonList({ rows = 5, variant = "list" }: { rows?: number; variant?: "list" | "rank" | "row" }) {
+export function SkeletonList({ rows = 5, variant = "list" }: { rows?: number; variant?: "list" | "rank" | "row" | "log" }) {
   const ref = useSkelAlign<HTMLDivElement>();
   return (
     <div ref={ref} aria-busy="true" aria-label="불러오는 중" style={{ display: "flex", flexDirection: "column", padding: "6px 18px" }}>
@@ -50,6 +50,20 @@ export function SkeletonList({ rows = 5, variant = "list" }: { rows?: number; va
               {line({ width: 64, height: 16, marginLeft: "auto" })}
             </div>
           );
+        if (variant === "log")
+          // 포인트 내역처럼 [사유 / 시각 ……… 금액 / 잔액] 두 줄
+          return (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0", borderTop: i ? "1px solid var(--c-border)" : undefined }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                {line({ width: `${w * 0.6}%`, height: 15 })}
+                {line({ width: 110, height: 12 })}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                {line({ width: 64, height: 15 })}
+                {line({ width: 80, height: 12 })}
+              </div>
+            </div>
+          );
         if (variant === "row")
           return (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0" }}>
@@ -58,7 +72,7 @@ export function SkeletonList({ rows = 5, variant = "list" }: { rows?: number; va
             </div>
           );
         return (
-          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 0", borderTop: i ? "1px solid var(--c-border)" : undefined }}>
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 9, padding: "20px 0", borderTop: i ? "1px solid var(--c-border)" : undefined }}>
             {line({ width: `${w * 0.6}%`, height: 17 })}
             {line({ width: `${w}%`, height: 13 })}
             {line({ width: 120, height: 12 })}

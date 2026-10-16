@@ -2,6 +2,7 @@
 // 저장할 때 "글 + [[사진:n]] 표시"로 바꿔서 보냄(n = 저장되는 사진 순서). 표시 없는 사진은 글 맨 아래.
 // 편집칸 내용은 React가 아니라 DOM이 직접 들고 있음(커서·한글 조합이 깨지지 않게).
 import { useNavigate } from "react-router-dom";
+import { afterActivity, type ActivityGrant } from "../../lib/board";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ImagePlus } from "lucide-react";
@@ -276,11 +277,12 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
         await qc.invalidateQueries({ queryKey: ["board", "post", existing.post.id] });
         nav(`${cfg.path}?post=${existing.post.id}`, { replace: true });
       } else {
-        const r = await boardCall<{ id: number; rewarded?: number }>({ action: "create", board, title: t, body: text, images: paths });
+        const r = await boardCall<{ id: number; rewarded?: number; activity?: ActivityGrant }>({ action: "create", board, title: t, body: text, images: paths });
         if (r.rewarded) {
           toast(`후기 보상 ${r.rewarded}P가 지급됐어요!`);
           qc.invalidateQueries({ queryKey: ["me"] });
         }
+        afterActivity(qc, r.activity, "글");
         qc.invalidateQueries({ queryKey: ["board", "review-status"] });
         nav(`${cfg.path}?post=${r.id}`, { replace: true });
       }

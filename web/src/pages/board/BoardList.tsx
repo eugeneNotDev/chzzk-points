@@ -10,6 +10,7 @@ import { startLogin, useAuth } from "../../lib/auth";
 import { BOARD_CFG, fetchBoardPage, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
 import { EmptySearch } from "./EmptySearch";
+import { ActivityChip } from "./ActivityChip";
 import styles from "./Board.module.css";
 import { SkeletonList, useBloom } from "../../components/Skeleton";
 
@@ -76,11 +77,11 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
 
   return (
     <div className="page">
-      <PageHead title={cfg.name} desc={cfg.sub} />
+      <PageHead title={cfg.name} desc={cfg.sub} actions={<ActivityChip />} />
       {board === "review" && <ReviewBanner />}
 
       <Card flush>
-        {q.isLoading && <SkeletonList rows={6} />}
+        {q.isLoading && <SkeletonList rows={10} />}
         {q.isError && <LoadError what="글 목록" onRetry={() => q.refetch()} />}
         {search && q.data && (
           <div className={styles.searchInfo}>

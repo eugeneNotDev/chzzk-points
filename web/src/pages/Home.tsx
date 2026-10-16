@@ -14,7 +14,7 @@ import { useBroadcastStatus } from "../lib/queries";
 import { useTableRefetch } from "../lib/realtime";
 import { PillPanel, PillTabs } from "../components/PillTabs";
 import { useBloom } from "../components/Skeleton";
-import { SkeletonList } from "../components/Skeleton";
+import { SkelGroup, SkeletonList } from "../components/Skeleton";
 import styles from "./Home.module.css";
 
 // 넓은 모니터(3단 배치)에선 목록을 더 길게 보여줘서 아래쪽 빈 공간을 채움
@@ -46,8 +46,10 @@ function LiveHero() {
   let sub: string | null = null;
   // 스케줄의 방송 내용(memo) — 예: 방제 "양치기 소년의 이야기" + 내용 "저스트 채팅 & 카페 탐방"
   let memo: string | null = null;
-  if (status.isLoading) {
-    kicker = "방송 상태 확인 중";
+  // 방송 상태·스케줄 둘 다 받을 때까지는 뼈대 — 하나만 먼저 오면 "방송 준비 중"을 잠깐 그렸다가 바뀌면서 카드가 커졌음
+  const loading = status.isLoading || sched.isLoading;
+  if (loading) {
+    kicker = "";
     headline = "";
   } else if (live) {
     kicker = "지금 방송 중";
@@ -84,10 +86,22 @@ function LiveHero() {
         )}
       </div>
       <div className={styles.heroBody}>
-        <span className={`${styles.kicker} ${live ? styles.kickerLive : ""}`}>{kicker}</span>
-        {status.isLoading ? <span className="skeleton" style={{ height: 32, width: "70%" }} /> : <h2 className={styles.headline}>{headline}</h2>}
-        {sub && <p className={styles.sub}>{sub}</p>}
-        {memo && <p className={styles.memo}>{memo}</p>}
+        {loading ? (
+          // 실제 글줄과 같은 높이로(방송 종류·제목·방제·메모) — 다 불러와도 카드 크기가 안 바뀌게
+          <SkelGroup className={styles.heroSkel}>
+            <span className="skeleton" style={{ width: 64, height: 13 }} />
+            <span className="skeleton" style={{ width: "62%", height: 30 }} />
+            <span className="skeleton" style={{ width: "34%", height: 17 }} />
+            <span className="skeleton" style={{ width: "46%", height: 15 }} />
+          </SkelGroup>
+        ) : (
+          <div className={`${styles.heroText} bloom`}>
+            <span className={`${styles.kicker} ${live ? styles.kickerLive : ""}`}>{kicker}</span>
+            <h2 className={styles.headline}>{headline}</h2>
+            {sub && <p className={styles.sub}>{sub}</p>}
+            {memo && <p className={styles.memo}>{memo}</p>}
+          </div>
+        )}
         <div className={styles.heroActions}>
           <a href={CHZZK_CHANNEL_URL} target="_blank" rel="noopener" className={styles.btnPrimary}>
             <Play size={16} fill="currentColor" aria-hidden="true" />

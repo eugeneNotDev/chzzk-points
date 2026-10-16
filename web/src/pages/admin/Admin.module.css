@@ -747,3 +747,46 @@
     margin-left: auto;
   }
 }
+
+/* ── 그림 후원 ── */
+.drawList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.drawList li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.drawList li + li {
+  border-top: 1px solid var(--c-border);
+}
+.drawThumb img {
+  display: block;
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+.drawInfo {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 14px;
+}
+.drawInfo :global(.muted) {
+  font-size: 12.5px;
+}
+.drawActions {
+  display: flex;
+  gap: 6px;
+}
+.drawOff {
+  opacity: 0.55;
+}

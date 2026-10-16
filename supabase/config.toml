@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.push]
 verify_jwt = false
+
+[functions.drawings]
+verify_jwt = false

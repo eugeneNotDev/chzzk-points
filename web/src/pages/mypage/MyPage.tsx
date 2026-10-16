@@ -142,7 +142,7 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
           <p className="muted" style={{ fontSize: 13 }}>
             상점에서 구매했거나 선물받은 칭호를 장착할 수 있어요. <Link to="/titles.html" className={styles.link}>칭호 상점 가기</Link>
           </p>
-          {titles.isLoading && <span className="skeleton" style={{ height: 64 }} />}
+          {titles.isLoading && <span className="skeleton" style={{ height: 116, borderRadius: 14 }} />}
           {profile && titles.data && owned.length === 0 && <EmptyState>보유한 칭호가 없어요.</EmptyState>}
           <div className={styles.titleGrid}>
             {owned.map((t) => {
@@ -224,7 +224,7 @@ function PointsLog() {
       <p className="muted" style={{ fontSize: 13, padding: "0 12px 8px" }}>
         출석·상점·미니게임·관리자 지급/차감 내역을 최신순으로 보여줘요.
       </p>
-      {q.isLoading && <SkeletonList rows={4} variant="row" />}
+      {q.isLoading && <SkeletonList rows={5} variant="log" />}
       {q.isError && <LoadError what="포인트 내역" onRetry={() => q.refetch()} />}
       {q.data?.entries.length === 0 && <EmptyState>아직 내역이 없어요.</EmptyState>}
       <ul className={styles.log}>

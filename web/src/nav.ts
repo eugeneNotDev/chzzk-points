@@ -20,8 +20,7 @@ import {
   Store,
   Trophy,
   UserRound,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon, Palette } from "lucide-react";
 
 export type NavItem = {
   path: string; // "freebox.html" — 앞에 / 없이(beta/교체 후 둘 다 base 기준)
@@ -66,6 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "board-free.html", label: "자유게시판", icon: MessageSquare },
       { path: "board-review.html", label: "방송 후기", icon: Star },
       { path: "songs.html", label: "방종곡 신청", icon: Music },
+      { path: "draw.html", label: "그림 후원", icon: Palette },
     ],
   },
   {

@@ -1,5 +1,6 @@
 // 관리자 페이지 — 현황 요약 + 탭(유저 관리 · 포인트 로그 · 상점 내역 · 방송 코드 · 후원 적립 · 신고 · 백업).
 // 탭은 주소 ?tab= 로 기억(새로고침해도 같은 탭).
+import { DrawingsTab } from "./DrawingsTab";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
@@ -23,6 +24,7 @@ const TABS = [
   ["spend", "상점 내역"],
   ["code", "방송 코드"],
   ["donation", "후원 적립"],
+  ["drawings", "그림 후원"],
   ["reports", "신고"],
   ["backup", "백업"],
 ] as const;
@@ -131,6 +133,7 @@ export default function Admin() {
       {tab === "spend" && <SpendTab />}
       {tab === "code" && <CodesTab />}
       {tab === "donation" && <DonationsTab />}
+      {tab === "drawings" && <DrawingsTab />}
       {tab === "reports" && <ReportsTab />}
       {tab === "backup" && <BackupTab />}
     </div>

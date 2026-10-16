@@ -1,0 +1,317 @@
+/* ── 진행 단계 ── */
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.steps li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}
+.stepIc {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.steps b {
+  font-size: 14px;
+}
+.steps li > span:last-child {
+  color: var(--c-text-3);
+  font-size: 12.5px;
+}
+
+/* ── 그림판 ── */
+.drawCard {
+  padding: 0;
+  overflow: hidden;
+}
+.board {
+  display: flex;
+  flex-direction: column;
+}
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.toolGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--c-surface-2);
+}
+.tool,
+.sizeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.tool:hover:not(:disabled),
+.sizeBtn:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.toolOn,
+.toolOn:hover {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.sizeBtn {
+  width: 38px;
+  padding: 0;
+}
+.sizeBtn i {
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--c-border-strong);
+}
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--c-border);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.swatch:hover {
+  transform: scale(1.12);
+}
+.swatchOn {
+  box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-accent);
+}
+.customColor {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: conic-gradient(#ff4d4d, #ffd23f, #2fbf71, #00b4d8, #3a6ff7, #8b5cf6, #ff4d4d);
+  cursor: pointer;
+}
+.customColor input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none; /* 폰에서 그릴 때 화면이 같이 움직이지 않게 */
+}
+.erasing {
+  cursor: cell;
+}
+.sendRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--c-border);
+}
+.sendHint {
+  flex: 1 1 280px;
+  margin: 0;
+  color: var(--c-text-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.sendRow :global(.status) {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* ── 받은 코드 ── */
+.codeCard {
+  border-color: color-mix(in srgb, var(--c-accent) 40%, var(--c-border));
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--c-accent) 9%, transparent), transparent 60%),
+    var(--c-surface);
+}
+.codeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.codeLabel {
+  color: var(--c-text-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.codeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 14px 0 10px;
+}
+.code {
+  display: flex;
+  gap: 8px;
+}
+.code i {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 64px;
+  border-radius: 12px;
+  background: var(--c-surface-2);
+  box-shadow: inset 0 0 0 1px var(--c-border-strong);
+  font-style: normal;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--c-text);
+}
+.codeHelp {
+  margin: 0;
+  color: var(--c-text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.short {
+  display: block;
+  margin-top: 6px;
+  color: var(--c-gold);
+}
+.codeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ── 상태 칩 ── */
+.state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.wait {
+  background: var(--c-gold-soft);
+  color: var(--c-gold);
+}
+.shown {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.off {
+  background: var(--c-surface-3);
+  color: var(--c-text-3);
+}
+
+/* ── 내 그림 ── */
+.mine {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mine li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+.mine li + li {
+  border-top: 1px solid var(--c-border);
+}
+.mine img {
+  flex: none;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--c-border);
+}
+.mineText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mineCode {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.mineText :global(.muted) {
+  font-size: 12.5px;
+}
+
+@media (max-width: 720px) {
+  .steps {
+    grid-template-columns: 1fr;
+  }
+  .code i {
+    width: 42px;
+    height: 54px;
+    font-size: 26px;
+  }
+  .tools {
+    gap: 8px;
+  }
+  .tool span:not(:global(.sr-only)) {
+    display: none;
+  }
+}

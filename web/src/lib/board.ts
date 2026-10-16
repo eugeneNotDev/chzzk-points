@@ -1,6 +1,8 @@
 // 게시판(자유게시판 'free' — 익명, 방송 후기 'review' — 닉네임) 서버 호출과 공통 도구.
 // 서버는 board Edge Function 하나 — 전부 POST { action, ... }.
-import { apiFetch, ApiError } from "./auth";
+import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { apiFetch, ApiError, useAuth } from "./auth";
+import { toast } from "./dialog";
 import { API, STORAGE } from "./config";
 import { readStorage, writeStorage } from "./storage";
 
@@ -214,4 +216,32 @@ export async function fetchBoardPage(board: BoardKind, page: number, q: string, 
   if (r.pageSize === 30) return { posts: cut(r.posts, page * LIST_PAGE - sp * 30), total: r.total };
   const all = (await fetchAllPosts(board)).filter((p) => matchLocal(p, q, field));
   return { posts: cut(all, page * LIST_PAGE), total: all.length };
+}
+
+// ── 게시판 활동 보상(하루 글 3개·댓글 5개) ──
+export type ActivityGrant = { amount: number; reason: string; used?: number; max?: number };
+export type ActivityStatus = {
+  date: string;
+  post: { used: number; max: number; amount: number; minLen: number };
+  comment: { used: number; max: number; amount: number; minLen: number; perPost: number };
+};
+// 서버가 예전 버전이면(이 기능 없음) 오류 → 칩을 안 보여줌
+export function useBoardActivity() {
+  const { isLoggedIn, token } = useAuth();
+  return useQuery({
+    queryKey: ["board", "activity", token],
+    enabled: isLoggedIn,
+    retry: false,
+    staleTime: 30_000,
+    queryFn: () => boardCall<ActivityStatus>({ action: "activity-status" }),
+  });
+}
+// 글·댓글을 쓴 뒤 — 보상을 받았으면 알림, 남은 보상 칩·포인트 새로고침
+export function afterActivity(qc: QueryClient, act: ActivityGrant | undefined, kind: "글" | "댓글") {
+  if (!act) return;
+  if (act.amount > 0) {
+    toast(`게시판 활동 보상 +${act.amount}P (오늘 ${kind} ${act.used ?? "?"}/${act.max ?? "?"})`);
+    qc.invalidateQueries({ queryKey: ["me"] });
+  }
+  qc.invalidateQueries({ queryKey: ["board", "activity"] });
 }

@@ -8,7 +8,8 @@
 // POST { action: "subscribe", sessionKey }    → { ok: true }  그 소켓에 후원 이벤트 구독
 // POST { action: "donation", eventKey, donation: { channelId, donatorChannelId, donatorNickname,
 //        payAmount, donationType, donationText } }
-//                                             → { status, points, ... }  (0046_donation_points.sql 참고)
+//                                             → { status, points, ..., drawing }  (0046_donation_points.sql 참고)
+//        drawing: 후원 메시지에 그림 후원 코드가 있었으면 { code, status: shown|short|expired|used|duplicate }, 없으면 null (0067)
 // --- 아래 셋은 방송 PC 프로그램이 치지직 채팅창(읽기 전용)에서 받아 넘기는 것(공식 API엔 이 이벤트가 없음) ---
 // POST { action: "mission-part", missionId, eventKey, donation: { donatorChannelId, donatorNickname, payAmount,
 //        kind: "MISSION"|"MISSION_JOIN", missionText } }
@@ -25,6 +26,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
+import { matchDrawingDonation } from "../_shared/drawing.ts";
 
 const CHZZK_API = "https://openapi.chzzk.naver.com";
 const REFRESH_MARGIN_MS = 60 * 60 * 1000; // 만료 1시간 전부터 미리 갱신
@@ -171,7 +173,22 @@ Deno.serve(async (req: Request) => {
         p_message: str(d.donationText, 500),
       });
       if (error) throw new Error(`record_donation 실패: ${error.message}`);
-      return json(data, 200);
+      // 그림 후원(0067): 후원 메시지에 그림 코드가 있고 3,000치즈 이상이면 오버레이에 그림을 띄움.
+      // 실패해도 후원 적립 처리는 그대로 성공으로 둠(그림은 부가 기능).
+      let drawing = null;
+      try {
+        const donor = str(d.donatorChannelId, 100);
+        drawing = await matchDrawingDonation(admin, {
+          eventKey,
+          message: str(d.donationText, 500),
+          amount: Math.trunc(amount),
+          nickname: str(d.donatorNickname, 100),
+          anonymous: !donor || donor === "anonymous",
+        });
+      } catch (e) {
+        console.error(`그림 후원 처리 실패: ${e instanceof Error ? e.message : e}`);
+      }
+      return json({ ...data, drawing }, 200);
     }
 
     if (body.action === "mission-part") {

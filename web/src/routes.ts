@@ -20,6 +20,7 @@ const LOADERS: Record<string, Loader> = {
   "board-free.html": () => import("./pages/board/Board").then((m) => ({ default: m.FreeBoard })),
   "board-review.html": () => import("./pages/board/Board").then((m) => ({ default: m.ReviewBoard })),
   "songs.html": () => import("./pages/songs/Songs"),
+  "draw.html": () => import("./pages/draw/Draw"),
   "admin.html": () => import("./pages/admin/Admin"),
 };
 

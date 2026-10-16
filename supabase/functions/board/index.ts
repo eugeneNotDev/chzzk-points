@@ -6,10 +6,11 @@
 //
 // list           { board, page?, size?(10|15|20|30, 기본 20), q?, field?("title"|"all"|"author") }            → { posts: [{id,title,author,commentCount,hasImages,createdAt,mine}], hasMore }
 // get            { id }                      → { post, images:[url], comments:[...] }
-// create         { board, title, body, images?: [path] } → { id, rewarded }  (후기 + 방송 중/종료 12시간 이내 + 첫 후기면 rewarded=100)
+// create         { board, title, body, images?: [path] } → { id, rewarded, activity }  (후기 + 방송 중/종료 12시간 이내 + 첫 후기면 rewarded=100)
+//                activity: { amount, reason, used?, max? } — 게시판 활동 보상(아래 ACTIVITY). reason: ok|too_short|daily_limit|own_post|per_post_limit
 // update         { id, title, body, images? } → { ok }
 // delete         { id }                      → { ok, revoked }  (보상 받은 후기면 100P 회수)
-// comment        { postId, body, parentId?, replyToId? } → { ok }  (답글: parentId=원댓글, replyToId=실제로 답한 댓글 — 0062_board_replies.sql)
+// comment        { postId, body, parentId?, replyToId? } → { ok, id, activity }  (답글: parentId=원댓글, replyToId=실제로 답한 댓글 — 0062_board_replies.sql)
 // delete-comment { id }                      → { ok }  (답글 달린 원댓글은 "삭제된 댓글" 자리만 남김)
 // upload-urls    { files: [{fileName,sizeBytes}] } → { uploads: [{path,token,signedUrl}] }
 // review-status  {}                          → { isLive, eligible, alreadyRewarded, reward }
@@ -18,6 +19,7 @@
 //                서로 다른 5명이 신고(처리 안 된 신고 기준)하면 자동으로 가림. 본인 글·스트리머 글은 신고 불가, 같은 대상은 1번만.
 // notifications  {}                          → { items: [{id,kind:"comment"|"reply",postId,board,postTitle,body,author,createdAt}] }
 //                최근 30일 — 내 글에 달린 남의 댓글 + 내 댓글에 달린 남의 답글(최신 30개, 로그인 필수). 읽음 여부는 화면(브라우저)이 기억.
+// activity-status {}                         → { date, post: {used,max,amount,minLen}, comment: {used,max,amount,minLen,perPost} }  (오늘 남은 활동 보상)
 // my-activity    {}                          → { posts, comments, postCount, commentCount, rewardTotal }  (로그인 필수, 마이페이지 "내 활동")
 // admin-reports  { status: "open"|"done" }   → { items: [...], openCount }   (관리자 전용, 대상별로 묶어서)
 // admin-resolve  { targetType, targetId, resolve: "restore"|"dismiss"|"delete" } → { ok }  (관리자 전용)
@@ -45,6 +47,16 @@ const REPORT_REASONS = new Set(["abuse", "spam", "obscene", "privacy", "etc"]);
 const MAX_REPORT_MEMO = 200;
 const REPORT_RATE_WINDOW_MS = 10 * 60 * 1000;
 const REPORT_RATE_MAX = 10;
+
+// ---------- 게시판 활동 보상(0066_board_activity_rewards.sql) ----------
+// 하루(한국 시간 밤 12시 기준) 게시글 3개·댓글 5개까지 쓸 때마다 포인트. 후기 글도 게시글 한도에 같이 셈(후기 보상 100P는 따로).
+// 도배 방지: 공백 뺀 길이 최소(글 본문 20자·댓글 5자), 한두 글자 반복("ㅋㅋㅋㅋ")은 안 침, 같은 글에 단 댓글은 2개까지,
+// 내 글에 단 내 댓글은 보상 없음. 그날 지우면 회수(지웠다 다시 써도 한도는 안 돌아옴), 신고 누적으로 숨겨지거나 관리자가 지우면 회수.
+const ACTIVITY = {
+  post: { amount: 30, daily: 3, minLen: 20, label: "글" },
+  comment: { amount: 10, daily: 5, minLen: 5, label: "댓글", perPost: 2 },
+} as const;
+type ActivityKind = keyof typeof ACTIVITY;
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -182,6 +194,7 @@ Deno.serve(async (req: Request) => {
     if (action === "report") return await reportTarget(admin, body, me);
     if (action === "like") return await likeTarget(admin, body, me);
     if (action === "my-activity") return await myActivity(admin, me);
+    if (action === "activity-status") return await activityStatus(admin, me);
     if (action === "notifications") return await notifications(admin, me);
     if (action === "admin-reports") return isAdmin ? await adminReports(admin, body) : json({ error: "forbidden" }, 403);
     if (action === "admin-resolve") return isAdmin ? await adminResolve(admin, body) : json({ error: "forbidden" }, 403);
@@ -454,6 +467,67 @@ async function tooFast(admin: Admin, table: string, me: string, ms: number) {
   return !!data?.[0] && Date.now() - Date.parse(data[0].created_at) < ms;
 }
 
+function kstDate(ms = Date.now()) {
+  return new Date(ms + 9 * 3600_000).toISOString().slice(0, 10);
+}
+
+// 보상받을 만한 글인지 — 공백 빼고 최소 길이 이상, 서로 다른 글자가 3종류 이상
+function meaningful(text: string, minLen: number) {
+  const t = text.replace(/\[\[사진:\d*\]\]/g, "").replace(/\s+/g, "");
+  return t.length >= minLen && new Set(t).size >= 3;
+}
+
+async function activityStatus(admin: Admin, me: string) {
+  const { data } = await admin.from("board_activity_rewards").select("kind").eq("channel_id", me).eq("kst_date", kstDate());
+  const used = { post: 0, comment: 0 };
+  for (const r of data ?? []) used[r.kind as ActivityKind] += 1;
+  return json({
+    date: kstDate(),
+    post: { used: used.post, max: ACTIVITY.post.daily, amount: ACTIVITY.post.amount, minLen: ACTIVITY.post.minLen },
+    comment: { used: used.comment, max: ACTIVITY.comment.daily, amount: ACTIVITY.comment.amount, minLen: ACTIVITY.comment.minLen, perPost: ACTIVITY.comment.perPost },
+  });
+}
+
+// 보상 지급 — 한도·조건을 보고 되면 기록 + 포인트. 지급한 포인트(안 되면 0)와 이유를 돌려줌.
+async function grantActivity(admin: Admin, me: string, kind: ActivityKind, targetId: number, text: string, postId: number | null, postOwner: string | null) {
+  const cfg = ACTIVITY[kind];
+  if (!meaningful(text, cfg.minLen)) return { amount: 0, reason: "too_short" };
+  if (kind === "comment" && postOwner === me) return { amount: 0, reason: "own_post" };
+  const today = kstDate();
+  // 지웠다 다시 써서 한도를 되살리지 못하게 회수된 것도 셈
+  const { count } = await admin.from("board_activity_rewards").select("id", { count: "exact", head: true }).eq("channel_id", me).eq("kind", kind).eq("kst_date", today);
+  if ((count ?? 0) >= cfg.daily) return { amount: 0, reason: "daily_limit" };
+  if (kind === "comment" && postId) {
+    const { count: onPost } = await admin.from("board_activity_rewards").select("id", { count: "exact", head: true }).eq("channel_id", me).eq("kind", "comment").eq("post_id", postId);
+    if ((onPost ?? 0) >= ACTIVITY.comment.perPost) return { amount: 0, reason: "per_post_limit" };
+  }
+  const { error } = await admin.from("board_activity_rewards").insert({ channel_id: me, kind, target_id: targetId, post_id: postId, kst_date: today, amount: cfg.amount });
+  if (error) {
+    if (error.code === "23505") return { amount: 0, reason: "duplicate" };
+    console.error(`board_activity_rewards insert 실패: ${error.message}`);
+    return { amount: 0, reason: "error" };
+  }
+  const { error: lErr } = await admin.from("points_ledger").insert({ channel_id: me, amount: cfg.amount, reason: `게시판 활동 보상 (${cfg.label})` });
+  if (lErr) {
+    await admin.from("board_activity_rewards").delete().eq("kind", kind).eq("target_id", targetId);
+    console.error(`게시판 활동 보상 지급 실패: ${lErr.message}`);
+    return { amount: 0, reason: "error" };
+  }
+  return { amount: cfg.amount, reason: "ok", used: (count ?? 0) + 1, max: cfg.daily };
+}
+
+// 보상 회수 — sameDayOnly면 받은 날(한국 시간)과 같은 날일 때만(작성자가 스스로 지운 경우)
+async function revokeActivity(admin: Admin, kind: ActivityKind, targetId: number, sameDayOnly: boolean) {
+  const { data: row } = await admin.from("board_activity_rewards").select("id, channel_id, amount, kst_date, revoked").eq("kind", kind).eq("target_id", targetId).maybeSingle();
+  if (!row || row.revoked) return 0;
+  if (sameDayOnly && row.kst_date !== kstDate()) return 0;
+  const { data: upd } = await admin.from("board_activity_rewards").update({ revoked: true }).eq("id", row.id).eq("revoked", false).select("id");
+  if (!upd?.length) return 0; // 동시에 다른 곳에서 회수함
+  const { error } = await admin.from("points_ledger").insert({ channel_id: row.channel_id, amount: -row.amount, reason: `게시판 활동 보상 회수 (${ACTIVITY[kind].label})` });
+  if (error) console.error(`게시판 활동 보상 회수 실패: ${error.message}`);
+  return row.amount;
+}
+
 async function createPost(admin: Admin, body: any, user: { channel_id: string }) {
   const board = body.board;
   if (board !== "free" && board !== "review") return json({ error: "invalid_board" }, 400);
@@ -493,7 +567,8 @@ async function createPost(admin: Admin, body: any, user: { channel_id: string })
       rewarded = REVIEW_REWARD;
     }
   }
-  return json({ id: data.id, rewarded });
+  const act = await grantActivity(admin, user.channel_id, "post", data.id, text, null, null);
+  return json({ id: data.id, rewarded, activity: act });
 }
 
 async function loadPost(admin: Admin, id: number) {
@@ -548,6 +623,8 @@ async function deletePost(admin: Admin, body: any, me: string, isAdmin: boolean)
   if (error) throw new Error(`board_posts delete 실패: ${error.message}`);
   // 이 글과 글에 달린 댓글들의 대기 중 신고를 정리(작성자가 지웠는지, 관리자가 지웠는지 구분)
   await closeReports(admin, { postId: id }, p.channel_id === me ? "author_deleted" : "deleted");
+  // 활동 보상: 작성자가 지우면 그날 받은 것만, 관리자가 지우면 날짜 상관없이 회수
+  await revokeActivity(admin, "post", id, p.channel_id === me);
   if (ims?.length) await admin.storage.from(BUCKET).remove(ims.map((i: { storage_path: string }) => i.storage_path));
   return json({ ok: true, revoked });
 }
@@ -557,7 +634,8 @@ async function addComment(admin: Admin, body: any, me: string) {
   const text = cleanText(body.body, MAX_COMMENT);
   if (!Number.isSafeInteger(postId) || postId <= 0) return json({ error: "invalid_id" }, 400);
   if (!text) return json({ error: "invalid_body" }, 400);
-  if (!(await loadPost(admin, postId))) return json({ error: "not_found" }, 404);
+  const post = await loadPost(admin, postId);
+  if (!post) return json({ error: "not_found" }, 404);
   // 답글: 원댓글은 최상위 댓글이어야 하고(답글의 답글은 같은 원댓글 아래로), 실제로 답한 댓글은 그 묶음 안에 있어야 함.
   let parentId: number | null = null;
   let replyToId: number | null = null;
@@ -578,7 +656,8 @@ async function addComment(admin: Admin, body: any, me: string) {
   if (await tooFast(admin, "board_comments", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
   const { data: ins, error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId }).select("id").single();
   if (error) throw new Error(`board_comments insert 실패: ${error.message}`);
-  return json({ ok: true, id: ins.id });
+  const act = await grantActivity(admin, me, "comment", ins.id, text, postId, post.channel_id);
+  return json({ ok: true, id: ins.id, activity: act });
 }
 
 async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boolean) {
@@ -604,6 +683,7 @@ async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boole
     }
   }
   await closeReports(admin, { type: "comment", id }, c.channel_id === me ? "author_deleted" : "deleted");
+  await revokeActivity(admin, "comment", id, c.channel_id === me);
   return json({ ok: true });
 }
 
@@ -695,6 +775,8 @@ async function reportTarget(admin: Admin, body: any, me: string) {
     const table = type === "post" ? "board_posts" : "board_comments";
     await admin.from(table).update({ hidden: true }).eq("id", targetId);
     hidden = true;
+    // 신고 누적으로 숨겨지면 활동 보상도 회수
+    await revokeActivity(admin, type === "post" ? "post" : "comment", targetId, false);
   }
   return json({ ok: true, hidden });
 }

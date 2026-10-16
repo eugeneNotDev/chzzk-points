@@ -1125,3 +1125,42 @@
   outline: 2px solid var(--c-accent);
   outline-offset: 2px;
 }
+
+/* ── 오늘 활동 보상 칩 ── */
+.actChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent);
+  border-radius: 999px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+.actChip:hover {
+  border-color: var(--c-accent);
+}
+.actPart {
+  padding-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--c-accent) 30%, transparent);
+  color: var(--c-text-2);
+  font-weight: 600;
+}
+.actPart b {
+  color: var(--c-accent);
+}
+.actDone {
+  border-color: var(--c-border);
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+}
+.actDone .actPart b {
+  color: var(--c-text-2);
+}

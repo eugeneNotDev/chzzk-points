@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { afterActivity, type ActivityGrant } from "../../lib/board";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, Flag, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -561,8 +562,9 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
                       placeholder={review || isAdmin ? "답글 남기기" : "익명으로 답글 남기기"}
                       onCancel={() => setReplyTo(null)}
                       onSubmit={async (text) => {
-                        const r = await boardCall<{ id: number }>({ action: "comment", postId: p.id, body: text, parentId: replyTo.parent, replyToId: replyTo.cid });
+                        const r = await boardCall<{ id: number; activity?: ActivityGrant }>({ action: "comment", postId: p.id, body: text, parentId: replyTo.parent, replyToId: replyTo.cid });
                         setReplyTo(null);
+                        afterActivity(qc, r.activity, "댓글");
                         await refetchKeep(r.id);
                       }}
                     />
@@ -577,7 +579,8 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
             disabled={!isLoggedIn}
             placeholder={!isLoggedIn ? "로그인하면 댓글을 쓸 수 있어요" : review ? "댓글 남기기" : isAdmin ? "댓글 남기기 (스트리머 계정은 닉네임으로 보여요)" : "익명으로 댓글 남기기"}
             onSubmit={async (text) => {
-              const r = await boardCall<{ id: number }>({ action: "comment", postId: p.id, body: text });
+              const r = await boardCall<{ id: number; activity?: ActivityGrant }>({ action: "comment", postId: p.id, body: text });
+              afterActivity(qc, r.activity, "댓글");
               await refetchKeep(r.id);
             }}
           />
