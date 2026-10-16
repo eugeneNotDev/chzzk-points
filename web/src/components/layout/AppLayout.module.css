@@ -183,6 +183,7 @@
   max-width: 140px;
   font-size: 14px;
   font-weight: 700;
+  color: var(--nm, var(--c-text));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -231,6 +232,7 @@
 .userName {
   font-size: 13px;
   font-weight: 700;
+  color: var(--nm, var(--c-text));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -551,3 +553,9 @@
   }
 }
 
+
+/* 라이트 모드: 등급 색이 밝은 색(은색 등)이면 흰 바탕에서 안 보여서 진하게 한 색으로 */
+:root[data-theme="light"] .topUserName,
+:root[data-theme="light"] .userName {
+  color: var(--nm-l, var(--c-text));
+}

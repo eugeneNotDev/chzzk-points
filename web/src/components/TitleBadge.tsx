@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { TITLE_ICON_MAP } from "../lib/titleIcons";
-import { mixHex, parseTitleStyle, spForDark, spForLight, titleBadgeForeground } from "../lib/titleStyle";
+import { inkForLight, mixHex, parseTitleStyle, spForDark, spForLight, titleBadgeForeground } from "../lib/titleStyle";
 
 // 아이콘 SVG 내용은 이 사이트 코드에 들어있는 고정 데이터(titleIcons.ts)라 그대로 넣어도 안전함.
 export function TitleIconSvg({ id, className = "tb-icon" }: { id: string; className?: string }) {
@@ -33,12 +33,16 @@ export function TitleBadge({ name, value, className }: { name: string; value: st
       "--badge-fg": titleBadgeForeground(style),
       "--badge-light": mixHex(color, "#ffffff", 0.55),
       "--badge-dark": mixHex(color, "#000000", 0.32),
+      // 라이트 모드용 — 빛나는 테두리·유리 칭호는 밝은 바탕이 되니 글자를 진하게
+      "--badge-deep": inkForLight(color),
+      "--badge-fg-l": inkForLight(color2 && mix === "ink" ? color2 : color2 ? mixHex(color, color2, 0.5) : color),
     };
     if (color2) {
       Object.assign(vars, {
         "--badge-bg2": color2,
         "--badge-light2": mixHex(color2, "#ffffff", 0.55),
         "--badge-dark2": mixHex(color2, "#000000", 0.32),
+        "--badge-deep2": inkForLight(color2),
       });
     }
   }

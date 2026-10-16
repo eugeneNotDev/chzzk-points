@@ -8,6 +8,7 @@ import { useHasNewNotice } from "../../lib/notices";
 import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
 import { useTheme } from "../../lib/theme";
+import { nameColorVars } from "../../lib/titleStyle";
 import { BRAND_MARK_URL } from "../../lib/config";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { Avatar } from "../Avatar";
@@ -70,7 +71,7 @@ function UserBox() {
       <Link to="/mypage.html" className={styles.userLink}>
         <Avatar name={auth.channelName} image={auth.profileImage} size={36} />
         <span className={styles.userText}>
-          <span className={styles.userName} style={me.data?.tierTitleColor ? { color: me.data.tierTitleColor } : undefined}>
+          <span className={styles.userName} style={nameColorVars(me.data?.tierTitleColor)}>
             {auth.channelName || "(이름 없음)"}
           </span>
           <span className={`${styles.userPoints} num`}>{me.data ? <><AnimatedNumber value={me.data.balance} /> P</> : <SkelInline w={70} h={12} />}</span>
@@ -99,7 +100,7 @@ function TopUser() {
     <div className={`${styles.topUser} ${styles.desktopOnly}`}>
       <Link to="/mypage.html" className={styles.topUserLink} title="마이페이지">
         <Avatar name={auth.channelName} image={auth.profileImage} size={32} />
-        <span className={styles.topUserName} style={me.data?.tierTitleColor ? { color: me.data.tierTitleColor } : undefined}>
+        <span className={styles.topUserName} style={nameColorVars(me.data?.tierTitleColor)}>
           {auth.channelName || "(이름 없음)"}
         </span>
       </Link>

@@ -93,3 +93,10 @@
     bottom: calc(var(--mobile-bar-h) + 16px + env(safe-area-inset-bottom));
   }
 }
+
+/* 라이트 모드: 검은 원 대신 흰 카드 느낌(테두리 + 옅은 그림자), 화살표·로켓은 진한 글자색 */
+:root[data-theme="light"] .u343-up {
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: 0 0 0 1px var(--c-border), 0 10px 24px -10px rgba(15, 20, 25, 0.28);
+}

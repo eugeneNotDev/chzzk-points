@@ -2,6 +2,7 @@
 // DB엔 titles.color 한 칸에 "색 + 디자인 + 아이콘 + 별" 조합이 문자열로 저장돼 있음:
 //   "#00e5a0" / "rainbow" / "shine-crown-ffd43b" / "glow-rainbow" / "book-star-00e5a0"
 //   "basic-ff6bb5-5dc8ff"(그라데이션) / "glass-1b1e24-t-f2c230"(배경+글자)
+import type { CSSProperties } from "react";
 import { TITLE_ICON_MAP } from "./titleIcons";
 
 export type TitleStyle = {
@@ -95,6 +96,22 @@ export function spForLight(hex: string) {
   let c = hex;
   for (let i = 0; i < 4 && hexLuminance(c) > 0.25; i++) c = mixHex(c, "#000000", 0.25);
   return c;
+}
+
+// 밝은 배경 위 글자색 — 밝은 색은 읽힐 때까지 조금씩 어둡게(어두운 색은 그대로).
+export function inkForLight(hex: string, maxLum = 0.16) {
+  let c = hex;
+  for (let i = 0; i < 8 && hexLuminance(c) > maxLum; i++) c = mixHex(c, "#000000", 0.2);
+  return c;
+}
+
+// 닉네임 색(등급 칭호 색) — 다크는 원래 색, 라이트는 읽히게 어둡게 한 색을 CSS 변수로 넘김.
+export function nameColorVars(value: string | null | undefined): CSSProperties | undefined {
+  if (!value) return undefined;
+  const { color, color2 } = parseTitleStyle(value);
+  if (color === "rainbow") return undefined;
+  const base = color2 ? mixHex(color, color2, 0.5) : color;
+  return { "--nm": base, "--nm-l": inkForLight(base, 0.22) } as CSSProperties;
 }
 
 export function composeTitleStyle({ color, color2, mix, design, icon, star }: TitleStyle) {
