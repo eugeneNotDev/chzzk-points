@@ -202,16 +202,49 @@
 }
 
 /* ── 공지 + 랭킹 ── */
-.split {
-  display: flex;
-  flex-wrap: wrap;
+/* ── 배치 ──
+   폰: 한 줄씩 / 태블릿~노트북: 공지·랭킹 두 칸 / 넓은 모니터(1440px~): 위에 [방송|바로가기], 아래 [공지|게시판|랭킹] 3단 */
+.dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "hero" "tiles" "notices" "ranking" "board";
   gap: 20px;
+  align-items: start;
+}
+.hero {
+  grid-area: hero;
+}
+.tiles {
+  grid-area: tiles;
 }
 .notices {
-  flex: 7 1 420px;
+  grid-area: notices;
 }
 .ranking {
-  flex: 5 1 320px;
+  grid-area: ranking;
+}
+.board {
+  grid-area: board;
+}
+@media (min-width: 900px) {
+  .dash {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas: "hero hero" "tiles tiles" "notices ranking" "board board";
+  }
+}
+@media (min-width: 1440px) {
+  .dash {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(320px, 0.8fr);
+    grid-template-areas: "hero hero tiles" "notices board ranking";
+    align-items: stretch;
+  }
+  .dash > .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: stretch;
+  }
+  .dash > .tiles > * {
+    height: 100%;
+  }
 }
 
 .row {
@@ -409,7 +442,7 @@
 }
 
 @media (max-width: 599px) {
-  .page {
+  .dash {
     gap: 14px;
   }
   .heroArt {

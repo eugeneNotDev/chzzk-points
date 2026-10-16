@@ -162,6 +162,7 @@ function BoardPreview() {
     <Card
       title="게시판 새 글"
       flush
+      className={styles.board}
       moreTo={tab === "review" ? "/board-review.html" : "/board-free.html"}
       extra={
         <div role="tablist" aria-label="게시판 고르기" className={styles.segment}>
@@ -208,13 +209,12 @@ function ListSkeleton({ rows, avatar = false }: { rows: number; avatar?: boolean
 
 export default function Home() {
   return (
-    <div className={styles.page}>
+    // 화면 너비에 따라 배치가 바뀜(Home.module.css .dash) — 넓은 모니터에선 3단으로 빈 공간 없이
+    <div className={styles.dash}>
       <LiveHero />
       <QuickTiles />
-      <div className={styles.split}>
-        <NoticePreview />
-        <RankingPreview />
-      </div>
+      <NoticePreview />
+      <RankingPreview />
       <BoardPreview />
     </div>
   );

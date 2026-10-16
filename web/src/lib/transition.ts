@@ -4,6 +4,11 @@
 import { useEffect } from "react";
 import { flushSync } from "react-dom";
 import { useNavigate, type NavigateOptions, type To } from "react-router-dom";
+import { ALL_NAV_ITEMS } from "../nav";
+
+// 이 앱이 그리는 주소만 가로챔 — 교체 후엔 사이트 맨 앞이 앱이라 overlay.html·open-live.html·첨부 파일 같은
+// 다른 파일 링크도 같은 주소 아래에 있어서, 메뉴 목록에 있는 주소만 앱 안에서 이동시키고 나머지는 원래대로.
+const APP_PATHS = new Set(["", "index.html", ...ALL_NAV_ITEMS.map((i) => i.path)]);
 
 type VTDocument = Document & { startViewTransition?: (cb: () => void | Promise<void>) => unknown };
 
@@ -51,6 +56,8 @@ export function useLinkTransitions() {
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin) return;
       if (base && !url.pathname.startsWith(base + "/") && url.pathname !== base) return;
+      const rel = url.pathname.slice(base.length).replace(/^\//, "");
+      if (!APP_PATHS.has(rel)) return;
       const to = url.pathname.slice(base.length) + url.search + url.hash;
       const here = location.pathname.slice(base.length) + location.search + location.hash;
       // 기본 이동만 막음(Link는 defaultPrevented면 스스로 이동 안 함) — 링크에 붙은 다른 onClick(창 닫기 등)은 그대로 실행
