@@ -15,9 +15,7 @@ import { NoticeEditor } from "./NoticeEditor";
 import styles from "./Notice.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 import { SkeletonList, useBloom } from "../../components/Skeleton";
-import { SPLIT_QUERY, useMedia } from "../../lib/useMedia";
 
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" });
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -31,25 +29,21 @@ export default function Notice() {
   const [params, setParams] = useSearchParams();
   const viewId = Number(params.get("id")) || null;
   const viewing = useMemo(() => q.data?.find((n) => n.id === viewId) ?? null, [q.data, viewId]);
-  // 넓은 화면: 왼쪽 목록 + 오른쪽 본문(팝업 대신). 아무것도 안 골랐으면 맨 위 공지를 보여줌.
-  const wide = useMedia(SPLIT_QUERY);
   const bloom = useBloom(q.isLoading);
-  const shown = wide ? (viewing ?? q.data?.[0] ?? null) : null;
   const [editor, setEditor] = useState<{ open: boolean; notice: NoticeT | null }>({ open: false, notice: null });
   const [busy, setBusy] = useState(false);
 
   function open(n: NoticeT) {
     markNoticeRead(n.id);
-    setParams({ id: String(n.id) }, { replace: wide });
+    setParams({ id: String(n.id) }, { replace: false });
   }
   function closeView() {
     setParams({}, { replace: true });
   }
   // 주소(?id=)로 바로 열린 글도 읽음 처리
   useEffect(() => {
-    const n = viewing ?? shown;
-    if (n && isNoticeNew(n)) markNoticeRead(n.id);
-  }, [viewing, shown]);
+    if (viewing && isNoticeNew(viewing)) markNoticeRead(viewing.id);
+  }, [viewing]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["notices"] });
 
@@ -90,15 +84,14 @@ export default function Notice() {
         }
       />
 
-      <div className={wide ? styles.reader : undefined}>
-      <Card flush className={wide ? styles.listCard : undefined}>
+      <Card flush>
         {q.isLoading && <SkeletonList rows={6} variant="row" />}
         {q.isError && <LoadError what="공지사항" onRetry={() => q.refetch()} />}
         {q.data?.length === 0 && <EmptyState>등록된 공지사항이 없어요.</EmptyState>}
         <ul className={`${styles.list} ${bloom}`}>
           {q.data?.map((n) => (
-            <li key={n.id} className={`${n.pinned_at ? styles.pinned : ""} ${shown?.id === n.id ? styles.current : ""}`}>
-              <button type="button" className="list-row" onClick={() => open(n)} aria-current={shown?.id === n.id ? "true" : undefined}>
+            <li key={n.id} className={n.pinned_at ? styles.pinned : ""}>
+              <button type="button" className="list-row" onClick={() => open(n)}>
                 {n.pinned_at && (
                   <span className="tag tag-accent">
                     <Pin size={11} aria-hidden="true" />
@@ -107,7 +100,7 @@ export default function Notice() {
                 )}
                 {isNoticeNew(n) && <span className="tag tag-live">NEW</span>}
                 <span className="list-row-title">{n.title || "(제목 없음)"}</span>
-                <span className="list-row-meta num">{wide ? shortDate(n.created_at) : fmtDate(n.created_at)}</span>
+                <span className="list-row-meta num">{fmtDate(n.created_at)}</span>
               </button>
               {isAdmin && (
                 <span className={styles.adminRow}>
@@ -126,39 +119,9 @@ export default function Notice() {
           ))}
         </ul>
       </Card>
-      {wide && (
-        <Card className={styles.paper}>
-          {q.isLoading && <SkeletonList rows={8} variant="row" />}
-          {shown && (
-            <article>
-              <header className={styles.paperHead}>
-                <div>
-                  <h2 className={styles.paperTitle}>{shown.title || "(제목 없음)"}</h2>
-                  <span className={`${styles.paperDate} num`}>{fmtDate(shown.created_at)}</span>
-                </div>
-                {isAdmin && (
-                  <div className={styles.paperTools}>
-                    <button type="button" className="btn btn-sm" disabled={busy} onClick={() => onPin(shown)}>
-                      {shown.pinned_at ? "고정 해제" : "고정"}
-                    </button>
-                    <button type="button" className="btn btn-sm" onClick={() => setEditor({ open: true, notice: shown })}>
-                      수정
-                    </button>
-                    <button type="button" className="btn btn-sm btn-danger" onClick={() => onDelete(shown)}>
-                      삭제
-                    </button>
-                  </div>
-                )}
-              </header>
-              <NoticeBody content={shown.content} isHtml={shown.is_html} attachments={shown.notice_attachments} />
-            </article>
-          )}
-        </Card>
-      )}
-      </div>
 
       <Modal
-        open={!wide && !!viewing}
+        open={!!viewing}
         onClose={closeView}
         wide
         title={viewing?.title || "(제목 없음)"}

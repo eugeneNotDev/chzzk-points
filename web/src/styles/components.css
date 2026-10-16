@@ -632,16 +632,19 @@
 
 /* ── 굴러가는 숫자(components/AnimatedNumber · Lucian #098) ── */
 .odo {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s;
+}
+/* 굴리는 동안만 자리 기둥으로(평소엔 그냥 글자라 폰트·줄 맞춤이 주변과 똑같음) */
+.odo-rolling {
   display: inline-flex;
   align-items: flex-start;
   height: 1.2em;
   line-height: 1.2em;
   overflow: hidden;
+  vertical-align: -0.2em;
   -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
   mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
-  font-variant-numeric: tabular-nums;
-  vertical-align: bottom;
-  transition: color 0.4s;
 }
 .odo-col {
   display: inline-flex;
@@ -668,11 +671,6 @@
 }
 .odo-down {
   color: var(--c-red-text);
-}
-@media (prefers-reduced-motion: reduce) {
-  .odo-col {
-    transition: none;
-  }
 }
 
 /* ── 미끄러지는 알약 탭(components/PillTabs · Lucian #039) ── */

@@ -1,6 +1,7 @@
 // Lucian UX/UI Prompt #343 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#343
 // 맨 위로 버튼 — #343 "로켓으로 돌아가는 맨 위 버튼".
-// 화면을 어느 정도(600px) 내리면 오른쪽 아래에 떠오르고, 테두리 링이 읽은 만큼 차오름.
+// 화면을 어느 정도 내리면(600px, 짧은 페이지는 내릴 수 있는 길이의 절반) 오른쪽 아래에 떠오르고, 테두리 링이 읽은 만큼 차오름.
+// 버튼 아래에 다른 버튼·입력칸(글쓰기, 검색 등)이 깔리면 가리지 않게 잠깐 숨음.
 // 누르면 화살표가 로켓으로 바뀌어 날아오르며 화면이 맨 위로 부드럽게 올라감.
 import { useEffect, useRef } from "react";
 import "./ScrollTopButton.css";
@@ -23,7 +24,21 @@ export function ScrollTopButton() {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const p = max > 0 ? window.scrollY / max : 0;
       ring.style.strokeDashoffset = (C * (1 - p)).toFixed(1);
-      if (!flying) root.classList.toggle("show", window.scrollY > 600);
+      if (!flying) root.classList.toggle("show", window.scrollY > Math.max(150, Math.min(600, max * 0.5)) && !covers());
+    };
+    // 버튼 자리(가운데·네 모서리) 밑에 버튼·입력칸이 있는지(글 목록 줄 같은 큰 링크는 빼고)
+    const covers = () => {
+      const r = root.getBoundingClientRect(); // 숨은 상태(작게 줄어 있음)여도 실제 자리로 판단
+      const pts = [
+        [r.left + r.width / 2, r.top + r.height / 2],
+        [r.left + 6, r.top + 6],
+        [r.right - 6, r.top + 6],
+        [r.left + 6, r.bottom - 6],
+        [r.right - 6, r.bottom - 6],
+      ];
+      return pts.some(([x, y]) =>
+        document.elementsFromPoint(x, y).some((el) => !root.contains(el) && el.closest("button, input, select, textarea, .btn, [role='button']")),
+      );
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(draw);

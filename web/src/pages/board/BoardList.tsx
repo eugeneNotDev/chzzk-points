@@ -47,14 +47,13 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
     queryFn: async () => {
       type R = { posts: ListPost[]; total: number; pageSize: number };
       const extra = search ? { q: search, field } : {};
-      const r = await boardCall<R>({ action: "list", board, page, size: PAGE_SIZE, ...extra });
-      if (r.pageSize === PAGE_SIZE) return r;
-      // 서버 함수가 아직 예전 버전(한 페이지 20개 고정)이면, 그 안에서 10개씩 잘라서 보여줌 — 배포 전후 모두 10개씩.
-      const ps = r.pageSize || 20;
-      const serverPage = Math.floor((page * PAGE_SIZE) / ps);
-      const r2 = serverPage === page ? r : await boardCall<R>({ action: "list", board, page: serverPage, ...extra });
-      const offset = page * PAGE_SIZE - serverPage * ps;
-      return { posts: r2.posts.slice(offset, offset + PAGE_SIZE), total: r2.total, pageSize: PAGE_SIZE };
+      // 서버에선 20개씩 받아서 화면에선 10개씩 잘라 보여줌 — 서버 함수가 예전 버전(20개 고정)이든 새 버전이든 똑같이 동작하고,
+      // 글 수보다 뒤쪽 페이지를 달라고 해서 서버가 오류 내는 일이 없음(예전엔 3페이지에서 "불러오지 못했어요"가 떴음).
+      const FETCH = 20;
+      const serverPage = Math.floor((page * PAGE_SIZE) / FETCH);
+      const r = await boardCall<R>({ action: "list", board, page: serverPage, size: FETCH, ...extra });
+      const offset = page * PAGE_SIZE - serverPage * FETCH;
+      return { posts: r.posts.slice(offset, offset + PAGE_SIZE), total: r.total, pageSize: PAGE_SIZE };
     },
   });
   const goSearch = (text: string, f: Field) => {

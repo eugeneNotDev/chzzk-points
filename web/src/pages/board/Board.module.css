@@ -874,16 +874,6 @@
   color: var(--c-text-3);
   font-size: 13px;
 }
-/* 넓은 화면에선 글쓰기 버튼이 옆 칸에 있어서 목록 아래 버튼은 숨김 */
-@media (min-width: 1200px) {
-  .listBar :global(.btn) {
-    display: none;
-  }
-}
-/* 글 본문은 너무 길게 늘어나지 않게 */
-.body {
-  max-width: 780px;
-}
 
 /* ── 좋아요 하트 터짐(Lucian #022) — 크기는 하트(1em) 기준 비율 ── */
 .hb {

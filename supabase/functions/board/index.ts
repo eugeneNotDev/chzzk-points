@@ -264,6 +264,11 @@ async function list(admin: Admin, body: any, me: string | null, isAdmin: boolean
   const { data: posts, error, count } = await query
     .order("id", { ascending: false })
     .range(page * size, page * size + size - 1);
+  // 글 수보다 뒤쪽 페이지를 달라고 하면 PostgREST가 "범위 밖" 오류(PGRST103)를 냄 → 오류 대신 빈 페이지로
+  if (error?.code === "PGRST103") {
+    const { count: n } = await admin.from("board_posts").select("id", { count: "exact", head: true }).eq("board", board);
+    return json({ posts: [], total: n ?? 0, pageSize: size });
+  }
   if (error) throw new Error(`board_posts 조회 실패: ${error.message}`);
   const slice = posts ?? [];
   const ids = slice.map((p: any) => p.id);

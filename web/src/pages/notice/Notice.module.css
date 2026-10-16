@@ -16,8 +16,8 @@
 .adminRow {
   display: flex;
   gap: 12px;
-  padding: 0 12px 10px;
-  margin-top: -4px;
+  /* 위 제목 줄(배경이 칠해질 수 있음)과 겹치지 않게 간격을 둠 */
+  padding: 6px 12px 10px;
 }
 
 /* ── 글쓰기 ── */
@@ -148,57 +148,3 @@
   text-overflow: ellipsis;
 }
 
-/* ── 넓은 화면: 왼쪽 목록 + 오른쪽 본문 ── */
-.reader {
-  display: grid;
-  grid-template-columns: 400px minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-.listCard {
-  position: sticky;
-  top: 84px;
-  max-height: calc(100vh - 104px);
-  overflow-y: auto;
-}
-.current :global(.list-row) {
-  background: var(--c-accent-soft);
-}
-.current :global(.list-row-title) {
-  color: var(--c-accent);
-  font-weight: 700;
-}
-.paper {
-  min-height: 420px;
-  padding: 32px 40px 40px;
-}
-.paper article {
-  max-width: 820px;
-}
-.paperHead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--c-border);
-}
-.paperTitle {
-  font-family: var(--font-logo);
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.35;
-  word-break: keep-all;
-}
-.paperDate {
-  display: block;
-  margin-top: 6px;
-  color: var(--c-text-3);
-  font-size: 13px;
-}
-.paperTools {
-  flex: none;
-  display: flex;
-  gap: 6px;
-}
