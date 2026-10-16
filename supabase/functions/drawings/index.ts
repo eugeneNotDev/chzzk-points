@@ -1,8 +1,9 @@
 // 그림 후원(0067_drawing_donations.sql) — 시청자 그리기 페이지와 관리자 "그림 후원" 탭이 부름.
 //
 // 전부 POST { action, ... }, 로그인 필수.
-// create       { image: "data:image/webp;base64,..." }  → { code, expiresAt, minAmount }
+// create       { image: "data:image/webp;base64,...", strokes?: "[...획 기록 JSON...]" }  → { code, expiresAt, minAmount }
 //              그림 저장 + 코드 발급. 기다리는 중인 그림은 한 사람당 3개까지, 30초에 하나.
+//              strokes(선택): 오버레이가 그림이 그려지는 모습을 다시 보여줄 때 쓰는 획 순서 — 없거나 이상하면 그림만 띄움.
 // mine         {}                                       → { items: [{ id, code, status, url, expiresAt, createdAt, shownAt, shortAmount }], minAmount }
 //              status: pending | shown | hidden | expired(pending인데 시간 지남)
 // admin-list   {}                                       → { items: [...그린 사람·후원자 포함] }   (관리자)
@@ -18,6 +19,39 @@ import { broadcastToOverlay } from "../_shared/stream-code.ts";
 import { CODE_ALPHABET, CODE_LENGTH, DRAWING_BUCKET, DRAWING_EXPIRE_HOURS, DRAWING_MIN_AMOUNT, drawingUrl } from "../_shared/drawing.ts";
 
 const MAX_BYTES = 1024 * 1024;
+const MAX_STROKES_BYTES = 1536 * 1024;
+
+// 획 기록 검사 — [{c:"#rrggbb", w:굵기, p:[x,y,...]} | {k:"clear"}], 좌표는 960×540 안
+function cleanStrokes(v: unknown): string | null {
+  if (typeof v !== "string" || !v || v.length > MAX_STROKES_BYTES) return null;
+  let arr: unknown;
+  try {
+    arr = JSON.parse(v);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(arr) || !arr.length || arr.length > 5000) return null;
+  const out = [];
+  for (const o of arr) {
+    if (o && o.k === "clear") {
+      out.push({ k: "clear" });
+      continue;
+    }
+    if (!o || typeof o.c !== "string" || !/^#[0-9a-fA-F]{6}$/.test(o.c)) return null;
+    const w = Number(o.w);
+    if (!Number.isFinite(w) || w < 1 || w > 80) return null;
+    if (!Array.isArray(o.p) || o.p.length < 2 || o.p.length % 2) return null;
+    const p: number[] = [];
+    for (let i = 0; i < o.p.length; i += 2) {
+      const x = Math.round(Number(o.p[i]));
+      const y = Math.round(Number(o.p[i + 1]));
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < -50 || x > 1010 || y < -50 || y > 590) return null;
+      p.push(x, y);
+    }
+    out.push({ c: o.c.toLowerCase(), w, p });
+  }
+  return JSON.stringify(out);
+}
 const MAX_PENDING = 3;
 const COOLDOWN_MS = 30_000;
 
@@ -64,7 +98,9 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => ({}));
   try {
     const admin = getAdmin();
-    const { data: user } = await admin.from("users").select("channel_id, banned, drawing_blocked").eq("channel_id", me).maybeSingle();
+    const { data: user, error: uErr } = await admin.from("users").select("channel_id, banned, drawing_blocked").eq("channel_id", me).maybeSingle();
+    // 조회 자체가 실패한 건(예: DB 변경 전) 서버 문제 — 401로 답하면 사이트가 로그아웃시켜 버려서 500으로
+    if (uErr) throw new Error(`users 조회 실패: ${uErr.message}`);
     if (!user) return json({ error: "unauthorized" }, 401);
     if (user.banned) return json({ error: "banned" }, 403);
 
@@ -123,12 +159,21 @@ async function create(admin: Admin, me: string, blocked: boolean, body: any) {
   const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
   const { error: upErr } = await admin.storage.from(DRAWING_BUCKET).upload(path, bytes, { contentType: `image/${ext}`, upsert: false });
   if (upErr) throw new Error(`그림 업로드 실패: ${upErr.message}`);
+  // 획 기록(있으면) — 그림 옆에 같은 이름 .json으로. 저장 못 해도 그림 후원은 그대로 진행(오버레이가 그림만 띄움)
+  let strokesPath: string | null = null;
+  const strokes = cleanStrokes(body.strokes);
+  if (strokes) {
+    const sp = path.replace(/\.(webp|png)$/, ".json");
+    const { error: sErr } = await admin.storage.from(DRAWING_BUCKET).upload(sp, new TextEncoder().encode(strokes), { contentType: "application/json", upsert: false });
+    if (sErr) console.error(`획 기록 업로드 실패: ${sErr.message}`);
+    else strokesPath = sp;
+  }
 
   const expiresAt = new Date(Date.now() + DRAWING_EXPIRE_HOURS * 3600_000).toISOString();
   // 코드가 겹치면(아주 드묾) 다시 뽑음
   for (let i = 0; i < 5; i++) {
     const code = newCode();
-    const { error } = await admin.from("drawings").insert({ code, channel_id: me, image_path: path, expires_at: expiresAt });
+    const { error } = await admin.from("drawings").insert({ code, channel_id: me, image_path: path, strokes_path: strokesPath, expires_at: expiresAt });
     if (!error) return json({ code, expiresAt, minAmount: DRAWING_MIN_AMOUNT });
     if (error.code !== "23505") throw new Error(`drawings insert 실패: ${error.message}`);
   }

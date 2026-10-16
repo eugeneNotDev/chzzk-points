@@ -11,7 +11,8 @@ create table if not exists public.drawings (
   id bigint generated always as identity primary key,
   code text not null unique,                       -- 6자리(헷갈리는 0/O/1/I/L 뺀 대문자+숫자)
   channel_id text not null references public.users(channel_id),   -- 그린 사람
-  image_path text not null,                        -- drawings 버킷 안 경로
+  image_path text not null,                        -- drawings 버킷 안 경로(완성 그림)
+  strokes_path text,                               -- 획 순서 기록(.json) — 오버레이가 그림이 빠르게 그려지는 모습을 다시 보여줌. 없으면 그림만
   -- pending(후원 기다리는 중) | shown(방송에 표시함) | hidden(관리자가 끔)
   status text not null default 'pending' check (status in ('pending', 'shown', 'hidden')),
   expires_at timestamptz not null default now() + interval '24 hours',   -- 이 시각 지나면 pending이어도 못 씀(만료)
@@ -33,5 +34,5 @@ alter table public.drawings enable row level security;
 revoke all on public.drawings from anon, authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('drawings', 'drawings', true, 1048576, array['image/webp', 'image/png'])
+values ('drawings', 'drawings', true, 1572864, array['image/webp', 'image/png', 'application/json'])
 on conflict (id) do nothing;

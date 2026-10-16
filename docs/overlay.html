@@ -62,12 +62,13 @@
     animation: drawing-in 0.5s cubic-bezier(0.34, 1.45, 0.64, 1);
   }
   .drawing.out { animation: drawing-out 0.4s ease-in forwards; }
-  .drawing img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 10px; background: #fff; }
+  .drawing img, .drawing canvas { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 10px; background: #fff; }
   .drawing .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 10px; padding: 0 4px; font-size: 1.25rem; font-weight: 700; }
   .drawing .cap .who { color: #00e5a0; }
   .drawing .cap .amt { font-size: 1rem; color: rgba(255, 255, 255, 0.7); }
   .drawing .bar { height: 4px; margin: 10px 4px 0; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
-  .drawing .bar i { display: block; height: 100%; background: #00e5a0; transform-origin: left; animation: drawing-bar linear forwards; }
+  .drawing .bar i { display: block; height: 100%; background: #00e5a0; transform-origin: left; animation: drawing-bar linear forwards; animation-play-state: paused; }
+  .drawing.holding .bar i { animation-play-state: running; }
   @keyframes drawing-in { from { opacity: 0; transform: translate(-50%, -16px) scale(0.92); } }
   @keyframes drawing-out { to { opacity: 0; transform: translate(-50%, -10px) scale(0.96); } }
   @keyframes drawing-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
@@ -209,30 +210,91 @@
     // 관리자가 "끄기"를 누르면 "drawing-hide"가 와서, 지금 떠 있으면 바로 내리고 기다리는 중이면 빼버림.
     const drawingQueue = [];
     let drawingNow = null; // { id, el, timer }
-    function showNextDrawing() {
+    // 획 기록(strokesUrl)이 있으면 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼) — 다 그려지면 완성 그림을 덮어서
+    // 결과가 정확히 같게 하고, 그때부터 표시 시간(seconds)을 셈. 획 기록을 못 받으면 완성 그림만 바로 띄움.
+    const DRAW_W = 960, DRAW_H = 540;
+    function loadImage(url) {
+      return new Promise((ok, fail) => { const im = new Image(); im.onload = () => ok(im); im.onerror = fail; im.src = url; });
+    }
+    async function loadStrokes(url) {
+      if (!url) return null;
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) return null;
+        const ops = await res.json();
+        return Array.isArray(ops) && ops.length ? ops : null;
+      } catch { return null; }
+    }
+    // 그림판(DrawCanvas)과 같은 방식으로 획을 그림 — 점 사이를 중간점 곡선으로
+    function drawSegment(c, op, i) {
+      const p = op.p, n = p.length / 2;
+      c.strokeStyle = op.c; c.fillStyle = op.c; c.lineWidth = op.w; c.lineCap = "round"; c.lineJoin = "round";
+      if (n === 1 || i === 0) {
+        c.beginPath(); c.arc(p[0], p[1], op.w / 2, 0, Math.PI * 2); c.fill();
+        return;
+      }
+      const a = Math.max(0, i - 2), b = i - 1;
+      const ax = p[a * 2], ay = p[a * 2 + 1], bx = p[b * 2], by = p[b * 2 + 1], cx = p[i * 2], cy = p[i * 2 + 1];
+      c.beginPath();
+      c.moveTo((ax + bx) / 2, (ay + by) / 2);
+      c.quadraticCurveTo(bx, by, (bx + cx) / 2, (by + cy) / 2);
+      c.stroke();
+    }
+    function replay(canvas, ops, done) {
+      const c = canvas.getContext("2d");
+      c.fillStyle = "#fff"; c.fillRect(0, 0, DRAW_W, DRAW_H);
+      // 그릴 일 목록(점 하나 = 한 칸, 지우기 = 한 칸)
+      const steps = [];
+      for (const op of ops) {
+        if (op.k === "clear") steps.push([op, -1]);
+        else for (let i = 0; i < op.p.length / 2; i++) steps.push([op, i]);
+      }
+      // 아주 빠르게 — 점 수에 맞춰 1.2~4초 안에 다 그림
+      const dur = Math.max(1200, Math.min(4000, steps.length * 1.6));
+      const t0 = performance.now();
+      let k = 0;
+      function frame(now) {
+        if (!canvas.isConnected) return;
+        const until = Math.min(steps.length, Math.ceil(((now - t0) / dur) * steps.length));
+        for (; k < until; k++) {
+          const [op, i] = steps[k];
+          if (i < 0) { c.fillStyle = "#fff"; c.fillRect(0, 0, DRAW_W, DRAW_H); }
+          else drawSegment(c, op, i);
+        }
+        if (k < steps.length) requestAnimationFrame(frame);
+        else done();
+      }
+      requestAnimationFrame(frame);
+    }
+    async function showNextDrawing() {
       if (drawingNow || !drawingQueue.length) return;
       const d = drawingQueue.shift();
       const el = document.createElement("div");
       el.className = "drawing";
       const sec = Math.max(3, Math.min(60, Number(d.seconds) || 10));
       const who = d.nickname ? `${escapeHtml(d.nickname)}님의 그림` : "익명님의 그림";
-      el.innerHTML = `<img alt="" src="${escapeHtml(d.url)}"><div class="cap"><span class="who">${who}</span><span class="amt">${Number(d.amount || 0).toLocaleString("ko-KR")}치즈</span></div><div class="bar"><i style="animation-duration:${sec}s"></i></div>`;
-      const img = el.querySelector("img");
-      // 그림을 받는 동안에도 자리를 잡아둠 — 그 사이에 다음 그림이 와도 겹쳐 뜨지 않고 기다리게
+      el.innerHTML = `<canvas width="${DRAW_W}" height="${DRAW_H}"></canvas><div class="cap"><span class="who">${who}</span><span class="amt">${Number(d.amount || 0).toLocaleString("ko-KR")}치즈</span></div><div class="bar"><i style="animation-duration:${sec}s"></i></div>`;
+      const canvas = el.querySelector("canvas");
+      // 받는 동안에도 자리를 잡아둠 — 그 사이에 다음 그림이 와도 겹쳐 뜨지 않고 기다리게
       const slot = { id: d.id, el, timer: null };
       drawingNow = slot;
-      const start = () => {
-        if (drawingNow !== slot) return; // 받는 중에 관리자가 끔
-        document.body.appendChild(el);
-        playAlertSound();
+      const [img, ops] = await Promise.all([loadImage(d.url).catch(() => null), loadStrokes(d.strokesUrl)]);
+      if (drawingNow !== slot) return; // 받는 중에 관리자가 끔
+      if (!img && !ops) {
+        console.error("[overlay] 그림을 못 불러왔어요", d.url);
+        drawingNow = null; showNextDrawing();
+        return;
+      }
+      document.body.appendChild(el);
+      playAlertSound();
+      const hold = () => {
+        if (drawingNow !== slot) return;
+        if (img) canvas.getContext("2d").drawImage(img, 0, 0, DRAW_W, DRAW_H); // 완성 그림으로 마무리
+        el.classList.add("holding");
         slot.timer = setTimeout(() => endDrawing(d.id), sec * 1000);
       };
-      // 그림을 다 받은 다음에 띄움(반쯤 그려진 채로 안 뜨게). 못 받으면 건너뜀.
-      img.onload = start;
-      img.onerror = () => {
-        console.error("[overlay] 그림을 못 불러왔어요", d.url);
-        if (drawingNow === slot) { drawingNow = null; showNextDrawing(); }
-      };
+      if (ops) replay(canvas, ops, hold);
+      else hold();
     }
     function endDrawing(id) {
       if (!drawingNow || drawingNow.id !== id) return;

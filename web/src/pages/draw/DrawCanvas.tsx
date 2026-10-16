@@ -1,6 +1,8 @@
 // 그림판 — 그림 후원용. 실제 그림 크기는 960×540(16:9)으로 고정하고, 화면엔 칸 너비에 맞춰 늘려 보여줌.
 // 펜·지우개(흰색으로 칠하기), 굵기 3단계, 색 12개 + 직접 고르기, 되돌리기/다시 하기(최대 40번), 전체 지우기.
 // 그리던 그림은 이 브라우저에 잠깐 저장해서(새로고침해도 유지) 보내면 지움.
+// 획 기록(ops)도 같이 남김 — 방송 오버레이가 이걸로 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼).
+//   op: { c: 색, w: 굵기, p: [x,y,x,y,...] (정수 좌표) } | { k: "clear" }  — 지우개는 흰색 펜으로 기록
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Eraser, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
 import { readStorage, writeStorage } from "../../lib/storage";
@@ -17,8 +19,11 @@ const SIZES = [
   { v: 24, label: "굵게" },
 ];
 const MAX_HISTORY = 40;
+const MAX_POINTS = 60_000; // 획 기록이 너무 커지면(아주 오래 그리면) 재생 없이 그림만 보냄
 
-export type DrawCanvasHandle = { exportImage: () => string; clear: () => void; isBlank: () => boolean };
+export type DrawOp = { c: string; w: number; p: number[] } | { k: "clear" };
+export type DrawCanvasHandle = { exportImage: () => string; exportOps: () => string | null; clear: () => void; isBlank: () => boolean };
+const OPS_KEY = "chzzk_points_draw_ops";
 
 export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: boolean) => void }>(function DrawCanvas({ onChange }, ref) {
   const cv = useRef<HTMLCanvasElement>(null);
@@ -30,6 +35,10 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   const [, bump] = useState(0);
   const strokes = useRef(0); // 지금 그림에 그은 획 수(0이면 빈 그림)
   const drawing = useRef<{ id: number; pts: [number, number][] } | null>(null);
+  // 지금 그림을 만든 획 순서(되돌리기하면 빼고, 다시 하기하면 넣음). null이면 기록을 못 믿음(예전 임시저장에서 이어 그림)
+  const ops = useRef<DrawOp[] | null>([]);
+  const redoOps = useRef<DrawOp[]>([]);
+  const curOp = useRef<{ c: string; w: number; p: number[] } | null>(null);
 
   const ctx = () => cv.current!.getContext("2d")!;
   const fillBg = () => {
@@ -40,6 +49,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   const saveDraft = () => {
     try {
       writeStorage(DRAFT_KEY, strokes.current ? cv.current!.toDataURL("image/png") : "");
+      writeStorage(OPS_KEY, strokes.current && ops.current ? JSON.stringify(ops.current) : "");
     } catch {
       /* 저장 못 해도 그리기엔 지장 없음 */
     }
@@ -59,6 +69,12 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
       img.onload = () => {
         ctx().drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
         strokes.current = 1;
+        try {
+          const saved = JSON.parse(readStorage(OPS_KEY) || "null");
+          ops.current = Array.isArray(saved) && saved.length ? saved : null;
+        } catch {
+          ops.current = null;
+        }
         onChange?.(false);
         bump((n) => n + 1);
       };
@@ -107,6 +123,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     pushHistory();
     const p = pos(e);
     drawing.current = { id: e.pointerId, pts: [p] };
+    curOp.current = { c: eraser ? BG : color, w: eraser ? size * 2 : size, p: [Math.round(p[0]), Math.round(p[1])] };
     stroke([p]);
   };
   const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -116,7 +133,9 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     const evs = (e.nativeEvent as PointerEvent).getCoalescedEvents?.() ?? [e.nativeEvent];
     for (const ev of evs) {
       const r = cv.current!.getBoundingClientRect();
-      d.pts.push([((ev.clientX - r.left) / r.width) * CANVAS_W, ((ev.clientY - r.top) / r.height) * CANVAS_H]);
+      const pt: [number, number] = [((ev.clientX - r.left) / r.width) * CANVAS_W, ((ev.clientY - r.top) / r.height) * CANVAS_H];
+      d.pts.push(pt);
+      curOp.current?.p.push(Math.round(pt[0]), Math.round(pt[1]));
       if (d.pts.length > 3) d.pts.shift();
       stroke(d.pts);
     }
@@ -124,6 +143,9 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   const up = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current || drawing.current.id !== e.pointerId) return;
     drawing.current = null;
+    if (curOp.current && ops.current) ops.current.push(curOp.current);
+    curOp.current = null;
+    redoOps.current = [];
     strokes.current += 1;
     changed();
   };
@@ -133,6 +155,8 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     if (!prev) return;
     redo.current.push(ctx().getImageData(0, 0, CANVAS_W, CANVAS_H));
     ctx().putImageData(prev, 0, 0);
+    const op = ops.current?.pop();
+    if (op) redoOps.current.push(op);
     strokes.current = Math.max(0, strokes.current - 1);
     changed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,6 +166,8 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     if (!next) return;
     undo.current.push(ctx().getImageData(0, 0, CANVAS_W, CANVAS_H));
     ctx().putImageData(next, 0, 0);
+    const op = redoOps.current.pop();
+    if (op && ops.current) ops.current.push(op);
     strokes.current += 1;
     changed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,6 +176,8 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     if (!strokes.current) return;
     pushHistory();
     fillBg();
+    ops.current?.push({ k: "clear" });
+    redoOps.current = [];
     strokes.current = 0;
     changed();
   };
@@ -178,8 +206,16 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
       // webp로 못 만드는 브라우저(일부 사파리)는 png로
       return webp.startsWith("data:image/webp") ? webp : cv.current!.toDataURL("image/png");
     },
+    exportOps: () => {
+      const list = ops.current;
+      if (!list || !list.length) return null;
+      const n = list.reduce((a, o) => a + ("p" in o ? o.p.length / 2 : 0), 0);
+      return n > 0 && n <= MAX_POINTS ? JSON.stringify(list) : null;
+    },
     clear: () => {
       fillBg();
+      ops.current = [];
+      redoOps.current = [];
       strokes.current = 0;
       undo.current = [];
       redo.current = [];

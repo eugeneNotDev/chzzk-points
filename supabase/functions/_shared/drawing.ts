@@ -42,7 +42,7 @@ export async function matchDrawingDonation(
   if (!cands.length) return null;
   const { data: rows } = await admin
     .from("drawings")
-    .select("id, code, status, expires_at, image_path, donation_event_key")
+    .select("id, code, status, expires_at, image_path, strokes_path, donation_event_key")
     .in("code", cands)
     .order("created_at", { ascending: false })
     .limit(5);
@@ -66,6 +66,7 @@ export async function matchDrawingDonation(
   await broadcastToOverlay(admin, "drawing", {
     id: row.id,
     url: drawingUrl(row.image_path),
+    strokesUrl: row.strokes_path ? drawingUrl(row.strokes_path) : null, // 오버레이가 그려지는 모습을 다시 보여줄 때 씀
     nickname,
     amount: d.amount,
     seconds: DRAWING_SHOW_SECONDS,

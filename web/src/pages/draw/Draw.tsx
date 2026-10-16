@@ -74,7 +74,7 @@ export default function Draw() {
     setSending(true);
     setErr(null);
     try {
-      const r = await call<{ code: string; expiresAt: string; minAmount: number }>({ action: "create", image: canvas.current.exportImage() });
+      const r = await call<{ code: string; expiresAt: string; minAmount: number }>({ action: "create", image: canvas.current.exportImage(), strokes: canvas.current.exportOps() });
       setSent({ code: r.code, expiresAt: r.expiresAt });
       canvas.current.clear();
       qc.invalidateQueries({ queryKey: ["drawings", "mine"] });
