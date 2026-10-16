@@ -17,9 +17,10 @@
   border: 0;
   padding: 0;
   border-radius: 50%;
-  background: var(--c-text);
-  color: var(--c-bg);
-  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.6);
+  /* 다크: 어두운 칸 + 밝은 화살표 / 라이트: 아래에서 흰 칸으로 덮어씀 */
+  background: var(--c-surface-3);
+  color: var(--c-text);
+  box-shadow: 0 0 0 1px var(--c-border-strong), 0 12px 24px -10px rgba(0, 0, 0, 0.6);
   opacity: 0;
   transform: translateY(20px) scale(0.6);
   pointer-events: none;
