@@ -13,5 +13,8 @@ const files = [...new Set([...nav.matchAll(/path:\s*"([a-z0-9-]+\.html)"/g)].map
 
 // --live(교체 빌드)면 docs/ 바로 아래, 아니면 베타(docs/beta/)
 const outDir = resolve(root, process.argv.includes("--live") ? "../docs" : "../docs/beta");
+// 교체 빌드(--live)에선 404.html도 새 앱으로 — 없는 주소면 앱의 "없는 페이지예요" 화면.
+// (기존 404.html의 숨은 주소 이스터에그는 새 사이트에서 없앰)
+if (process.argv.includes("--live")) files.push("404.html");
 for (const file of files) copyFileSync(resolve(outDir, "index.html"), resolve(outDir, file));
 console.log(`[copy-routes] ${files.length}개 주소에 index.html 복사: ${files.join(", ")}`);

@@ -14,10 +14,16 @@
   padding: 14px 18px;
   color: inherit;
   text-decoration: none;
-  transition: background 0.15s;
+  transition: background var(--dur) var(--ease-out);
 }
 .item:hover {
   background: var(--c-hover);
+}
+.item .tt {
+  transition: color var(--dur) var(--ease-out);
+}
+.item:hover .tt {
+  color: var(--c-accent);
 }
 .itemTitle {
   display: flex;
@@ -195,7 +201,7 @@
   border-radius: var(--r-md);
   border: 1px solid var(--c-border);
   background: var(--c-surface-2);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .searchBox:focus-within {
   border-color: var(--c-accent);
@@ -396,7 +402,7 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.15s;
+  transition: all var(--dur) var(--ease-out);
 }
 .likeBig:hover {
   border-color: var(--c-pink);

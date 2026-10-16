@@ -2,7 +2,6 @@
 // 저장할 때 "글 + [[사진:n]] 표시"로 바꿔서 보냄(n = 저장되는 사진 순서). 표시 없는 사진은 글 맨 아래.
 // 편집칸 내용은 React가 아니라 DOM이 직접 들고 있음(커서·한글 조합이 깨지지 않게).
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ImagePlus } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -23,6 +22,7 @@ import {
   type FullPost,
 } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
+import { useTNavigate } from "../../lib/transition";
 import styles from "./Board.module.css";
 import { toast } from "../../lib/dialog";
 import { SkeletonPost } from "../../components/Skeleton";
@@ -38,7 +38,7 @@ export function PostEditor({ board, editId }: { board: BoardKind; editId?: numbe
     queryFn: () => boardCall<FullPost>({ action: "get", id: editId }),
     retry: false,
   });
-  const nav = useNavigate();
+  const nav = useTNavigate();
   const head = (
     <>
       <PageHead title={cfg.name} />
@@ -78,7 +78,7 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
   const cfg = BOARD_CFG[board];
   const editing = !!existing;
   const { isAdmin } = useAuth();
-  const nav = useNavigate();
+  const nav = useTNavigate();
   const qc = useQueryClient();
   const ed = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);

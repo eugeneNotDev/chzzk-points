@@ -156,11 +156,6 @@
 .jackpot {
   box-shadow: 0 0 24px color-mix(in srgb, var(--c-gold) 45%, transparent);
 }
-.note {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--c-text-2);
-}
 @keyframes pop {
   from {
     transform: scale(0.94);
@@ -363,7 +358,7 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.12s, transform 0.08s;
+  transition: border-color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .pick:hover:not(:disabled) {
   border-color: var(--c-accent);
@@ -520,7 +515,7 @@
   font-size: 26px;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 0.08s, opacity 0.12s, box-shadow 0.12s;
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .odd {
   background: linear-gradient(160deg, #ff6b74, #d6303b);

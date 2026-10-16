@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, EyeOff, Heart, Image as ImageIcon, MessageCircle, PenLine, Search, X } from "lucide-react";
 import { Select, type SelectOption } from "../../components/Select";
@@ -8,6 +8,7 @@ import { PageHead } from "../../components/ui";
 import { startLogin, useAuth } from "../../lib/auth";
 import { BOARD_CFG, boardCall, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
+import { useTNavigate } from "../../lib/transition";
 import styles from "./Board.module.css";
 import { SkeletonList } from "../../components/Skeleton";
 
@@ -38,7 +39,7 @@ const PAGE_SIZE = 10;
 export function BoardList({ board, page, q: search, field }: { board: BoardKind; page: number; q: string; field: Field }) {
   const cfg = BOARD_CFG[board];
   const { isLoggedIn, token } = useAuth();
-  const nav = useNavigate();
+  const nav = useTNavigate();
   const q = useQuery({
     queryKey: ["board", "list", board, page, search, field, token],
     placeholderData: (p) => p,

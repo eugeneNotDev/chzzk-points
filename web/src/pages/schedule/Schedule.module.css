@@ -58,7 +58,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
 }
 .cell:hover {
   border-color: var(--c-border-strong);
@@ -222,7 +222,7 @@
   padding: 14px;
   border-radius: var(--r-md);
   background: var(--c-surface-2);
-  transition: opacity 0.15s;
+  transition: opacity var(--dur) var(--ease-out);
 }
 .tpOff {
   opacity: 0.35;

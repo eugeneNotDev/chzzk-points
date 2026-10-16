@@ -107,7 +107,7 @@
   font-size: 14px;
   font-weight: 700;
   white-space: nowrap;
-  transition: background 0.12s, transform 0.08s;
+  transition: background var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .btnPrimary {
   background: var(--c-accent);
@@ -142,12 +142,22 @@
   border-radius: var(--r-lg);
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+  transition: border-color var(--dur) var(--ease-out), background var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .tile:hover {
   border-color: var(--c-border-strong);
   background: var(--c-hover);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.6);
+}
+.tile:active {
+  transform: translateY(-1px) scale(0.99);
+}
+.tileIcon {
+  transition: transform var(--dur) var(--ease-out);
+}
+.tile:hover .tileIcon {
+  transform: scale(1.08) rotate(-4deg);
 }
 .tileIcon {
   width: 40px;
@@ -211,7 +221,7 @@
   min-height: 46px;
   padding: 10px 12px;
   border-radius: 10px;
-  transition: background 0.12s;
+  transition: background var(--dur) var(--ease-out);
 }
 .row:hover {
   background: var(--c-hover);

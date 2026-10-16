@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { Card } from "../../components/Card";
-import { LoginNeeded, Modal, PageHead } from "../../components/ui";
+import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, WEEK_KO } from "../../lib/format";
@@ -275,7 +275,6 @@ function CodeCard() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string; points?: number } | null>(null);
-  const [doc, setDoc] = useState<{ title: string; body: string; foot: string } | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn) setResult(null);
@@ -288,12 +287,13 @@ function CodeCard() {
     setBusy(true);
     setResult(null);
     try {
-      const data = await apiFetch<{ points: number; rank: number; maxUses: number | null; balance: number; doc?: { title: string; body: string; foot: string } }>(API.streamCode, {
+      const data = await apiFetch<{ points?: number; rank: number; maxUses: number | null; balance: number }>(API.streamCode, {
         body: { code: c },
       });
       setCode("");
-      if (data.doc) {
-        setDoc({ title: String(data.doc.title || ""), body: String(data.doc.body || ""), foot: String(data.doc.foot || "") });
+      // 포인트가 없는 응답(예전 이스터에그 코드 등)은 새 사이트에선 없는 코드로 취급
+      if (data.points == null) {
+        setResult({ ok: false, text: CODE_ERRORS.invalid_code });
         return;
       }
       const rankText = data.maxUses ? `선착순 ${fmt(data.maxUses)}명 중 ${fmt(data.rank)}번째` : `${fmt(data.rank)}번째로 받았어요`;
@@ -340,10 +340,6 @@ function CodeCard() {
         </div>
       )}
 
-      <Modal open={!!doc} onClose={() => setDoc(null)} title={doc?.title} actions={<button type="button" className="btn" onClick={() => setDoc(null)}>닫기</button>}>
-        <pre className={styles.doc}>{doc?.body}</pre>
-        {doc?.foot && <p className={styles.docFoot}>{doc.foot}</p>}
-      </Modal>
     </Card>
   );
 }

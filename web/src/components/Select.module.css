@@ -19,7 +19,7 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .btn:hover {
   border-color: var(--c-border-strong);
@@ -32,7 +32,7 @@
 }
 .chev {
   color: var(--c-text-3);
-  transition: transform 0.15s;
+  transition: transform var(--dur) var(--ease-out);
 }
 .open .chev {
   transform: rotate(180deg);

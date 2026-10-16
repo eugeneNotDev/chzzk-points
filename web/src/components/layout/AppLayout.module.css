@@ -64,7 +64,7 @@
   color: var(--c-text-2);
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.12s, color 0.12s;
+  transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
 }
 .navItem:hover {
   background: var(--c-hover);
@@ -72,6 +72,13 @@
 }
 .navItem svg {
   flex: none;
+  transition: transform var(--dur) var(--ease-out);
+}
+.navItem:hover svg {
+  transform: translateX(2px) scale(1.06);
+}
+.navItem:active {
+  transform: scale(0.98);
 }
 .active,
 .active:hover {
@@ -274,6 +281,8 @@
 }
 
 .content {
+  /* 전환 애니메이션은 본문만 — 사이드바·상단바는 그대로 있고 안쪽 화면만 바뀌게 */
+  view-transition-name: page;
   flex: 1;
   width: 100%;
   max-width: calc(var(--content-max) + 64px);
@@ -456,12 +465,15 @@
 
 /* 페이지 전환 — 새 화면이 살짝 아래에서 떠오르며 나타남 */
 .pageFade {
-  animation: pageIn 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: pageIn 0.32s var(--ease-out) both;
+}
+:global(html[data-vt]) .pageFade {
+  animation: none;
 }
 @keyframes pageIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

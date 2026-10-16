@@ -89,31 +89,14 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
   );
 }
 
-export type ResultView = { tone: "plus" | "minus" | "even" | "error"; color?: string; title?: string; desc?: ReactNode; note?: string | null; jackpot?: boolean };
+export type ResultView = { tone: "plus" | "minus" | "even" | "error"; color?: string; title?: string; desc?: ReactNode; jackpot?: boolean };
 
 export function GameResult({ result }: { result: ResultView | null }) {
   if (!result) return null;
-  // 서버가 덧붙여 보내는 한 줄 메시지 — "머리말 › 본문" 꼴이면 머리말만 강조
-  let noteEl: ReactNode = null;
-  if (result.note) {
-    const cut = result.note.indexOf("›");
-    noteEl = (
-      <div className={styles.note}>
-        {cut > 0 ? (
-          <>
-            <b>{result.note.slice(0, cut + 1)}</b> {result.note.slice(cut + 1).trim()}
-          </>
-        ) : (
-          result.note
-        )}
-      </div>
-    );
-  }
   return (
     <div className={`${styles.result} ${styles[result.tone]} ${result.jackpot ? styles.jackpot : ""}`} style={result.color ? ({ "--c": result.color } as React.CSSProperties) : undefined} role="status" aria-live="polite">
       {result.title && <strong className="num">{result.title}</strong>}
       {result.desc && <span className="muted">{result.desc}</span>}
-      {noteEl}
     </div>
   );
 }

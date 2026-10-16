@@ -104,3 +104,39 @@ p {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ── 화면 전환(View Transitions) — 본문(view-transition-name: page)만 이전 화면이 살짝 위로 사라지고
+   새 화면이 아래에서 떠오름. 나머지(사이드바·상단바)는 그대로. ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-old(page) {
+  animation: vt-out 0.14s var(--ease-in) both;
+}
+::view-transition-new(page) {
+  animation: vt-in 0.3s var(--ease-out) 0.06s both;
+}
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(page),
+  ::view-transition-new(page) {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

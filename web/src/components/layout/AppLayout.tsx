@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
-import { isReady } from "../../routes";
+import { isReady, preloadPages } from "../../routes";
+import { useLinkTransitions } from "../../lib/transition";
 import { useHasNewNotice } from "../../lib/notices";
 import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
@@ -170,10 +171,17 @@ export function AppLayout() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const item = currentItem(location.pathname);
 
-  useEffect(() => {
+  useLinkTransitions();
+  useEffect(() => preloadPages(), []);
+  // 화면이 바뀌면 맨 위로 — 전환 애니메이션이 새 화면을 찍기 전에 올려둬야 해서 layout effect.
+  // 게시판 글 열기·페이지 넘기기처럼 주소의 ?뒤만 바뀌는 것도 포함. 더보기 창은 닫음.
+  useLayoutEffect(() => {
     window.scrollTo({ top: 0 });
+    setSheetOpen(false);
+  }, [location.pathname, location.search]);
+  useEffect(() => {
     document.title = item && item.path !== "" ? `${item.label} · 유진 팬보드` : "유진 팬보드";
-  }, [location.pathname, item]);
+  }, [item]);
 
   useEffect(() => {
     if (!sheetOpen) return;
@@ -207,8 +215,8 @@ export function AppLayout() {
           </div>
         </header>
         <main className={styles.content}>
-          {/* 메뉴를 옮길 때마다 새 화면이 살짝 떠오르며 나타남(주소의 ?뒤 값만 바뀌는 건 제외) */}
-          <div key={location.pathname} className={styles.pageFade}>
+          {/* 화면 전환: 지원 브라우저는 View Transitions(lib/transition.ts), 아니면 이 페이드 */}
+          <div key={location.pathname + location.search} className={styles.pageFade}>
             <Outlet />
           </div>
         </main>

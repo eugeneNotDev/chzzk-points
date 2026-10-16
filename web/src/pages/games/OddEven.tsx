@@ -56,7 +56,7 @@ export default function OddEven() {
     setShuffling(true);
     const started = Date.now();
     try {
-      const d = await apiFetch<{ card: number; result: "win" | "lose"; payout: number; net: number; balance: number; note?: string }>(API.oddEven, { body: { bet, pick } });
+      const d = await apiFetch<{ card: number; result: "win" | "lose"; payout: number; net: number; balance: number}>(API.oddEven, { body: { bet, pick } });
       const remain = SHUFFLE_MIN_MS - (Date.now() - started);
       if (remain > 0) await sleep(remain);
       if (!game.alive.current) return;
@@ -73,7 +73,6 @@ export default function OddEven() {
         color: RESULT_COLOR[d.result],
         title: `${RESULT_KO[d.result]} · ${signed(d.net)}`,
         desc: `${PICK_KO[pick]} 선택 · 카드 ${cardLabel(d.card)} · ${fmt(bet)}P 걸어서 ${fmt(d.payout)}P 받았어요`,
-        note: d.note ?? null,
       });
       game.startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)));
       setTimeout(() => game.alive.current && setChosen(null), Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)) + 30);

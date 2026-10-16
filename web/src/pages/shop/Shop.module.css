@@ -47,10 +47,12 @@
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   overflow: hidden;
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .card:hover {
   border-color: var(--c-border-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.65);
 }
 .titleStage {
   display: flex;

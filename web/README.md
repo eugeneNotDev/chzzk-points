@@ -49,7 +49,8 @@ npm run build:live
 ```
 
 - `docs/` 바로 아래에 새 `index.html`과 메뉴 주소별 `xxx.html`(같은 이름이라 기존 파일을 덮어씀), 앱 파일은 `docs/app/`에 생김.
-- `docs/`의 다른 파일(`assets/`, `overlay.html`, `open-live.html`, `404.html`, `CNAME`, `sw.js`, `manifest.webmanifest`)은 안 지움.
+- `404.html`도 새 앱으로 바뀜(기존 숨은 주소 이스터에그는 없어짐).
+- `docs/`의 다른 파일(`assets/`, `overlay.html`, `open-live.html`, `CNAME`, `sw.js`, `manifest.webmanifest`)은 안 지움.
 - 치지직 로그인 후 돌아오는 처리(`?code=&state=`)도 새 앱이 함.
 - 커밋 한 번으로 교체 → 문제 생기면 그 커밋만 되돌리면 원래 사이트로 돌아감.
 - 교체 후 정리(선택): `docs/beta/`, 안 쓰게 된 `docs/assets/js/`의 옛 스크립트.

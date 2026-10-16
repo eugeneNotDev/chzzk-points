@@ -152,7 +152,7 @@
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  transition: background 0.12s, transform 0.08s;
+  transition: background var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .openBtn:hover:not(:disabled) {
   background: var(--c-accent-hover);

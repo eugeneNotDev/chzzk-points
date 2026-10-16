@@ -15,15 +15,26 @@
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, transform 0.08s, opacity 0.12s;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
   background: var(--c-surface-3);
   color: var(--c-text);
 }
+.btn svg {
+  transition: transform var(--dur) var(--ease-out);
+}
 .btn:hover:not(:disabled) {
   background: var(--c-border-strong);
+  transform: translateY(-1px);
 }
+/* 누르는 순간 살짝 눌림 */
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.06s;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -35,6 +46,7 @@
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--c-accent-hover);
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--c-accent) 70%, transparent);
 }
 .btn-danger {
   background: color-mix(in srgb, var(--c-danger) 16%, transparent);
@@ -50,6 +62,10 @@
 .btn-ghost:hover:not(:disabled) {
   background: var(--c-hover);
   color: var(--c-text);
+  transform: none;
+}
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .btn-sm {
   height: 34px;
@@ -73,6 +89,7 @@
 }
 
 .link-btn {
+  transition: color var(--dur) var(--ease-out);
   border: 0;
   padding: 0;
   background: none;
@@ -98,7 +115,7 @@
   color: var(--c-text);
   font: inherit;
   font-size: 15px;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 .input::placeholder,
 .textarea::placeholder {
@@ -362,7 +379,7 @@
   min-height: 48px;
   padding: 10px 12px;
   border-radius: 10px;
-  transition: background 0.12s;
+  transition: background-color var(--dur) var(--ease-out);
   width: 100%;
   border: 0;
   background: transparent;
@@ -373,6 +390,12 @@
 }
 .list-row:hover {
   background: var(--c-hover);
+}
+.list-row .list-row-title {
+  transition: color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+.list-row:hover .list-row-title {
+  transform: translateX(2px);
 }
 .list-row-title {
   flex: 1;
@@ -425,7 +448,7 @@
   inset: 0;
   border-radius: 999px;
   background: var(--c-surface-3);
-  transition: background 0.15s;
+  transition: background var(--dur) var(--ease-out);
 }
 .switch .slider::before {
   content: "";

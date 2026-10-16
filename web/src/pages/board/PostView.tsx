@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, Flag, Heart, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -21,13 +21,14 @@ import {
 import { AdminChip, Who } from "./BoardList";
 import { Lightbox } from "../../components/Lightbox";
 import { ReportModal, type ReportTarget } from "./ReportModal";
+import { useTNavigate } from "../../lib/transition";
 import styles from "./Board.module.css";
 import { alertDialog, confirmDialog, toast } from "../../lib/dialog";
 import { SkeletonPost } from "../../components/Skeleton";
 
 const authorOf = (x: { adminName: string | null; author: string | null }) => x.adminName || x.author || "";
 
-function goBackOr(nav: ReturnType<typeof useNavigate>, fallback: string) {
+function goBackOr(nav: ReturnType<typeof useTNavigate>, fallback: string) {
   // 목록에서 들어왔으면 뒤로가기(목록 페이지·스크롤 유지), 주소로 바로 열었으면 목록으로
   if ((window.history.state as { idx?: number } | null)?.idx) nav(-1);
   else nav(fallback, { replace: true });
@@ -295,7 +296,7 @@ function CommentItem({
 export function PostView({ board, id }: { board: BoardKind; id: number }) {
   const cfg = BOARD_CFG[board];
   const review = board === "review";
-  const nav = useNavigate();
+  const nav = useTNavigate();
   const qc = useQueryClient();
   const { isLoggedIn, isAdmin, token } = useAuth();
   const key = ["board", "post", id, token];
