@@ -6,15 +6,29 @@ import type { BoardKind } from "../../lib/board";
 import { BoardList } from "./BoardList";
 import { PostView } from "./PostView";
 import { PostEditor } from "./PostEditor";
+import { BoardAside } from "./BoardAside";
+import { SPLIT_QUERY, useMedia } from "../../lib/useMedia";
 
 export function BoardPage({ board }: { board: BoardKind }) {
   const [params] = useSearchParams();
+  const wide = useMedia(SPLIT_QUERY);
   const postId = Number(params.get("post"));
   if (params.get("write") === "1") return <PostEditor board={board} />;
-  if (Number.isSafeInteger(postId) && postId > 0) {
-    if (params.get("edit") === "1") return <PostEditor board={board} editId={postId} />;
-    return <PostView board={board} id={postId} />;
-  }
+  const isPost = Number.isSafeInteger(postId) && postId > 0;
+  if (isPost && params.get("edit") === "1") return <PostEditor board={board} editId={postId} />;
+  const main = isPost ? <PostView board={board} id={postId} /> : <BoardMain board={board} />;
+  // 넓은 화면: [목록·글 | 옆 칸(글쓰기·다른 글·공지)]
+  if (!wide) return main;
+  return (
+    <div className="split">
+      <div className="split-main">{main}</div>
+      <BoardAside board={board} currentId={isPost ? postId : undefined} />
+    </div>
+  );
+}
+
+function BoardMain({ board }: { board: BoardKind }) {
+  const [params] = useSearchParams();
   return (
     <BoardList
       board={board}

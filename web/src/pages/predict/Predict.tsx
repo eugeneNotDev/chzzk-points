@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, Trophy } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
-import { LoginNeeded, PageHead } from "../../components/ui";
+import { LoginNeeded, PageHead, Stat } from "../../components/ui";
 import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
@@ -121,19 +121,17 @@ export default function Predict() {
 
   return (
     <div className="page">
-      <PageHead title="투표" desc="방송 중 승부예측에 포인트를 걸어보세요. 맞히면 진 쪽 포인트를 건 비율대로 나눠 받아요." />
+      <PageHead
+        title="투표"
+        desc="방송 중 승부예측에 포인트를 걸어보세요. 맞히면 진 쪽 포인트를 건 비율대로 나눠 받아요."
+        stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} unit="P" tone="accent" />}
+      />
 
-      <div className={styles.balance}>
-        <span className="muted">보유 포인트</span>
-        <b className="num">
-          {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"}
-          <small>P</small>
-        </b>
-      </div>
-
+      <div className="split">
+      <div className="split-main">
       {isAdmin && <PredictAdmin />}
 
-      <Card title={heading}>
+      <Card title={heading} tone={p && !hidden && isOpen ? "feature" : undefined}>
         {q.isLoading && <span className="skeleton" style={{ height: 160 }} />}
         {!q.isLoading && hidden && <EmptyState>진행 중인 투표가 없어요. 방송 중에 투표가 열리면 여기에 떠요.</EmptyState>}
         {p && !hidden && (
@@ -228,6 +226,58 @@ export default function Predict() {
           </div>
         )}
       </Card>
+      </div>
+      <aside className="split-aside">
+        <MyBetCard p={p && !hidden ? p : null} />
+        <Card title="참여 방법" tone="quiet">
+          <ol className={styles.steps}>
+            <li>
+              <b>항목 고르기</b>
+              <span>방송 중 열린 투표에서 결과를 예상해 골라요.</span>
+            </li>
+            <li>
+              <b>포인트 걸기</b>
+              <span>100P부터 걸 수 있고, 마감 전까진 같은 항목에 더 걸 수 있어요.</span>
+            </li>
+            <li>
+              <b>나눠 받기</b>
+              <span>맞히면 진 쪽에 걸린 포인트를 건 비율대로 나눠 받아요. 배율은 실시간으로 바뀌어요.</span>
+            </li>
+          </ol>
+        </Card>
+      </aside>
+      </div>
     </div>
+  );
+}
+
+// 내 베팅 요약 — 지금 투표에 건 포인트와, 이대로 맞히면 받을 예상 포인트
+function MyBetCard({ p }: { p: Prediction | null }) {
+  const bet = p?.myBet;
+  const opt = bet ? p!.options.find((o) => o.id === bet.optionId) : null;
+  return (
+    <Card title="내 베팅">
+      {!bet || !opt ? (
+        <p className={styles.mbEmpty}>{p ? "아직 이번 투표에 걸지 않았어요." : "열린 투표가 없어요."}</p>
+      ) : (
+        <div className={styles.mb}>
+          <div className={styles.mbRow}>
+            <span>고른 항목</span>
+            <b>{opt.label}</b>
+          </div>
+          <div className={styles.mbRow}>
+            <span>건 포인트</span>
+            <b className="num">{fmt(bet.amount)}P</b>
+          </div>
+          <div className={`${styles.mbRow} ${styles.mbBig}`}>
+            <span>{p!.status === "resolved" ? "받은 포인트" : "맞히면 예상"}</span>
+            <b className="num">
+              {p!.status === "resolved" ? fmt(bet.payout ?? 0) : opt.multiplier > 0 ? `≈ ${fmt(Math.floor(bet.amount * opt.multiplier))}` : "-"}
+              <small>P</small>
+            </b>
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }

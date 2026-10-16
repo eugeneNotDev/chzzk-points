@@ -146,41 +146,102 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 8px;
+  max-width: 100%;
 }
-.pg,
-.pgArrow {
-  min-width: 34px;
+/* 번호 줄 — 둥근 알약 안에 번호들, 강조 알약(.pgInd)이 그 위를 미끄러짐 */
+.pgTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--c-surface-2);
+  box-shadow: 0 0 0 1px var(--c-border);
+  min-width: 0;
+}
+.pgInd {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: var(--l, 0);
+  right: var(--r, 0);
+  border-radius: 999px;
+  background: var(--c-accent);
+  pointer-events: none;
+}
+.goR .pgInd {
+  transition:
+    right 0.32s var(--ease-out),
+    left 0.55s var(--ease-spring) 0.08s;
+}
+.goL .pgInd {
+  transition:
+    left 0.32s var(--ease-out),
+    right 0.55s var(--ease-spring) 0.08s;
+}
+.pg {
+  position: relative;
+  min-width: 36px;
   height: 34px;
   padding: 0 8px;
-  display: inline-grid;
-  place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 999px;
   background: none;
   color: var(--c-text-2);
   font: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  transition: color 0.3s;
 }
-.pg:hover,
-.pgArrow:hover:not(:disabled) {
-  background: var(--c-hover);
+.pg:hover {
   color: var(--c-text);
 }
 .pg[aria-current="page"] {
-  background: var(--c-accent);
   color: var(--c-accent-ink);
   font-weight: 800;
 }
 .pgArrow {
-  border: 1px solid var(--c-border);
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  cursor: pointer;
+  transition: transform 0.35s var(--ease-spring), opacity 0.3s, background-color var(--dur);
+}
+.pgArrow:hover:not(:disabled) {
+  background: var(--c-surface-3);
+}
+.pgArrow:active:not(:disabled) {
+  transform: scale(0.88);
 }
 .pgArrow:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
+}
+.pg:focus-visible,
+.pgArrow:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+@media (max-width: 599px) {
+  .pg {
+    min-width: 32px;
+    padding: 0 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goR .pgInd,
+  .goL .pgInd {
+    transition: none;
+  }
 }
 .searchForm {
   width: 100%;
@@ -750,4 +811,327 @@
   .postTitle {
     font-size: 18px;
   }
+}
+
+/* ── 넓은 화면 옆 칸 ── */
+.writeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 24px;
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--c-accent) 14%, transparent), transparent 60%),
+    var(--c-surface);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 22%, var(--c-border));
+}
+.writeTitle {
+  font-family: var(--font-logo);
+  font-size: 18px;
+}
+.writeDesc {
+  margin-bottom: 4px;
+  color: var(--c-text-3);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.asideList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.asideRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background-color var(--dur) var(--ease-out);
+}
+.asideRow:hover {
+  background: var(--c-hover);
+}
+.asideOn {
+  background: var(--c-accent-soft);
+}
+.asideTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.asideMeta {
+  color: var(--c-text-4);
+  font-size: 12px;
+}
+.asideEmpty {
+  padding: 16px 12px;
+  color: var(--c-text-3);
+  font-size: 13px;
+}
+/* 넓은 화면에선 글쓰기 버튼이 옆 칸에 있어서 목록 아래 버튼은 숨김 */
+@media (min-width: 1200px) {
+  .listBar :global(.btn) {
+    display: none;
+  }
+}
+/* 글 본문은 너무 길게 늘어나지 않게 */
+.body {
+  max-width: 780px;
+}
+
+/* ── 좋아요 하트 터짐(Lucian #022) — 크기는 하트(1em) 기준 비율 ── */
+.hb {
+  position: relative;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+.hbSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.hbO {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+.hbF {
+  fill: #f0264d;
+  transform-origin: 50% 55%;
+  transform: scale(0);
+  transition: transform 0.2s var(--ease-out);
+}
+.hbOn .hbF {
+  transform: scale(1);
+}
+.hbOn .hbO {
+  stroke: transparent;
+}
+.hbPop .hbSvg {
+  animation: hb-beat 0.7s var(--ease-out);
+}
+@keyframes hb-beat {
+  0% { transform: scale(1); }
+  18% { transform: scale(0.72); }
+  48% { transform: scale(1.24); }
+  70% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.hbPop .hbF {
+  animation: hb-fill 0.7s var(--ease-out);
+}
+@keyframes hb-fill {
+  0%, 18% { transform: scale(0); }
+  48% { transform: scale(1); }
+}
+.hbRing {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.7em;
+  height: 2.7em;
+  margin: -1.35em;
+  border-radius: 50%;
+  border: 0.23em solid #ff7a93;
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+}
+.hbPop .hbRing {
+  animation: hb-ring 0.6s var(--ease-out) 0.1s;
+}
+@keyframes hb-ring {
+  0% { transform: scale(0.3); opacity: 1; border-width: 0.42em; }
+  100% { transform: scale(1); opacity: 0; border-width: 0; }
+}
+.hbDot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: rotate(var(--a));
+}
+.hbDot i {
+  position: absolute;
+  width: 0.17em;
+  height: 0.17em;
+  margin: -0.085em;
+  border-radius: 50%;
+  background: var(--c);
+  opacity: 0;
+}
+.hbDot i + i {
+  width: 0.12em;
+  height: 0.12em;
+  margin: -0.06em;
+  background: var(--c2);
+}
+.hbPop .hbDot i {
+  animation: hb-fly 0.7s var(--ease-out) 0.18s;
+}
+.hbPop .hbDot i + i {
+  animation-name: hb-fly2;
+}
+@keyframes hb-fly {
+  0% { opacity: 1; transform: translate(0, -0.88em) scale(1); }
+  100% { opacity: 0; transform: translate(0, -1.62em) scale(0.2); }
+}
+@keyframes hb-fly2 {
+  0% { opacity: 1; transform: translate(0.17em, -0.77em) scale(1); }
+  100% { opacity: 0; transform: translate(0.31em, -1.42em) scale(0.2); }
+}
+.likeNum,
+.likeNum:global(.odo-up),
+.likeNum:global(.odo-down) {
+  color: inherit;
+}
+.likeBig {
+  transition: transform 0.45s var(--ease-spring), border-color var(--dur), background-color var(--dur), color var(--dur);
+}
+.likeBig:active:not(:disabled) {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hbPop .hbSvg,
+  .hbPop .hbF,
+  .hbPop .hbRing,
+  .hbPop .hbDot i {
+    animation: none;
+  }
+}
+
+/* ── 댓글 입력칸(Lucian #028) ── */
+.cbox {
+  position: relative;
+  padding: 14px 14px 12px 16px;
+  border-radius: 22px;
+  background: var(--c-surface);
+  box-shadow: 0 0 0 1.5px var(--c-border-strong), 0 20px 40px -28px rgba(0, 0, 0, 0.72);
+  transition: box-shadow 0.3s var(--ease-out);
+}
+.cbox:focus-within {
+  box-shadow: 0 0 0 2px var(--c-accent), 0 0 0 6px var(--c-accent-soft), 0 20px 40px -28px rgba(0, 0, 0, 0.72);
+}
+.cta {
+  display: block;
+  width: 100%;
+  height: 24px;
+  min-height: 24px;
+  max-height: 144px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: none;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 15px;
+  line-height: 24px;
+  overflow: hidden;
+  transition: height 0.25s var(--ease-out);
+}
+.cta::placeholder {
+  color: var(--c-text-4);
+}
+.cta:disabled {
+  cursor: not-allowed;
+}
+.cfoot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.cring {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  transition: transform 0.45s var(--ease-spring);
+}
+.cring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.cring circle {
+  fill: none;
+  stroke-width: 3;
+}
+.cbg {
+  stroke: var(--c-surface-3);
+}
+.cfg {
+  stroke: var(--c-accent);
+  stroke-linecap: round;
+  stroke-dasharray: 75.4;
+  stroke-dashoffset: calc(75.4 * (1 - var(--p, 0)));
+  transition: stroke-dashoffset 0.3s var(--ease-out), stroke 0.3s var(--ease-out);
+}
+.cleft {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.cNear .cring {
+  transform: scale(1.25);
+}
+.cNear .cfg {
+  stroke: var(--c-gold);
+}
+.cNear .cleft {
+  opacity: 1;
+  color: var(--c-gold);
+}
+.cOver .cfg {
+  stroke: var(--c-danger);
+}
+.cOver .cleft {
+  color: var(--c-red-text);
+}
+.csep {
+  width: 1px;
+  height: 20px;
+  background: var(--c-border-strong);
+}
+.csend {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.25s var(--ease-out), transform 0.4s var(--ease-spring);
+}
+.csend:active {
+  transform: scale(0.94);
+}
+.csend[aria-disabled="true"] {
+  opacity: 0.35;
+}
+.csend:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
 }

@@ -12,6 +12,7 @@ export function Card({
   children,
   className = "",
   flush = false,
+  tone,
 }: {
   title?: ReactNode;
   moreTo?: string;
@@ -20,9 +21,11 @@ export function Card({
   children: ReactNode;
   className?: string;
   flush?: boolean; // 목록 카드처럼 안쪽 여백을 줄일 때
+  /** feature: 그 화면의 주인공 카드(은은한 초록 빛·진한 테두리) / quiet: 안내 같은 보조 카드(배경 없이 테두리만) */
+  tone?: "feature" | "quiet";
 }) {
   return (
-    <section className={`${styles.card} ${flush ? styles.flush : ""} ${className}`}>
+    <section className={`${styles.card} ${flush ? styles.flush : ""} ${tone ? styles[tone] : ""} ${className}`}>
       {(title || moreTo || extra) && (
         <div className={styles.head}>
           {title && <h2 className={styles.title}>{title}</h2>}

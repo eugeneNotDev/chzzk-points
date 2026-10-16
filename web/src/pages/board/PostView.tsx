@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, EyeOff, Flag, Heart, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, EyeOff, Flag, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { PageHead } from "../../components/ui";
 import { Avatar } from "../../components/Avatar";
@@ -21,6 +21,7 @@ import {
 import { AdminChip, Who } from "./BoardList";
 import { Lightbox } from "../../components/Lightbox";
 import { ReportModal, type ReportTarget } from "./ReportModal";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 import styles from "./Board.module.css";
 import { alertDialog, confirmDialog, toast } from "../../lib/dialog";
 import { SkeletonPost } from "../../components/Skeleton";
@@ -80,6 +81,7 @@ function LikeButton({ type, id, liked, count, own, big }: { type: "post" | "comm
   const [state, setState] = useState({ liked, count });
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(false);
+  const [pop, setPop] = useState(0); // 좋아요를 누를 때만 터지는 효과(취소는 조용히)
   useEffect(() => setState({ liked, count }), [liked, count]);
   const click = async () => {
     if (!isLoggedIn) return startLogin();
@@ -91,10 +93,11 @@ function LikeButton({ type, id, liked, count, own, big }: { type: "post" | "comm
     const before = state;
     const on = !state.liked;
     setState({ liked: on, count: Math.max(0, state.count + (on ? 1 : -1)) });
+    if (on) setPop((n) => n + 1);
     setBusy(true);
     try {
       const r = await boardCall<{ liked: boolean; count: number }>({ action: "like", targetType: type, targetId: id, on });
-      setState({ liked: r.liked, count: r.count });
+      setState({ liked: typeof r.liked === "boolean" ? r.liked : on, count: Number.isFinite(r.count) ? r.count : Math.max(0, before.count + (on ? 1 : -1)) });
     } catch (e) {
       setState(before);
       if (boardErrCode(e) !== "own_target") alertDialog(boardErrText(e));
@@ -105,14 +108,49 @@ function LikeButton({ type, id, liked, count, own, big }: { type: "post" | "comm
   const cls = [big ? styles.likeBig : styles.likeSmall, state.liked ? styles.on : "", shake ? styles.shake : ""].join(" ");
   return (
     <button type="button" className={cls} disabled={busy} onClick={click} aria-pressed={state.liked} aria-label="좋아요" title={own ? "내 글에는 좋아요를 누를 수 없어요" : undefined}>
-      <Heart size={big ? 18 : 14} aria-hidden="true" fill={state.liked ? "currentColor" : "none"} />
+      <HeartBurst on={state.liked} pop={pop} size={big ? 18 : 14} />
       {big && <span>좋아요</span>}
-      <span className="num">{big ? state.count : state.count || ""}</span>
+      <span className="num">{big || state.count ? <AnimatedNumber value={Number(state.count) || 0} className={styles.likeNum} /> : ""}</span>
     </button>
   );
 }
 
-// 댓글·답글 입력칸: Enter = 등록, Shift+Enter = 줄바꿈(한글 조합 중 Enter는 무시). 줄 수에 맞춰 높이가 늘어남.
+// Lucian UX/UI Prompt #022 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#022
+// 좋아요 하트 터짐 — 하트가 움츠렸다가 빨갛게 차오르며 크게 뛰고(0.7s), 둘레로 고리와 작은 점 일곱 쌍이 터져 나감.
+// 원본은 52px 하트 기준이라 모든 크기를 하트 크기(em) 비율로 바꿔서 작은 버튼에도 맞춤.
+const BURST = [
+  ["0deg", "#FF4D6D", "#FFB26B"],
+  ["51deg", "#8B6CFF", "#FF7A93"],
+  ["103deg", "#FFB547", "#22C3A6"],
+  ["154deg", "#FF4D6D", "#8B6CFF"],
+  ["206deg", "#22C3A6", "#FFB547"],
+  ["257deg", "#FF7A93", "#3D8BFF"],
+  ["309deg", "#3D8BFF", "#FF4D6D"],
+];
+const HEART_D = "M26 45S5 33 5 18.5C5 11.6 10.4 7 16.4 7c4.3 0 7.6 2.3 9.6 5.6C28 9.3 31.3 7 35.6 7 41.6 7 47 11.6 47 18.5 47 33 26 45 26 45z";
+function HeartBurst({ on, pop, size }: { on: boolean; pop: number; size: number }) {
+  return (
+    <span key={pop} className={`${styles.hb} ${on ? styles.hbOn : ""} ${pop && on ? styles.hbPop : ""}`} style={{ fontSize: size }} aria-hidden="true">
+      <span className={styles.hbRing} />
+      {BURST.map(([a, c, c2]) => (
+        <span key={a} className={styles.hbDot} style={{ "--a": a, "--c": c, "--c2": c2 } as React.CSSProperties}>
+          <i />
+          <i />
+        </span>
+      ))}
+      <svg viewBox="0 0 52 52" className={styles.hbSvg}>
+        <path className={styles.hbF} d={HEART_D} />
+        <path className={styles.hbO} d={HEART_D} />
+      </svg>
+    </span>
+  );
+}
+
+// Lucian UX/UI Prompt #028 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#028
+// 댓글·답글 입력칸 — #028 "늘어나는 댓글 입력창". 글을 쓸수록 높이가 부드럽게 늘어나고(0.25s, 여섯 줄 넘으면 안에서 스크롤),
+// 오른쪽 아래 고리가 쓴 만큼 차오름. 20자 남으면 고리가 커지며 주황 + 남은 글자 수.
+// Enter = 등록, Shift+Enter = 줄바꿈(한글 조합 중 Enter는 무시).
+const COMMENT_MAX = 500;
 function CommentForm({
   placeholder,
   disabled,
@@ -137,9 +175,18 @@ function CommentForm({
   const fit = () => {
     const el = ta.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight + 2, 160) + "px";
+    const h = el.style.height;
+    el.style.transition = "none";
+    el.style.height = "24px";
+    const need = Math.min(144, el.scrollHeight);
+    el.style.height = h || "24px";
+    void el.offsetHeight;
+    el.style.transition = "";
+    el.style.height = need + "px";
+    el.style.overflowY = el.scrollHeight > 144 ? "auto" : "hidden";
   };
+  const n = Array.from(text).length;
+  const rest = COMMENT_MAX - n;
   const submit = async (e?: FormEvent) => {
     e?.preventDefault();
     if (!isLoggedIn) return startLogin();
@@ -164,13 +211,18 @@ function CommentForm({
   };
   return (
     <>
-      <form className={styles.cform} onSubmit={submit}>
+      <form
+        className={`${styles.cbox} ${rest <= 20 ? styles.cNear : ""} ${rest <= 0 ? styles.cOver : ""}`}
+        style={{ "--p": Math.min(1, n / COMMENT_MAX).toFixed(3) } as React.CSSProperties}
+        onSubmit={submit}
+      >
         <textarea
           ref={ta}
-          className="input"
+          className={styles.cta}
           rows={1}
-          maxLength={500}
+          maxLength={COMMENT_MAX}
           placeholder={placeholder}
+          aria-label={placeholder}
           disabled={disabled}
           value={text}
           onChange={(e) => {
@@ -179,14 +231,25 @@ function CommentForm({
           }}
           onKeyDown={onKey}
         />
-        {onCancel && (
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            취소
+        <div className={styles.cfoot}>
+          <span className={styles.cring} aria-hidden="true">
+            <svg viewBox="0 0 30 30">
+              <circle className={styles.cbg} cx="15" cy="15" r="12" />
+              <circle className={styles.cfg} cx="15" cy="15" r="12" />
+            </svg>
+            <span className={`${styles.cleft} num`}>{rest}</span>
+          </span>
+          <span className={styles.csep} aria-hidden="true" />
+          {onCancel && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onCancel}>
+              취소
+            </button>
+          )}
+          <button type="submit" className={styles.csend} disabled={busy} aria-disabled={isLoggedIn && !text.trim()}>
+            {isLoggedIn ? "등록" : "로그인"}
           </button>
-        )}
-        <button type="submit" className="btn btn-primary" disabled={busy}>
-          {isLoggedIn ? "등록" : "로그인"}
-        </button>
+        </div>
+        {rest <= 20 && <span className="sr-only" aria-live="polite">{rest}자 남았어요</span>}
       </form>
       {err && <p className={styles.err}>{err}</p>}
     </>

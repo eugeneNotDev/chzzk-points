@@ -201,3 +201,76 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── 옆 칸 ── */
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: st;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.steps li {
+  counter-increment: st;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 36px;
+  font-size: 13.5px;
+}
+.steps li::before {
+  content: counter(st);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 800;
+}
+.steps span {
+  color: var(--c-text-3);
+  line-height: 1.5;
+}
+.mbEmpty {
+  color: var(--c-text-3);
+  font-size: 14px;
+}
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mbRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 14px;
+}
+.mbRow span {
+  color: var(--c-text-3);
+}
+.mbBig {
+  padding-top: 12px;
+  border-top: 1px solid var(--c-border);
+}
+.mbBig b {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--c-accent);
+}
+.mbBig small {
+  margin-left: 2px;
+  font-size: 13px;
+  color: var(--c-text-3);
+}

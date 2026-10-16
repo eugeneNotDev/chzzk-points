@@ -129,10 +129,16 @@
 }
 
 /* ── 바로가기 ── */
+/* 폰 2×2, 그 이상 한 줄 4칸 — 3+1로 하나만 남는 줄이 안 생기게 */
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+@media (min-width: 640px) {
+  .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 .tile {
   display: flex;

@@ -11,6 +11,8 @@ import { BRAND_MARK_URL } from "../../lib/config";
 import { AnimatedNumber } from "../AnimatedNumber";
 import { Avatar } from "../Avatar";
 import { NotificationBell } from "./NotificationBell";
+import { useScrollHeader } from "./useScrollHeader";
+import { ScrollTopButton } from "./ScrollTopButton";
 import styles from "./AppLayout.module.css";
 
 function currentItem(pathname: string): NavItem | undefined {
@@ -169,6 +171,7 @@ export function AppLayout() {
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = useState(false);
   const item = currentItem(location.pathname);
+  const headerRef = useScrollHeader();
 
   useEffect(() => preloadPages(), []);
   // 화면이 바뀌면 맨 위로(그려지기 전에 올려서 깜빡임 없게).
@@ -199,7 +202,7 @@ export function AppLayout() {
       </aside>
 
       <div className={styles.main}>
-        <header className={styles.topbar}>
+        <header ref={headerRef} className={styles.topbar}>
           <Link to="/" className={`${styles.brand} ${styles.mobileOnly}`}>
             <img src={BRAND_MARK_URL} alt="" width={30} height={30} />
             <span>유진 팬보드</span>
@@ -211,6 +214,7 @@ export function AppLayout() {
             <ThemeButton />
             <TopUser />
           </div>
+          <span className={styles.topProgress} data-progress aria-hidden="true" />
         </header>
         <main className={styles.content}>
           <Outlet />
@@ -233,6 +237,7 @@ export function AppLayout() {
         </button>
       </nav>
 
+      <ScrollTopButton />
       {sheetOpen && <MoreSheet onClose={() => setSheetOpen(false)} />}
     </div>
   );

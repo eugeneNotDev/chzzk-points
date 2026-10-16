@@ -1,4 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { LoadError } from "../../components/LoadError";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, EyeOff, Heart, Image as ImageIcon, MessageCircle, PenLine, Search, X } from "lucide-react";
@@ -8,8 +9,9 @@ import { PageHead } from "../../components/ui";
 import { startLogin, useAuth } from "../../lib/auth";
 import { BOARD_CFG, boardCall, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
+import { EmptySearch } from "./EmptySearch";
 import styles from "./Board.module.css";
-import { SkeletonList } from "../../components/Skeleton";
+import { SkeletonList, useBloom } from "../../components/Skeleton";
 
 // 작성자 이름 — 게시판에선 칭호를 안 붙임(칭호는 랭킹에서만). badge는 서버가 주지만 일부러 안 씀.
 export function Who({ name, mine }: { name: string; badge?: ListPost["badge"]; mine?: boolean }) {
@@ -55,6 +57,15 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
       return { posts: r2.posts.slice(offset, offset + PAGE_SIZE), total: r2.total, pageSize: PAGE_SIZE };
     },
   });
+  const goSearch = (text: string, f: Field) => {
+    const sp = new URLSearchParams();
+    if (text) {
+      sp.set("q", text);
+      if (f !== "title") sp.set("field", f);
+    }
+    const qs = sp.toString();
+    nav(qs ? `${cfg.path}?${qs}` : cfg.path);
+  };
   // 페이지 이동 주소 — 검색 중이면 검색어를 유지
   const pageUrl = (p: number) => {
     const sp = new URLSearchParams();
@@ -66,6 +77,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
     const qs = sp.toString();
     return qs ? `${cfg.path}?${qs}` : cfg.path;
   };
+  const bloom = useBloom(q.isLoading);
   const seen = loadSeen();
   const pages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   // 페이지 번호는 10개씩 묶음(1~10, 11~20 …) — 네이버 카페처럼. 폰에선 한 줄에 들어가게 5개씩.
@@ -80,7 +92,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
 
       <Card flush>
         {q.isLoading && <SkeletonList rows={6} />}
-        {q.isError && <EmptyState>글 목록을 불러오지 못했어요.</EmptyState>}
+        {q.isError && <LoadError what="글 목록" onRetry={() => q.refetch()} />}
         {search && q.data && (
           <div className={styles.searchInfo}>
             <span>
@@ -91,8 +103,13 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
             </Link>
           </div>
         )}
-        {q.data?.posts.length === 0 && <EmptyState>{search ? "검색 결과가 없어요." : "아직 글이 없어요. 첫 글을 남겨보세요!"}</EmptyState>}
-        <ul className={styles.list}>
+        {q.data?.posts.length === 0 &&
+          (search ? (
+            <EmptySearch board={board} q={search} field={field} onSearch={goSearch} onClear={() => nav(cfg.path)} />
+          ) : (
+            <EmptyState>아직 글이 없어요. 첫 글을 남겨보세요!</EmptyState>
+          ))}
+        <ul className={`${styles.list} ${bloom}`}>
           {q.data?.posts.map((p) => {
             const veiled = p.hidden && !p.title;
             const preview = String(p.preview || "")
@@ -158,32 +175,12 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
 
       {/* 따로 떨어진 칸: 페이지 번호 + 검색 */}
       <section className={styles.bottomBox} aria-label="페이지 이동·검색">
-        <nav className={styles.pager} aria-label="페이지">
-          <button type="button" className={styles.pgArrow} disabled={start === 0} onClick={() => nav(pageUrl(start - 1))} aria-label="이전 페이지 묶음">
-            <ChevronLeft size={16} aria-hidden="true" />
-          </button>
-          {Array.from({ length: Math.max(1, end - start) }, (_, i) => start + i).map((i) => (
-            <button key={i} type="button" className={`${styles.pg} num`} aria-current={i === page ? "page" : undefined} onClick={() => nav(pageUrl(i))}>
-              {i + 1}
-            </button>
-          ))}
-          <button type="button" className={styles.pgArrow} disabled={end >= pages} onClick={() => nav(pageUrl(end))} aria-label="다음 페이지 묶음">
-            <ChevronRight size={16} aria-hidden="true" />
-          </button>
-        </nav>
+        <Pager page={page} start={start} end={end} pages={pages} go={(p) => nav(pageUrl(p))} />
         <BoardSearch
           board={board}
           search={search}
           field={field}
-          onSearch={(text, f) => {
-            const sp = new URLSearchParams();
-            if (text) {
-              sp.set("q", text);
-              if (f !== "title") sp.set("field", f);
-            }
-            const qs = sp.toString();
-            nav(qs ? `${cfg.path}?${qs}` : cfg.path);
-          }}
+          onSearch={goSearch}
         />
       </section>
     </div>
@@ -220,5 +217,60 @@ function BoardSearch({ board, search, field, onSearch }: { board: BoardKind; sea
         </button>
       </div>
     </form>
+  );
+}
+
+// Lucian UX/UI Prompt #043 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#043
+// 늘어나는 페이지 번호 — 강조 알약이 가는 쪽 끝부터 먼저 늘어나고(0.32s) 반대쪽 끝이 늦게 따라와(0.55s 스프링, 0.08s 뒤)
+// 고무줄처럼 도착. 좌우 방향키로도 옮김.
+function Pager({ page, start, end, pages, go }: { page: number; start: number; end: number; pages: number; go: (p: number) => void }) {
+  const track = useRef<HTMLDivElement>(null);
+  const ind = useRef<HTMLSpanElement>(null);
+  const prev = useRef<number | null>(null);
+  // 같은 묶음 안에서 옮길 때만 늘어나는 움직임, 처음·묶음이 바뀔 땐 바로 그 자리에(렌더 중에 정해야 클래스가 위치보다 먼저 붙음)
+  // (데이터가 늦게 와서 다시 그려져도 방향이 유지되게 ref에 둠 — 클래스가 빠지면 움직이던 알약이 툭 끊김)
+  const dirRef = useRef(0);
+  const p0 = prev.current;
+  if (p0 !== page) dirRef.current = p0 != null && p0 >= start && p0 < end ? Math.sign(page - p0) : 0;
+  const dir = dirRef.current;
+  useLayoutEffect(() => {
+    const place = () => {
+      const t = track.current;
+      const b = t?.querySelector<HTMLButtonElement>('[aria-current="page"]');
+      if (!t || !b || !ind.current) return;
+      ind.current.style.setProperty("--l", `${b.offsetLeft}px`);
+      ind.current.style.setProperty("--r", `${t.clientWidth - b.offsetLeft - b.offsetWidth}px`);
+    };
+    prev.current = page;
+    place();
+    const ro = new ResizeObserver(place);
+    if (track.current) ro.observe(track.current);
+    return () => ro.disconnect();
+  }, [page, start, end]);
+  const keyNav = (e: React.KeyboardEvent) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!d) return;
+    const n = page + d;
+    if (n < 0 || n >= pages) return;
+    e.preventDefault();
+    go(n);
+  };
+  return (
+    <nav className={styles.pager} aria-label="페이지" onKeyDown={keyNav}>
+      <button type="button" className={styles.pgArrow} disabled={start === 0} onClick={() => go(start - 1)} aria-label="이전 페이지 묶음">
+        <ChevronLeft size={16} aria-hidden="true" />
+      </button>
+      <div ref={track} className={`${styles.pgTrack} ${dir > 0 ? styles.goR : dir < 0 ? styles.goL : ""}`}>
+        <span ref={ind} className={styles.pgInd} aria-hidden="true" />
+        {Array.from({ length: Math.max(1, end - start) }, (_, i) => start + i).map((i) => (
+          <button key={i} type="button" className={`${styles.pg} num`} aria-current={i === page ? "page" : undefined} aria-label={`${i + 1}페이지`} onClick={() => go(i)}>
+            {i + 1}
+          </button>
+        ))}
+      </div>
+      <button type="button" className={styles.pgArrow} disabled={end >= pages} onClick={() => go(end)} aria-label="다음 페이지 묶음">
+        <ChevronRight size={16} aria-hidden="true" />
+      </button>
+    </nav>
   );
 }

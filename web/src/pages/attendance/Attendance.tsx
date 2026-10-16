@@ -1,7 +1,7 @@
 // 출석체크 + 방송 코드.
 //  - 출석: 방송 1번에 1번(방송 시작일 기준). 1회 100P, 10번째마다 +100P, 100번째마다 +1,000P — 금액은 서버가 내려줌.
 //  - 방송 코드: 방송에서 알려준 코드를 정해진 시간 안에 입력하면 포인트.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { Card } from "../../components/Card";
@@ -10,6 +10,8 @@ import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, WEEK_KO } from "../../lib/format";
 import { supabase } from "../../lib/supabase";
+import { fireConfetti } from "../../lib/confetti";
+import { StreakFlame } from "./StreakFlame";
 import styles from "./Attendance.module.css";
 
 type MonthData = {
@@ -136,6 +138,8 @@ export default function Attendance() {
             : `출석체크 완료! +${fmt(data.pointsEarned ?? 100)}P 받았어요.`,
         kind: "ok",
       });
+      // 10번째·100번째 보너스면 출석 버튼에서 색종이
+      if (data.bonus > 0 || (data.milestoneBonus ?? 0) > 0) setTimeout(() => fireConfetti(document.querySelector(`.${styles.checkBtn}`)), 700);
     } catch (e) {
       const code = e instanceof ApiError ? e.body.error : "";
       if (code === "not_live") setMsg({ text: "지금은 방송 중이 아니에요.", kind: "error" });
@@ -157,7 +161,9 @@ export default function Attendance() {
       <PageHead title="출석체크" desc="방송 중에 출석하고 포인트를 받아요. 방송 한 번에 한 번이에요." />
 
       <div className={styles.layout}>
-        <Card className={styles.checkCard}>
+        <div className={styles.leftCol}>
+        <StreakFlame today={today} lastAttended={status?.attendedDates} />
+        <Card className={styles.checkCard} tone="feature">
           <div className={styles.live}>
             <span className={`${styles.dot} ${status?.isLive ? styles.dotLive : ""}`} aria-hidden="true" />
             {status ? (status.isLive ? "방송 중" : "방송 종료") : "확인 중"}
@@ -186,6 +192,7 @@ export default function Attendance() {
             <ProgressRow label={`${mEvery}번째마다 +${fmt(milestone)}P`} left={mLeft} every={mEvery} soon={mLeft === 1 && !status?.checkedToday} />
           </div>
         </Card>
+        </div>
 
         <Card className={styles.calCard}>
           <div className={styles.top}>
@@ -254,17 +261,58 @@ export default function Attendance() {
   );
 }
 
+// Lucian UX/UI Prompt #372 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#372
+// 보너스까지 진행 막대 — #372 "차오르면 레벨 업하는 경험치"의 막대 움직임.
+// 출석하면 막대가 반짝이며 차오르고(0.5s), 가득 차면 금빛 테두리로 번쩍인 뒤 "보너스!" 배너가 뜨고 0부터 다시 채움.
 function ProgressRow({ label, left, every, soon }: { label: string; left: number; every: number; soon: boolean }) {
-  const pct = ((every - left) / every) * 100;
+  const done = every - left;
+  const [shown, setShown] = useState(done);
+  const [fx, setFx] = useState<"" | "gain" | "full" | "up">("");
+  const prev = useRef(done);
+  const fill = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const p = prev.current;
+    prev.current = done;
+    if (p === done) return;
+    const rm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // 줄었으면(= 한 바퀴 돌아 보너스) 가득 찬 막대를 잠깐 보여준 뒤 0부터
+    if (done < p) {
+      setShown(every);
+      setFx("full");
+      const t1 = setTimeout(() => {
+        const f = fill.current;
+        if (f) {
+          f.style.transition = "none";
+          f.style.width = "0%";
+          void f.offsetWidth;
+          f.style.transition = "";
+        }
+        setShown(done);
+        setFx("up");
+      }, rm ? 0 : 650);
+      const t2 = setTimeout(() => setFx(""), rm ? 0 : 2250);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+    setShown(done);
+    setFx("");
+    requestAnimationFrame(() => setFx("gain"));
+  }, [done, every]);
+  const pct = Math.min(100, (shown / every) * 100);
   return (
-    <div className={styles.pRow}>
+    <div className={`${styles.pRow} ${fx === "gain" ? styles.xpGain : ""} ${fx === "full" ? styles.xpFull : ""} ${fx === "up" ? styles.xpUp : ""}`}>
       <div className={styles.pHead}>
         <span>{label}</span>
         <span className={soon ? styles.soon : "muted"}>{soon ? "다음 출석에 보너스!" : `${left}회 남음`}</span>
       </div>
-      <div className={styles.bar}>
-        <span style={{ width: `${pct}%` }} />
+      <div className={styles.bar} role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={every} aria-valuenow={shown}>
+        <span ref={fill} style={{ width: `${pct}%` }} />
       </div>
+      <span className={styles.xpBanner} aria-hidden="true">
+        보너스!
+      </span>
     </div>
   );
 }

@@ -1,0 +1,1 @@
+import{r as s}from"./react-CRedkYGM.js";const a=new Map;function r(t){let e=a.get(t);return e||(e=window.matchMedia(t),a.set(t,e)),e}function o(t){return s.useSyncExternalStore(e=>{const n=r(t);return n.addEventListener("change",e),()=>n.removeEventListener("change",e)},()=>r(t).matches,()=>!1)}const i="(min-width: 1200px)";export{i as S,o as u};

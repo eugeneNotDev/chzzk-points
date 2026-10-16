@@ -1,5 +1,6 @@
 // 방종곡 신청 — songs 함수. 신청은 무료, 하루 1곡(한국시간 0시 초기화), 대기 중인 곡과 중복 불가.
 // 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기.
+import { LoadError } from "../../components/LoadError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Headphones, Music2, Search, X } from "lucide-react";
@@ -141,6 +142,8 @@ export default function Songs() {
     <div className="page">
       <PageHead title="방종곡 신청" desc="방송 끝날 때 틀었으면 하는 노래를 신청해주세요." />
 
+      <div className="split">
+      <aside className="split-aside split-aside-first">
       <section className={styles.hero}>
         <div className={styles.heroTop}>
           <span className={styles.heroIc} aria-hidden="true">
@@ -182,7 +185,9 @@ export default function Songs() {
           <li>방종 때 순서대로 틀어드려요</li>
         </ul>
       </section>
+      </aside>
 
+      <div className="split-main">
       <Card title="신청 리스트" extra={<span className="muted">신청순</span>} flush>
         {s?.isAdmin && (
           <div className={styles.adminBar}>
@@ -193,7 +198,7 @@ export default function Songs() {
           </div>
         )}
         {q.isLoading && <SkeletonList rows={4} variant="row" />}
-        {q.isError && <EmptyState>리스트를 불러오지 못했어요.</EmptyState>}
+        {q.isError && <LoadError what="신청 리스트" onRetry={() => q.refetch()} />}
         {s && s.items.length === 0 && (
           <EmptyState>
             <Headphones size={28} aria-hidden="true" />
@@ -242,6 +247,8 @@ export default function Songs() {
       </Card>
 
       {s?.isAdmin && <History />}
+      </div>
+      </div>
     </div>
   );
 }
@@ -305,7 +312,7 @@ function History() {
           검색
         </button>
       </form>
-      {q.isError && <EmptyState>기록을 불러오지 못했어요.</EmptyState>}
+      {q.isError && <LoadError what="신청 기록" onRetry={() => q.refetch()} />}
       {q.isSuccess && items.length === 0 && <EmptyState>{query ? `"${query}" 검색 결과가 없어요.` : "아직 틀었던 곡이 없어요."}</EmptyState>}
       <ul className={styles.list}>
         {items.map((it) => (

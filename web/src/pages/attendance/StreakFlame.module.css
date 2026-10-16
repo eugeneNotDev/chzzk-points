@@ -1,0 +1,154 @@
+/* Lucian UX/UI Prompt #379 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#379
+   크기·색·움직임 값은 원본 그대로, 폭만 칸에 맞게 늘어남(원본 340×340). */
+.u379 {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: radial-gradient(90% 70% at 50% 35%, #3b1f0e, #170b05 75%);
+  box-shadow: 0 0 0 1px var(--c-border), 0 30px 60px -36px rgba(0, 0, 0, 0.72);
+  color: #fff4e6;
+}
+.fl {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  width: 120px;
+  height: 144px;
+  margin-left: -60px;
+  transform-origin: 50% 96%;
+  transition: transform 0.6s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.fl svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fo {
+  filter: drop-shadow(0 0 10px rgba(255, 110, 40, 0.55));
+}
+.sp circle {
+  fill: #ffd08a;
+}
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 48px;
+  width: 200px;
+  height: 200px;
+  margin-left: -100px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 146, 43, 0.35), transparent);
+  transition: opacity 0.6s, transform 0.6s;
+  pointer-events: none;
+}
+.ct {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 160px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+}
+.nw {
+  display: inline-block;
+  height: 44px;
+  overflow: hidden;
+}
+.ns {
+  display: block;
+  transition: transform 0.5s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.ns i {
+  display: block;
+  height: 44px;
+  font-style: normal;
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 900;
+  color: #ffa94d;
+  text-align: center;
+}
+.ct b {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffd8a8;
+}
+.wk {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  top: 222px;
+  max-width: 340px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  text-align: center;
+}
+.dy {
+  font-size: 10px;
+  font-weight: 800;
+  color: #c9a68a;
+}
+.dt {
+  width: 30px;
+  height: 30px;
+  margin: 4px auto 0;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 216, 168, 0.35);
+  display: grid;
+  place-items: center;
+}
+/* 방송 없던 날 — 흐린 점 */
+.off {
+  border: 0;
+  background: radial-gradient(circle, rgba(255, 216, 168, 0.18) 3px, transparent 3.5px);
+}
+.on {
+  border: 0;
+  background: linear-gradient(135deg, #ff922b, #f03e3e);
+  animation: pop 0.45s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+.on::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2.5px solid #fff;
+  border-bottom: 2.5px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.today {
+  box-shadow: 0 0 0 2px #ffd8a8;
+}
+@keyframes pop {
+  from {
+    transform: scale(0.3);
+  }
+}
+.bd {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #ffd43b;
+  color: #3b1f0e;
+  font-size: 11px;
+  font-weight: 900;
+  opacity: 0;
+  transform: scale(0.5) rotate(-10deg);
+  transition: opacity 0.25s, transform 0.45s cubic-bezier(0.3, 1.8, 0.5, 1);
+}
+.isWeek .bd {
+  opacity: 1;
+  transform: rotate(6deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl {
+    transition: none;
+  }
+}

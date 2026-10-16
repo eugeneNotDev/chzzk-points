@@ -2,7 +2,15 @@
 //   <SkeletonList rows={6} />            제목 + 한 줄 (게시판·공지 목록)
 //   <SkeletonList rows={8} variant="rank" />  순위 · 이름 · 숫자
 //   <SkeletonPost />                     글 보기
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
+
+// 뼈대가 보였다가 내용이 들어온 그 순간에만 "피어나는" 효과(.bloom)를 줌 —
+// 이미 받아둔 내용으로 바로 그려질 땐 효과 없이(다른 화면 갔다 와도 붕 뜨지 않게).
+export function useBloom(loading: boolean) {
+  const wasLoading = useRef(loading);
+  if (loading) wasLoading.current = true;
+  return !loading && wasLoading.current ? "bloom" : "";
+}
 
 const line = (style: CSSProperties) => <span className="skeleton" style={style} />;
 

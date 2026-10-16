@@ -113,10 +113,20 @@
   font-weight: 700;
   color: var(--c-text-3);
 }
+/* 금액 버튼 — 넓으면 한 줄 6칸, 좁으면 3칸씩 2줄(4+2로 어긋나지 않게) */
 .chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
+}
+.chips > * {
+  min-width: 0;
+  padding-inline: 4px;
+}
+@media (max-width: 520px) {
+  .chips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .hint {
   font-size: 13px;

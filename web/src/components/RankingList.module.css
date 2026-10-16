@@ -97,3 +97,41 @@
   font-weight: 600;
   color: var(--c-text-2);
 }
+
+/* ── 순위 바뀜(Lucian #317) ── */
+.row {
+  position: relative;
+  transition: transform 0.6s cubic-bezier(0.3, 1.1, 0.4, 1), box-shadow 0.3s;
+}
+.up {
+  z-index: 2;
+  background: var(--c-surface);
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.72);
+}
+.dn {
+  z-index: 0;
+  opacity: 0.9;
+}
+.no {
+  position: relative;
+}
+.move {
+  position: absolute;
+  left: 50%;
+  top: -12px;
+  transform: translateX(-50%);
+  font: 700 10px/1 var(--font-num);
+  font-style: normal;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.moveOn {
+  opacity: 1;
+}
+.moveUp {
+  color: var(--c-accent);
+}
+.moveDn {
+  color: var(--c-red-text);
+}

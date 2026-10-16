@@ -278,3 +278,9 @@
     margin-left: auto;
   }
 }
+/* 넓은 화면 옆 칸 안에선 입력칸을 한 줄씩 */
+@media (min-width: 1200px) {
+  .form {
+    grid-template-columns: 1fr;
+  }
+}

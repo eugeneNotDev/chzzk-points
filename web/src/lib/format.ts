@@ -30,3 +30,10 @@ export function formatLeft(ms: number) {
 }
 
 export const WEEK_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+// 받침에 따라 조사 고르기 — josa("공지사항", "을", "를") → "을". 한글이 아니면 "을(를)".
+export function josa(word: string, withBatchim: string, without: string) {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  if (c < 0 || c > 11171) return `${withBatchim}(${without})`;
+  return c % 28 === 0 ? without : withBatchim;
+}

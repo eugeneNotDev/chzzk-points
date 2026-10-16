@@ -1,0 +1,170 @@
+/* Lucian UX/UI Prompt #092 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#092
+   빈 결과 부분만 가져옴(검색칸·필터 칩·결과 격자는 게시판에 이미 있음). 크기·모션 값은 원본 그대로. */
+.u092 {
+  padding: 28px 16px 24px;
+}
+.u092-none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 360px;
+  margin: 0 auto;
+}
+.u092-art {
+  width: 150px;
+  height: 92px;
+}
+.u092-art svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.u092-shelf {
+  stroke: var(--c-border-strong);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 2 9;
+}
+.u092-lens {
+  animation: u092-scan 3.6s ease-in-out infinite;
+}
+@keyframes u092-scan {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+  25% {
+    transform: translate(46px, 10px) rotate(8deg);
+  }
+  50% {
+    transform: translate(78px, -4px) rotate(-4deg);
+  }
+  75% {
+    transform: translate(30px, -8px) rotate(-10deg);
+  }
+}
+.u092-lens circle {
+  fill: color-mix(in srgb, var(--c-accent) 12%, transparent);
+  stroke: var(--c-text);
+  stroke-width: 5;
+}
+.u092-lens path {
+  stroke: var(--c-text);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.u092-lens .gl {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.7;
+  stroke-width: 3;
+}
+.u092-nt {
+  margin: 10px 0 0;
+  font-size: 16.5px;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  word-break: keep-all;
+}
+.u092-ns {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.u092-sgs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 14px;
+}
+.u092-sg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 46px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--c-surface-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  text-align: left;
+  cursor: pointer;
+  animation: u092-up 0.45s var(--ease-spring) backwards;
+  animation-delay: calc(var(--i) * 80ms + 0.1s);
+  transition: background-color 0.2s, transform 0.3s var(--ease-spring);
+}
+@keyframes u092-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.95);
+  }
+}
+.u092-sg:hover {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.u092-sg:active {
+  transform: scale(0.97);
+}
+.u092-sg:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+.u092-sg s {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--c-surface);
+  box-shadow: inset 0 0 0 1px var(--c-border-strong);
+  text-decoration: line-through;
+  text-decoration-color: var(--c-danger);
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--c-text);
+}
+.u092-sg span {
+  flex: 1;
+}
+.u092-sg b {
+  color: var(--c-accent);
+}
+.u092-sg svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.3s var(--ease-spring);
+}
+.u092-sg:hover svg {
+  transform: translateX(3px);
+}
+/* 범위를 바꿔도 결과가 없을 땐 "검색 해제" 하나만 가운데 알약으로 */
+.u092-sgs.pop {
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.u092-sgs.pop .u092-sg {
+  width: auto;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .u092-lens,
+  .u092-sg {
+    animation: none;
+  }
+}

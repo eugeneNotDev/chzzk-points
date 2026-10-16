@@ -339,7 +339,7 @@
 .page-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: 12px;
 }
 .page-head-text {
@@ -363,6 +363,57 @@
 }
 .page-desc:empty {
   display: none;
+}
+.page-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+  padding: 10px 16px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}
+.stat-label {
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--c-text);
+}
+.stat-value small {
+  margin-left: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.stat-accent .stat-value {
+  color: var(--c-accent);
+}
+.stat-gold .stat-value {
+  color: var(--c-gold);
+}
+@media (max-width: 599px) {
+  .page-stats {
+    width: 100%;
+  }
+  .stat {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 14px;
+  }
+  .stat-value {
+    font-size: 19px;
+  }
 }
 @media (max-width: 1023px) {
   .page-title {
@@ -537,4 +588,165 @@
 }
 .ptr.back {
   transition: transform 0.2s, opacity 0.2s;
+}
+
+/* ── 2단 배치 — 넓은 화면(1200px~)에서 [본문 | 옆 칸 360px], 그보다 좁으면 위아래로 쌓임.
+   옆 칸은 스크롤해도 상단바 아래에 붙어 있음. ── */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.split-main,
+.split-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .split-wide-aside {
+    grid-template-columns: minmax(0, 1fr) 420px;
+  }
+  .split-aside {
+    position: sticky;
+    top: 84px;
+  }
+}
+/* 좁은 화면에선 옆 칸을 본문보다 위에(예: 신청 폼 → 신청 리스트) */
+@media (max-width: 1199px) {
+  .split-aside-first {
+    order: -1;
+  }
+}
+@media (min-width: 1200px) {
+  .split-aside-first {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* ── 굴러가는 숫자(components/AnimatedNumber · Lucian #098) ── */
+.odo {
+  display: inline-flex;
+  align-items: flex-start;
+  height: 1.2em;
+  line-height: 1.2em;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  font-variant-numeric: tabular-nums;
+  vertical-align: bottom;
+  transition: color 0.4s;
+}
+.odo-col {
+  display: inline-flex;
+  flex-direction: column;
+  transform: translateY(calc(var(--d) * -1.2em));
+  transition: transform 0.9s cubic-bezier(0.3, 1.25, 0.5, 1);
+  transition-delay: calc(var(--i) * 45ms);
+}
+.odo-col span {
+  height: 1.2em;
+}
+/* 바깥 페이지의 "xx span" 규칙(여백·글자 크기·색)이 숫자 칸에 묻지 않게 한 단계 더 구체적으로 되돌림 */
+.odo > .odo-col,
+.odo > .odo-sym,
+.odo > .odo-col > span {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+.odo-up {
+  color: var(--c-accent);
+}
+.odo-down {
+  color: var(--c-red-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .odo-col {
+    transition: none;
+  }
+}
+
+/* ── 미끄러지는 알약 탭(components/PillTabs · Lucian #039) ── */
+.pill-tabs {
+  position: relative;
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--c-surface-2);
+  box-shadow: 0 0 0 1px var(--c-border);
+  max-width: 100%;
+}
+.pill-tabs-pill {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: var(--w, 60px);
+  border-radius: 999px;
+  background: var(--c-text);
+  transform: translateX(var(--x, 4px));
+  box-shadow: 0 8px 16px -10px rgba(0, 0, 0, 0.72);
+  transition:
+    transform 0.5s var(--ease-spring),
+    width 0.5s var(--ease-spring);
+}
+.pill-tabs-tab {
+  position: relative;
+  flex: none;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--c-text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.35s var(--ease-out);
+}
+.pill-tabs-tab:hover {
+  color: var(--c-text);
+}
+.pill-tabs-tab[aria-selected="true"] {
+  color: var(--c-bg);
+}
+.pill-tabs-tab:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+.pill-sm .pill-tabs-tab {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.pill-panel-in .pill-panel-row {
+  animation: pill-row-in 0.55s var(--ease-spring) both;
+}
+@keyframes pill-row-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--dir) * 70%));
+  }
+}
+.pill-panel {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill-tabs-pill {
+    transition: none;
+  }
+  .pill-panel-in .pill-panel-row {
+    animation: none;
+  }
 }

@@ -9,6 +9,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import { ALL_NAV_ITEMS } from "./nav";
 import Home from "./pages/Home";
 import ComingSoon from "./pages/ComingSoon";
+import NotFound from "./pages/NotFound";
 import { PAGES } from "./routes";
 import { setupAppMode } from "./lib/pwa";
 import { handleOAuthCallback } from "./lib/auth";
@@ -61,7 +62,7 @@ createRoot(document.getElementById("root")!).render(
                 />
               );
             })}
-            <Route path="*" element={<ComingSoon />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </BrowserRouter>

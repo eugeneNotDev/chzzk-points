@@ -79,19 +79,51 @@ p {
 }
 
 /* 로딩 자리표시(스켈레톤) */
+/* Lucian UX/UI Prompt #079 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#079
+   뼈대(스켈레톤) — 화면의 모든 뼈대를 빛 한 줄기가 같은 박자로 훑고 지나감.
+   원본은 뼈대마다 가로 위치만큼 빛 시작점을 당겨 맞추는데, 여기선 배경을 화면 기준(fixed)으로 깔아서 같은 효과.
+   불러오기가 끝나면 .bloom 안의 줄들이 위에서부터 차례로 제 모습으로 바뀜(components/Skeleton useBloom). */
 .skeleton {
   display: block;
   border-radius: var(--r-sm);
-  background: linear-gradient(90deg, var(--c-surface-3) 0%, var(--c-hover) 50%, var(--c-surface-3) 100%);
-  background-size: 200% 100%;
-  animation: skeleton 1.4s ease-in-out infinite;
+  background:
+    linear-gradient(100deg, transparent 28%, color-mix(in srgb, var(--c-surface-3), var(--c-text) 7%) 45%, transparent 62%) 0 0 / 700px 100% no-repeat fixed,
+    var(--c-surface-2);
+  animation: skeleton 1.6s linear infinite;
 }
 @keyframes skeleton {
   from {
-    background-position: 100% 0;
+    background-position:
+      -700px 0,
+      0 0;
   }
   to {
-    background-position: -100% 0;
+    background-position:
+      calc(100vw + 700px) 0,
+      0 0;
+  }
+}
+.bloom > * {
+  animation: bloom-in 0.6s var(--ease-spring) both;
+  animation-delay: calc(var(--bi, 0) * 40ms);
+}
+.bloom > :nth-child(2) { --bi: 1; }
+.bloom > :nth-child(3) { --bi: 2; }
+.bloom > :nth-child(4) { --bi: 3; }
+.bloom > :nth-child(5) { --bi: 4; }
+.bloom > :nth-child(6) { --bi: 5; }
+.bloom > :nth-child(7) { --bi: 6; }
+.bloom > :nth-child(8) { --bi: 7; }
+.bloom > :nth-child(n + 9) { --bi: 8; }
+@keyframes bloom-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bloom > * {
+    animation: none;
   }
 }
 
@@ -123,4 +155,13 @@ html.theme-switching *,
 html.theme-switching *::before,
 html.theme-switching *::after {
   transition: none !important;
+}
+/* 화면에는 안 보이고 화면 읽기 프로그램만 읽는 글 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

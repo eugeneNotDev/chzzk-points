@@ -1,13 +1,14 @@
 // 무료 뽑기 — 하루 한 번(한국 시간 자정 초기화) 선물 상자를 열어 포인트를 받음.
 // 포인트는 서버(free-box 함수 → DB free_box_open)가 정하고, 화면은 연출만 함. 확률은 화면에 안 보여줌.
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { Gift, LogIn } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, EmptyState } from "../components/Card";
 import { ApiError, getToken, startLogin, useAuth } from "../lib/auth";
 import { fmt, formatLeft, kstToday } from "../lib/format";
 import { openFreeBox, useFreeBox, type FreeBoxState } from "../lib/freeBox";
+import { fireConfetti } from "../lib/confetti";
 import styles from "./Freebox.module.css";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 
@@ -33,6 +34,64 @@ function GiftBoxArt({ golden }: { golden: boolean }) {
       <path d="M110 80 C 128 52, 158 52, 150 72 C 144 86, 122 84, 110 80 Z" fill={c.ribbonDark} />
       <circle cx="110" cy="80" r="9" fill="#ff8fb2" />
     </svg>
+  );
+}
+
+// Lucian UX/UI Prompt #342 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#342
+// 리본을 풀고 여는 선물 상자 — 열리는 순서는 CSS 지연으로: 리본 풀림(0~0.5초) → 뚜껑이 튀어 넘어감(0.55초~)
+// → 포인트 쪽지가 떠오름(0.7초~) + 반짝이 18개. 서버 응답을 기다리는 동안은 상자가 흔들림.
+// 오늘 이미 연 상자(static-open)는 연 상태 그대로, 움직임 없이.
+function RibbonBox({ state, disabled, onOpen, points, jackpot }: { state: "closed" | "wobble" | "open" | "static-open"; disabled: boolean; onOpen: () => void; points: number; jackpot: boolean }) {
+  const root = useRef<HTMLDivElement>(null);
+  const isOpen = state === "open" || state === "static-open";
+  useEffect(() => {
+    const r = root.current;
+    if (state !== "open" || !r || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const made: HTMLSpanElement[] = [];
+    for (let i = 0; i < 18; i++) {
+      const sp = document.createElement("span");
+      sp.className = styles.rbSp;
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.6;
+      const d = 70 + Math.random() * 90;
+      sp.style.setProperty("--dx", `${(Math.cos(a) * d).toFixed(0)}px`);
+      sp.style.setProperty("--dy", `${(Math.sin(a) * d).toFixed(0)}px`);
+      sp.style.background = (jackpot ? ["#FCC419", "#fff", "#FFE066", "#F59F00"] : ["#FCC419", "#fff", "#F783AC", "#74C0FC"])[i % 4];
+      sp.style.animationDelay = `${(0.7 + Math.random() * 0.2).toFixed(2)}s`;
+      r.appendChild(sp);
+      made.push(sp);
+    }
+    const t = setTimeout(() => made.forEach((n) => n.remove()), 2200);
+    return () => {
+      clearTimeout(t);
+      made.forEach((n) => n.remove());
+    };
+  }, [state, jackpot]);
+  return (
+    <div ref={root} className={`${styles.rb} ${isOpen ? styles.rbOpen : ""} ${state === "static-open" ? styles.rbStatic : ""} ${jackpot ? styles.rbGold : ""}`}>
+      <div className={styles.rbRay} aria-hidden="true" />
+      <div className={styles.rbGift} aria-live="polite">
+        <small>{jackpot ? "황금 상자!" : state === "static-open" ? "오늘 받은 포인트" : "선물이 도착했어요"}</small>
+        <b className="num">+{fmt(points)}P</b>
+      </div>
+      <button
+        type="button"
+        className={`${styles.rbBox} ${state === "wobble" ? styles.rbWobble : ""}`}
+        aria-label={isOpen ? "열린 선물 상자" : "선물 상자, 눌러서 열기"}
+        aria-expanded={isOpen}
+        disabled={disabled}
+        onClick={onOpen}
+      >
+        <span className={styles.rbBody} />
+        <span className={styles.rbLid}>
+          <svg className={styles.rbBow} viewBox="0 0 96 44" aria-hidden="true">
+            <path d="M48 30 C30 4 6 6 10 22 C13 34 34 32 48 30 Z" fill="#FFD43B" stroke="#E8A400" strokeWidth="2" />
+            <path d="M48 30 C66 4 90 6 86 22 C83 34 62 32 48 30 Z" fill="#FFD43B" stroke="#E8A400" strokeWidth="2" />
+            <path d="M44 30 L34 44 M52 30 L62 44" stroke="#FFD43B" strokeWidth="6" strokeLinecap="round" />
+            <circle cx="48" cy="30" r="7" fill="#FAB005" />
+          </svg>
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -78,6 +137,8 @@ export default function Freebox() {
       const [res] = await Promise.all([openFreeBox(), new Promise((r) => setTimeout(r, reduce ? 200 : 1400))]);
       setResult({ points: res.points, jackpot: res.jackpot });
       setPhase("opened");
+      // 황금 상자면 상자가 열린 뒤(쪽지가 떠오를 때쯤) 금빛 색종이
+      if (res.jackpot) setTimeout(() => fireConfetti(document.querySelector(`.${styles.rbBox}`), ["#FCC419", "#FFE066", "#F59F00", "#fff", "#FF922B"]), 800);
       // 캐시 갱신 — 상단 포인트, 홈 바로가기 문구, 최근 기록이 같이 바뀜
       qc.setQueryData<FreeBoxState>(["free-box", getToken()], (prev) =>
         prev
@@ -149,47 +210,13 @@ export default function Freebox() {
             {q.isLoading ? (
               <span className="skeleton" style={{ width: 200, height: 200, borderRadius: 24 }} />
             ) : (
-              <AnimatePresence mode="wait">
-                {!opened ? (
-                  <motion.button
-                    key="box"
-                    type="button"
-                    className={styles.box}
-                    onClick={onOpen}
-                    disabled={phase !== "ready"}
-                    aria-label="선물 상자 열기"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={
-                      phase === "opening"
-                        ? { opacity: 1, scale: 1, rotate: [0, -7, 7, -5, 5, -3, 3, 0], transition: { duration: 0.7, repeat: Infinity } }
-                        : phase === "done"
-                          ? { opacity: 0.45, scale: 0.92, rotate: 0, y: 0, filter: "grayscale(0.7)" }
-                          : { opacity: 1, scale: 1, rotate: 0, y: reduce ? 0 : [0, -10, 0], transition: { y: { duration: 3.2, repeat: Infinity, ease: "easeInOut" } } }
-                    }
-                    exit={{ opacity: 0, scale: 1.25, transition: { duration: 0.25 } }}
-                    whileHover={phase === "ready" ? { scale: 1.04 } : undefined}
-                    whileTap={phase === "ready" ? { scale: 0.96 } : undefined}
-                  >
-                    <GiftBoxArt golden={false} />
-                  </motion.button>
-                ) : (
-                  <motion.div
-                    key="prize"
-                    className={styles.prize}
-                    role="status"
-                    aria-live="polite"
-                    initial={{ opacity: 0, scale: 0.4 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 14 }}
-                  >
-                    <span className={styles.prizeLabel}>{jackpot ? "황금 상자" : "상자에서 나왔어요"}</span>
-                    <span className={`${styles.prizeAmount} num`}>
-                      +{fmt(result?.points ?? 0)}
-                      <span>P</span>
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <RibbonBox
+                state={phase === "done" ? "static-open" : opened ? "open" : phase === "opening" ? "wobble" : "closed"}
+                disabled={phase !== "ready"}
+                onOpen={onOpen}
+                points={opened ? (result?.points ?? 0) : (q.data?.todayPoints ?? 0)}
+                jackpot={jackpot}
+              />
             )}
             <p className={styles.caption}>{caption}</p>
           </div>

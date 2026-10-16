@@ -84,14 +84,29 @@ export function Modal({
   );
 }
 
-export function PageHead({ title, desc, actions }: { title: string; desc?: ReactNode; actions?: ReactNode }) {
+// 페이지 머리 — 제목·설명 + 오른쪽(폰에선 아래)에 핵심 숫자(stats)와 버튼(actions)
+export function PageHead({ title, desc, actions, stats }: { title: string; desc?: ReactNode; actions?: ReactNode; stats?: ReactNode }) {
   return (
     <div className="page-head">
       <div className="page-head-text">
         <h2 className="page-title">{title}</h2>
         {desc && <p className="page-desc">{desc}</p>}
       </div>
+      {stats && <div className="page-stats">{stats}</div>}
       {actions}
+    </div>
+  );
+}
+
+// 핵심 숫자 한 칸 — 작은 이름 위, 큰 숫자 + 작은 단위. 사이트 모든 "보유 포인트" 같은 표시가 이 모양.
+export function Stat({ label, value, unit, tone }: { label: ReactNode; value: ReactNode; unit?: string; tone?: "accent" | "gold" }) {
+  return (
+    <div className={`stat ${tone ? `stat-${tone}` : ""}`}>
+      <span className="stat-label">{label}</span>
+      <span className="stat-value num">
+        {value}
+        {unit && <small>{unit}</small>}
+      </span>
     </div>
   );
 }

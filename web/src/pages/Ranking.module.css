@@ -44,3 +44,182 @@
   font-size: 12px;
   color: var(--c-text-4);
 }
+
+/* ── 1~3위 시상대 ── */
+.podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+.step {
+  --pc: var(--c-silver);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 20px 14px 0;
+  border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 14%, var(--c-surface)), var(--c-surface) 70%);
+  border: 1px solid color-mix(in srgb, var(--pc) 30%, var(--c-border));
+  text-align: center;
+  overflow: hidden;
+}
+.p1 {
+  --pc: var(--c-gold);
+  padding-top: 28px;
+}
+.p3 {
+  --pc: var(--c-bronze);
+}
+.stepMe {
+  box-shadow: inset 0 0 0 2px var(--c-accent);
+}
+.stepClick {
+  cursor: pointer;
+}
+.medal {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pc) 22%, transparent);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pc) 70%, transparent);
+  color: var(--pc);
+  font-size: 17px;
+  font-weight: 800;
+}
+.p1 .medal {
+  width: 46px;
+  height: 46px;
+}
+.stepName {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 15px;
+}
+.stepName b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+.p1 .stepName {
+  font-size: 17px;
+}
+.stepPts {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--c-text);
+}
+.p1 .stepPts {
+  font-size: 26px;
+  color: var(--pc);
+}
+.stepPts small,
+.myPts small,
+.myRank small {
+  margin-left: 2px;
+  font-size: 0.55em;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+/* 단상 — 1위가 제일 높게 */
+.stepBase {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  margin: 6px -14px 0;
+  background: color-mix(in srgb, var(--pc) 16%, var(--c-surface-2));
+  border-top: 1px solid color-mix(in srgb, var(--pc) 35%, transparent);
+  color: color-mix(in srgb, var(--pc) 80%, var(--c-text));
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.p1 .stepBase {
+  height: 56px;
+}
+.p2 .stepBase {
+  height: 44px;
+}
+
+/* ── 내 순위 ── */
+.myRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.myRank {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--c-accent);
+}
+.myPts {
+  font-size: 20px;
+  font-weight: 800;
+}
+.myHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text-2);
+  font-size: 13.5px;
+}
+.myHint b {
+  color: var(--c-text);
+}
+
+/* 옆 칸 안에선 명예의 전당을 2칸 격자로 */
+@media (min-width: 1200px) {
+  .hofWrap .hof {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .hofWrap .hofCard {
+    min-width: 0;
+  }
+}
+@media (max-width: 599px) {
+  .podium {
+    gap: 8px;
+  }
+  .step {
+    padding: 14px 8px 0;
+  }
+  .p1 {
+    padding-top: 20px;
+  }
+  .stepName {
+    font-size: 13px;
+  }
+  .p1 .stepName {
+    font-size: 14px;
+  }
+  .stepName :global(.title-badge) {
+    max-width: 100%;
+  }
+  .stepPts {
+    font-size: 15px;
+  }
+  .p1 .stepPts {
+    font-size: 18px;
+  }
+  .stepBase {
+    margin: 6px -8px 0;
+  }
+}

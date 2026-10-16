@@ -80,7 +80,7 @@
   align-items: flex-start;
 }
 .col {
-  flex: 1 1 380px;
+  flex: 1 1 460px; /* 태블릿 폭에선 한 칸으로(두 칸이면 칭호 카드가 눌림) */
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -269,3 +269,4 @@
     grid-column: span 2;
   }
 }
+.maTabs { margin-left: auto; }

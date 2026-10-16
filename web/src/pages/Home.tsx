@@ -1,3 +1,4 @@
+import { LoadError } from "../components/LoadError";
 import { useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, CircleCheck, Gift, Image as ImageIcon, Play, Store, Ticket, type LucideIcon } from "lucide-react";
@@ -11,6 +12,8 @@ import { isBoardPostNew, useBoardPreview, useNoticePreview, useRanking, useUpcom
 import { isNoticeNew, useNoticeReadVersion } from "../lib/notices";
 import { useBroadcastStatus } from "../lib/queries";
 import { useTableRefetch } from "../lib/realtime";
+import { PillPanel, PillTabs } from "../components/PillTabs";
+import { useBloom } from "../components/Skeleton";
 import styles from "./Home.module.css";
 
 // 넓은 모니터(3단 배치)에선 목록을 더 길게 보여줘서 아래쪽 빈 공간을 채움
@@ -129,13 +132,15 @@ function QuickTiles() {
 
 function NoticePreview() {
   const q = useNoticePreview(useWide() ? 8 : 5);
+  const bloomN = useBloom(q.isLoading);
   useNoticeReadVersion();
   useTableRefetch("notices", [["notices"]]);
   return (
     <Card title="공지사항" moreTo="/notice.html" flush className={styles.notices}>
       {q.isLoading && <ListSkeleton rows={4} />}
-      {q.isError && <EmptyState>공지사항을 불러오지 못했어요.</EmptyState>}
+      {q.isError && <LoadError what="공지사항" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>등록된 공지사항이 없어요.</EmptyState>}
+      <div className={bloomN}>
       {q.data?.map((n) => (
         <Link key={n.id} to={`/notice.html?id=${n.id}`} className={styles.row}>
           {n.pinned_at && <span className={`${styles.tag} ${styles.tagAccent}`}>고정</span>}
@@ -144,6 +149,7 @@ function NoticePreview() {
           <span className={`${styles.rowMeta} num`}>{shortDate(n.created_at)}</span>
         </Link>
       ))}
+      </div>
     </Card>
   );
 }
@@ -151,13 +157,14 @@ function NoticePreview() {
 function RankingPreview() {
   const n = useWide() ? 8 : 5;
   const q = useRanking(n);
+  const bloomR = useBloom(q.isLoading);
   useTableRefetch("ranking_pings", [["ranking"]], { event: "INSERT", minIntervalMs: 8000, settleMs: 800 });
   return (
     <Card title="포인트 랭킹" moreTo="/ranking.html" flush className={styles.ranking}>
       {q.isLoading && <ListSkeleton rows={n} avatar />}
-      {q.isError && <EmptyState>랭킹을 불러오지 못했어요.</EmptyState>}
+      {q.isError && <LoadError what="랭킹" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>아직 랭킹에 등록된 유저가 없어요.</EmptyState>}
-      {q.data && <RankingList rows={q.data} />}
+      {q.data && <RankingList rows={q.data} className={bloomR} />}
     </Card>
   );
 }
@@ -178,18 +185,13 @@ function BoardPreview() {
       className={styles.board}
       moreTo={tab === "review" ? "/board-review.html" : "/board-free.html"}
       extra={
-        <div role="tablist" aria-label="게시판 고르기" className={styles.segment}>
-          {BOARD_TABS.map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? styles.segOn : ""} onClick={() => setTab(t.id)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <PillTabs size="sm" label="게시판 고르기" value={tab} onChange={setTab} options={BOARD_TABS.map((t) => ({ value: t.id, label: t.label }))} />
       }
     >
       {q.isLoading && <ListSkeleton rows={4} />}
-      {q.isError && <EmptyState>게시판 글을 불러오지 못했어요.</EmptyState>}
+      {q.isError && <LoadError what="게시판 글" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>아직 게시판에 글이 없어요.</EmptyState>}
+      <PillPanel index={BOARD_TABS.findIndex((t) => t.id === tab)}>
       {q.data?.map((p) => (
         <Link key={`${p.board}-${p.id}`} to={`/${p.board === "review" ? "board-review" : "board-free"}.html?post=${p.id}`} className={styles.row}>
           <span className={`${styles.boardChip} ${p.board === "review" ? styles.chipReview : styles.chipFree}`}>{p.board === "review" ? "후기" : "자유"}</span>
@@ -203,6 +205,7 @@ function BoardPreview() {
           <span className={styles.rowMeta}>{relTime(p.createdAt)}</span>
         </Link>
       ))}
+      </PillPanel>
     </Card>
   );
 }

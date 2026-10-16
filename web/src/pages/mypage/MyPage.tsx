@@ -1,4 +1,5 @@
 // 마이페이지 — 포인트·칭호·등급 요약, 앱 설치/방송 알림, 칭호 장착, 랭킹 공개 설정, 포인트 내역, 내 활동.
+import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +14,7 @@ import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, relTime } from "../../lib/format";
 import { useMe, useTitles, type Me } from "../../lib/queries";
+import { PillTabs } from "../../components/PillTabs";
 import styles from "./MyPage.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
@@ -220,7 +222,7 @@ function PointsLog() {
       <p className="muted" style={{ fontSize: 13, padding: "0 12px 8px" }}>
         출석·상점·미니게임·관리자 지급/차감 내역을 최신순으로 보여줘요.
       </p>
-      {q.isError && <EmptyState>불러오기에 실패했어요.</EmptyState>}
+      {q.isError && <LoadError what="포인트 내역" onRetry={() => q.refetch()} />}
       {q.data?.entries.length === 0 && <EmptyState>아직 내역이 없어요.</EmptyState>}
       <ul className={styles.log}>
         {q.data?.entries.map((e) => (
@@ -259,14 +261,17 @@ function MyActivity() {
       title="내 활동"
       flush
       extra={
-        <div role="tablist" className="segment" style={{ marginLeft: "auto" }}>
-          <button type="button" role="tab" aria-selected={tab === "posts"} onClick={() => setTab("posts")}>
-            내 글 {d?.postCount ?? ""}
-          </button>
-          <button type="button" role="tab" aria-selected={tab === "comments"} onClick={() => setTab("comments")}>
-            내 댓글 {d?.commentCount ?? ""}
-          </button>
-        </div>
+        <PillTabs
+          size="sm"
+          label="내 활동 종류"
+          className={styles.maTabs}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "posts", label: `내 글 ${d?.postCount ?? ""}` },
+            { value: "comments", label: `내 댓글 ${d?.commentCount ?? ""}` },
+          ]}
+        />
       }
     >
       <div className={styles.maStats}>
@@ -283,7 +288,7 @@ function MyActivity() {
           <b className="num">{d ? `+${fmt(d.rewardTotal)}P` : "-"}</b>
         </div>
       </div>
-      {q.isError && <EmptyState>내 활동을 불러오지 못했어요.</EmptyState>}
+      {q.isError && <LoadError what="내 활동" onRetry={() => q.refetch()} />}
       {d && tab === "posts" && d.posts.length === 0 && <EmptyState>아직 쓴 글이 없어요.</EmptyState>}
       {d && tab === "comments" && d.comments.length === 0 && <EmptyState>아직 쓴 댓글이 없어요.</EmptyState>}
       {d && tab === "posts" &&

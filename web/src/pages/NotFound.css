@@ -1,0 +1,55 @@
+/* Lucian UX/UI Prompt #089 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#089
+   색은 사이트 토큰으로만 바꿈. 크기·모션 값은 원본 그대로(바깥 상자만 380px로 조금 넓힘). */
+.nf-wrap{display:flex;justify-content:center;padding:32px 0 48px}
+.u089{position:relative;width:380px;max-width:100%;min-height:440px;display:flex;flex-direction:column;padding:18px;border-radius:30px;background:var(--c-surface);box-shadow:0 0 0 1px var(--c-border),0 30px 60px -36px rgba(0,0,0,.6);overflow:hidden;text-align:center}
+.u089-url{display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:14px;background:var(--c-surface-2);font-size:13.5px;font-weight:650;color:var(--c-text-3);text-align:left}
+.u089-url svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.u089-url b{font-weight:750;color:var(--c-text);text-decoration:underline wavy var(--c-danger);text-decoration-thickness:1.5px;text-underline-offset:4px;text-decoration-skip-ink:none;transition:color .3s}
+.u089.fixing .u089-url b{text-decoration-color:transparent}
+.u089.found .u089-url b{color:var(--c-accent);text-decoration-color:transparent}
+.u089-url b::after{content:"";display:inline-block;width:1.5px;height:15px;margin-left:1px;vertical-align:-2px;background:var(--c-accent);opacity:0}
+.u089.fixing .u089-url b::after{opacity:1;animation:u089-c .8s steps(1) infinite}
+@keyframes u089-c{50%{opacity:0}}
+.u089-num{display:flex;justify-content:center;align-items:center;gap:4px;height:96px;margin-top:20px;font-size:86px;font-weight:850;letter-spacing:-.05em;line-height:96px;font-variant-numeric:tabular-nums}
+.u089-d{height:96px;overflow:hidden;transition:transform .5s var(--ease-spring)}
+.u089-d:first-child{transform:rotate(calc(var(--r,0) * -7deg))}
+.u089-d:last-child{transform:rotate(calc(var(--r,0) * 7deg))}
+.u089-col{display:flex;flex-direction:column;transform:translateY(calc(var(--v) * -96px));transition:transform 1s cubic-bezier(.6,-.15,.25,1.2)}
+.u089-d:last-child .u089-col{transition-delay:.12s}
+.u089-col span{height:96px}
+.u089-cp{width:72px;height:72px;margin:0 2px}
+.u089-cp svg{display:block;width:72px;height:72px;overflow:visible}
+.u089-ring{fill:none;stroke:var(--c-text);stroke-width:11;transition:stroke .5s}
+.u089.found .u089-ring{stroke:var(--c-accent)}
+.u089-tk{stroke:var(--c-text-3);stroke-width:2;stroke-linecap:round}
+.u089-wob{transform-origin:36px 36px}
+.u089:not(.trk):not(.found) .u089-wob{animation:u089-w 3.4s ease-in-out infinite}
+@keyframes u089-w{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(18deg)}}
+.u089-nd{transform-origin:36px 36px}
+.u089-hub{fill:var(--c-surface);stroke:var(--c-text);stroke-width:2}
+.u089-t{margin:16px 0 0;font-size:19px;font-weight:850;letter-spacing:-.04em}
+.u089-s{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--c-text-3)}
+.u089-t,.u089-s{transition:opacity .25s,transform .35s var(--ease-out)}
+.u089.swap .u089-t,.u089.swap .u089-s{opacity:0;transform:translateY(6px)}
+.u089-lab{display:flex;align-items:center;justify-content:space-between;height:28px;margin-top:auto;padding:0 4px;font-size:12px;font-weight:750;color:var(--c-text-3)}
+.u089-re{height:28px;padding:0 10px;border:0;border-radius:999px;background:var(--c-surface-2);font-size:12px;font-weight:750;color:var(--c-text-2);opacity:0;visibility:hidden;transition:opacity .3s,visibility 0s .3s}
+.u089.found .u089-re{opacity:1;visibility:visible;transition:opacity .3s}
+.u089-re:hover{color:var(--c-text);background:var(--c-surface-3)}
+.u089-sug{margin:4px 0 0;padding:0;list-style:none}
+.u089-row{font:inherit;color:inherit;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;height:44px;padding:0 12px;border:0;border-radius:14px;background:transparent;text-align:left;transition:background-color .2s,opacity .3s}
+.u089-row:hover{background:var(--c-surface-2)}
+.u089-row:active{transform:scale(.98)}
+.u089-row code{font:750 13.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--c-text)}
+.u089-row small{flex:1;font-size:12px;font-weight:650;color:var(--c-text-3)}
+.u089-m{width:44px;height:4px;border-radius:2px;background:var(--c-surface-3);overflow:hidden}
+.u089-m i{display:block;height:100%;width:calc(var(--m) * 100%);border-radius:inherit;background:var(--c-accent)}
+.u089-row svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--c-text-3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease-spring)}
+.u089-row:hover svg{transform:translateX(3px)}
+.u089-row:disabled{opacity:.35;cursor:default}
+.u089-row:disabled:hover{background:transparent}
+.u089-row.on{background:color-mix(in srgb,var(--c-accent) 16%,transparent);opacity:1}
+.u089-row.on .u089-m i{background:var(--c-accent)}
+.u089-row.on svg{stroke:var(--c-accent);transform:none}
+.u089-url span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.u089-row:focus-visible{outline:2px solid var(--c-accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.u089-wob{animation:none!important}.u089-col,.u089-d{transition:none}}

@@ -1,17 +1,22 @@
+/* 좁은 화면(~1099px): 위아래로 / 넓은 화면: [출석 카드 | 달력] 높이 맞춤 */
 .layout {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
-  align-items: flex-start;
+}
+@media (min-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(300px, 2fr) minmax(0, 3fr);
+    align-items: stretch;
+  }
 }
 .checkCard {
-  flex: 2 1 300px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 .calCard {
-  flex: 3 1 440px;
+  min-width: 0;
 }
 
 .live {
@@ -70,9 +75,59 @@
   gap: 12px;
 }
 .pRow {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+/* ── 보너스 막대 움직임(Lucian #372) ── */
+.pRow .bar {
+  position: relative;
+  transition: box-shadow 0.3s;
+}
+.pRow .bar span {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #00b07a, var(--c-accent) 70%, #63e6be);
+  transition: width 0.5s cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+.pRow .bar span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-100%);
+}
+.xpGain .bar span::after {
+  animation: xpShine 0.7s ease-out;
+}
+@keyframes xpShine {
+  to {
+    transform: translateX(100%);
+  }
+}
+.xpFull .bar {
+  box-shadow: 0 0 0 2px #ffd43b, 0 0 18px rgba(255, 212, 59, 0.7);
+}
+.xpBanner {
+  position: absolute;
+  right: 0;
+  top: -6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fcc419, #ff922b);
+  color: #3b1f00;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: 0;
+  transform: translateY(10px) scale(0.7);
+  transition: opacity 0.25s, transform 0.45s cubic-bezier(0.3, 1.8, 0.5, 1);
+  box-shadow: 0 10px 24px -8px rgba(252, 196, 25, 0.7);
+  pointer-events: none;
+}
+.xpUp .xpBanner {
+  opacity: 1;
+  transform: none;
 }
 .pHead {
   display: flex;
@@ -281,4 +336,13 @@
     height: 24px;
     padding: 4px;
   }
+}
+.leftCol {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.leftCol > .checkCard {
+  flex: 1;
 }

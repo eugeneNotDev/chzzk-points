@@ -318,3 +318,231 @@
     padding: 16px;
   }
 }
+
+/* ── 리본 선물 상자(Lucian #342) — 크기·색·순서 값은 원본 그대로(340×340 판 기준) ── */
+.rb {
+  position: relative;
+  width: 340px;
+  height: 340px;
+  max-width: 100%;
+  color: #5c1f3a;
+}
+.rbRay {
+  position: absolute;
+  left: 50%;
+  top: 170px;
+  width: 420px;
+  height: 420px;
+  margin: -210px 0 0 -210px;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 243, 191, 0.9) 0 10deg, transparent 10deg 30deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000, transparent);
+  mask-image: radial-gradient(closest-side, #000, transparent);
+  opacity: 0;
+  transform: scale(0.3) rotate(0);
+  transition: opacity 0.4s, transform 0.8s cubic-bezier(0.3, 1.2, 0.4, 1);
+  pointer-events: none;
+}
+.rbOpen .rbRay {
+  opacity: 0.5;
+  transform: scale(1) rotate(20deg);
+  animation: rbSpin 12s linear infinite 0.8s;
+}
+.rbGold .rbRay {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 212, 59, 0.95) 0 10deg, transparent 10deg 30deg);
+}
+.rbGold.rbOpen .rbRay {
+  opacity: 0.85;
+}
+@keyframes rbSpin {
+  to {
+    transform: scale(1) rotate(380deg);
+  }
+}
+.rbBox {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  width: 170px;
+  height: 150px;
+  margin-left: -85px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.rbBox:disabled {
+  cursor: default;
+}
+.rbBox:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+.rbBox:not(:disabled):hover {
+  animation: rbHop 0.6s var(--ease-spring);
+}
+@keyframes rbHop {
+  40% {
+    transform: translateY(-8px);
+  }
+}
+/* 서버 응답 기다리는 동안 흔들흔들 */
+.rbWobble {
+  animation: rbWob 0.7s ease-in-out infinite;
+}
+@keyframes rbWob {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(-7deg); }
+  30% { transform: rotate(7deg); }
+  45% { transform: rotate(-5deg); }
+  60% { transform: rotate(5deg); }
+  75% { transform: rotate(-3deg); }
+}
+.rbBody {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 46px;
+  bottom: 0;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f06595, #e64980);
+  box-shadow: inset 0 -10px 0 rgba(0, 0, 0, 0.08);
+}
+.rbBody::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  margin-left: -12px;
+  background: #fcc419;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.05);
+  transform-origin: 50% 0;
+  transition: transform 0.45s cubic-bezier(0.6, 0, 0.4, 1) 0.15s;
+}
+.rbLid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f783ac, #f06595);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.07);
+  transform-origin: 12% 100%;
+  transition: transform 0.75s cubic-bezier(0.3, 1.1, 0.5, 1) 0.55s, opacity 0.35s 0.95s;
+}
+.rbLid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  margin-left: -12px;
+  background: #ffd43b;
+  transition: transform 0.45s cubic-bezier(0.6, 0, 0.4, 1) 0.15s;
+  transform-origin: 50% 100%;
+}
+.rbBow {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  width: 96px;
+  height: 44px;
+  margin-left: -48px;
+  transition: transform 0.5s cubic-bezier(0.5, 0, 0.3, 1), opacity 0.4s 0.2s;
+  transform-origin: 50% 80%;
+}
+.rbOpen .rbBow {
+  transform: translateY(-10px) scale(0.2) rotate(30deg);
+  opacity: 0;
+}
+.rbOpen .rbBody::before,
+.rbOpen .rbLid::before {
+  transform: scaleY(0);
+}
+.rbOpen .rbLid {
+  transform: translate(-170px, -150px) rotate(-70deg);
+  opacity: 0;
+}
+.rbGift {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  z-index: 1;
+  width: 170px;
+  margin-left: -85px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 30px -12px rgba(92, 31, 58, 0.5);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(80px) scale(0.6);
+  transition: opacity 0.3s 0.7s, transform 0.7s cubic-bezier(0.3, 1.5, 0.5, 1) 0.7s;
+  pointer-events: none;
+}
+.rbOpen .rbGift {
+  opacity: 1;
+  transform: translateY(-58px) scale(1);
+}
+.rbGift small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #c2255c;
+  letter-spacing: 0.06em;
+}
+.rbGift b {
+  display: block;
+  margin-top: 2px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.rbGold .rbGift {
+  background: linear-gradient(160deg, #fff3b0, #ffd43b);
+  box-shadow: 0 14px 34px -10px rgba(242, 194, 48, 0.7);
+}
+.rbGold .rbGift small {
+  color: #8a6508;
+}
+.rbSp {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+  background: #fcc419;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: rbSpark 1.3s ease-out forwards;
+}
+@keyframes rbSpark {
+  0% {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1.3) rotate(180deg);
+    opacity: 0;
+  }
+}
+/* 오늘 이미 연 상자 — 연 상태로 바로(움직임 없이) */
+.rbStatic *,
+.rbStatic *::before {
+  transition: none !important;
+}
+.rbStatic .rbRay {
+  opacity: 0.3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb *,
+  .rb *::before {
+    transition-duration: 0.01s !important;
+    transition-delay: 0s !important;
+    animation: none !important;
+  }
+}

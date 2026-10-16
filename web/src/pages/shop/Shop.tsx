@@ -2,12 +2,13 @@
 //  - 일반 상품: 쿨타임, 방송 중 전용, 사면 OBS 오버레이 알림
 //  - 칭호 상품: 한 번 사면 보유, 한정 수량(품절), 산 칭호는 마이페이지에서 장착
 //  - 관리자: 상품 추가/수정/판매 중지/삭제, 순서 변경(끌어서 놓기)
+import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, Plus } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
-import { LoginNeeded, PageHead } from "../../components/ui";
+import { LoginNeeded, PageHead, Stat } from "../../components/ui";
 import { ApiError, getToken, useAuth } from "../../lib/auth";
 import { fmt } from "../../lib/format";
 import { useBroadcastStatus, useMe, type Me } from "../../lib/queries";
@@ -182,16 +183,9 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
 
   return (
     <div className="page">
-      <PageHead title={title} desc={desc} />
+      <PageHead title={title} desc={desc} stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} unit="P" tone="accent" />} />
 
       <div className={styles.topRow}>
-        <div className={styles.balance}>
-          <span className="muted">보유 포인트</span>
-          <b className="num">
-            {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"}
-            <small>P</small>
-          </b>
-        </div>
         <div className="segment" role="tablist" aria-label="상점 종류">
           <Link to="/shop.html" role="tab" aria-selected={!isTitle} className={!isTitle ? "on" : ""} style={segLink}>
             일반 상품
@@ -243,7 +237,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
           ))}
         </div>
       )}
-      {itemsQ.isError && <EmptyState>상품을 불러오지 못했어요.</EmptyState>}
+      {itemsQ.isError && <LoadError what="상품 목록" onRetry={() => itemsQ.refetch()} />}
       {itemsQ.data && active.length === 0 && (
         <Card>
           <EmptyState>상품 준비 중이에요.</EmptyState>

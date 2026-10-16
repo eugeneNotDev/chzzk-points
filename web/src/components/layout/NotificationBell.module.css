@@ -14,6 +14,25 @@
   color: var(--c-text-2);
   cursor: pointer;
 }
+.bell {
+  transition: transform 0.3s var(--ease-spring), background-color var(--dur);
+}
+.bell:active {
+  transform: scale(0.9);
+}
+.bell svg {
+  transform-origin: 50% 15%;
+}
+.ring svg {
+  animation: ring 0.9s var(--ease-out);
+}
+@keyframes ring {
+  10% { transform: rotate(18deg); }
+  25% { transform: rotate(-16deg); }
+  40% { transform: rotate(12deg); }
+  55% { transform: rotate(-8deg); }
+  70% { transform: rotate(4deg); }
+}
 .bell:hover,
 .bell[aria-expanded="true"] {
   background: var(--c-hover);
@@ -34,6 +53,10 @@
   font-weight: 800;
   line-height: 13px;
   text-align: center;
+  transition: transform 0.4s var(--ease-spring);
+}
+.zero {
+  transform: scale(0);
 }
 .panel {
   position: absolute;
@@ -48,10 +71,31 @@
   border: 1px solid var(--c-border);
   background: var(--c-surface);
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
-  animation: drop 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+  /* 종 자리에서 펼쳐지고 접힘 */
+  transform-origin: calc(100% - 28px) -10px;
+  transition: transform 0.45s var(--ease-spring), opacity 0.25s;
+}
+.panel::before {
+  content: "";
+  position: absolute;
+  right: 21px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--c-surface);
+  transform: rotate(45deg);
+  box-shadow: -1px -1px 0 0 var(--c-border);
+}
+.closed {
+  transform: scale(0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.3s var(--ease-out), opacity 0.2s;
 }
 .head {
+  display: flex;
+  align-items: center;
   flex: none;
   padding: 14px 16px 10px;
   font-family: var(--font-logo);
@@ -59,9 +103,44 @@
   font-weight: 700;
   border-bottom: 1px solid var(--c-border);
 }
+.all {
+  margin-left: auto;
+  border: 0;
+  padding: 4px 6px;
+  background: none;
+  color: var(--c-accent);
+  font: inherit;
+  font-family: var(--font-body, inherit);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.all:disabled {
+  color: var(--c-text-4);
+  cursor: default;
+}
 .list {
+  margin: 0;
+  list-style: none;
   overflow-y: auto;
   padding: 6px;
+}
+/* 새로 들어온 줄 — 높이가 0에서 펼쳐지며 위에서 떨어져 들어옴 */
+.it {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.45s var(--ease-out);
+}
+.it > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.fresh {
+  grid-template-rows: 0fr;
+}
+.fresh .item {
+  transform: translateY(-30px);
+  opacity: 0;
 }
 .empty {
   margin: 0;
@@ -83,6 +162,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color 0.2s, transform 0.5s var(--ease-spring), opacity 0.3s;
 }
 .item:hover {
   background: var(--c-hover);
@@ -139,16 +219,27 @@
 }
 .dot {
   flex: none;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   margin-top: 6px;
   border-radius: 50%;
   background: var(--c-live);
+  transition: transform 0.35s var(--ease-spring), opacity 0.25s;
 }
-@keyframes drop {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
+.read .dot {
+  transform: scale(0);
+  opacity: 0;
+}
+.read .body {
+  color: var(--c-text-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring svg {
+    animation: none;
+  }
+  .panel,
+  .closed {
+    transition: opacity 0.01s;
   }
 }
 @media (max-width: 599px) {

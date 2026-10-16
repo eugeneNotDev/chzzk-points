@@ -299,9 +299,43 @@
   align-items: center;
   gap: 12px;
   padding: 0 32px;
-  background: color-mix(in srgb, var(--c-bg) 86%, transparent);
+  /* 맨 위에선 투명 → 내리면 흐림 배경(Lucian #212, useScrollHeader) */
+  background: transparent;
+  transition:
+    transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.3s,
+    box-shadow 0.3s,
+    backdrop-filter 0.3s;
+}
+.topbar:global(.is-solid) {
+  background: color-mix(in srgb, var(--c-bg) 78%, transparent);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--c-border), 0 8px 20px -14px rgba(0, 0, 0, 0.5);
+}
+.topProgress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  width: 0;
+  background: var(--c-accent);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.topbar:global(.is-solid) .topProgress {
+  opacity: 1;
+}
+@media (max-width: 1023px) {
+  .topbar:global(.is-hide) {
+    transform: translateY(-110%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topbar {
+    transition: none;
+  }
 }
 .pageTitle {
   font-family: var(--font-logo);
