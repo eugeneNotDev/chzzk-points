@@ -6,7 +6,7 @@ import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
-import { BetPanel, GameLock, GameResult, netTone, RecentList, signed, type ResultView } from "./GameParts";
+import { BetPanel, GameLock, GameResult, netTone, RecentList, type ResultView } from "./GameParts";
 import { HAND_ICONS } from "./handIcons";
 import { AFTER_RESULT_WAIT_MS, REDUCED_MOTION, sleep, useMinigame, type GameStateBase } from "./useMinigame";
 import styles from "./Games.module.css";
@@ -65,7 +65,8 @@ export default function Rps() {
       setResult({
         tone: netTone(d.net),
         color: RESULT_COLOR[d.result],
-        title: `${RESULT_KO[d.result]} · ${signed(d.net)}`,
+        badge: RESULT_KO[d.result],
+        net: d.net,
         desc: `나 ${HAND_KO[hand]} vs 상대 ${HAND_KO[d.cpuHand]} · ${fmt(bet)}P 걸어서 ${fmt(d.payout)}P 받았어요`,
       });
       game.startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)));

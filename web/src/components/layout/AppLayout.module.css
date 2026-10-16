@@ -54,6 +54,7 @@
   color: var(--c-text-4);
 }
 .navItem {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -64,27 +65,53 @@
   color: var(--c-text-2);
   font-size: 14px;
   font-weight: 500;
-  transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  transform-origin: left center;
+  transition:
+    background-color var(--dur) var(--ease-out),
+    color var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+/* 왼쪽 세로 막대 — 올리면 짧게 나타나고, 지금 메뉴는 초록으로 길게 */
+.navItem::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 0 3px 3px 0;
+  background: var(--c-text-3);
+  transform: translateY(-50%);
+  transition: height var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
 }
 .navItem:hover {
   background: var(--c-hover);
   color: var(--c-text);
+  transform: scale(1.025);
+  box-shadow: inset 0 0 0 1px var(--c-border);
+}
+.navItem:hover::before {
+  height: 14px;
 }
 .navItem svg {
   flex: none;
-  transition: transform var(--dur) var(--ease-out);
-}
-.navItem:hover svg {
-  transform: translateX(2px) scale(1.06);
 }
 .navItem:active {
-  transform: scale(0.98);
+  transform: scale(0.99);
+  transition-duration: 0.06s;
 }
 .active,
 .active:hover {
   background: var(--c-accent-soft);
   color: var(--c-accent);
   font-weight: 700;
+  box-shadow: none;
+}
+.active::before,
+.active:hover::before {
+  height: 20px;
+  background: var(--c-accent);
 }
 .newDot {
   width: 6px;
@@ -281,8 +308,6 @@
 }
 
 .content {
-  /* 전환 애니메이션은 본문만 — 사이드바·상단바는 그대로 있고 안쪽 화면만 바뀌게 */
-  view-transition-name: page;
   flex: 1;
   width: 100%;
   max-width: calc(var(--content-max) + 64px);
@@ -463,21 +488,3 @@
   }
 }
 
-/* 페이지 전환 — 새 화면이 살짝 아래에서 떠오르며 나타남 */
-.pageFade {
-  animation: pageIn 0.32s var(--ease-out) both;
-}
-:global(html[data-vt]) .pageFade {
-  animation: none;
-}
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pageFade {
-    animation: none;
-  }
-}

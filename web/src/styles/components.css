@@ -46,7 +46,6 @@
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--c-accent-hover);
-  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--c-accent) 70%, transparent);
 }
 .btn-danger {
   background: color-mix(in srgb, var(--c-danger) 16%, transparent);

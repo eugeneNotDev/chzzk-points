@@ -89,14 +89,35 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
   );
 }
 
-export type ResultView = { tone: "plus" | "minus" | "even" | "error"; color?: string; title?: string; desc?: ReactNode; jackpot?: boolean };
+// 결과 한 줄: [배율·결과 칩] 크게 "얼마 벌었/잃었어요" + 설명 ……… 오른쪽에 큰 +/- 포인트
+export type ResultView = { tone: "plus" | "minus" | "even" | "error"; color?: string; badge?: string; net?: number; title?: string; desc?: ReactNode; jackpot?: boolean };
+
+const headline = (net: number) => (net > 0 ? `${fmt(net)}P 벌었어요` : net < 0 ? `${fmt(-net)}P 잃었어요` : "본전이에요");
 
 export function GameResult({ result }: { result: ResultView | null }) {
   if (!result) return null;
+  if (result.tone === "error") {
+    return (
+      <div className={`${styles.result} ${styles.resError}`} role="status" aria-live="polite">
+        <span className={styles.resText}>
+          <strong>{result.title}</strong>
+        </span>
+      </div>
+    );
+  }
+  const tone = result.tone === "plus" ? styles.resPlus : result.tone === "minus" ? styles.resMinus : styles.resEven;
   return (
-    <div className={`${styles.result} ${styles[result.tone]} ${result.jackpot ? styles.jackpot : ""}`} style={result.color ? ({ "--c": result.color } as React.CSSProperties) : undefined} role="status" aria-live="polite">
-      {result.title && <strong className="num">{result.title}</strong>}
-      {result.desc && <span className="muted">{result.desc}</span>}
+    <div className={`${styles.result} ${tone} ${result.jackpot ? styles.jackpot : ""}`} role="status" aria-live="polite">
+      {result.badge && (
+        <span className={`${styles.resBadge} num`} style={result.color ? ({ "--c": result.color } as React.CSSProperties) : undefined}>
+          {result.badge}
+        </span>
+      )}
+      <span className={styles.resText}>
+        <strong>{result.title ?? headline(result.net ?? 0)}</strong>
+        {result.desc && <span>{result.desc}</span>}
+      </span>
+      {result.net != null && <b className={`${styles.resNet} num`}>{signed(result.net)}</b>}
     </div>
   );
 }

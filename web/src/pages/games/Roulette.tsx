@@ -6,7 +6,7 @@ import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
-import { BetPanel, GameLock, GameResult, netTone, RecentList, signed, type ResultView } from "./GameParts";
+import { BetPanel, GameLock, GameResult, netTone, RecentList, type ResultView } from "./GameParts";
 import { AFTER_RESULT_WAIT_MS, REDUCED_MOTION, useMinigame, type GameStateBase } from "./useMinigame";
 import styles from "./Games.module.css";
 
@@ -78,7 +78,8 @@ export default function Roulette() {
         tone: netTone(d.net),
         color: colorOf(d.multiplier),
         jackpot: d.multiplier >= 5,
-        title: `x${d.multiplier} · ${signed(d.net)}`,
+        badge: `x${d.multiplier}`,
+        net: d.net,
         desc: `${fmt(bet)}P 걸어서 ${fmt(d.payout)}P 받았어요`,
       });
       game.startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - requestedAt)));
@@ -117,6 +118,7 @@ export default function Roulette() {
             >
               {tiles.map((m, i) => (
                 <div key={i} className={`${styles.tile} ${m >= 5 ? styles.tileGold : ""} ${hit === i ? styles.tileHit : ""}`} style={{ "--c": colorOf(m) } as React.CSSProperties}>
+                  <span className={styles.tileLabel}>배율</span>
                   <b className="num">x{m}</b>
                 </div>
               ))}

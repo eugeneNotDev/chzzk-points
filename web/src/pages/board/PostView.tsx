@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, EyeOff, Flag, Heart, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -21,17 +21,16 @@ import {
 import { AdminChip, Who } from "./BoardList";
 import { Lightbox } from "../../components/Lightbox";
 import { ReportModal, type ReportTarget } from "./ReportModal";
-import { useTNavigate } from "../../lib/transition";
 import styles from "./Board.module.css";
 import { alertDialog, confirmDialog, toast } from "../../lib/dialog";
 import { SkeletonPost } from "../../components/Skeleton";
 
 const authorOf = (x: { adminName: string | null; author: string | null }) => x.adminName || x.author || "";
 
-function goBackOr(nav: ReturnType<typeof useTNavigate>, fallback: string) {
-  // 목록에서 들어왔으면 뒤로가기(목록 페이지·스크롤 유지), 주소로 바로 열었으면 목록으로
-  if ((window.history.state as { idx?: number } | null)?.idx) nav(-1);
-  else nav(fallback, { replace: true });
+function goBackOr(nav: ReturnType<typeof useNavigate>, fromList: boolean, fallback: string) {
+  // 게시판 목록에서 들어왔으면 뒤로가기(보던 페이지·검색 유지), 홈·알림·주소로 바로 열었으면 그 게시판 목록으로
+  if (fromList) nav(-1);
+  else nav(fallback);
 }
 
 // 본문 + 사진: [[사진:n]] 자리에 그 사진, 표시가 없는 사진(예전 글 포함)은 맨 아래 묶음.
@@ -296,7 +295,7 @@ function CommentItem({
 export function PostView({ board, id }: { board: BoardKind; id: number }) {
   const cfg = BOARD_CFG[board];
   const review = board === "review";
-  const nav = useTNavigate();
+  const nav = useNavigate();
   const qc = useQueryClient();
   const { isLoggedIn, isAdmin, token } = useAuth();
   const key = ["board", "post", id, token];
@@ -315,7 +314,8 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
     return () => clearTimeout(t);
   }, [flash]);
 
-  const back = () => goBackOr(nav, cfg.path);
+  const fromList = !!(useLocation().state as { fromList?: boolean } | null)?.fromList;
+  const back = () => goBackOr(nav, fromList, cfg.path);
   // 모바일에선 게시판 이름(PageHead), 그 아래 왼쪽에 "← 목록"
   const head = (
     <>

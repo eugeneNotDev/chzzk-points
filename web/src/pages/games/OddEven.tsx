@@ -6,7 +6,7 @@ import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
-import { BetPanel, GameLock, GameResult, netTone, RecentList, signed, type ResultView } from "./GameParts";
+import { BetPanel, GameLock, GameResult, netTone, RecentList, type ResultView } from "./GameParts";
 import { SUIT_ICONS } from "./suitIcons";
 import { AFTER_RESULT_WAIT_MS, REDUCED_MOTION, sleep, useMinigame, type GameStateBase } from "./useMinigame";
 import styles from "./Games.module.css";
@@ -71,7 +71,8 @@ export default function OddEven() {
       setResult({
         tone: netTone(d.net),
         color: RESULT_COLOR[d.result],
-        title: `${RESULT_KO[d.result]} · ${signed(d.net)}`,
+        badge: RESULT_KO[d.result],
+        net: d.net,
         desc: `${PICK_KO[pick]} 선택 · 카드 ${cardLabel(d.card)} · ${fmt(bet)}P 걸어서 ${fmt(d.payout)}P 받았어요`,
       });
       game.startWait(Math.max(AFTER_RESULT_WAIT_MS, SERVER_COOLDOWN_MS + 300 - (Date.now() - started)));
@@ -121,7 +122,7 @@ export default function OddEven() {
                         <Suit suit={card.suit} />
                       </span>
                       <span className={`${styles.cardNum} num`}>{cardLabel(card.n)}</span>
-                      <span className={styles.bigSuit}>
+                      <span className={styles.midSuit}>
                         <Suit suit={card.suit} />
                       </span>
                       <span className={`${styles.corner} ${styles.br}`}>
@@ -147,7 +148,7 @@ export default function OddEven() {
                 <button
                   key={p}
                   type="button"
-                  className={`${styles.oePick} ${p === "odd" ? styles.odd : styles.even} ${chosen === p ? styles.chosen : ""}`}
+                  className={`${styles.oePick} ${p === "odd" ? styles.oeOdd : styles.oeEven} ${chosen === p ? styles.chosen : ""}`}
                   disabled={!game.canPlay}
                   onClick={() => play(p)}
                 >
