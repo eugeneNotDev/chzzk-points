@@ -1,3 +1,4 @@
+import { SkelInline } from "../Skeleton";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
@@ -72,7 +73,7 @@ function UserBox() {
           <span className={styles.userName} style={me.data?.tierTitleColor ? { color: me.data.tierTitleColor } : undefined}>
             {auth.channelName || "(이름 없음)"}
           </span>
-          <span className={`${styles.userPoints} num`}>{me.data ? <><AnimatedNumber value={me.data.balance} /> P</> : "··· P"}</span>
+          <span className={`${styles.userPoints} num`}>{me.data ? <><AnimatedNumber value={me.data.balance} /> P</> : <SkelInline w={70} h={12} />}</span>
         </span>
       </Link>
       <button type="button" className={styles.iconBtn} aria-label="로그아웃" title="로그아웃" onClick={logout}>
@@ -125,7 +126,7 @@ function PointsChip() {
   return (
     <span className={`${styles.pointsChip} num`}>
       <span className={styles.dot} aria-hidden="true" />
-      {me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} P
+      {me.data ? <AnimatedNumber value={me.data.balance} /> : <SkelInline w={44} h={12} />} P
     </span>
   );
 }

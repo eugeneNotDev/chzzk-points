@@ -2,6 +2,7 @@
 //  - 일반 상품: 쿨타임, 방송 중 전용, 사면 OBS 오버레이 알림
 //  - 칭호 상품: 한 번 사면 보유, 한정 수량(품절), 산 칭호는 마이페이지에서 장착
 //  - 관리자: 상품 추가/수정/판매 중지/삭제, 순서 변경(끌어서 놓기)
+import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -183,7 +184,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
 
   return (
     <div className="page">
-      <PageHead title={title} desc={desc} stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} unit="P" tone="accent" />} />
+      <PageHead title={title} desc={desc} stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : <SkelInline w={90} h={22} />} unit="P" tone="accent" />} />
 
       <div className={styles.topRow}>
         <div className="segment" role="tablist" aria-label="상점 종류">

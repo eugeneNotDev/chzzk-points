@@ -1,5 +1,6 @@
 // 무료 뽑기 — 하루 한 번(한국 시간 자정 초기화) 선물 상자를 열어 포인트를 받음.
 // 포인트는 서버(free-box 함수 → DB free_box_open)가 정하고, 화면은 연출만 함. 확률은 화면에 안 보여줌.
+import { SkelInline } from "../components/Skeleton";
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { Gift, LogIn } from "lucide-react";
@@ -243,7 +244,7 @@ export default function Freebox() {
           <Card>
             <span className={styles.balLabel}>보유 포인트</span>
             <div className={`${styles.balance} num`}>
-              {q.data ? <AnimatedNumber value={q.data.balance} /> : "···"}
+              {q.data ? <AnimatedNumber value={q.data.balance} /> : <SkelInline w={150} h={36} r={10} />}
               <span>P</span>
             </div>
             {q.data?.openedToday && q.data.todayPoints != null && <span className={styles.todayChip}>오늘 +{fmt(q.data.todayPoints)}P 받음</span>}

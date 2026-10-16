@@ -3,7 +3,7 @@
 // 돋보기가 빈 선반을 훑고, 검색 범위를 넓히면 몇 개가 나오는지 미리 세어 버튼으로 보여줌.
 // (원본의 "필터 빼면 N개"를 게시판의 검색 범위(제목 → 제목+내용 → 작성자)에 맞춤)
 import { useQuery } from "@tanstack/react-query";
-import { boardCall, type BoardKind } from "../../lib/board";
+import { fetchBoardPage, type BoardKind } from "../../lib/board";
 import { josa as jo } from "../../lib/format";
 import "./EmptySearch.css";
 
@@ -18,7 +18,7 @@ export function EmptySearch({ board, q, field, onSearch, onClear }: { board: Boa
     queryKey: ["board", "search-count", board, q, others.join(",")],
     queryFn: async () => {
       const rs = await Promise.all(
-        others.map((f) => boardCall<{ total: number }>({ action: "list", board, page: 0, size: 10, q, field: f }).then((r) => [f, r.total] as const).catch(() => [f, 0] as const)),
+        others.map((f) => fetchBoardPage(board, 0, q, f).then((r) => [f, r.total] as const).catch(() => [f, 0] as const)),
       );
       return rs.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
     },

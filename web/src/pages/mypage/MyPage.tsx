@@ -1,4 +1,6 @@
 // 마이페이지 — 포인트·칭호·등급 요약, 앱 설치/방송 알림, 칭호 장착, 랭킹 공개 설정, 포인트 내역, 내 활동.
+import { SkeletonList } from "../../components/Skeleton";
+import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -58,7 +60,7 @@ export default function MyPage() {
         <div className={styles.who}>
           <Avatar name={auth.channelName} image={auth.profileImage} size={56} />
           <div className={styles.whoText}>
-            <span className={styles.name}>{profile?.channelName || auth.channelName || "(이름 없음)"}</span>
+            <span className={styles.name}>{profile?.channelName || auth.channelName || <SkelInline w={110} h={20} />}</span>
             <span className="muted">치지직 계정으로 로그인됨</span>
           </div>
         </div>
@@ -66,7 +68,7 @@ export default function MyPage() {
           <div className={styles.stat}>
             <span className="muted">현재 포인트</span>
             <b className={`num ${styles.balance} ${profile && profile.balance < 0 ? styles.neg : ""}`}>
-              {profile ? <AnimatedNumber value={profile.balance} /> : "···"}
+              {profile ? <AnimatedNumber value={profile.balance} /> : <SkelInline w={110} h={26} />}
               <small>P</small>
             </b>
           </div>
@@ -222,6 +224,7 @@ function PointsLog() {
       <p className="muted" style={{ fontSize: 13, padding: "0 12px 8px" }}>
         출석·상점·미니게임·관리자 지급/차감 내역을 최신순으로 보여줘요.
       </p>
+      {q.isLoading && <SkeletonList rows={4} variant="row" />}
       {q.isError && <LoadError what="포인트 내역" onRetry={() => q.refetch()} />}
       {q.data?.entries.length === 0 && <EmptyState>아직 내역이 없어요.</EmptyState>}
       <ul className={styles.log}>
@@ -277,18 +280,19 @@ function MyActivity() {
       <div className={styles.maStats}>
         <div>
           <span className="muted">쓴 글</span>
-          <b className="num">{d ? fmt(d.postCount) : "-"}</b>
+          <b className="num">{d ? fmt(d.postCount) : <SkelInline w={30} h={18} />}</b>
         </div>
         <div>
           <span className="muted">쓴 댓글</span>
-          <b className="num">{d ? fmt(d.commentCount) : "-"}</b>
+          <b className="num">{d ? fmt(d.commentCount) : <SkelInline w={30} h={18} />}</b>
         </div>
         <div>
           <span className="muted">후기 보상</span>
-          <b className="num">{d ? `+${fmt(d.rewardTotal)}P` : "-"}</b>
+          <b className="num">{d ? `+${fmt(d.rewardTotal)}P` : <SkelInline w={56} h={18} />}</b>
         </div>
       </div>
       {q.isError && <LoadError what="내 활동" onRetry={() => q.refetch()} />}
+      {!d && !q.isError && <SkeletonList rows={3} variant="row" />}
       {d && tab === "posts" && d.posts.length === 0 && <EmptyState>아직 쓴 글이 없어요.</EmptyState>}
       {d && tab === "comments" && d.comments.length === 0 && <EmptyState>아직 쓴 댓글이 없어요.</EmptyState>}
       {d && tab === "posts" &&

@@ -14,6 +14,7 @@ import { useBroadcastStatus } from "../lib/queries";
 import { useTableRefetch } from "../lib/realtime";
 import { PillPanel, PillTabs } from "../components/PillTabs";
 import { useBloom } from "../components/Skeleton";
+import { SkeletonList } from "../components/Skeleton";
 import styles from "./Home.module.css";
 
 // 넓은 모니터(3단 배치)에선 목록을 더 길게 보여줘서 아래쪽 빈 공간을 채움
@@ -137,7 +138,7 @@ function NoticePreview() {
   useTableRefetch("notices", [["notices"]]);
   return (
     <Card title="공지사항" moreTo="/notice.html" flush className={styles.notices}>
-      {q.isLoading && <ListSkeleton rows={4} />}
+      {q.isLoading && <SkeletonList rows={5} variant="row" />}
       {q.isError && <LoadError what="공지사항" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>등록된 공지사항이 없어요.</EmptyState>}
       <div className={bloomN}>
@@ -161,7 +162,7 @@ function RankingPreview() {
   useTableRefetch("ranking_pings", [["ranking"]], { event: "INSERT", minIntervalMs: 8000, settleMs: 800 });
   return (
     <Card title="포인트 랭킹" moreTo="/ranking.html" flush className={styles.ranking}>
-      {q.isLoading && <ListSkeleton rows={n} avatar />}
+      {q.isLoading && <SkeletonList rows={n} variant="rank" />}
       {q.isError && <LoadError what="랭킹" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>아직 랭킹에 등록된 유저가 없어요.</EmptyState>}
       {q.data && <RankingList rows={q.data} className={bloomR} />}
@@ -188,7 +189,7 @@ function BoardPreview() {
         <PillTabs size="sm" label="게시판 고르기" value={tab} onChange={setTab} options={BOARD_TABS.map((t) => ({ value: t.id, label: t.label }))} />
       }
     >
-      {q.isLoading && <ListSkeleton rows={4} />}
+      {q.isLoading && <SkeletonList rows={5} variant="row" />}
       {q.isError && <LoadError what="게시판 글" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && <EmptyState>아직 게시판에 글이 없어요.</EmptyState>}
       <PillPanel index={BOARD_TABS.findIndex((t) => t.id === tab)}>
@@ -207,19 +208,6 @@ function BoardPreview() {
       ))}
       </PillPanel>
     </Card>
-  );
-}
-
-function ListSkeleton({ rows, avatar = false }: { rows: number; avatar?: boolean }) {
-  return (
-    <div className={styles.skel}>
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className={styles.skelRow}>
-          {avatar && <span className="skeleton" style={{ width: 22, height: 18 }} />}
-          <span className="skeleton" style={{ flex: 1, height: 16 }} />
-        </div>
-      ))}
-    </div>
   );
 }
 

@@ -1,4 +1,5 @@
 // 포인트 랭킹 — 명예의 전당(매달 1위) + 상위 50명. 포인트가 움직이면 실시간으로 다시 불러옴.
+import { SkelInline } from "../components/Skeleton";
 import { LoadError } from "../components/LoadError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Crown, Medal, TrendingUp } from "lucide-react";
@@ -107,7 +108,7 @@ function MyRank({ rows }: { rows: RankingRow[] }) {
       <div className={styles.myRow}>
         <span className={`${styles.myRank} num`}>{idx >= 0 ? <>{idx + 1}<small>위</small></> : <small>{rows.length}위 밖</small>}</span>
         <span className={`${styles.myPts} num`}>
-          {balance != null ? fmt(balance) : "···"}
+          {balance != null ? fmt(balance) : <SkelInline w={90} h={20} />}
           <small>P</small>
         </span>
       </div>

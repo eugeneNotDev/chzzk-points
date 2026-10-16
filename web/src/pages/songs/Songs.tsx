@@ -1,5 +1,6 @@
 // 방종곡 신청 — songs 함수. 신청은 무료, 하루 1곡(한국시간 0시 초기화), 대기 중인 곡과 중복 불가.
 // 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기.
+import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -153,7 +154,7 @@ export default function Songs() {
             <h3>방종곡 신청하기</h3>
             <div className={styles.chips}>
               <span className={styles.chip}>
-                대기 <b className="num">{s ? `${s.items.length}곡` : "-"}</b>
+                대기 <b className="num">{s ? `${s.items.length}곡` : <SkelInline w={28} h={11} />}</b>
               </span>
               {isLoggedIn && s && (
                 <span className={`${styles.chip} ${s.canRequest ? styles.chipOn : styles.chipDone}`}>

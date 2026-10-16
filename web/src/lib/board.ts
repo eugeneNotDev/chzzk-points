@@ -170,3 +170,48 @@ export const REPORT_REASONS: [string, string][] = [
   ["privacy", "개인정보 노출"],
   ["etc", "기타"],
 ];
+
+// ── 목록 한 페이지(10개) 가져오기 — 서버 함수가 예전 버전이든 새 버전이든 똑같이 동작 ──
+// 예전 서버: 한 페이지 20개 고정, 검색어(q)를 무시함, 글 수보다 뒤 페이지를 달라고 하면 오류.
+// 새 서버: size(10/15/20/30)·q·field를 받음. 응답의 pageSize로 어느 쪽인지 알아냄.
+export type BoardField = "title" | "all" | "author";
+type ListRes = { posts: ListPost[]; total: number; pageSize: number };
+export const LIST_PAGE = 10;
+
+// 예전 서버일 때 검색용 — 그 게시판 글을 전부 받아 둠(30초 보관)
+const allCache = new Map<string, { at: number; posts: ListPost[] }>();
+async function fetchAllPosts(board: BoardKind) {
+  const hit = allCache.get(board);
+  if (hit && Date.now() - hit.at < 30_000) return hit.posts;
+  const first = await boardCall<ListRes>({ action: "list", board, page: 0 });
+  const ps = first.pageSize || 20;
+  const pages = Math.ceil(first.total / ps);
+  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, i) => boardCall<ListRes>({ action: "list", board, page: i + 1 })));
+  const posts = [first, ...rest].flatMap((r) => r.posts);
+  allCache.set(board, { at: Date.now(), posts });
+  return posts;
+}
+function matchLocal(p: ListPost, q: string, field: BoardField) {
+  if (p.hidden) return false; // 가려진 글은 검색에 안 나옴(새 서버와 같게)
+  const t = q.toLowerCase();
+  if (field === "author") return (p.author || "").toLowerCase().includes(t);
+  const inTitle = (p.title || "").toLowerCase().includes(t);
+  return field === "all" ? inTitle || (p.preview || "").toLowerCase().includes(t) : inTitle;
+}
+
+export async function fetchBoardPage(board: BoardKind, page: number, q: string, field: BoardField) {
+  const cut = (posts: ListPost[], from: number) => posts.slice(from, from + LIST_PAGE);
+  if (!q) {
+    // 20개씩 받아 10개씩 자름 — 항상 있는 범위만 요청
+    const sp = Math.floor((page * LIST_PAGE) / 20);
+    const r = await boardCall<ListRes>({ action: "list", board, page: sp, size: 20 });
+    return { posts: cut(r.posts, page * LIST_PAGE - sp * 20), total: r.total };
+  }
+  if (field === "author" && board === "free") return { posts: [], total: 0 };
+  // 검색은 30개씩 요청 — 새 서버면 pageSize 30이 돌아오고, 예전 서버면 20(검색어 무시)이라 구분됨
+  const sp = Math.floor((page * LIST_PAGE) / 30);
+  const r = await boardCall<ListRes>({ action: "list", board, page: sp, size: 30, q, field });
+  if (r.pageSize === 30) return { posts: cut(r.posts, page * LIST_PAGE - sp * 30), total: r.total };
+  const all = (await fetchAllPosts(board)).filter((p) => matchLocal(p, q, field));
+  return { posts: cut(all, page * LIST_PAGE), total: all.length };
+}

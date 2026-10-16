@@ -58,3 +58,14 @@ export function SkeletonPost() {
     </div>
   );
 }
+
+// 글줄 안에 들어가는 작은 뼈대 — 숫자·이름 자리(보유 포인트, 누적 출석 등)
+export function SkelInline({ w = 64, h = "0.9em", r }: { w?: number | string; h?: number | string; r?: number }) {
+  return (
+    <span
+      className="skeleton"
+      aria-label="불러오는 중"
+      style={{ display: "inline-block", width: w, height: h, borderRadius: r ?? 6, verticalAlign: "middle" }}
+    />
+  );
+}

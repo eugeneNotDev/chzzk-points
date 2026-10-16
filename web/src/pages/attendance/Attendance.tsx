@@ -1,6 +1,7 @@
 // 출석체크 + 방송 코드.
 //  - 출석: 방송 1번에 1번(방송 시작일 기준). 1회 100P, 10번째마다 +100P, 100번째마다 +1,000P — 금액은 서버가 내려줌.
 //  - 방송 코드: 방송에서 알려준 코드를 정해진 시간 안에 입력하면 포인트.
+import { SkelInline } from "../../components/Skeleton";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
@@ -179,11 +180,13 @@ export default function Attendance() {
           <div className={styles.stats}>
             <div>
               <span className="muted">누적 출석</span>
-              <b className="num">{fmt(count)}회</b>
+              <b className="num">{todayQ.data ? `${fmt(count)}회` : <SkelInline w={56} h={22} />}</b>
             </div>
             <div>
               <span className="muted">이번 달</span>
-              <b className="num">{view.y === ty && view.m === tm ? monthCount : (todayQ.data?.attendedDates ?? []).filter((d) => d.startsWith(`${ty}-${pad(tm)}-`)).length}회</b>
+              <b className="num">
+                {todayQ.data ? `${view.y === ty && view.m === tm ? monthCount : (todayQ.data.attendedDates ?? []).filter((d) => d.startsWith(`${ty}-${pad(tm)}-`)).length}회` : <SkelInline w={44} h={22} />}
+              </b>
             </div>
           </div>
 

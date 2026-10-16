@@ -1,4 +1,5 @@
 // 미니게임 공통 화면 조각 — 참여 제한 안내, 걸 포인트 입력, 결과, 최근 기록.
+import { SkelInline, SkeletonList } from "../../components/Skeleton";
 import type { ReactNode } from "react";
 import { Lock } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -45,7 +46,7 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
       <div className={styles.balanceRow}>
         <span className="muted">보유 포인트</span>
         <b className="num">
-          <AnimatedNumber value={game.balance} />
+          {game.state ? <AnimatedNumber value={game.balance} /> : <SkelInline w={96} h={22} />}
           <small>P</small>
         </b>
       </div>
@@ -125,6 +126,7 @@ export function GameResult({ result }: { result: ResultView | null }) {
 export function RecentList<T>({ items, empty, render }: { items: T[] | undefined; empty: string; render: (item: T) => { tag: string; color: string; detail: string; net: number; createdAt: string } }) {
   return (
     <Card title="최근 기록" flush>
+      {!items && <SkeletonList rows={3} variant="rank" />}
       {items && items.length === 0 && <EmptyState>{empty}</EmptyState>}
       <ul className={styles.recent}>
         {items?.map((it, i) => {

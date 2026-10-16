@@ -1,6 +1,7 @@
 // 투표(승부예측) — 치지직 승부예측과 같은 방식. 항목에 포인트를 걸고, 정산하면 진 쪽 포인트가
 // 이긴 쪽에 건 비율대로 나눠짐. 다른 유저에겐 누가 어디 걸었는지 안 보임.
 // 처음 건 항목은 못 바꾸고 같은 항목에만 더 걸 수 있음. 관리자는 생성/취소/정산 + 참여자 보기.
+import { SkelInline } from "../../components/Skeleton";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, Trophy } from "lucide-react";
@@ -124,7 +125,7 @@ export default function Predict() {
       <PageHead
         title="투표"
         desc="방송 중 승부예측에 포인트를 걸어보세요. 맞히면 진 쪽 포인트를 건 비율대로 나눠 받아요."
-        stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : "···"} unit="P" tone="accent" />}
+        stats={<Stat label="보유 포인트" value={me.data ? <AnimatedNumber value={me.data.balance} /> : <SkelInline w={90} h={22} />} unit="P" tone="accent" />}
       />
 
       <div className="split">

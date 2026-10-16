@@ -7,7 +7,7 @@ import { Select, type SelectOption } from "../../components/Select";
 import { Card, EmptyState } from "../../components/Card";
 import { PageHead } from "../../components/ui";
 import { startLogin, useAuth } from "../../lib/auth";
-import { BOARD_CFG, boardCall, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
+import { BOARD_CFG, fetchBoardPage, boardTime, isNewPost, loadSeen, type BoardKind, type ListPost } from "../../lib/board";
 import { ReviewBanner } from "./ReviewBanner";
 import { EmptySearch } from "./EmptySearch";
 import styles from "./Board.module.css";
@@ -44,17 +44,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
   const q = useQuery({
     queryKey: ["board", "list", board, page, search, field, token],
     placeholderData: (p) => p,
-    queryFn: async () => {
-      type R = { posts: ListPost[]; total: number; pageSize: number };
-      const extra = search ? { q: search, field } : {};
-      // 서버에선 20개씩 받아서 화면에선 10개씩 잘라 보여줌 — 서버 함수가 예전 버전(20개 고정)이든 새 버전이든 똑같이 동작하고,
-      // 글 수보다 뒤쪽 페이지를 달라고 해서 서버가 오류 내는 일이 없음(예전엔 3페이지에서 "불러오지 못했어요"가 떴음).
-      const FETCH = 20;
-      const serverPage = Math.floor((page * PAGE_SIZE) / FETCH);
-      const r = await boardCall<R>({ action: "list", board, page: serverPage, size: FETCH, ...extra });
-      const offset = page * PAGE_SIZE - serverPage * FETCH;
-      return { posts: r.posts.slice(offset, offset + PAGE_SIZE), total: r.total, pageSize: PAGE_SIZE };
-    },
+    queryFn: async () => ({ ...(await fetchBoardPage(board, page, search, field)), pageSize: PAGE_SIZE }),
   });
   const goSearch = (text: string, f: Field) => {
     const sp = new URLSearchParams();

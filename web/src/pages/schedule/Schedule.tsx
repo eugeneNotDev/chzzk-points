@@ -1,4 +1,5 @@
 // 방송 스케줄 달력 — 하루에 한 건(방송 또는 휴방). 관리자는 날짜를 눌러 추가·수정·삭제.
+import { SkelInline } from "../../components/Skeleton";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Moon } from "lucide-react";
@@ -164,7 +165,13 @@ export default function Schedule() {
             </span>
           </div>
           <div className={styles.detailBody}>
-            {!sel && <p className="muted">{selected < today ? "방송이 없었어요." : "아직 정해진 일정이 없어요."}</p>}
+            {q.isLoading && (
+              <>
+                <SkelInline w="60%" h={20} />
+                <SkelInline w="40%" h={14} />
+              </>
+            )}
+            {!q.isLoading && !sel && <p className="muted">{selected < today ? "방송이 없었어요." : "아직 정해진 일정이 없어요."}</p>}
             {sel?.kind === "off" && (
               <>
                 <h3 className={styles.detailTitle}>

@@ -1,0 +1,1 @@
+import{j as t}from"./data-rLZyL0yI.js";import{ShopPage as o}from"./Shop-DXLStPnh.js";import"./react-CRedkYGM.js";import"./index-Bz6O7a_B.js";import"./motion-D2bVE4Ot.js";import"./ui-Dsw7-H2J.js";import"./timer-RxZtldpQ.js";import"./check-ComVvqOk.js";import"./TitleColorPicker-CTVn1pGt.js";import"./plus-CAX07i1c.js";function x(){return t.jsx(o,{kind:"title"})}export{x as default};
