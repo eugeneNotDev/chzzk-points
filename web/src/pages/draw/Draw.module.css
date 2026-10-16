@@ -162,12 +162,20 @@
   padding: 14px 16px;
   border-top: 1px solid var(--c-border);
 }
-.sendHint {
+.notes {
   flex: 1 1 280px;
   margin: 0;
+  padding-left: 1.4em;
   color: var(--c-text-3);
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notes li::marker {
+  color: var(--c-text-3);
+  font-variant-numeric: tabular-nums;
 }
 .sendRow :global(.status) {
   flex-basis: 100%;
@@ -284,11 +292,7 @@
   box-shadow: 0 0 0 1px var(--c-border);
 }
 .mineNote {
-  margin: 0;
-  padding: 0 12px 10px;
-  color: var(--c-text-3);
-  font-size: 12.5px;
-  line-height: 1.5;
+  margin: 0 12px 10px;
 }
 .gone {
   flex: none;

@@ -190,7 +190,11 @@ export default function Draw() {
                     {err}
                   </p>
                 )}
-                <p className={styles.sendHint}>코드는 한 사람당 하나예요. 새로 보내면 아직 후원 안 한 이전 코드는 사라져요. 보낸 그림은 후원이 확인되면 방송 화면에 그대로 나가요. 다른 사람을 불쾌하게 하는 그림은 관리자가 바로 내리고 그림 후원을 막을 수 있어요.</p>
+                <ol className={styles.notes}>
+                  <li>코드는 한 사람당 하나예요. 새로 보내면 아직 후원 안 한 이전 코드는 사라져요.</li>
+                  <li>보낸 그림은 후원이 확인되면 방송 화면에 그대로 나가요.</li>
+                  <li>다른 사람을 불쾌하게 하는 그림은 관리자가 바로 내리고 그림 후원을 막을 수 있어요.</li>
+                </ol>
                 <button type="button" className="btn btn-primary btn-lg" disabled={blank || sending} onClick={send}>
                   <Send size={17} aria-hidden="true" />
                   {sending ? "보내는 중…" : "그림 보내고 코드 받기"}
@@ -200,7 +204,10 @@ export default function Draw() {
           )}
 
           <Card title="내 그림" flush>
-            <p className={styles.mineNote}>방송에 나온 그림은 6개월 동안 보관된 뒤 지워져요. 코드를 받고 24시간 안에 후원하지 않은 그림은 바로 지워져요.</p>
+            <ol className={`${styles.notes} ${styles.mineNote}`}>
+              <li>방송에 나온 그림은 6개월 동안 보관된 뒤 지워져요.</li>
+              <li>코드를 받고 24시간 안에 후원하지 않은 그림은 바로 지워져요.</li>
+            </ol>
             {mine.isLoading && <SkeletonList rows={3} variant="row" />}
             {mine.isError && <LoadError what="내 그림" onRetry={() => mine.refetch()} />}
             {mine.data?.items.length === 0 && <EmptyState>아직 보낸 그림이 없어요.</EmptyState>}
