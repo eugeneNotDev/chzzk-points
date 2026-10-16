@@ -237,7 +237,7 @@ export function useBoardActivity() {
   });
 }
 // 글·댓글을 쓴 뒤 — 보상을 받았으면 알림, 남은 보상 칩·포인트 새로고침
-export function afterActivity(qc: QueryClient, act: ActivityGrant | undefined, kind: "글" | "댓글") {
+export function afterActivity(qc: QueryClient, act: ActivityGrant | null | undefined, kind: "글" | "댓글") {
   if (!act) return;
   if (act.amount > 0) {
     toast(`게시판 활동 보상 +${act.amount}P (오늘 ${kind} ${act.used ?? "?"}/${act.max ?? "?"})`);

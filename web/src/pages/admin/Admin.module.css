@@ -772,6 +772,16 @@
   border-radius: 8px;
   background: #fff;
 }
+.drawGone {
+  display: grid;
+  place-items: center;
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+  font-size: 12px;
+}
 .drawInfo {
   flex: 1 1 200px;
   min-width: 0;

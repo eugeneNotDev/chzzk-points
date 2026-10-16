@@ -516,11 +516,10 @@ async function grantActivity(admin: Admin, me: string, kind: ActivityKind, targe
   return { amount: cfg.amount, reason: "ok", used: (count ?? 0) + 1, max: cfg.daily };
 }
 
-// 보상 회수 — sameDayOnly면 받은 날(한국 시간)과 같은 날일 때만(작성자가 스스로 지운 경우)
-async function revokeActivity(admin: Admin, kind: ActivityKind, targetId: number, sameDayOnly: boolean) {
+// 보상 회수 — 보상받은 글·댓글이 지워지거나(언제 지우든) 신고로 가려지면
+async function revokeActivity(admin: Admin, kind: ActivityKind, targetId: number) {
   const { data: row } = await admin.from("board_activity_rewards").select("id, channel_id, amount, kst_date, revoked").eq("kind", kind).eq("target_id", targetId).maybeSingle();
   if (!row || row.revoked) return 0;
-  if (sameDayOnly && row.kst_date !== kstDate()) return 0;
   const { data: upd } = await admin.from("board_activity_rewards").update({ revoked: true }).eq("id", row.id).eq("revoked", false).select("id");
   if (!upd?.length) return 0; // 동시에 다른 곳에서 회수함
   const { error } = await admin.from("points_ledger").insert({ channel_id: row.channel_id, amount: -row.amount, reason: `게시판 활동 보상 회수 (${ACTIVITY[kind].label})` });
@@ -567,7 +566,8 @@ async function createPost(admin: Admin, body: any, user: { channel_id: string })
       rewarded = REVIEW_REWARD;
     }
   }
-  const act = await grantActivity(admin, user.channel_id, "post", data.id, text, null, null);
+  // 방송 후기는 후기 보상만(활동 보상 글 개수에 안 셈)
+  const act = board === "free" ? await grantActivity(admin, user.channel_id, "post", data.id, text, null, null) : null;
   return json({ id: data.id, rewarded, activity: act });
 }
 
@@ -623,8 +623,8 @@ async function deletePost(admin: Admin, body: any, me: string, isAdmin: boolean)
   if (error) throw new Error(`board_posts delete 실패: ${error.message}`);
   // 이 글과 글에 달린 댓글들의 대기 중 신고를 정리(작성자가 지웠는지, 관리자가 지웠는지 구분)
   await closeReports(admin, { postId: id }, p.channel_id === me ? "author_deleted" : "deleted");
-  // 활동 보상: 작성자가 지우면 그날 받은 것만, 관리자가 지우면 날짜 상관없이 회수
-  await revokeActivity(admin, "post", id, p.channel_id === me);
+  // 활동 보상도 회수(언제 지우든)
+  revoked += await revokeActivity(admin, "post", id);
   if (ims?.length) await admin.storage.from(BUCKET).remove(ims.map((i: { storage_path: string }) => i.storage_path));
   return json({ ok: true, revoked });
 }
@@ -683,8 +683,8 @@ async function deleteComment(admin: Admin, body: any, me: string, isAdmin: boole
     }
   }
   await closeReports(admin, { type: "comment", id }, c.channel_id === me ? "author_deleted" : "deleted");
-  await revokeActivity(admin, "comment", id, c.channel_id === me);
-  return json({ ok: true });
+  const revoked = await revokeActivity(admin, "comment", id);
+  return json({ ok: true, revoked });
 }
 
 // ---------- 신고 ----------
@@ -776,7 +776,7 @@ async function reportTarget(admin: Admin, body: any, me: string) {
     await admin.from(table).update({ hidden: true }).eq("id", targetId);
     hidden = true;
     // 신고 누적으로 숨겨지면 활동 보상도 회수
-    await revokeActivity(admin, type === "post" ? "post" : "comment", targetId, false);
+    await revokeActivity(admin, type === "post" ? "post" : "comment", targetId);
   }
   return json({ ok: true, hidden });
 }

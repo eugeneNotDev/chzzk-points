@@ -283,6 +283,25 @@
   background: #fff;
   box-shadow: 0 0 0 1px var(--c-border);
 }
+.mineNote {
+  margin: 0;
+  padding: 0 12px 10px;
+  color: var(--c-text-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.gone {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: var(--c-surface-2);
+  box-shadow: 0 0 0 1px var(--c-border);
+  color: var(--c-text-3);
+  font-size: 11.5px;
+}
 .mineText {
   flex: 1;
   min-width: 0;

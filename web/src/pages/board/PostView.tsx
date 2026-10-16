@@ -419,7 +419,7 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
   };
 
   const del = async () => {
-    const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?";
+    const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?\n활동 보상으로 받은 포인트가 있다면 함께 회수돼요.";
     if (!(await confirmDialog(warn))) return;
     setDeleting(true);
     try {
@@ -436,9 +436,14 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
     }
   };
   const delComment = async (cid: number) => {
-    if (!(await confirmDialog("댓글을 삭제할까요?", { danger: true }))) return;
+    if (!(await confirmDialog("댓글을 삭제할까요?\n활동 보상으로 받은 포인트가 있다면 함께 회수돼요.", { danger: true }))) return;
     try {
-      await boardCall({ action: "delete-comment", id: cid });
+      const r = await boardCall<{ revoked?: number }>({ action: "delete-comment", id: cid });
+      if (r.revoked) {
+        toast(`삭제했어요. 보상 ${r.revoked}P가 회수됐어요.`, "info");
+        qc.invalidateQueries({ queryKey: ["me"] });
+      }
+      qc.invalidateQueries({ queryKey: ["board", "activity"] });
       refetchKeep();
     } catch (e) {
       alertDialog(boardErrText(e));

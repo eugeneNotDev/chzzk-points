@@ -2,14 +2,15 @@
 //
 // 전부 POST { action, ... }, 로그인 필수.
 // create       { image: "data:image/webp;base64,...", strokes?: "[...획 기록 JSON...]" }  → { code, expiresAt, minAmount }
-//              그림 저장 + 코드 발급. 기다리는 중인 그림은 한 사람당 3개까지, 30초에 하나.
+//              그림 저장 + 코드 발급. 30초에 하나. 아직 후원 안 한 이전 코드(그림)는 지움 — 기다리는 코드는 한 사람당 하나.
 //              strokes(선택): 오버레이가 그림이 그려지는 모습을 다시 보여줄 때 쓰는 획 순서 — 없거나 이상하면 그림만 띄움.
+//              오래된 그림 파일은 알아서 정리(아래 cleanup) — 정리된 그림은 url이 null.
 // mine         {}                                       → { items: [{ id, code, status, url, expiresAt, createdAt, shownAt, shortAmount }], minAmount }
 //              status: pending | shown | hidden | expired(pending인데 시간 지남)
 // admin-list   {}                                       → { items: [...그린 사람·후원자 포함] }   (관리자)
 // admin-hide   { id }                                   → { ok }  화면에서 즉시 끄기 + 다시 못 쓰게   (관리자)
 // admin-block  { channelId, blocked }                   → { ok }  이 사람 그림 후원 막기/풀기       (관리자)
-// 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned|blocked / 413 too_large / 429 too_fast|too_many
+// 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned|blocked / 413 too_large / 429 too_fast
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -52,8 +53,46 @@ function cleanStrokes(v: unknown): string | null {
   }
   return JSON.stringify(out);
 }
-const MAX_PENDING = 3;
 const COOLDOWN_MS = 30_000;
+const KEEP_DAYS = 180; // 방송에 나간 그림(최종 이미지)은 6개월 보관 뒤 삭제(0068_drawings_purge.sql)
+const STROKES_KEEP_MS = 5 * 60_000; // 획 기록은 오버레이가 다시 그리는 데만 써서 방송에 뜨고 5분 뒤 삭제
+const CLEANUP_EVERY_MS = 10 * 60_000;
+let lastCleanup = 0;
+
+// deno-lint-ignore no-explicit-any
+const filesOf = (rows: any[]) => rows.flatMap((r) => [r.image_path, r.strokes_path].filter(Boolean) as string[]);
+
+// 그림 파일 정리 — 저장 공간 아끼려고. 함수가 불릴 때 10분에 한 번씩, 종류마다 한 번에 50장까지.
+//  ① 코드 받고 24시간 안에 후원 안 한 그림: 파일·기록 다 삭제
+//  ② 방송에 나간 그림의 획 기록: 뜨고 5분 뒤 삭제(최종 이미지는 남김)
+//  ③ 방송에 나간 그림의 최종 이미지: 6개월 뒤 삭제(기록 줄은 남김 — 누가 언제 얼마 후원했는지)
+async function cleanup(admin: Admin) {
+  if (Date.now() - lastCleanup < CLEANUP_EVERY_MS) return;
+  lastCleanup = Date.now();
+  const now = new Date().toISOString();
+  const store = admin.storage.from(DRAWING_BUCKET);
+  try {
+    const { data: expired } = await admin.from("drawings").select("id, image_path, strokes_path").eq("status", "pending").lt("expires_at", now).limit(50);
+    if (expired?.length) {
+      await store.remove(filesOf(expired));
+      await admin.from("drawings").delete().in("id", expired.map((r) => r.id)).eq("status", "pending");
+    }
+    const strokesBefore = new Date(Date.now() - STROKES_KEEP_MS).toISOString();
+    const { data: done } = await admin.from("drawings").select("id, strokes_path").neq("status", "pending").not("strokes_path", "is", null).lt("shown_at", strokesBefore).limit(50);
+    if (done?.length) {
+      await store.remove(done.map((r) => r.strokes_path as string));
+      await admin.from("drawings").update({ strokes_path: null }).in("id", done.map((r) => r.id));
+    }
+    const keepBefore = new Date(Date.now() - KEEP_DAYS * 86400_000).toISOString();
+    const { data: old } = await admin.from("drawings").select("id, image_path, strokes_path").neq("status", "pending").is("purged_at", null).lt("shown_at", keepBefore).limit(50);
+    if (old?.length) {
+      await store.remove(filesOf(old));
+      await admin.from("drawings").update({ purged_at: now, strokes_path: null }).in("id", old.map((r) => r.id));
+    }
+  } catch (e) {
+    console.error(`그림 정리 실패: ${e instanceof Error ? e.message : e}`);
+  }
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -78,7 +117,7 @@ function view(r: any, withWho = false) {
     id: r.id,
     code: r.code,
     status: expired ? "expired" : r.status,
-    url: drawingUrl(r.image_path),
+    url: r.purged_at ? null : drawingUrl(r.image_path), // 정리된 그림은 파일이 없음
     expiresAt: r.expires_at,
     createdAt: r.created_at,
     shownAt: r.shown_at,
@@ -104,10 +143,13 @@ Deno.serve(async (req: Request) => {
     if (!user) return json({ error: "unauthorized" }, 401);
     if (user.banned) return json({ error: "banned" }, 403);
 
+    await cleanup(admin);
     if (body.action === "create") return await create(admin, me, user.drawing_blocked, body);
     if (body.action === "mine") {
-      const { data } = await admin.from("drawings").select("*").eq("channel_id", me).order("created_at", { ascending: false }).limit(10);
-      return json({ items: (data ?? []).map((r) => view(r)), minAmount: DRAWING_MIN_AMOUNT });
+      const { data } = await admin.from("drawings").select("*").eq("channel_id", me).order("created_at", { ascending: false }).limit(20);
+      // 만료된 코드는 곧 지워질 거라 목록에서 뺌
+      const items = (data ?? []).map((r) => view(r)).filter((i) => i.status !== "expired");
+      return json({ items, minAmount: DRAWING_MIN_AMOUNT });
     }
     if (!isAdmin) return json({ error: "forbidden" }, 403);
     if (body.action === "admin-list") {
@@ -150,10 +192,8 @@ async function create(admin: Admin, me: string, blocked: boolean, body: any) {
   if (bytes.length > MAX_BYTES) return json({ error: "too_large" }, 413);
   if (bytes.length < 200) return json({ error: "invalid_image" }, 400);
 
-  const { data: recent } = await admin.from("drawings").select("created_at, status, expires_at").eq("channel_id", me).order("created_at", { ascending: false }).limit(10);
+  const { data: recent } = await admin.from("drawings").select("created_at").eq("channel_id", me).order("created_at", { ascending: false }).limit(1);
   if (recent?.[0] && Date.now() - new Date(recent[0].created_at).getTime() < COOLDOWN_MS) return json({ error: "too_fast" }, 429);
-  const waiting = (recent ?? []).filter((r) => r.status === "pending" && new Date(r.expires_at).getTime() > Date.now()).length;
-  if (waiting >= MAX_PENDING) return json({ error: "too_many" }, 429);
 
   const ext = m[1];
   const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${ext}`;
@@ -167,6 +207,13 @@ async function create(admin: Admin, me: string, blocked: boolean, body: any) {
     const { error: sErr } = await admin.storage.from(DRAWING_BUCKET).upload(sp, new TextEncoder().encode(strokes), { contentType: "application/json", upsert: false });
     if (sErr) console.error(`획 기록 업로드 실패: ${sErr.message}`);
     else strokesPath = sp;
+  }
+
+  // 새 코드를 받으면 아직 후원 안 한 이전 코드(그림)는 지움 — 한 사람당 기다리는 코드는 하나
+  const { data: prev } = await admin.from("drawings").select("id, image_path, strokes_path").eq("channel_id", me).eq("status", "pending");
+  if (prev?.length) {
+    const { data: gone } = await admin.from("drawings").delete().in("id", prev.map((r) => r.id)).eq("status", "pending").select("id, image_path, strokes_path");
+    if (gone?.length) await admin.storage.from(DRAWING_BUCKET).remove(filesOf(gone));
   }
 
   const expiresAt = new Date(Date.now() + DRAWING_EXPIRE_HOURS * 3600_000).toISOString();

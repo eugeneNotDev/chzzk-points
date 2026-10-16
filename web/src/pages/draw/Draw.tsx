@@ -9,19 +9,18 @@ import { SkeletonList } from "../../components/Skeleton";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { ApiError, apiFetch, useAuth } from "../../lib/auth";
 import { API, CHZZK_CHANNEL_URL } from "../../lib/config";
-import { toast } from "../../lib/dialog";
+import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt, relTime } from "../../lib/format";
 import { DrawCanvas, type DrawCanvasHandle } from "./DrawCanvas";
 import styles from "./Draw.module.css";
 
-type Item = { id: number; code: string; status: "pending" | "shown" | "hidden" | "expired"; url: string; expiresAt: string; createdAt: string; shownAt: string | null; shortAmount: number | null };
+type Item = { id: number; code: string; status: "pending" | "shown" | "hidden" | "expired"; url: string | null; expiresAt: string; createdAt: string; shownAt: string | null; shortAmount: number | null };
 type Mine = { items: Item[]; minAmount: number };
 const call = <T,>(payload: Record<string, unknown>) => apiFetch<T>(API.drawings, { body: payload });
 const MIN = 3000;
 
 const ERR: Record<string, string> = {
   too_fast: "조금만 있다가 다시 보내주세요. (30초에 한 장)",
-  too_many: "후원을 기다리는 그림이 이미 3장 있어요. 먼저 후원하거나 24시간 뒤에 만료되면 다시 보낼 수 있어요.",
   too_large: "그림 파일이 너무 커요. 조금 덜 복잡하게 그려주세요.",
   blocked: "그림 후원이 제한된 계정이에요.",
   banned: "이용이 제한된 계정이에요.",
@@ -56,8 +55,14 @@ export default function Draw() {
     queryKey: ["drawings", "mine"],
     enabled: isLoggedIn,
     queryFn: () => call<Mine>({ action: "mine" }),
-    // 후원 기다리는 그림이 있으면 5초마다 상태 확인(방송에 나왔는지)
-    refetchInterval: (q) => (q.state.data?.items.some((i) => i.status === "pending") ? 5000 : false),
+    // 후원 기다리는 그림이 있으면 상태 확인(방송에 나왔는지) — 보낸 지 10분까지는 5초마다, 그 뒤엔 30초마다.
+    // (탭이 뒤로 가 있으면 자동으로 멈춤) 서버 호출 수를 아끼려고.
+    refetchInterval: (q) => {
+      const waiting = q.state.data?.items.filter((i) => i.status === "pending") ?? [];
+      if (!waiting.length) return false;
+      const newest = Math.max(...waiting.map((i) => new Date(i.createdAt).getTime()));
+      return Date.now() - newest < 10 * 60_000 ? 5000 : 30_000;
+    },
   });
   const minAmount = mine.data?.minAmount ?? MIN;
   const current = sent ? mine.data?.items.find((i) => i.code === sent.code) : undefined;
@@ -71,6 +76,9 @@ export default function Draw() {
 
   async function send() {
     if (!canvas.current || canvas.current.isBlank() || sending) return;
+    // 아직 후원 안 한 코드가 있으면 새 코드를 받는 순간 그 코드(그림)는 사라짐
+    const waiting = mine.data?.items.find((i) => i.status === "pending");
+    if (waiting && !(await confirmDialog(`아직 후원하지 않은 코드 ${waiting.code}가 있어요.\n새 코드를 받으면 이전 코드와 그림은 사라져요. 보낼까요?`, { okText: "새 코드 받기" }))) return;
     setSending(true);
     setErr(null);
     try {
@@ -155,7 +163,7 @@ export default function Draw() {
               </div>
               <p className={styles.codeHelp}>
                 치지직에서 후원할 때 메시지에 <b>{sent.code}</b>를 넣어 <b className="num">{fmt(minAmount)}</b>치즈 이상 후원해 주세요. 코드는 한 번만 쓸 수 있고{" "}
-                {leftText(sent.expiresAt)}이에요.
+                {leftText(sent.expiresAt)}이에요. 시간 안에 후원하지 않거나 새 코드를 받으면 이 코드와 그림은 지워져요.
                 {current?.shortAmount != null && current.status === "pending" && (
                   <span className={styles.short}>
                     {fmt(current.shortAmount)}치즈 후원은 확인됐는데 {fmt(minAmount)}치즈보다 적어서 그림이 안 떴어요. 다시 후원하면 같은 코드로 떠요.
@@ -182,7 +190,7 @@ export default function Draw() {
                     {err}
                   </p>
                 )}
-                <p className={styles.sendHint}>보낸 그림은 후원이 확인되면 방송 화면에 그대로 나가요. 다른 사람을 불쾌하게 하는 그림은 관리자가 바로 내리고 그림 후원을 막을 수 있어요.</p>
+                <p className={styles.sendHint}>코드는 한 사람당 하나예요. 새로 보내면 아직 후원 안 한 이전 코드는 사라져요. 보낸 그림은 후원이 확인되면 방송 화면에 그대로 나가요. 다른 사람을 불쾌하게 하는 그림은 관리자가 바로 내리고 그림 후원을 막을 수 있어요.</p>
                 <button type="button" className="btn btn-primary btn-lg" disabled={blank || sending} onClick={send}>
                   <Send size={17} aria-hidden="true" />
                   {sending ? "보내는 중…" : "그림 보내고 코드 받기"}
@@ -192,13 +200,14 @@ export default function Draw() {
           )}
 
           <Card title="내 그림" flush>
+            <p className={styles.mineNote}>방송에 나온 그림은 6개월 동안 보관된 뒤 지워져요. 코드를 받고 24시간 안에 후원하지 않은 그림은 바로 지워져요.</p>
             {mine.isLoading && <SkeletonList rows={3} variant="row" />}
             {mine.isError && <LoadError what="내 그림" onRetry={() => mine.refetch()} />}
             {mine.data?.items.length === 0 && <EmptyState>아직 보낸 그림이 없어요.</EmptyState>}
             <ul className={styles.mine}>
               {mine.data?.items.map((i) => (
                 <li key={i.id}>
-                  <img src={i.url} alt="" loading="lazy" />
+                  {i.url ? <img src={i.url} alt="" loading="lazy" /> : <span className={styles.gone}>지난 그림</span>}
                   <div className={styles.mineText}>
                     <span className={`${styles.mineCode} num`}>{i.code}</span>
                     <span className="muted">

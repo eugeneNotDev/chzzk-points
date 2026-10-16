@@ -1,5 +1,6 @@
 // 관리자 "그림 후원" 탭 — 방송에 나간(나가는 중인) 그림 목록. 이상한 그림은 "화면에서 끄기"로 바로 내리고,
-// 그린 사람은 "그림 후원 막기"로 다시 못 보내게. 방송 중에 폰으로도 보기 쉽게 5초마다 새로고침.
+// 그린 사람은 "그림 후원 막기"로 다시 못 보내게. 방송 중에 폰으로도 보기 쉽게 15초마다 새로고침.
+// 방송에 나간 그림 파일은 6개월 뒤 서버가 지워서 그 뒤엔 썸네일 대신 "지난 그림"으로 보임.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, EyeOff } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -15,7 +16,7 @@ type Row = {
   id: number;
   code: string;
   status: "shown" | "hidden";
-  url: string;
+  url: string | null;
   shownAt: string | null;
   hiddenAt: string | null;
   channelId: string;
@@ -28,7 +29,7 @@ const call = <T,>(payload: Record<string, unknown>) => apiFetch<T>(API.drawings,
 
 export function DrawingsTab() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["admin", "drawings"], queryFn: () => call<{ items: Row[] }>({ action: "admin-list" }), refetchInterval: 5000 });
+  const q = useQuery({ queryKey: ["admin", "drawings"], queryFn: () => call<{ items: Row[] }>({ action: "admin-list" }), refetchInterval: 15_000 });
   const refresh = () => qc.invalidateQueries({ queryKey: ["admin", "drawings"] });
 
   async function hide(r: Row) {
@@ -55,9 +56,13 @@ export function DrawingsTab() {
       <ul className={styles.drawList}>
         {q.data?.items.map((r) => (
           <li key={r.id} className={r.status === "hidden" ? styles.drawOff : ""}>
-            <a href={r.url} target="_blank" rel="noopener" className={styles.drawThumb}>
-              <img src={r.url} alt={`그림 ${r.code}`} loading="lazy" />
-            </a>
+            {r.url ? (
+              <a href={r.url} target="_blank" rel="noopener" className={styles.drawThumb}>
+                <img src={r.url} alt={`그림 ${r.code}`} loading="lazy" />
+              </a>
+            ) : (
+              <span className={`${styles.drawThumb} ${styles.drawGone}`}>지난 그림</span>
+            )}
             <div className={styles.drawInfo}>
               <b>
                 {r.donator ?? "익명 후원"} · <span className="num">{fmt(r.amount ?? 0)}</span>치즈
