@@ -112,3 +112,15 @@ p {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 테마 바꿀 때 원으로 번지는 효과(lib/theme.ts) — 브라우저 기본 크로스페이드는 끄고 원 모양으로만 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}

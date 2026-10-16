@@ -209,7 +209,8 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "hero" "tiles" "notices" "ranking" "board";
   gap: 20px;
-  align-items: start;
+  /* 같은 줄 카드는 높이를 맞춤(공지·랭킹 칸 아래 끝이 나란히) */
+  align-items: stretch;
 }
 .hero {
   grid-area: hero;
@@ -236,7 +237,6 @@
   .dash {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(320px, 0.8fr);
     grid-template-areas: "hero hero tiles" "notices board ranking";
-    align-items: stretch;
   }
   .dash > .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -251,7 +251,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 48px;
   padding: 10px 12px;
   border-radius: 10px;
   transition: background var(--dur) var(--ease-out);

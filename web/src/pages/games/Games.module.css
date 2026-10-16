@@ -455,55 +455,63 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-height: 260px;
-  padding: 28px 24px 16px;
-  background:
-    radial-gradient(110% 90% at 50% 40%, color-mix(in srgb, var(--c-accent) 6%, transparent), transparent 70%),
-    #0f1215;
+  gap: 10px;
+  padding: 26px 16px 16px;
+  overflow: hidden;
+  background: #0f1215;
   border-bottom: 1px solid var(--c-border);
 }
 .deck {
   position: relative;
-  width: 130px;
+  width: 128px;
   height: 180px;
   perspective: 900px;
 }
+/* 섞기 — 뒤에 깔린 카드 두 장이 양옆으로 부채꼴처럼 펼쳐졌다 모임(기존 사이트와 같은 연출) */
 .ghost {
   position: absolute;
   inset: 0;
   border-radius: 14px;
-  background: repeating-linear-gradient(45deg, #102a22 0 8px, #0c1f19 8px 16px);
-  box-shadow: inset 0 0 0 5px #0c0e11, inset 0 0 0 6px color-mix(in srgb, var(--c-accent) 60%, transparent);
-  opacity: 0;
-}
-.shuffling .ghost {
-  opacity: 1;
+  background: #1f2a33;
+  box-shadow: inset 0 0 0 1px #2e3b46;
 }
 .shuffling .ghostL {
-  animation: shufL 0.32s ease-in-out infinite;
+  animation: fanL 0.9s ease-in-out infinite;
 }
 .shuffling .ghostR {
-  animation: shufR 0.32s ease-in-out infinite;
+  animation: fanR 0.9s ease-in-out infinite;
 }
-@keyframes shufL {
-  50% {
-    transform: translateX(-46px) rotate(-8deg);
+@keyframes fanL {
+  0%,
+  100% {
+    transform: none;
+  }
+  30%,
+  60% {
+    transform: translateX(-66px) rotate(-14deg);
   }
 }
-@keyframes shufR {
-  50% {
-    transform: translateX(46px) rotate(8deg);
+@keyframes fanR {
+  0%,
+  100% {
+    transform: none;
+  }
+  30%,
+  60% {
+    transform: translateX(66px) rotate(14deg);
   }
 }
 .flip {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transition: transform 0.72s cubic-bezier(0.3, 1.2, 0.4, 1);
+  transition: transform 0.7s cubic-bezier(0.3, 0.8, 0.3, 1.15);
 }
 .flipOpen {
   transform: rotateY(180deg);
+}
+.flipQuick {
+  transition-duration: 0.25s;
 }
 .face {
   position: absolute;
@@ -570,12 +578,12 @@
   transform: rotate(180deg);
 }
 .cardNum {
-  font-size: 58px;
+  font-size: 61px;
   font-weight: 900;
   line-height: 1;
 }
 .midSuit {
-  margin-top: 8px;
+  margin-top: 6px;
   line-height: 0;
 }
 .midSuit svg {
@@ -584,9 +592,15 @@
   fill: currentColor;
 }
 .reveal {
-  min-height: 24px;
-  font-size: 16px;
-  font-weight: 700;
+  margin: 4px 0 0;
+  min-height: 1.5em;
+  font-size: 17.5px;
+  font-weight: 800;
+}
+.oeRule {
+  margin: 0;
+  color: var(--c-text-3);
+  font-size: 13px;
 }
 .oddText {
   color: #ff7b8f;
@@ -629,13 +643,17 @@
   background: color-mix(in srgb, var(--pc) 12%, var(--c-surface-2));
   box-shadow: inset 0 0 0 2px var(--pc);
 }
+.hit {
+  background: color-mix(in srgb, var(--pc) 22%, var(--c-surface-2));
+  box-shadow: inset 0 0 0 2px var(--pc), 0 0 22px color-mix(in srgb, var(--pc) 40%, transparent);
+}
 .oePick:active:not(:disabled) {
   transform: scale(0.98);
 }
 .oePick:disabled {
   cursor: default;
 }
-.oePick:disabled:not(.chosen) {
+.oePick:disabled:not(.chosen):not(.hit) {
   opacity: 0.45;
 }
 .mine {
@@ -676,5 +694,14 @@
   }
   .resNet {
     font-size: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shuffling .ghost {
+    animation: none;
+  }
+  .flip {
+    transition-duration: 0.01s;
   }
 }

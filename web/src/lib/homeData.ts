@@ -95,7 +95,7 @@ async function fetchBoard(board: "free" | "review") {
 export function useBoardPreview(tab: "all" | "free" | "review", limit = 5) {
   const { token } = useAuth();
   return useQuery({
-    queryKey: ["board", "preview", tab, token],
+    queryKey: ["board", "preview", tab, limit, token],
     staleTime: 30_000,
     queryFn: async () => {
       const posts =

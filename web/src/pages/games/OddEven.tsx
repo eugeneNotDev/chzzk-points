@@ -34,6 +34,7 @@ export default function OddEven() {
   const [card, setCard] = useState<{ n: number; suit: string; red: boolean } | null>(null);
   const [open, setOpen] = useState(false);
   const [shuffling, setShuffling] = useState(false);
+  const [quick, setQuick] = useState(false); // 다시 할 때 카드를 빠르게 덮음(기존 사이트 .is-quick)
   const [chosen, setChosen] = useState<Pick | null>(null);
   const [reveal, setReveal] = useState<Pick | null>(null);
   const [result, setResult] = useState<ResultView | null>(null);
@@ -50,8 +51,10 @@ export default function OddEven() {
     setReveal(null);
     setChosen(pick);
     if (open) {
+      setQuick(true);
       setOpen(false);
       await sleep(REDUCED_MOTION ? 30 : 260);
+      setQuick(false);
     }
     setShuffling(true);
     const started = Date.now();
@@ -110,7 +113,7 @@ export default function OddEven() {
             <div className={`${styles.deck} ${shuffling ? styles.shuffling : ""}`}>
               <div className={`${styles.ghost} ${styles.ghostL}`} />
               <div className={`${styles.ghost} ${styles.ghostR}`} />
-              <div className={`${styles.flip} ${open ? styles.flipOpen : ""}`}>
+              <div className={`${styles.flip} ${open ? styles.flipOpen : ""} ${quick ? styles.flipQuick : ""}`}>
                 <div className={`${styles.face} ${styles.back}`}>
                   <b>?</b>
                 </div>
@@ -141,6 +144,7 @@ export default function OddEven() {
                 </>
               )}
             </p>
+            <p className={styles.oeRule}>A~10 카드 한 장 · 맞히면 {mult}배 · 틀리면 0</p>
           </div>
           <BetPanel game={game}>
             <div className={styles.oePicks} role="group" aria-label="홀 또는 짝">
@@ -148,7 +152,7 @@ export default function OddEven() {
                 <button
                   key={p}
                   type="button"
-                  className={`${styles.oePick} ${p === "odd" ? styles.oeOdd : styles.oeEven} ${chosen === p ? styles.chosen : ""}`}
+                  className={`${styles.oePick} ${p === "odd" ? styles.oeOdd : styles.oeEven} ${chosen === p ? styles.chosen : ""} ${reveal === p ? styles.hit : ""}`}
                   disabled={!game.canPlay}
                   onClick={() => play(p)}
                 >

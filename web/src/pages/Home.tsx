@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, CircleCheck, Gift, Image as ImageIcon, Play, Store, Ticket, type LucideIcon } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
@@ -12,6 +12,18 @@ import { isNoticeNew, useNoticeReadVersion } from "../lib/notices";
 import { useBroadcastStatus } from "../lib/queries";
 import { useTableRefetch } from "../lib/realtime";
 import styles from "./Home.module.css";
+
+// 넓은 모니터(3단 배치)에선 목록을 더 길게 보여줘서 아래쪽 빈 공간을 채움
+const wideMq = typeof window !== "undefined" ? window.matchMedia("(min-width: 1440px)") : null;
+function useWide() {
+  return useSyncExternalStore(
+    (cb) => {
+      wideMq?.addEventListener("change", cb);
+      return () => wideMq?.removeEventListener("change", cb);
+    },
+    () => !!wideMq?.matches,
+  );
+}
 
 function dayLabel(day: string) {
   const [y, m, d] = day.split("-").map(Number);
@@ -116,7 +128,7 @@ function QuickTiles() {
 }
 
 function NoticePreview() {
-  const q = useNoticePreview(5);
+  const q = useNoticePreview(useWide() ? 8 : 5);
   useNoticeReadVersion();
   useTableRefetch("notices", [["notices"]]);
   return (
@@ -137,11 +149,12 @@ function NoticePreview() {
 }
 
 function RankingPreview() {
-  const q = useRanking(5);
+  const n = useWide() ? 8 : 5;
+  const q = useRanking(n);
   useTableRefetch("ranking_pings", [["ranking"]], { event: "INSERT", minIntervalMs: 8000, settleMs: 800 });
   return (
     <Card title="포인트 랭킹" moreTo="/ranking.html" flush className={styles.ranking}>
-      {q.isLoading && <ListSkeleton rows={5} avatar />}
+      {q.isLoading && <ListSkeleton rows={n} avatar />}
       {q.isError && <EmptyState>랭킹을 불러오지 못했어요.</EmptyState>}
       {q.data && q.data.length === 0 && <EmptyState>아직 랭킹에 등록된 유저가 없어요.</EmptyState>}
       {q.data && <RankingList rows={q.data} />}
@@ -157,7 +170,7 @@ const BOARD_TABS = [
 
 function BoardPreview() {
   const [tab, setTab] = useState<(typeof BOARD_TABS)[number]["id"]>("all");
-  const q = useBoardPreview(tab, 5);
+  const q = useBoardPreview(tab, useWide() ? 8 : 5);
   return (
     <Card
       title="게시판 새 글"

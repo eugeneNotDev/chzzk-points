@@ -72,7 +72,7 @@
 
   --sidebar-w: 240px;
   /* 본문 최대 폭 — 넓은 모니터에서도 빈 공간이 너무 남지 않게(홈은 1440px부터 3단) */
-  --content-max: 1640px;
+  --content-max: 1920px;
   --mobile-bar-h: 64px;
 
   color-scheme: dark;

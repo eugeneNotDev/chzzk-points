@@ -110,7 +110,7 @@ function TopUser() {
 function ThemeButton() {
   const { theme, toggle } = useTheme();
   return (
-    <button type="button" className={styles.iconBtn} onClick={toggle} aria-label={theme === "dark" ? "라이트 모드로 바꾸기" : "다크 모드로 바꾸기"}>
+    <button type="button" className={styles.iconBtn} onClick={(e) => toggle(e)} aria-label={theme === "dark" ? "라이트 모드로 바꾸기" : "다크 모드로 바꾸기"}>
       {theme === "dark" ? <Moon size={20} aria-hidden="true" /> : <Sun size={20} aria-hidden="true" />}
     </button>
   );
@@ -151,7 +151,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
           ))}
         </nav>
         <div className={styles.sheetFoot}>
-          <button type="button" className={styles.sheetFootBtn} onClick={toggle}>
+          <button type="button" className={styles.sheetFootBtn} onClick={(e) => toggle(e)}>
             {theme === "dark" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
             {theme === "dark" ? "라이트 모드" : "다크 모드"}
           </button>
