@@ -1,17 +1,19 @@
 // 그림판 — 그림 후원용. 실제 그림 크기는 960×540(16:9)으로 고정하고, 화면엔 칸 너비에 맞춰 늘려 보여줌.
-// 펜·지우개(흰색으로 칠하기), 굵기 3단계, 색 12개 + 직접 고르기, 되돌리기/다시 하기(최대 40번), 전체 지우기.
+// 배경은 투명 — 방송 화면 위에 그림만 그려짐(그림도네처럼). 그리는 동안은 바둑판 배경(밝게/어둡게)으로 보여줌.
+// 펜·지우개(투명하게 지움), 굵기 3단계, 색 12개 + 직접 고르기, 되돌리기/다시 하기(최대 40번), 전체 지우기.
 // 그리던 그림은 이 브라우저에 잠깐 저장해서(새로고침해도 유지) 보내면 지움.
 // 획 기록(ops)도 같이 남김 — 방송 오버레이가 이걸로 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼).
-//   op: { c: 색, w: 굵기, p: [x,y,x,y,...] (정수 좌표) } | { k: "clear" }  — 지우개는 흰색 펜으로 기록
+//   op: { c: 색, w: 굵기, p: [x,y,x,y,...] (정수 좌표), e?: 1 (지우개) } | { k: "clear" }
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Eraser, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Contrast, Eraser, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
 import { readStorage, writeStorage } from "../../lib/storage";
 import styles from "./Draw.module.css";
 
 export const CANVAS_W = 960;
 export const CANVAS_H = 540;
-const BG = "#ffffff";
-const DRAFT_KEY = "chzzk_points_draw_draft";
+// 투명 배경으로 바뀌면서 저장 키도 바꿈 — 예전(흰 배경) 임시저장은 이어 그리지 않음
+const DRAFT_KEY = "chzzk_points_draw_draft_v2";
+const BG_KEY = "chzzk_points_draw_bg";
 const COLORS = ["#111111", "#6b7280", "#ffffff", "#e5383b", "#ff8c42", "#ffd23f", "#2fbf71", "#00b4d8", "#3a6ff7", "#8b5cf6", "#ff6fb5", "#8b5a2b"];
 const SIZES = [
   { v: 4, label: "가늘게" },
@@ -21,15 +23,16 @@ const SIZES = [
 const MAX_HISTORY = 40;
 const MAX_POINTS = 60_000; // 획 기록이 너무 커지면(아주 오래 그리면) 재생 없이 그림만 보냄
 
-export type DrawOp = { c: string; w: number; p: number[] } | { k: "clear" };
+export type DrawOp = { c: string; w: number; p: number[]; e?: 1 } | { k: "clear" };
 export type DrawCanvasHandle = { exportImage: () => string; exportOps: () => string | null; clear: () => void; isBlank: () => boolean };
-const OPS_KEY = "chzzk_points_draw_ops";
+const OPS_KEY = "chzzk_points_draw_ops_v2";
 
 export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: boolean) => void }>(function DrawCanvas({ onChange }, ref) {
   const cv = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState(COLORS[0]);
   const [size, setSize] = useState(SIZES[1].v);
   const [eraser, setEraser] = useState(false);
+  const [darkBg, setDarkBg] = useState(() => readStorage(BG_KEY) === "dark");
   const undo = useRef<ImageData[]>([]);
   const redo = useRef<ImageData[]>([]);
   const [, bump] = useState(0);
@@ -38,14 +41,10 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   // 지금 그림을 만든 획 순서(되돌리기하면 빼고, 다시 하기하면 넣음). null이면 기록을 못 믿음(예전 임시저장에서 이어 그림)
   const ops = useRef<DrawOp[] | null>([]);
   const redoOps = useRef<DrawOp[]>([]);
-  const curOp = useRef<{ c: string; w: number; p: number[] } | null>(null);
+  const curOp = useRef<{ c: string; w: number; p: number[]; e?: 1 } | null>(null);
 
   const ctx = () => cv.current!.getContext("2d")!;
-  const fillBg = () => {
-    const c = ctx();
-    c.fillStyle = BG;
-    c.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  };
+  const fillBg = () => ctx().clearRect(0, 0, CANVAS_W, CANVAS_H);
   const saveDraft = () => {
     try {
       writeStorage(DRAFT_KEY, strokes.current ? cv.current!.toDataURL("image/png") : "");
@@ -98,13 +97,16 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     const c = ctx();
     c.lineCap = "round";
     c.lineJoin = "round";
-    c.strokeStyle = eraser ? BG : color;
-    c.fillStyle = eraser ? BG : color;
+    // 지우개는 칠한 자리를 투명하게 뚫음
+    c.globalCompositeOperation = eraser ? "destination-out" : "source-over";
+    c.strokeStyle = eraser ? "#000" : color;
+    c.fillStyle = eraser ? "#000" : color;
     c.lineWidth = eraser ? size * 2 : size;
     if (pts.length === 1) {
       c.beginPath();
       c.arc(pts[0][0], pts[0][1], c.lineWidth / 2, 0, Math.PI * 2);
       c.fill();
+      c.globalCompositeOperation = "source-over";
       return;
     }
     const n = pts.length;
@@ -115,6 +117,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     c.moveTo((ax + bx) / 2, (ay + by) / 2);
     c.quadraticCurveTo(bx, by, (bx + cx) / 2, (by + cy) / 2);
     c.stroke();
+    c.globalCompositeOperation = "source-over";
   };
 
   const down = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -123,7 +126,9 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     pushHistory();
     const p = pos(e);
     drawing.current = { id: e.pointerId, pts: [p] };
-    curOp.current = { c: eraser ? BG : color, w: eraser ? size * 2 : size, p: [Math.round(p[0]), Math.round(p[1])] };
+    curOp.current = eraser
+      ? { c: "#000000", w: size * 2, p: [Math.round(p[0]), Math.round(p[1])], e: 1 }
+      : { c: color, w: size, p: [Math.round(p[0]), Math.round(p[1])] };
     stroke([p]);
   };
   const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -201,6 +206,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   }, [doUndo, doRedo]);
 
   useImperativeHandle(ref, () => ({
+    // 투명 배경 그대로(webp·png 둘 다 투명 지원)
     exportImage: () => {
       const webp = cv.current!.toDataURL("image/webp", 0.88);
       // webp로 못 만드는 브라우저(일부 사파리)는 png로
@@ -287,12 +293,26 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
             <span>전체 지우기</span>
           </button>
         </div>
+        <div className={styles.toolGroup}>
+          <button
+            type="button"
+            className={styles.tool}
+            onClick={() => {
+              writeStorage(BG_KEY, darkBg ? "light" : "dark");
+              setDarkBg(!darkBg);
+            }}
+            title="그리는 동안만 보이는 배경이에요. 방송엔 배경 없이 그림만 나가요."
+          >
+            <Contrast size={17} aria-hidden="true" />
+            <span>{darkBg ? "어두운 배경" : "밝은 배경"}</span>
+          </button>
+        </div>
       </div>
       <canvas
         ref={cv}
         width={CANVAS_W}
         height={CANVAS_H}
-        className={`${styles.canvas} ${eraser ? styles.erasing : ""}`}
+        className={`${styles.canvas} ${darkBg ? styles.canvasDark : ""} ${eraser ? styles.erasing : ""}`}
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}

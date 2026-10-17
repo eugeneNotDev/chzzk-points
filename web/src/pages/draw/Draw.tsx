@@ -8,6 +8,7 @@ import { LoadError } from "../../components/LoadError";
 import { SkeletonList } from "../../components/Skeleton";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { ApiError, apiFetch, useAuth } from "../../lib/auth";
+import { useBroadcastStatus } from "../../lib/queries";
 import { API, CHZZK_CHANNEL_URL } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt, relTime } from "../../lib/format";
@@ -25,6 +26,7 @@ const ERR: Record<string, string> = {
   blocked: "그림 후원이 제한된 계정이에요.",
   banned: "이용이 제한된 계정이에요.",
   invalid_image: "그림을 저장하지 못했어요. 다시 시도해주세요.",
+  not_live: "방송 중에만 그림을 보낼 수 있어요. 그린 그림은 저장돼 있으니 방송이 켜지면 보내주세요.",
 };
 const errText = (e: unknown) => (e instanceof ApiError ? ERR[(e.body as { error?: string })?.error ?? ""] : null) ?? "보내지 못했어요. 잠시 후 다시 시도해주세요.";
 
@@ -44,8 +46,11 @@ function leftText(iso: string) {
 }
 
 export default function Draw() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isAdmin } = useAuth();
   const qc = useQueryClient();
+  // 방송 중에만 보낼 수 있음(그리기는 언제든 — 그리던 그림은 저장됨). 스트리머 계정은 시험용으로 예외.
+  const live = useBroadcastStatus();
+  const offAir = live.data?.isLive === false && !isAdmin;
   const canvas = useRef<DrawCanvasHandle>(null);
   const [blank, setBlank] = useState(true);
   const [sending, setSending] = useState(false);
@@ -192,12 +197,12 @@ export default function Draw() {
                 )}
                 <ol className={styles.notes}>
                   <li>코드는 한 사람당 하나예요. 새로 보내면 아직 후원 안 한 이전 코드는 사라져요.</li>
-                  <li>보낸 그림은 후원이 확인되면 방송 화면에 그대로 나가요.</li>
+                  <li>그림판 전체가 방송 화면 전체예요. 후원이 확인되면 배경 없이 그림만, 그린 자리 그대로 방송 화면 위에 그려져요.</li>
                   <li>다른 사람을 불쾌하게 하는 그림은 관리자가 바로 내리고 그림 후원을 막을 수 있어요.</li>
                 </ol>
-                <button type="button" className="btn btn-primary btn-lg" disabled={blank || sending} onClick={send}>
+                <button type="button" className="btn btn-primary btn-lg" disabled={blank || sending || offAir} onClick={send}>
                   <Send size={17} aria-hidden="true" />
-                  {sending ? "보내는 중…" : "그림 보내고 코드 받기"}
+                  {offAir ? "방송 중에만 보낼 수 있어요" : sending ? "보내는 중…" : "그림 보내고 코드 받기"}
                 </button>
               </div>
             </Card>

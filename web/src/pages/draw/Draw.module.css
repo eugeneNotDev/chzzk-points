@@ -146,9 +146,16 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   height: auto;
-  background: #fff;
+  /* 투명 배경 — 그리는 동안은 바둑판으로 보여줌(방송엔 안 나감) */
+  background-color: #fff;
+  background-image: conic-gradient(#e9ecef 25%, transparent 0 50%, #e9ecef 0 75%, transparent 0);
+  background-size: 24px 24px;
   cursor: crosshair;
   touch-action: none; /* 폰에서 그릴 때 화면이 같이 움직이지 않게 */
+}
+.canvasDark {
+  background-color: #2b2f36;
+  background-image: conic-gradient(#353a42 25%, transparent 0 50%, #353a42 0 75%, transparent 0);
 }
 .erasing {
   cursor: cell;

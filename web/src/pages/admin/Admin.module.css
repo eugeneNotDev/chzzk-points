@@ -770,7 +770,10 @@
   aspect-ratio: 16 / 9;
   object-fit: contain;
   border-radius: 8px;
-  background: #fff;
+  /* 투명 그림 — 흰 펜도 보이게 바둑판 */
+  background-color: #fff;
+  background-image: conic-gradient(#d0d4d9 25%, transparent 0 50%, #d0d4d9 0 75%, transparent 0);
+  background-size: 12px 12px;
 }
 .drawGone {
   display: grid;

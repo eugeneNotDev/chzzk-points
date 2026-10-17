@@ -17,6 +17,7 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { broadcastToOverlay } from "../_shared/stream-code.ts";
+import { isChannelLive } from "../_shared/live.ts";
 import { CODE_ALPHABET, CODE_LENGTH, DRAWING_BUCKET, DRAWING_EXPIRE_HOURS, DRAWING_MIN_AMOUNT, drawingUrl } from "../_shared/drawing.ts";
 
 const MAX_BYTES = 1024 * 1024;
@@ -49,7 +50,8 @@ function cleanStrokes(v: unknown): string | null {
       if (!Number.isFinite(x) || !Number.isFinite(y) || x < -50 || x > 1010 || y < -50 || y > 590) return null;
       p.push(x, y);
     }
-    out.push({ c: o.c.toLowerCase(), w, p });
+    // e: 1 = 지우개(그 자리를 투명하게 지움)
+    out.push(o.e === 1 ? { c: o.c.toLowerCase(), w, p, e: 1 } : { c: o.c.toLowerCase(), w, p });
   }
   return JSON.stringify(out);
 }
@@ -186,11 +188,14 @@ Deno.serve(async (req: Request) => {
 // deno-lint-ignore no-explicit-any
 async function create(admin: Admin, me: string, blocked: boolean, body: any) {
   if (blocked) return json({ error: "blocked" }, 403);
+  // 그림 후원은 방송 중에만(방송 화면 위에 그리는 거라). 스트리머 계정은 시험해볼 수 있게 예외.
+  if (me !== OWNER_CHANNEL_ID && !(await isChannelLive())) return json({ error: "not_live" }, 403);
   const m = typeof body.image === "string" ? /^data:image\/(webp|png);base64,([A-Za-z0-9+/=]+)$/.exec(body.image) : null;
   if (!m) return json({ error: "invalid_image" }, 400);
   const bytes = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
   if (bytes.length > MAX_BYTES) return json({ error: "too_large" }, 413);
-  if (bytes.length < 200) return json({ error: "invalid_image" }, 400);
+  // 배경이 투명이라 점 하나만 찍은 그림은 파일이 아주 작음 — 깨진 데이터만 걸러냄
+  if (bytes.length < 40) return json({ error: "invalid_image" }, 400);
 
   const { data: recent } = await admin.from("drawings").select("created_at").eq("channel_id", me).order("created_at", { ascending: false }).limit(1);
   if (recent?.[0] && Date.now() - new Date(recent[0].created_at).getTime() < COOLDOWN_MS) return json({ error: "too_fast" }, 429);
