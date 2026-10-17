@@ -44,10 +44,10 @@ export const NAV_GROUPS: NavGroup[] = [
     title: "포인트",
     items: [
       { path: "attendance.html", label: "출석체크", icon: CircleCheck },
+      { path: "ranking.html", label: "랭킹", icon: Trophy },
       { path: "shop.html", label: "포인트 상점", icon: Store },
       { path: "titles.html", label: "칭호 상점", icon: Crown },
       { path: "predict.html", label: "투표", icon: ChartColumn },
-      { path: "ranking.html", label: "랭킹", icon: Trophy },
     ],
   },
   {
