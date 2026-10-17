@@ -141,18 +141,9 @@
   background: var(--c-surface);
   font-size: 15px;
 }
-.badgePreview {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.spPreview {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.spPreview :global(.rk-sp) {
-  font-size: 11px;
+.rowPreview {
+  flex: 1;
+  min-width: 0;
 }
 
 .iconDialog {

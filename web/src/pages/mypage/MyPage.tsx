@@ -10,7 +10,8 @@ import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
 import { Pagination } from "../../components/Pagination";
-import { TitleBadge } from "../../components/TitleBadge";
+import { TitleStage, TitleText } from "../../components/TitlePlate";
+import { TitlePreview } from "../shop/TitlePreview";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
@@ -74,7 +75,7 @@ export default function MyPage() {
           </div>
           <div className={styles.stat}>
             <span className="muted">칭호</span>
-            <span className={styles.statVal}>{equipped ? <TitleBadge name={equipped.name} value={equipped.color} /> : "미장착"}</span>
+            <span className={styles.statVal}>{equipped ? <TitleText name={equipped.name} value={equipped.color} /> : "미장착"}</span>
           </div>
           <div className={styles.stat}>
             <span className="muted">등급</span>
@@ -111,7 +112,9 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
   const [open, setOpen] = useState(true);
   const [status, setStatus] = useState<{ text: string; error?: boolean }>({ text: "" });
   const [busy, setBusy] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const owned = (titles.data ?? []).filter((t) => (profile?.purchasedTitleIds ?? []).includes(t.id));
+  const previewT = previewId ? owned.find((t) => t.id === previewId) : undefined;
 
   async function equip(id: string) {
     if (!profile) return;
@@ -140,7 +143,7 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
       {open && (
         <div className={styles.collapseBody}>
           <p className="muted" style={{ fontSize: 13 }}>
-            상점에서 구매했거나 선물받은 칭호를 장착할 수 있어요. <Link to="/titles.html" className={styles.link}>칭호 상점 가기</Link>
+            상점에서 구매했거나 선물받은 칭호를 장착할 수 있어요. 칭호를 누르면 장착한 모습을 미리 볼 수 있어요. <Link to="/titles.html" className={styles.link}>칭호 상점 가기</Link>
           </p>
           {titles.isLoading && <span className="skeleton" style={{ height: 116, borderRadius: 14 }} />}
           {profile && titles.data && owned.length === 0 && <EmptyState>보유한 칭호가 없어요.</EmptyState>}
@@ -149,9 +152,7 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
               const sel = profile?.selectedTitleId === t.id;
               return (
                 <div key={t.id} className={`${styles.titleItem} ${sel ? styles.titleSel : ""}`}>
-                  <div className={styles.titleBadge}>
-                    <TitleBadge name={t.name} value={t.color} />
-                  </div>
+                  <TitleStage name={t.name} value={t.color} sub={sel ? "장착 중" : undefined} onClick={() => setPreviewId(t.id)} />
                   <span className="muted" style={{ fontSize: 12 }}>
                     {t.kind === "custom" ? "관리자가 지급한 칭호" : "상점에서 구매한 칭호"}
                   </span>
@@ -165,6 +166,18 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
           <p className={`status ${status.error ? "error" : "ok"}`}>{status.text}</p>
         </div>
       )}
+      <TitlePreview
+        title={previewT ? { heading: `[${previewT.name}]`, name: previewT.name, color: previewT.color } : null}
+        balance={profile?.balance ?? 0}
+        actions={
+          previewT && (
+            <button type="button" className={`btn ${profile?.selectedTitleId === previewT.id ? "" : "btn-primary"}`} disabled={busy} onClick={() => equip(previewT.id)}>
+              {profile?.selectedTitleId === previewT.id ? "장착 해제" : "장착하기"}
+            </button>
+          )
+        }
+        onClose={() => setPreviewId(null)}
+      />
     </Card>
   );
 }

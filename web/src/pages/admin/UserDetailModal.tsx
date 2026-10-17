@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Modal } from "../../components/ui";
 import { Pagination } from "../../components/Pagination";
-import { TitleBadge } from "../../components/TitleBadge";
+import { TitleText } from "../../components/TitlePlate";
 import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { adminCall, fmtDateTime, num, type UserDetail } from "../../lib/admin";
@@ -70,7 +70,7 @@ export function UserDetailModal({ channelId, onClose, onChanged }: { channelId: 
                     "보유한 칭호가 없어요."
                   ) : (
                     <>
-                      보유 {num(d.ownedTitles.length)}개 · {equipped ? <>장착 중 <TitleBadge name={equipped.name} value={equipped.color} /></> : "장착 안 함"}
+                      보유 {num(d.ownedTitles.length)}개 · {equipped ? <>장착 중 <TitleText name={equipped.name} value={equipped.color} /></> : "장착 안 함"}
                     </>
                   )}
                 </p>

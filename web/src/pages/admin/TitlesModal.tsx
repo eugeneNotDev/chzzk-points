@@ -3,7 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Modal } from "../../components/ui";
-import { SpecialTitleLine, TitleBadge } from "../../components/TitleBadge";
+import { SpecialTitleLine } from "../../components/TitleBadge";
+import { TitleText } from "../../components/TitlePlate";
 import { TitleColorPicker } from "../../components/TitleColorPicker";
 import { ApiError, apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
@@ -185,7 +186,7 @@ export function TitlesModal({
           <div className={styles.chips}>
             {owned.map((t) => (
               <span key={t.id} className={styles.chip}>
-                <TitleBadge name={t.name} value={t.color} />
+                <TitleText name={t.name} value={t.color} />
                 <span className={styles.muted}>
                   {t.kind === "custom" ? "관리자 지급" : "상점 칭호"}
                   {t.equipped ? " · 장착 중" : ""}
@@ -256,7 +257,7 @@ export function TitlesModal({
                 )}
                 {choices.map((t) => (
                   <button key={t.id} type="button" role="radio" aria-checked={picked === t.id} className={`${styles.pick} ${picked === t.id ? styles.on : ""}`} onClick={() => setPicked(t.id)}>
-                    <TitleBadge name={t.name} value={t.color} />
+                    <TitleText name={t.name} value={t.color} />
                   </button>
                 ))}
               </div>

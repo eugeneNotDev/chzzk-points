@@ -17,7 +17,10 @@ import {
   titleBadgeTextColor,
   type TitleStyle,
 } from "../lib/titleStyle";
-import { SpecialTitleLine, TitleBadge, TitleIconSvg } from "./TitleBadge";
+import { SpecialTitleLine, TitleIconSvg } from "./TitleBadge";
+import { TitleText } from "./TitlePlate";
+import { RankingList } from "./RankingList";
+import type { RankingRow } from "../lib/homeData";
 import styles from "./TitleColorPicker.module.css";
 
 const SPECIAL_DESIGNS = [
@@ -99,7 +102,7 @@ export function TitleColorPicker({
             const sample = composeTitleStyle({ ...state, design: d.id as TitleStyle["design"], icon: null, star: false });
             return (
               <button key={d.id} type="button" role="radio" aria-checked={state.design === d.id} className={`${styles.design} ${state.design === d.id ? styles.on : ""}`} onClick={() => set({ design: d.id as TitleStyle["design"] })}>
-                <span className={styles.designSample}>{special ? <SpecialTitleLine list={[{ name: "가나다", color: sample }]} /> : <TitleBadge name="가나" value={sample} />}</span>
+                <span className={styles.designSample}>{special ? <SpecialTitleLine list={[{ name: "가나다", color: sample }]} /> : <TitleText name="가나" value={sample} />}</span>
                 <span>{d.name}</span>
               </button>
             );
@@ -131,24 +134,16 @@ export function TitleColorPicker({
         <span className="muted" style={{ fontSize: 12 }}>
           {special ? "랭킹 미리보기" : "미리보기"}
         </span>
-        {special ? (
-          <span className={styles.spPreview}>
-            <SpecialTitleLine list={[{ name, color: composeTitleStyle(state) }]} />
-            <span>
-              <TitleBadge name="장착 칭호" value="#868e96" className="rk-shop" /> <b>닉네임</b>
-            </span>
-          </span>
-        ) : (
-          <span className={styles.badgePreview}>
-            <TitleBadge name={name} value={composeTitleStyle(state)} /> <b>닉네임</b>
-          </span>
-        )}
+        {/* 실제 랭킹 줄과 같은 부품으로 — 일반 칭호는 줄 플레이트 + 닉네임 뒤 글자, 특수 칭호는 닉네임 위 */}
+        <div className={styles.rowPreview}>
+          <RankingList rows={[previewRow(name, composeTitleStyle(state), special)]} hideRank />
+        </div>
       </div>
 
       {iconOpen && (
         <IconDialog
           current={state.icon}
-          preview={special ? <SpecialTitleLine list={[{ name, color: composeTitleStyle(state) }]} /> : <TitleBadge name={name} value={composeTitleStyle(state)} />}
+          preview={special ? <SpecialTitleLine list={[{ name, color: composeTitleStyle(state) }]} /> : <TitleText name={name} value={composeTitleStyle(state)} />}
           onPick={(id) => {
             set({ icon: id });
             setIconOpen(false);
@@ -273,4 +268,19 @@ function IconDialog({ current, preview, onPick, onClose }: { current: string | n
       </div>
     </dialog>
   );
+}
+
+// 칭호 만들기 미리보기용 가짜 랭킹 줄
+function previewRow(name: string, color: string, special: boolean): RankingRow {
+  return {
+    channel_id: "__preview",
+    channel_name: "닉네임",
+    total_points: 12345,
+    is_public: true,
+    tier_title_name: null,
+    tier_title_color: null,
+    shop_title_name: special ? null : name,
+    shop_title_color: special ? null : color,
+    special_titles: special ? [{ name, color }] : null,
+  };
 }

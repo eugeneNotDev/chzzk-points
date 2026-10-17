@@ -7,7 +7,7 @@ import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, MousePointerClick, Plus } from "lucide-react";
+import { ArrowDownUp, Check, MousePointerClick, Plus } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead, Stat } from "../../components/ui";
 import { ApiError, getToken, useAuth } from "../../lib/auth";
@@ -186,6 +186,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
   };
   const previewItem = previewId ? (all.find((i) => i.id === previewId) ?? null) : null;
   const previewProps = previewItem ? cardProps(previewItem) : null;
+  const previewBtn = previewProps ? itemButtonState(previewProps) : null;
 
   return (
     <div className="page">
@@ -281,11 +282,14 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
       )}
 
       <TitlePreview
-        item={previewItem}
+        title={previewItem ? { heading: previewItem.name, name: previewItem.titles?.name ?? previewItem.name, color: previewItem.titles?.color } : null}
         balance={me.data?.balance ?? 0}
-        button={previewProps ? { ...itemButtonState(previewProps), owned: previewProps.owned } : null}
-        busy={!!previewProps?.busy}
-        onBuy={() => previewItem && use(previewItem)}
+        actions={previewBtn && previewItem && (
+          <button type="button" className={`btn ${previewBtn.usable ? "btn-primary" : ""}`} disabled={!previewBtn.usable || !!previewProps?.busy} onClick={() => use(previewItem)}>
+            {previewProps?.owned && <Check size={16} aria-hidden="true" />}
+            {previewBtn.label}
+          </button>
+        )}
         onClose={() => setPreviewId(null)}
       />
 

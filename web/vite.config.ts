@@ -11,7 +11,17 @@ export default defineConfig(({ mode }) => {
   const live = mode === "live";
   return {
     base: live ? "/" : "/beta/",
-    plugins: [react()],
+    plugins: [
+      react(),
+      // 교체 빌드(live)에선 베타 표시를 뺌 — 제목 "(베타)"와 검색엔진 차단(noindex)은 베타 주소에서만
+      {
+        name: "live-html",
+        transformIndexHtml(html: string) {
+          if (!live) return html;
+          return html.replace(" (베타)", "").replace(/\s*<meta name="robots" content="noindex" \/>/, "");
+        },
+      },
+    ],
     build: {
       outDir: live ? "../docs" : "../docs/beta",
       emptyOutDir: !live,

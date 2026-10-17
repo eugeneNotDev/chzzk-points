@@ -1,5 +1,5 @@
 // 칭호 플레이트 부품 — 랭킹 줄·시상대에서 씀(계산은 lib/titlePlate.ts, 모양은 styles/title-plate.css).
-import { useId, useMemo } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { TITLE_ICON_MAP } from "../lib/titleIcons";
 import { titlePlate } from "../lib/titlePlate";
 import { useTheme } from "../lib/theme";
@@ -61,6 +61,27 @@ function GradIcon({ id, stops, flow }: { id: string; stops: [number, string][]; 
       </defs>
       <g fill={`url(#${gid})`} dangerouslySetInnerHTML={{ __html: inner }} />
     </svg>
+  );
+}
+
+/** 칭호 글자만(플레이트 없이) — 관리자 목록·마이페이지 요약처럼 작게 보여줄 때. 칭호 값이 없으면 이름만. */
+export function TitleText({ name, value, dot = false }: { name: string; value: string | null | undefined; dot?: boolean }) {
+  const plate = useTitlePlate(value);
+  if (!plate) return <span>{name}</span>;
+  return <TitleTag name={name} plate={plate} dot={dot} />;
+}
+
+/** 칭호 무대 — 칭호 플레이트 칸 가운데에 칭호 글자를 크게(+ 아래 작은 글씨). onClick이 있으면 눌러서 미리보기. */
+export function TitleStage({ name, value, sub, onClick, className = "" }: { name: string; value: string | null | undefined; sub?: ReactNode; onClick?: () => void; className?: string }) {
+  const plate = useTitlePlate(value);
+  return (
+    <button type="button" className={`tp-stage-btn ${className}`} onClick={onClick} disabled={!onClick} aria-label={`${name} 칭호 장착 미리보기`}>
+      <span className={`tp-stage ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
+        {plate?.star && <PlateStars />}
+        <span className="tp-stage-tag">{plate ? <TitleTag name={name} plate={plate} dot={false} /> : name}</span>
+        {sub && <span className="tp-stage-sub">{sub}</span>}
+      </span>
+    </button>
   );
 }
 
