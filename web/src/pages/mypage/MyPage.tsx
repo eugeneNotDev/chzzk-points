@@ -5,7 +5,7 @@ import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
@@ -84,8 +84,7 @@ export default function MyPage() {
             </span>
             <span className={styles.manageChip}>
               <Settings2 size={12} aria-hidden="true" />
-              칭호 관리
-              <ChevronRight size={12} aria-hidden="true" />
+              관리
             </span>
           </button>
           <div className={styles.stat}>
@@ -107,10 +106,10 @@ export default function MyPage() {
         <div className={styles.col}>
           <PublicCard profile={profile} />
           <AppInstallCard />
+          <MyActivity />
         </div>
         <div className={styles.col}>
           <PointsLog />
-          <MyActivity />
         </div>
       </div>
     </div>

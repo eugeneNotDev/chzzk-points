@@ -30,7 +30,7 @@
   flex: 0 1 auto;
   margin-left: auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(150px, max-content));
+  grid-template-columns: repeat(3, minmax(176px, max-content));
   gap: 10px;
 }
 .stat {
@@ -391,4 +391,35 @@
 }
 .titleItem > :global(.tp-stage-btn) > :global(.tp-stage) {
   height: 100%;
+}
+
+/* 요약 박스 세 개: 라벨은 맨 위로 나란히, 값은 남은 공간의 세로 가운데 */
+.stat > .balance,
+.stat > .statVal {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stat > .balance {
+  align-items: baseline;
+  align-content: center;
+  flex-wrap: wrap;
+}
+/* 칭호 관리 버튼은 칭호 박스 오른쪽 위 모서리 — 박스 높이·정렬에 안 끼게 */
+.statBtn {
+  position: relative;
+}
+.statBtn > .manageChip {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+}
+@media (max-width: 599px) {
+  /* 폰: 칭호 박스가 좁아서 모서리 버튼이 라벨과 겹침 → 값 아래로 */
+  .statBtn > .manageChip {
+    position: static;
+    margin-top: 2px;
+  }
 }
