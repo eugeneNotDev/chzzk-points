@@ -54,16 +54,75 @@
   transform: translateY(-3px);
   box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.65);
 }
+/* 칭호 무대 — 카드 윗부분 전체가 칭호 플레이트(title-plate.css의 .tp.tp-card). 누르면 장착 미리보기 */
 .titleStage {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: var(--c-surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.titleStage:disabled {
+  cursor: default;
+}
+.titleStage:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: -4px;
+}
+.stagePlate {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 108px;
-  padding: 20px;
-  background:
-    radial-gradient(circle at 50% 120%, color-mix(in srgb, var(--c-accent) 14%, transparent), transparent 70%),
-    var(--c-surface-2);
+  gap: 6px;
+  min-height: 120px;
+  padding: 18px;
+  /* 카드 모서리에 맞게 위쪽만 둥글게 */
+  border-radius: calc(var(--r-xl) - 1px) calc(var(--r-xl) - 1px) 0 0;
+}
+.stagePlate:global(.tp)::before {
+  inset: 0;
+}
+.stageTag {
   font-size: 22px;
+}
+.stageTag :global(.tp-tag) {
+  font-size: 1em;
+  gap: 6px;
+}
+.stageTag :global(.tp-icon) {
+  width: 1.1em;
+  height: 1.1em;
+}
+.stageWho {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.stageHint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+}
+.card:hover .stageHint,
+.titleStage:focus-visible .stageHint {
+  opacity: 1;
+}
+/* 터치 화면은 마우스를 올릴 수 없으니 항상 살짝 */
+@media (hover: none) {
+  .stageHint {
+    opacity: 0.8;
+  }
 }
 .cardBody {
   flex: 1;
@@ -76,6 +135,10 @@
   font-size: 16px;
   font-weight: 800;
   word-break: keep-all;
+}
+/* 상품 이름과 설명은 조금 더 붙게 */
+.name + .desc {
+  margin-top: -4px;
 }
 .desc {
   font-size: 13px;
@@ -186,4 +249,40 @@
   display: flex;
   flex-wrap: wrap;
   gap: 18px;
+}
+
+/* 칭호 상점 안내 + 장착 미리보기 */
+.previewTip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-accent-soft);
+  color: var(--c-text-2);
+  font-size: 13.5px;
+}
+.previewTip svg {
+  flex: none;
+  color: var(--c-accent);
+}
+.previewTip b {
+  color: var(--c-text);
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+}
+.previewLabel {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-3);
+}
+.preview .previewLabel ~ .previewLabel {
+  margin-top: 18px;
+}
+.previewPodium {
+  width: min(240px, 100%);
+  margin: 0 auto 4px;
 }

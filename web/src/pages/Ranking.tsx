@@ -88,7 +88,7 @@ function Laurel({ flip }: { flip?: boolean }) {
   );
 }
 
-function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; onAdminClick?: (channelId: string) => void }) {
+export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; onAdminClick?: (channelId: string) => void }) {
   const { channelId } = useAuth();
   const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
   const hidden = r.is_public === false && !r.admin_view;

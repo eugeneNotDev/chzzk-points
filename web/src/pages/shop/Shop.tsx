@@ -7,14 +7,15 @@ import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, Plus } from "lucide-react";
+import { ArrowDownUp, MousePointerClick, Plus } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead, Stat } from "../../components/ui";
 import { ApiError, getToken, useAuth } from "../../lib/auth";
 import { fmt } from "../../lib/format";
 import { useBroadcastStatus, useMe, type Me } from "../../lib/queries";
 import { deleteShopItem, reorderShopItems, SPEND_ERRORS, spendItem, updateShopItem, useShopItems, type ShopItem } from "../../lib/shop";
-import { ShopItemCard } from "./ShopItemCard";
+import { itemButtonState, ShopItemCard } from "./ShopItemCard";
+import { TitlePreview } from "./TitlePreview";
 import { ShopItemEditor } from "./ShopItemEditor";
 import { ReorderGrid } from "./ReorderGrid";
 import styles from "./Shop.module.css";
@@ -34,6 +35,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
   const [editor, setEditor] = useState<{ mode: "add" | "edit"; item?: ShopItem } | null>(null);
   const [reorder, setReorder] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const isTitle = kind === "title";
   const all = (itemsQ.data ?? []).filter((i) => Boolean(i.grants_title_id) === isTitle);
@@ -152,7 +154,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
   }
 
   const title = isTitle ? "칭호 상점" : "포인트 상점";
-  const desc = isTitle ? "칭호를 사면 마이페이지에서 장착할 수 있어요. 랭킹에서 이름 앞에 보여요." : "포인트로 방송에 직접 참여해 보세요. 사용하면 방송 화면에 알림이 떠요.";
+  const desc = isTitle ? "칭호를 사면 마이페이지에서 장착할 수 있어요. 랭킹에서 닉네임과 함께 보여요." : "포인트로 방송에 직접 참여해 보세요. 사용하면 방송 화면에 알림이 떠요.";
 
   if (!isLoggedIn) {
     return (
@@ -179,8 +181,11 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
       onEdit: () => setEditor({ mode: "edit", item }),
       onToggle: () => toggleActive(item),
       onDelete: () => remove(item),
+      onPreview: item.grants_title_id ? () => setPreviewId(item.id) : undefined,
     };
   };
+  const previewItem = previewId ? (all.find((i) => i.id === previewId) ?? null) : null;
+  const previewProps = previewItem ? cardProps(previewItem) : null;
 
   return (
     <div className="page">
@@ -227,6 +232,15 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
         </div>
       )}
 
+      {isTitle && !reorder && (
+        <p className={styles.previewTip}>
+          <MousePointerClick size={16} aria-hidden="true" />
+          <span>
+            <b>칭호를 눌러보면</b> 내 닉네임에 장착한 모습을 미리 볼 수 있어요.
+          </span>
+        </p>
+      )}
+
       <p className={`status ${status.error ? "error" : "ok"}`} role="status">
         {status.text}
       </p>
@@ -265,6 +279,15 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
           </div>
         </details>
       )}
+
+      <TitlePreview
+        item={previewItem}
+        balance={me.data?.balance ?? 0}
+        button={previewProps ? { ...itemButtonState(previewProps), owned: previewProps.owned } : null}
+        busy={!!previewProps?.busy}
+        onBuy={() => previewItem && use(previewItem)}
+        onClose={() => setPreviewId(null)}
+      />
 
       {isAdmin && editor && (
         <ShopItemEditor

@@ -18,7 +18,20 @@ import styles from "./RankingList.module.css";
 const RANK_COLORS = ["var(--c-gold)", "var(--c-silver)", "var(--c-bronze)"];
 const keyOf = (r: RankingRow, i: number) => r.channel_id || `#${i}`;
 
-export function RankingList({ rows, onAdminClick, start = 0, className = "" }: { rows: RankingRow[]; onAdminClick?: (channelId: string) => void; start?: number; className?: string }) {
+export function RankingList({
+  rows,
+  onAdminClick,
+  start = 0,
+  className = "",
+  hideRank = false,
+}: {
+  rows: RankingRow[];
+  onAdminClick?: (channelId: string) => void;
+  start?: number;
+  className?: string;
+  /** 순위 숫자 대신 "–"(칭호 미리보기처럼 순위가 의미 없을 때) */
+  hideRank?: boolean;
+}) {
   const { channelId } = useAuth();
   const list = useRef<HTMLOListElement>(null);
   const prevTop = useRef(new Map<string, number>());
@@ -66,13 +79,13 @@ export function RankingList({ rows, onAdminClick, start = 0, className = "" }: {
   return (
     <ol ref={list} className={`${styles.list} ${className}`}>
       {rows.map((r, j) => (
-        <Row key={keyOf(r, j + start)} k={keyOf(r, j + start)} r={r} i={j + start} me={isMyRankingRow(r, channelId)} onAdminClick={onAdminClick} />
+        <Row key={keyOf(r, j + start)} k={keyOf(r, j + start)} r={r} i={j + start} me={isMyRankingRow(r, channelId)} onAdminClick={onAdminClick} hideRank={hideRank} />
       ))}
     </ol>
   );
 }
 
-function Row({ k, r, i, me, onAdminClick }: { k: string; r: RankingRow; i: number; me: boolean; onAdminClick?: (channelId: string) => void }) {
+function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow; i: number; me: boolean; onAdminClick?: (channelId: string) => void; hideRank?: boolean }) {
   const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
   const isPrivate = r.is_public === false;
   const clickable = !!(onAdminClick && r.admin_view && r.channel_id);
@@ -98,8 +111,8 @@ function Row({ k, r, i, me, onAdminClick }: { k: string; r: RankingRow; i: numbe
       style={plate?.style}
     >
       {plate?.star && <PlateStars />}
-      <span className={`${styles.no} num`} style={{ color: RANK_COLORS[i] ?? "var(--c-text-4)" }}>
-        {i + 1}
+      <span className={`${styles.no} num`} style={{ color: hideRank ? "var(--c-text-4)" : (RANK_COLORS[i] ?? "var(--c-text-4)") }}>
+        {hideRank ? "–" : i + 1}
         <em className={styles.move} aria-hidden="true" />
       </span>
       {clickable ? (
