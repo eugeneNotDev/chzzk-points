@@ -30,7 +30,7 @@
   flex: 0 1 auto;
   margin-left: auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(176px, max-content));
+  grid-template-columns: repeat(3, minmax(150px, max-content));
   gap: 10px;
 }
 .stat {
@@ -351,26 +351,6 @@
   line-height: 1.55;
 }
 
-/* 칭호 박스 안 "칭호 관리" — 눌러서 바꿀 수 있다는 표시. 회색 알약, 올리면 살짝 밝게 */
-.manageChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  padding: 3px 9px 3px 8px;
-  border: 1px solid var(--c-border-strong);
-  border-radius: 999px;
-  background: var(--c-surface-3);
-  color: var(--c-text-2);
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.2;
-  transition: color var(--dur), border-color var(--dur), background-color var(--dur);
-}
-.statBtn:hover .manageChip {
-  color: var(--c-text);
-  border-color: var(--c-text-4);
-}
 .bonusChip {
   align-self: center;
   padding: 2px 8px;
@@ -405,21 +385,4 @@
   align-items: baseline;
   align-content: center;
   flex-wrap: wrap;
-}
-/* 칭호 관리 버튼은 칭호 박스 오른쪽 위 모서리 — 박스 높이·정렬에 안 끼게 */
-.statBtn {
-  position: relative;
-}
-.statBtn > .manageChip {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  margin: 0;
-}
-@media (max-width: 599px) {
-  /* 폰: 칭호 박스가 좁아서 모서리 버튼이 라벨과 겹침 → 값 아래로 */
-  .statBtn > .manageChip {
-    position: static;
-    margin-top: 2px;
-  }
 }

@@ -5,7 +5,6 @@ import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Settings2 } from "lucide-react";
 import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
@@ -76,15 +75,11 @@ export default function MyPage() {
               <small>P</small>
             </b>
           </div>
-          <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => setTitlesOpen(true)} aria-haspopup="dialog">
+          <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => setTitlesOpen(true)} aria-haspopup="dialog" title="눌러서 칭호 바꾸기">
             <span className="muted">칭호</span>
             <span className={`${styles.statVal} ${styles.titleVal}`}>
               {shownSpecial && <SpecialTitleLine list={[shownSpecial]} />}
               {equipped ? <TitleText name={equipped.name} value={equipped.color} /> : !shownSpecial && "미장착"}
-            </span>
-            <span className={styles.manageChip}>
-              <Settings2 size={12} aria-hidden="true" />
-              관리
             </span>
           </button>
           <div className={styles.stat}>
