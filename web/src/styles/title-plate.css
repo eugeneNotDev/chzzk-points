@@ -72,10 +72,23 @@
 .tp-shine {
   --bd: linear-gradient(115deg, var(--blite), var(--edge) 28%, var(--bdeep) 52%, var(--blite) 78%, var(--edge));
 }
+/* 지나가는 빛 — 넓고 부드러운 띠 + 가운데 밝은 줄. 다크는 칭호 색이 살짝 섞인 빛, 라이트는 흰 빛(어두운 칭호여도 칙칙하지 않게) */
 .tp-shine::after {
-  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--blite) var(--tp-sw), transparent) 50%, transparent 58%) no-repeat;
+  --tp-sh: color-mix(in srgb, var(--blite) var(--tp-sw), transparent);
+  background: linear-gradient(
+      105deg,
+      transparent 34%,
+      color-mix(in srgb, var(--tp-sh) 35%, transparent) 44%,
+      var(--tp-sh) 50%,
+      color-mix(in srgb, var(--tp-sh) 35%, transparent) 56%,
+      transparent 66%
+    )
+    no-repeat;
   background-size: 250% 100%;
   animation: tp-sweep 5s ease-in-out infinite;
+}
+:root[data-theme="light"] .tp-shine::after {
+  --tp-sh: rgba(255, 255, 255, 0.85);
 }
 /* 두 색 */
 .tp-two {
@@ -241,12 +254,6 @@
   margin-right: 3px;
   vertical-align: -0.17em;
   color: var(--ic, var(--tc));
-}
-/* 그라데이션 아이콘(두 색 칭호) — 아이콘 모양 마스크 + 그라데이션 바탕 */
-.tp-tag .tp-mi {
-  background: var(--icg);
-  -webkit-mask: var(--m) center / contain no-repeat;
-  mask: var(--m) center / contain no-repeat;
 }
 .tp-tag--grad .tp-tx {
   background: var(--tg);

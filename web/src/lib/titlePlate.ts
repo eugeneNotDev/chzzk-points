@@ -10,8 +10,10 @@
 import type { CSSProperties } from "react";
 import { hexLuminance as lum, inkForLight, mixHex as mix, parseTitleStyle } from "./titleStyle";
 
-const RB_DARK = "linear-gradient(90deg,#ff6b74,#ffa94d,#ffe066,#a9e34b,#38f9c0,#74c0fc,#b197fc,#f783ac,#ff6b74)";
-const RB_LIGHT = "linear-gradient(90deg,#d6336c,#e8590c,#b8860b,#5c940d,#099268,#1971c2,#7048e8,#c2255c,#d6336c)";
+const RB_DARK_STOPS = ["#ff6b74", "#ffa94d", "#ffe066", "#a9e34b", "#38f9c0", "#74c0fc", "#b197fc", "#f783ac", "#ff6b74"];
+const RB_LIGHT_STOPS = ["#d6336c", "#e8590c", "#b8860b", "#5c940d", "#099268", "#1971c2", "#7048e8", "#c2255c", "#d6336c"];
+const RB_DARK = `linear-gradient(90deg,${RB_DARK_STOPS.join(",")})`;
+const RB_LIGHT = `linear-gradient(90deg,${RB_LIGHT_STOPS.join(",")})`;
 
 export type TitlePlate = {
   /** 줄·칸에 붙일 클래스 ("tp tp-shine tp-two" 등) */
@@ -19,8 +21,8 @@ export type TitlePlate = {
   /** 줄·칸에 넣을 색 변수 */
   style: CSSProperties;
   /** 닉네임 뒤 칭호 글자 */
-  /** iconGrad: 아이콘을 그라데이션으로 칠함(두 색 칭호) — 그땐 SVG 대신 아이콘 모양 마스크로 그림 */
-  tag: { className: string; style: CSSProperties; icon: string | null; iconGrad?: boolean };
+  /** iconStops: 칭호에 그라데이션이 있으면 아이콘도 같은 색으로(왼쪽 위 → 오른쪽 아래). [위치 0~1, 색] 목록 */
+  tag: { className: string; style: CSSProperties; icon: string | null; iconStops?: [number, string][] };
   star: boolean;
 };
 
@@ -41,6 +43,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
         className: "tp-tag tp-tag--grad tp-tag--anim",
         style: { "--tc": light ? "#7048e8" : "#ffd43b", "--tg": light ? RB_LIGHT : RB_DARK } as CSSProperties,
         icon,
+        iconStops: evenStops(light ? RB_LIGHT_STOPS.slice(0, -1) : RB_DARK_STOPS.slice(0, -1)),
       },
       star,
     };
@@ -89,25 +92,33 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
   // 닉네임 뒤 칭호 글자
   const tag: Record<string, string> = { "--tc": txt(inkMode ? color2! : color2 ? mix(base, color2, 0.5) : base) };
   if (inkMode) tag["--ic"] = txt(base);
+  // 칭호 글자에 그라데이션이 있으면 아이콘도 같은 색으로 칠함(iconStops)
   let tagCls = "tp-tag";
-  let iconGrad = false;
+  let iconStops: [number, string][] | undefined;
   if (inkMode) {
-    // 바탕+글자 칭호(감마·델타 등): 테두리처럼 아이콘·글자도 바탕색 → 글자색 그라데이션
-    // 아이콘은 대각선, 글자는 가로
-    tag["--icg"] = `linear-gradient(135deg,${txt(base)} 25%,${txt(color2!)})`;
+    // 바탕+글자 칭호(감마·델타 등): 테두리처럼 아이콘·글자도 바탕색 → 글자색
     tag["--tg"] = `linear-gradient(90deg,${txt(base)},${txt(color2!)})`;
     tagCls += " tp-tag--grad";
-    iconGrad = true;
+    iconStops = [
+      [0.25, txt(base)],
+      [1, txt(color2!)],
+    ];
   } else if (design === "shine" && !color2) {
-    tag["--tg"] = light
-      ? `linear-gradient(90deg,${inkForLight(base, 0.1)},${inkForLight(base, 0.22)} 50%,${inkForLight(base, 0.1)})`
-      : `linear-gradient(90deg,${mix(txt(base), "#ffffff", 0.45)},${txt(base)} 50%,${mix(txt(base), "#ffffff", 0.3)})`;
+    // 메탈: 밝음 → 본색 → 밝음
+    const stops = light ? [inkForLight(base, 0.1), inkForLight(base, 0.22), inkForLight(base, 0.1)] : [mix(txt(base), "#ffffff", 0.45), txt(base), mix(txt(base), "#ffffff", 0.3)];
+    tag["--tg"] = `linear-gradient(90deg,${stops[0]},${stops[1]} 50%,${stops[2]})`;
     tagCls += " tp-tag--grad";
+    iconStops = evenStops(stops);
   } else if (color2 && !inkMode) {
     tag["--tg"] = `linear-gradient(90deg,${txt(base)},${txt(color2)})`;
     tagCls += " tp-tag--grad";
+    iconStops = evenStops([txt(base), txt(color2)]);
   }
   if (design === "glow" && !light) tagCls += " tp-tag--glow";
 
-  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconGrad }, star };
+  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconStops }, star };
+}
+
+function evenStops(colors: string[]): [number, string][] {
+  return colors.map((c, i) => [colors.length === 1 ? 0 : i / (colors.length - 1), c]);
 }
