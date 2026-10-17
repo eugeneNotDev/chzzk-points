@@ -1,11 +1,12 @@
 // 그림판 — 그림 후원용. 실제 그림 크기는 960×540(16:9)으로 고정하고, 화면엔 칸 너비에 맞춰 늘려 보여줌.
-// 배경은 투명 — 방송 화면 위에 그림만 그려짐(그림도네처럼). 그리는 동안은 바둑판 배경(밝게/어둡게)으로 보여줌.
+// 배경은 투명 — 방송 화면 위에 그림만 그려짐(그림도네처럼). 그리는 동안은 배경으로 방송 화면 캡쳐(방송 중, 10초마다 바뀜)
+// 또는 바둑판(밝게/어둡게)을 보여줌 — 이 배경은 그림에 안 들어감.
 // 펜·지우개(투명하게 지움), 굵기 3단계, 색 12개 + 직접 고르기, 되돌리기/다시 하기(최대 40번), 전체 지우기.
 // 그리던 그림은 이 브라우저에 잠깐 저장해서(새로고침해도 유지) 보내면 지움.
 // 획 기록(ops)도 같이 남김 — 방송 오버레이가 이걸로 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼).
 //   op: { c: 색, w: 굵기, p: [x,y,x,y,...] (정수 좌표), e?: 1 (지우개) } | { k: "clear" }
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Contrast, Eraser, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Contrast, Eraser, MonitorPlay, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
 import { readStorage, writeStorage } from "../../lib/storage";
 import styles from "./Draw.module.css";
 
@@ -14,6 +15,8 @@ export const CANVAS_H = 540;
 // 투명 배경으로 바뀌면서 저장 키도 바꿈 — 예전(흰 배경) 임시저장은 이어 그리지 않음
 const DRAFT_KEY = "chzzk_points_draw_draft_v2";
 const BG_KEY = "chzzk_points_draw_bg";
+type Bg = "screen" | "light" | "dark";
+const BG_LABEL: Record<Bg, string> = { screen: "방송 화면", light: "밝은 배경", dark: "어두운 배경" };
 const COLORS = ["#111111", "#6b7280", "#ffffff", "#e5383b", "#ff8c42", "#ffd23f", "#2fbf71", "#00b4d8", "#3a6ff7", "#8b5cf6", "#ff6fb5", "#8b5a2b"];
 const SIZES = [
   { v: 4, label: "가늘게" },
@@ -27,12 +30,23 @@ export type DrawOp = { c: string; w: number; p: number[]; e?: 1 } | { k: "clear"
 export type DrawCanvasHandle = { exportImage: () => string; exportOps: () => string | null; clear: () => void; isBlank: () => boolean };
 const OPS_KEY = "chzzk_points_draw_ops_v2";
 
-export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: boolean) => void }>(function DrawCanvas({ onChange }, ref) {
+export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: boolean) => void; screen?: string | null }>(function DrawCanvas({ onChange, screen }, ref) {
   const cv = useRef<HTMLCanvasElement>(null);
   const [color, setColor] = useState(COLORS[0]);
   const [size, setSize] = useState(SIZES[1].v);
   const [eraser, setEraser] = useState(false);
-  const [darkBg, setDarkBg] = useState(() => readStorage(BG_KEY) === "dark");
+  // 고른 배경(기본: 방송 화면). 방송 화면을 골랐는데 캡쳐가 없으면(방송 꺼짐 등) 밝은 배경으로 보여줌.
+  const [bg, setBg] = useState<Bg>(() => {
+    const v = readStorage(BG_KEY);
+    return v === "light" || v === "dark" ? v : "screen";
+  });
+  const bgNow: Bg = bg === "screen" && !screen ? "light" : bg;
+  const nextBg = () => {
+    const order: Bg[] = screen ? ["screen", "light", "dark"] : ["light", "dark"];
+    const n = order[(order.indexOf(bgNow) + 1) % order.length];
+    writeStorage(BG_KEY, n);
+    setBg(n);
+  };
   const undo = useRef<ImageData[]>([]);
   const redo = useRef<ImageData[]>([]);
   const [, bump] = useState(0);
@@ -294,17 +308,9 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
           </button>
         </div>
         <div className={styles.toolGroup}>
-          <button
-            type="button"
-            className={styles.tool}
-            onClick={() => {
-              writeStorage(BG_KEY, darkBg ? "light" : "dark");
-              setDarkBg(!darkBg);
-            }}
-            title="그리는 동안만 보이는 배경이에요. 방송엔 배경 없이 그림만 나가요."
-          >
-            <Contrast size={17} aria-hidden="true" />
-            <span>{darkBg ? "어두운 배경" : "밝은 배경"}</span>
+          <button type="button" className={styles.tool} onClick={nextBg} title="그리는 동안만 보이는 배경이에요. 방송엔 배경 없이 그림만 나가요.">
+            {bgNow === "screen" ? <MonitorPlay size={17} aria-hidden="true" /> : <Contrast size={17} aria-hidden="true" />}
+            <span>{BG_LABEL[bgNow]}</span>
           </button>
         </div>
       </div>
@@ -312,7 +318,8 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
         ref={cv}
         width={CANVAS_W}
         height={CANVAS_H}
-        className={`${styles.canvas} ${darkBg ? styles.canvasDark : ""} ${eraser ? styles.erasing : ""}`}
+        className={`${styles.canvas} ${bgNow === "dark" ? styles.canvasDark : ""} ${bgNow === "screen" ? styles.canvasScreen : ""} ${eraser ? styles.erasing : ""}`}
+        style={bgNow === "screen" && screen ? { backgroundImage: `url("${screen}")` } : undefined}
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}

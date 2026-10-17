@@ -10,17 +10,24 @@
 // admin-list   {}                                       → { items: [...그린 사람·후원자 포함] }   (관리자)
 // admin-hide   { id }                                   → { ok }  화면에서 즉시 끄기 + 다시 못 쓰게   (관리자)
 // admin-block  { channelId, blocked }                   → { ok }  이 사람 그림 후원 막기/풀기       (관리자)
+// screen       { key, image: "data:image/webp;base64,..." }  → { ok, live }   (로그인 대신 오버레이 키 — OBS 오버레이 전용)
+//              방송 화면 캡쳐(작은 크기)를 파일 하나(screen/live.webp)에 덮어써서, 그림판이 배경으로 보여줌(그림도네처럼).
+//              방송 중이 아니면 저장하지 않고 파일을 지움(live: false → 오버레이는 천천히 다시 물어봄).
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned|blocked / 413 too_large / 429 too_fast
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-import { broadcastToOverlay } from "../_shared/stream-code.ts";
+import { broadcastToOverlay, getOverlayKey, sameString } from "../_shared/stream-code.ts";
 import { isChannelLive } from "../_shared/live.ts";
 import { CODE_ALPHABET, CODE_LENGTH, DRAWING_BUCKET, DRAWING_EXPIRE_HOURS, DRAWING_MIN_AMOUNT, drawingUrl } from "../_shared/drawing.ts";
 
 const MAX_BYTES = 1024 * 1024;
+const SCREEN_PATH = "screen/live.webp";
+const SCREEN_MAX_BYTES = 300 * 1024;
+const SCREEN_MIN_GAP_MS = 4000; // 캡쳐는 10초마다 오는데, 혹시 몰라 4초보다 자주 오면 무시
+let lastScreenAt = 0;
 const MAX_STROKES_BYTES = 1536 * 1024;
 
 // 획 기록 검사 — [{c:"#rrggbb", w:굵기, p:[x,y,...]} | {k:"clear"}], 좌표는 960×540 안
@@ -132,11 +139,20 @@ Deno.serve(async (req: Request) => {
   const pre = handleCors(req);
   if (pre) return pre;
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  const body = await req.json().catch(() => ({}));
+  // 방송 화면 캡쳐 — 로그인 없이 오버레이 키로
+  if (body.action === "screen") {
+    try {
+      return await screen(getAdmin(), body);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : err);
+      return json({ error: "drawings_failed" }, 500);
+    }
+  }
   const session = await requireSession(req);
   if (!session) return json({ error: "unauthorized" }, 401);
   const me = session.channelId;
   const isAdmin = me === OWNER_CHANNEL_ID;
-  const body = await req.json().catch(() => ({}));
   try {
     const admin = getAdmin();
     const { data: user, error: uErr } = await admin.from("users").select("channel_id, banned, drawing_blocked").eq("channel_id", me).maybeSingle();
@@ -230,4 +246,25 @@ async function create(admin: Admin, me: string, blocked: boolean, body: any) {
     if (error.code !== "23505") throw new Error(`drawings insert 실패: ${error.message}`);
   }
   throw new Error("코드 발급 실패(겹침)");
+}
+
+// 방송 화면 캡쳐 저장(위 screen 설명 참고)
+// deno-lint-ignore no-explicit-any
+async function screen(admin: Admin, body: any) {
+  const key = await getOverlayKey(admin);
+  if (!key || typeof body.key !== "string" || !sameString(body.key, key)) return json({ error: "unauthorized" }, 401);
+  const store = admin.storage.from(DRAWING_BUCKET);
+  if (!(await isChannelLive())) {
+    await store.remove([SCREEN_PATH]);
+    return json({ ok: true, live: false });
+  }
+  if (Date.now() - lastScreenAt < SCREEN_MIN_GAP_MS) return json({ ok: true, live: true });
+  const m = typeof body.image === "string" ? /^data:image\/webp;base64,([A-Za-z0-9+/=]+)$/.exec(body.image) : null;
+  if (!m) return json({ error: "invalid_image" }, 400);
+  const bytes = Uint8Array.from(atob(m[1]), (c) => c.charCodeAt(0));
+  if (bytes.length < 100 || bytes.length > SCREEN_MAX_BYTES) return json({ error: "invalid_image" }, 400);
+  lastScreenAt = Date.now();
+  const { error } = await store.upload(SCREEN_PATH, bytes, { contentType: "image/webp", upsert: true, cacheControl: "5" });
+  if (error) throw new Error(`방송 화면 저장 실패: ${error.message}`);
+  return json({ ok: true, live: true });
 }

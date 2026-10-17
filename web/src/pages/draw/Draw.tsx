@@ -9,7 +9,7 @@ import { SkeletonList } from "../../components/Skeleton";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { ApiError, apiFetch, useAuth } from "../../lib/auth";
 import { useBroadcastStatus } from "../../lib/queries";
-import { API, CHZZK_CHANNEL_URL } from "../../lib/config";
+import { API, CHZZK_CHANNEL_URL, SUPABASE_URL } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt, relTime } from "../../lib/format";
 import { DrawCanvas, type DrawCanvasHandle } from "./DrawCanvas";
@@ -37,6 +37,55 @@ const STATUS: Record<Item["status"], { label: string; cls: string }> = {
   expired: { label: "만료됨", cls: "off" },
 };
 
+// 방송 화면 캡쳐 — OBS 오버레이가 방송 중 10초마다 올리는 작은 사진(drawings 함수 screen). 그림판 배경으로만 씀.
+// 이 페이지가 화면에 보일 때만 10초마다 새로 받음. 1분 넘게 안 바뀐 사진(OBS가 안 올리는 중)은 안 씀.
+const SCREEN_URL = `${SUPABASE_URL}/storage/v1/object/public/drawings/screen/live.webp`;
+const SCREEN_EVERY_MS = 10_000;
+const SCREEN_STALE_MS = 60_000;
+function useLiveScreen(on: boolean) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    let stop = false;
+    let timer = 0;
+    let current: string | null = null;
+    const put = (u: string | null) => {
+      if (current) URL.revokeObjectURL(current);
+      current = u;
+      setUrl(u);
+    };
+    const load = async () => {
+      window.clearTimeout(timer);
+      if (document.hidden) return; // 다시 보이면 visibilitychange에서 이어감
+      try {
+        const res = await fetch(`${SCREEN_URL}?t=${Math.floor(Date.now() / SCREEN_EVERY_MS)}`);
+        const at = new Date(res.headers.get("last-modified") ?? 0).getTime();
+        if (!res.ok || Date.now() - at > SCREEN_STALE_MS) {
+          if (!stop) put(null);
+        } else {
+          const blob = await res.blob();
+          if (!stop) put(URL.createObjectURL(blob));
+        }
+      } catch {
+        if (!stop) put(null);
+      }
+      if (!stop) timer = window.setTimeout(load, SCREEN_EVERY_MS);
+    };
+    const onVis = () => {
+      if (!document.hidden) load();
+    };
+    load();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVis);
+      put(null);
+    };
+  }, [on]);
+  return on ? url : null;
+}
+
 function leftText(iso: string) {
   const ms = new Date(iso).getTime() - Date.now();
   if (ms <= 0) return "만료됨";
@@ -56,6 +105,7 @@ export default function Draw() {
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [sent, setSent] = useState<{ code: string; expiresAt: string } | null>(null);
+  const screen = useLiveScreen((live.data?.isLive === true || isAdmin) && !sent);
   const mine = useQuery({
     queryKey: ["drawings", "mine"],
     enabled: isLoggedIn,
@@ -188,7 +238,7 @@ export default function Draw() {
 
           {!sent && (
             <Card flush className={styles.drawCard}>
-              <DrawCanvas ref={canvas} onChange={setBlank} />
+              <DrawCanvas ref={canvas} onChange={setBlank} screen={screen} />
               <div className={styles.sendRow}>
                 {err && (
                   <p className="status error" role="alert">

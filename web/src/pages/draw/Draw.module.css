@@ -157,6 +157,11 @@
   background-color: #2b2f36;
   background-image: conic-gradient(#353a42 25%, transparent 0 50%, #353a42 0 75%, transparent 0);
 }
+.canvasScreen {
+  /* 방송 화면 캡쳐(그림판과 같은 16:9) — 인라인으로 이미지 주소를 넣음 */
+  background-color: #000;
+  background-size: 100% 100%;
+}
 .erasing {
   cursor: cell;
 }

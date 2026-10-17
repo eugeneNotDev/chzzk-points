@@ -330,7 +330,95 @@
       }
     }
 
+    // --- 방송 화면 캡쳐 → 그림판 배경 -------------------------------------------------
+    // OBS WebSocket(도구 → WebSocket 서버 설정)으로 지금 방송 화면(프로그램 장면)을 10초마다 작게 찍어서 서버에 올림.
+    // 그림판(그림 후원 페이지)이 이걸 배경으로 보여줘서, 시청자가 방송 화면을 보면서 그 위에 그림(그림도네처럼).
+    // 주소에 &obs=<WebSocket 비밀번호>가 있을 때만 켜짐(비밀번호를 안 쓰면 &obs= 처럼 비워둠). 포트가 4455가 아니면 &obsport=.
+    // 서버가 방송 중이 아니라고 하면 1분마다만 다시 해봄.
+    const obsPass = new URLSearchParams(location.search).get("obs");
+    const obsPort = new URLSearchParams(location.search).get("obsport") || "4455";
+    const DRAWINGS_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/drawings";
+    const SCREEN_EVERY_MS = 10_000, SCREEN_IDLE_MS = 60_000, SCREEN_W = 640, SCREEN_H = 360;
+
+    async function sha256b64(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+    // obs-websocket 5 — 연결·인증하고, 요청을 보내면 응답을 Promise로 돌려주는 작은 클라이언트
+    function connectObs() {
+      return new Promise((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${obsPort}`);
+        const waiting = new Map();
+        let n = 0, ready = false;
+        const api = {
+          ws,
+          call(requestType, requestData) {
+            return new Promise((ok, fail) => {
+              const requestId = String(++n);
+              waiting.set(requestId, { ok, fail });
+              ws.send(JSON.stringify({ op: 6, d: { requestType, requestId, requestData } }));
+              setTimeout(() => { if (waiting.delete(requestId)) fail(new Error(`${requestType} 응답 없음`)); }, 8000);
+            });
+          },
+        };
+        ws.onmessage = async (ev) => {
+          const msg = JSON.parse(ev.data);
+          if (msg.op === 0) {
+            const d = { rpcVersion: 1, eventSubscriptions: 0 };
+            const auth = msg.d.authentication;
+            if (auth) d.authentication = await sha256b64((await sha256b64((obsPass || "") + auth.salt)) + auth.challenge);
+            ws.send(JSON.stringify({ op: 1, d }));
+          } else if (msg.op === 2) {
+            ready = true;
+            resolve(api);
+          } else if (msg.op === 7) {
+            const w = waiting.get(msg.d.requestId);
+            if (!w) return;
+            waiting.delete(msg.d.requestId);
+            if (msg.d.requestStatus?.result) w.ok(msg.d.responseData || {});
+            else w.fail(new Error(`${msg.d.requestType} 실패: ${msg.d.requestStatus?.comment || msg.d.requestStatus?.code}`));
+          }
+        };
+        ws.onclose = (ev) => {
+          for (const w of waiting.values()) w.fail(new Error("OBS 연결 끊김"));
+          waiting.clear();
+          // 4009 = 비밀번호 틀림
+          if (!ready) reject(new Error(ev.code === 4009 ? "OBS WebSocket 비밀번호가 맞지 않아요" : `OBS WebSocket에 연결하지 못했어요 (포트 ${obsPort}, 코드 ${ev.code})`));
+        };
+      });
+    }
+    // OBS가 준 jpg를 작게 webp로 다시 만들어서 올림(서버 저장소는 webp·png만 받음)
+    function toWebp(dataUrl) {
+      return loadImage(dataUrl).then((im) => {
+        const cv = document.createElement("canvas");
+        cv.width = SCREEN_W; cv.height = SCREEN_H;
+        cv.getContext("2d").drawImage(im, 0, 0, SCREEN_W, SCREEN_H);
+        return cv.toDataURL("image/webp", 0.6);
+      });
+    }
+    async function screenLoop() {
+      let obs = null;
+      for (;;) {
+        let wait = SCREEN_EVERY_MS;
+        try {
+          if (!obs || obs.ws.readyState !== WebSocket.OPEN) obs = await connectObs();
+          const sc = await obs.call("GetCurrentProgramScene");
+          const sourceName = sc.currentProgramSceneName || sc.sceneName;
+          const shot = await obs.call("GetSourceScreenshot", { sourceName, imageFormat: "jpg", imageWidth: SCREEN_W, imageHeight: SCREEN_H, imageCompressionQuality: 75 });
+          const image = await toWebp(shot.imageData);
+          const res = await fetch(DRAWINGS_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "screen", key: overlayKey, image }) });
+          if (res.status === 401) { console.error("[overlay] 오버레이 키가 맞지 않아 방송 화면을 못 올렸어요"); wait = SCREEN_IDLE_MS; }
+          else if (res.ok && (await res.json()).live === false) wait = SCREEN_IDLE_MS;
+        } catch (err) {
+          console.error("[overlay] 방송 화면 캡쳐 실패", err instanceof Error ? err.message : err);
+          wait = 15_000;
+        }
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+
     if (overlayKey) {
+      if (obsPass !== null) screenLoop();
       setInterval(tick, 1000);
       fetchActiveCode();
       supabase
