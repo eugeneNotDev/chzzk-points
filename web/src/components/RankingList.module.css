@@ -72,6 +72,7 @@
 .nameRow {
   display: flex;
   align-items: baseline;
+  font-size: 15px; /* 닉네임·칭호 같은 크기 */
   gap: 6px;
   min-width: 0;
 }

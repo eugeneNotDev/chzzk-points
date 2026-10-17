@@ -152,7 +152,6 @@
 }
 .stepName :global(.tp-tag) {
   max-width: 100%;
-  font-size: 12.5px;
 }
 .p1 .stepName {
   font-size: 17px;
@@ -398,9 +397,6 @@
   }
   .p1 .stepName {
     font-size: 14px;
-  }
-  .stepName :global(.tp-tag) {
-    font-size: 11.5px;
   }
   .stepName :global(.rk-sp) {
     font-size: 10px;
