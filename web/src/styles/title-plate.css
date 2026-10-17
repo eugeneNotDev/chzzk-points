@@ -216,25 +216,32 @@
 }
 
 /* ── 닉네임 뒤 칭호 글자 "· 🐺 알파" ── */
+/* 높낮이 맞춤:
+   - 아이콘은 줄 높이 가운데가 아니라 글자 바닥선 기준으로 놓음(vertical-align). 줄 안에서 글자가 놓이는 위치는
+     운영체제마다 폰트 수치를 다르게 읽어서 달라지는데(윈도우에서 아이콘이 2px쯤 처져 보였음), 바닥선 기준이면 어디서나 같음.
+     -0.17em = 한글 글자 몸통의 세로 가운데에 아이콘 가운데가 오는 값.
+   - 칭호 글자는 닉네임보다 작아서(0.85배) 바닥선만 맞추면 처져 보임 → 세로 가운데가 맞게 살짝(0.03em) 올림. */
 .tp-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  display: inline-block;
+  position: relative;
+  top: -0.03em;
   flex: none;
   white-space: nowrap;
-  font-size: 1em; /* 닉네임과 같은 크기 */
+  font-size: 0.85em;
   font-weight: 800;
   color: var(--tc);
 }
 .tp-tag .tp-dot {
-  margin-right: 2px;
+  margin-right: 5px;
   color: var(--c-text-4);
   font-weight: 400;
 }
 .tp-tag .tp-icon {
+  display: inline-block;
   width: 1.05em;
   height: 1.05em;
-  flex: none;
+  margin-right: 3px;
+  vertical-align: -0.17em;
   color: var(--ic, var(--tc));
 }
 .tp-tag--grad .tp-tx {

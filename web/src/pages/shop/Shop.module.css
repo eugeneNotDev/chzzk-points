@@ -92,12 +92,13 @@
   font-size: 22px;
 }
 .stageTag :global(.tp-tag) {
+  top: 0;
   font-size: 1em;
-  gap: 6px;
 }
 .stageTag :global(.tp-icon) {
   width: 1.1em;
   height: 1.1em;
+  margin-right: 6px;
 }
 .stageWho {
   font-size: 12px;
