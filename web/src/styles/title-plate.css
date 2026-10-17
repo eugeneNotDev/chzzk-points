@@ -242,6 +242,12 @@
   vertical-align: -0.17em;
   color: var(--ic, var(--tc));
 }
+/* 그라데이션 아이콘(두 색 칭호) — 아이콘 모양 마스크 + 그라데이션 바탕 */
+.tp-tag .tp-mi {
+  background: var(--icg);
+  -webkit-mask: var(--m) center / contain no-repeat;
+  mask: var(--m) center / contain no-repeat;
+}
 .tp-tag--grad .tp-tx {
   background: var(--tg);
   background-size: 200% 100%;

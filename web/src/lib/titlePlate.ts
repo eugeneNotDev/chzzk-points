@@ -19,7 +19,8 @@ export type TitlePlate = {
   /** 줄·칸에 넣을 색 변수 */
   style: CSSProperties;
   /** 닉네임 뒤 칭호 글자 */
-  tag: { className: string; style: CSSProperties; icon: string | null };
+  /** iconGrad: 아이콘을 그라데이션으로 칠함(두 색 칭호) — 그땐 SVG 대신 아이콘 모양 마스크로 그림 */
+  tag: { className: string; style: CSSProperties; icon: string | null; iconGrad?: boolean };
   star: boolean;
 };
 
@@ -87,9 +88,17 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
 
   // 닉네임 뒤 칭호 글자
   const tag: Record<string, string> = { "--tc": txt(inkMode ? color2! : color2 ? mix(base, color2, 0.5) : base) };
-  if (inkMode) tag["--ic"] = txt(base); // 바탕+글자 칭호: 아이콘은 바탕색, 글자는 글자색
+  if (inkMode) tag["--ic"] = txt(base);
   let tagCls = "tp-tag";
-  if (design === "shine" && !color2) {
+  let iconGrad = false;
+  if (inkMode) {
+    // 바탕+글자 칭호(감마·델타 등): 테두리처럼 아이콘·글자도 바탕색 → 글자색 그라데이션
+    // 아이콘은 대각선, 글자는 가로
+    tag["--icg"] = `linear-gradient(135deg,${txt(base)} 25%,${txt(color2!)})`;
+    tag["--tg"] = `linear-gradient(90deg,${txt(base)},${txt(color2!)})`;
+    tagCls += " tp-tag--grad";
+    iconGrad = true;
+  } else if (design === "shine" && !color2) {
     tag["--tg"] = light
       ? `linear-gradient(90deg,${inkForLight(base, 0.1)},${inkForLight(base, 0.22)} 50%,${inkForLight(base, 0.1)})`
       : `linear-gradient(90deg,${mix(txt(base), "#ffffff", 0.45)},${txt(base)} 50%,${mix(txt(base), "#ffffff", 0.3)})`;
@@ -100,5 +109,5 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
   }
   if (design === "glow" && !light) tagCls += " tp-tag--glow";
 
-  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon }, star };
+  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconGrad }, star };
 }
