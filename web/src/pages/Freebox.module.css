@@ -198,7 +198,7 @@
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
-.balance span {
+.balance .unit {
   margin-left: 4px;
   font-size: 22px;
   color: var(--c-text-3);

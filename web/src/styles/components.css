@@ -378,7 +378,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 120px;
+  min-width: 0; /* 내용(라벨·숫자) 너비만큼 — 자릿수가 늘면 박스도 같이 늘어남 */
   padding: 10px 16px;
   border-radius: var(--r-lg);
   background: var(--c-surface);
@@ -669,7 +669,8 @@
   display: flex;
   flex-direction: column;
   transform: translateY(calc(var(--d) * -1 * var(--h)));
-  transition: transform 0.9s cubic-bezier(0.3, 1.25, 0.5, 1);
+  /* 목표 숫자를 지나쳤다 돌아오는 튕김 없이 부드럽게 멈춤(튕기면 숫자가 위로 갔다 뚝 내려오는 것처럼 보임) */
+  transition: transform 0.8s cubic-bezier(0.22, 0.9, 0.3, 1);
   transition-delay: calc(var(--i) * 45ms);
 }
 /* 바깥 페이지의 "xx span" 규칙(여백·글자 크기·색)이 숫자 칸에 묻지 않게 한 단계 더 구체적으로 되돌림 */

@@ -50,7 +50,7 @@ export function AnimatedNumber({ value, className }: { value: number; duration?:
       return () => cancelAnimationFrame(r);
     }
     const digits = str.replace(/\D/g, "").length;
-    const t = setTimeout(() => setRoll(null), 900 + digits * 45 + 80);
+    const t = setTimeout(() => setRoll(null), 800 + digits * 45 + 80);
     return () => clearTimeout(t);
   }, [roll, str]);
 

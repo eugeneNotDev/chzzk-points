@@ -5,7 +5,7 @@ import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
@@ -13,7 +13,7 @@ import { Pagination } from "../../components/Pagination";
 import { TitleStage, TitleText } from "../../components/TitlePlate";
 import { SpecialTitleLine } from "../../components/TitleBadge";
 import { TitlePreview } from "../shop/TitlePreview";
-import { LoginNeeded, PageHead } from "../../components/ui";
+import { LoginNeeded, Modal, PageHead } from "../../components/ui";
 import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, relTime } from "../../lib/format";
@@ -36,6 +36,7 @@ const fmtDateTime = (iso: string) =>
 
 export default function MyPage() {
   const auth = useAuth();
+  const [titlesOpen, setTitlesOpen] = useState(false);
   const me = useMe();
   const titles = useTitles();
 
@@ -53,6 +54,7 @@ export default function MyPage() {
 
   const profile = me.data;
   const equipped = titles.data?.find((t) => t.id === profile?.selectedTitleId);
+  const shownSpecial = profile?.specialTitles?.find((t) => t.id === profile.selectedSpecialId) ?? null;
 
   return (
     <div className="page">
@@ -74,10 +76,15 @@ export default function MyPage() {
               <small>P</small>
             </b>
           </div>
-          <div className={styles.stat}>
-            <span className="muted">칭호</span>
-            <span className={styles.statVal}>{equipped ? <TitleText name={equipped.name} value={equipped.color} /> : "미장착"}</span>
-          </div>
+          <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => setTitlesOpen(true)} aria-haspopup="dialog">
+            <span className="muted">
+              칭호 <ChevronRight size={13} aria-hidden="true" className={styles.statArrow} />
+            </span>
+            <span className={`${styles.statVal} ${styles.titleVal}`}>
+              {shownSpecial && <SpecialTitleLine list={[shownSpecial]} />}
+              {equipped ? <TitleText name={equipped.name} value={equipped.color} /> : !shownSpecial && "미장착"}
+            </span>
+          </button>
           <div className={styles.stat}>
             <span className="muted">등급</span>
             <span className={styles.statVal} style={profile?.tierTitleColor ? { color: profile.tierTitleColor, fontWeight: 800 } : undefined}>
@@ -91,11 +98,10 @@ export default function MyPage() {
           </p>
         )}
       </Card>
+      <TitlesModal open={titlesOpen} onClose={() => setTitlesOpen(false)} profile={profile} />
 
       <div className={styles.cols}>
         <div className={styles.col}>
-          <TitlesCard profile={profile} />
-          <SpecialTitlesCard profile={profile} />
           <PublicCard profile={profile} />
           <AppInstallCard />
         </div>
@@ -108,10 +114,42 @@ export default function MyPage() {
   );
 }
 
-function TitlesCard({ profile }: { profile: Me | undefined }) {
+// 칭호 관리 — 마이페이지 위 "칭호" 박스를 누르면 뜸. 칭호 / 특수 칭호 탭.
+function TitlesModal({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Me | undefined }) {
+  const titles = useTitles();
+  const [tab, setTab] = useState<"title" | "special">("title");
+  const ownedCount = (titles.data ?? []).filter((t) => (profile?.purchasedTitleIds ?? []).includes(t.id)).length;
+  const spCount = profile?.specialTitles?.length ?? 0;
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      wide
+      title="내 칭호"
+      actions={
+        <button type="button" className="btn" onClick={onClose}>
+          닫기
+        </button>
+      }
+    >
+      <PillTabs
+        size="sm"
+        label="칭호 종류"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "title", label: `칭호 ${ownedCount}` },
+          { value: "special", label: `특수 칭호 ${spCount}` },
+        ]}
+      />
+      <div className={styles.tabBody}>{tab === "title" ? <TitleList profile={profile} /> : <SpecialList profile={profile} />}</div>
+    </Modal>
+  );
+}
+
+function TitleList({ profile }: { profile: Me | undefined }) {
   const titles = useTitles();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(true);
   const [status, setStatus] = useState<{ text: string; error?: boolean }>({ text: "" });
   const [busy, setBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -136,38 +174,32 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
   }
 
   return (
-    <Card>
-      <button type="button" className={styles.collapseHead} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <h2>내 칭호</h2>
-        <span className="muted">{owned.length}개</span>
-        <ChevronDown size={18} className={open ? styles.rot : ""} aria-hidden="true" />
-      </button>
-      {open && (
-        <div className={styles.collapseBody}>
-          <p className="muted" style={{ fontSize: 13 }}>
-            상점에서 구매했거나 선물받은 칭호를 장착할 수 있어요. 칭호를 누르면 장착한 모습을 미리 볼 수 있어요. <Link to="/titles.html" className={styles.link}>칭호 상점 가기</Link>
-          </p>
-          {titles.isLoading && <span className="skeleton" style={{ height: 116, borderRadius: 14 }} />}
-          {profile && titles.data && owned.length === 0 && <EmptyState>보유한 칭호가 없어요.</EmptyState>}
-          <div className={styles.titleGrid}>
-            {owned.map((t) => {
-              const sel = profile?.selectedTitleId === t.id;
-              return (
-                <div key={t.id} className={`${styles.titleItem} ${sel ? styles.titleSel : ""}`}>
-                  <TitleStage name={t.name} value={t.color} sub={sel ? "장착 중" : undefined} onClick={() => setPreviewId(t.id)} />
-                  <span className="muted" style={{ fontSize: 12 }}>
-                    {t.kind === "custom" ? "관리자가 지급한 칭호" : "상점에서 구매한 칭호"}
-                  </span>
-                  <button type="button" className={`btn btn-sm ${sel ? "" : "btn-primary"}`} disabled={busy} onClick={() => equip(t.id)}>
-                    {sel ? "장착 해제" : "장착하기"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <p className={`status ${status.error ? "error" : "ok"}`}>{status.text}</p>
-        </div>
-      )}
+    <>
+      <p className={`muted ${styles.tabDesc}`}>
+        상점에서 구매했거나 선물받은 칭호예요. 랭킹에서 닉네임 옆에 붙고, 내 줄이 칭호 색으로 꾸며져요. 칭호를 누르면 장착한 모습을 미리 볼 수 있어요.{" "}
+        <Link to="/titles.html" className={styles.link}>
+          칭호 상점 가기
+        </Link>
+      </p>
+      {titles.isLoading && <span className="skeleton" style={{ height: 116, borderRadius: 14 }} />}
+      {profile && titles.data && owned.length === 0 && <EmptyState>보유한 칭호가 없어요.</EmptyState>}
+      <div className={styles.titleGrid}>
+        {owned.map((t) => {
+          const sel = profile?.selectedTitleId === t.id;
+          return (
+            <div key={t.id} className={`${styles.titleItem} ${sel ? styles.titleSel : ""}`}>
+              <TitleStage name={t.name} value={t.color} sub={sel ? "장착 중" : undefined} onClick={() => setPreviewId(t.id)} />
+              <span className="muted" style={{ fontSize: 12 }}>
+                {t.kind === "custom" ? "관리자가 지급한 칭호" : "상점에서 구매한 칭호"}
+              </span>
+              <button type="button" className={`btn btn-sm ${sel ? "" : "btn-primary"}`} disabled={busy} onClick={() => equip(t.id)}>
+                {sel ? "장착 해제" : "장착하기"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <p className={`status ${status.error ? "error" : "ok"}`}>{status.text}</p>
       <TitlePreview
         title={previewT ? { heading: `[${previewT.name}]`, name: previewT.name, color: previewT.color } : null}
         balance={profile?.balance ?? 0}
@@ -180,24 +212,25 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
         }
         onClose={() => setPreviewId(null)}
       />
-    </Card>
+    </>
   );
 }
 
 // 특수 칭호 — 랭킹 닉네임 위 작은 글씨. 관리자 지급·지난달 1~3위 칭호 중 하나를 골라 장착.
-// 관리자가 고정한 칭호가 있으면(specialLocked) 그게 항상 보이고 바꿀 수 없음. 가진 게 없으면 카드 자체를 안 보여줌.
-function SpecialTitlesCard({ profile }: { profile: Me | undefined }) {
+// 관리자가 고정한 칭호가 있으면(specialLocked) 그게 항상 보이고 바꿀 수 없음.
+function SpecialList({ profile }: { profile: Me | undefined }) {
   const titles = useTitles();
   const qc = useQueryClient();
   const [status, setStatus] = useState<{ text: string; error?: boolean }>({ text: "" });
   const [busy, setBusy] = useState(false);
   const [previewId, setPreviewId] = useState<number | null>(null);
   const list = profile?.specialTitles ?? [];
-  if (!profile || list.length === 0) return null;
+  if (!profile) return null;
+  if (list.length === 0) return <EmptyState>가진 특수 칭호가 없어요. 관리자 지급이나 매달 랭킹 1~3위 보상으로 받을 수 있어요.</EmptyState>;
   const locked = !!profile.specialLocked;
   const shop = titles.data?.find((t) => t.id === profile.selectedTitleId) ?? null;
   const previewT = previewId != null ? list.find((t) => t.id === previewId) : undefined;
-  const sourceText = (t: SpecialOwned) => (t.forced ? "관리자가 고정한 칭호" : t.source === "monthly" ? "지난달 랭킹 보상 · 다음 달 1일까지" : "관리자가 지급한 칭호");
+  const sourceText = (t: SpecialOwned) => (t.forced ? "관리자가 고정한 칭호" : t.source === "monthly" ? "랭킹 보상 · 다음 달 1일까지" : "관리자가 지급한 칭호");
 
   async function equip(id: number) {
     if (!profile || locked) return;
@@ -234,11 +267,8 @@ function SpecialTitlesCard({ profile }: { profile: Me | undefined }) {
   };
 
   return (
-    <Card>
-      <h2 className={styles.spHead}>
-        특수 칭호 <span className="muted">{list.length}개</span>
-      </h2>
-      <p className="muted" style={{ fontSize: 13 }}>
+    <>
+      <p className={`muted ${styles.tabDesc}`}>
         {locked
           ? "관리자가 고정한 특수 칭호가 있어서 그 칭호가 항상 보이고, 해제하거나 바꿀 수 없어요."
           : "랭킹에서 닉네임 위에 작게 붙는 칭호예요. 하나를 골라 장착할 수 있어요. 칭호를 누르면 미리 볼 수 있어요."}
@@ -267,7 +297,7 @@ function SpecialTitlesCard({ profile }: { profile: Me | undefined }) {
         actions={previewT && button(previewT, "")}
         onClose={() => setPreviewId(null)}
       />
-    </Card>
+    </>
   );
 }
 

@@ -27,14 +27,17 @@
   text-overflow: ellipsis;
 }
 .stats {
-  flex: 2 1 420px;
+  flex: 0 1 auto;
+  margin-left: auto;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(150px, max-content));
   gap: 10px;
 }
 .stat {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 6px;
   padding: 14px 16px;
   border-radius: var(--r-md);
@@ -50,6 +53,7 @@
   min-height: 28px;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 .balance {
   font-size: 26px;
@@ -261,6 +265,13 @@
   font-size: 13px;
 }
 
+@media (max-width: 899px) {
+  .stats {
+    flex: 1 1 100%;
+    margin-left: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 @media (max-width: 599px) {
   .stats {
     grid-template-columns: 1fr 1fr;
@@ -306,4 +317,39 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--c-text-3);
+}
+
+/* 요약의 "칭호" 박스 — 누르면 칭호 관리 모달 */
+.statBtn {
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--dur), background-color var(--dur);
+}
+.statBtn:hover {
+  border-color: var(--c-border-strong);
+  background: var(--c-hover);
+}
+.statArrow {
+  vertical-align: -2px;
+}
+.titleVal {
+  flex-direction: column;
+  gap: 2px;
+}
+.titleVal :global(.rk-sp) {
+  font-size: 11px;
+}
+/* 칭호 관리 모달 안 */
+.tabBody {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tabDesc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
 }
