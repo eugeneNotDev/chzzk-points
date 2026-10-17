@@ -223,8 +223,6 @@
      -0.17em = 한글 글자 몸통의 세로 가운데에 아이콘 가운데가 오는 값. */
 .tp-tag {
   display: inline-block;
-  position: relative;
-  top: -0.03em; /* 작은 글자 픽셀 반올림으로 생기는 반 픽셀 처짐 상쇄 */
   flex: none;
   white-space: nowrap;
   font-size: 0.85em;
