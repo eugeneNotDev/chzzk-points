@@ -92,7 +92,6 @@
   font-size: 22px;
 }
 .stageTag :global(.tp-tag) {
-  top: 0;
   font-size: 1em;
 }
 .stageTag :global(.tp-icon) {
