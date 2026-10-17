@@ -26,6 +26,7 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const downOnBackdrop = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -62,8 +63,14 @@ export function Modal({
       ref={ref}
       className={`modal ${wide ? "modal-wide" : ""}`}
       aria-labelledby={labelledBy}
+      // 바깥(어두운 부분)을 눌러 닫기 — 누르기 시작한 곳도 바깥일 때만. 폰에서 팝업을 연 손가락이 떼어지며
+      // 생기는 클릭이나, 본문을 끌다가 바깥에서 손을 뗀 경우에 바로 닫혀버리지 않게.
+      onPointerDown={(e) => {
+        downOnBackdrop.current = e.target === ref.current;
+      }}
       onClick={(e) => {
-        if (e.target === ref.current) onClose();
+        if (e.target === ref.current && downOnBackdrop.current) onClose();
+        downOnBackdrop.current = false;
       }}
     >
       {open && (

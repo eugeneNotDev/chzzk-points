@@ -49,12 +49,12 @@ const REPORT_RATE_WINDOW_MS = 10 * 60 * 1000;
 const REPORT_RATE_MAX = 10;
 
 // ---------- 게시판 활동 보상(0066_board_activity_rewards.sql) ----------
-// 하루(한국 시간 밤 12시 기준) 게시글 3개·댓글 5개까지 쓸 때마다 포인트. 후기 글도 게시글 한도에 같이 셈(후기 보상 100P는 따로).
+// 하루(한국 시간 밤 12시 기준) 게시글 1개·댓글 3개까지 쓸 때마다 포인트. 후기 글도 게시글 한도에 같이 셈(후기 보상 100P는 따로).
 // 도배 방지: 공백 뺀 길이 최소(글 본문 20자·댓글 5자), 한두 글자 반복("ㅋㅋㅋㅋ")은 안 침, 같은 글에 단 댓글은 2개까지,
 // 내 글에 단 내 댓글은 보상 없음. 그날 지우면 회수(지웠다 다시 써도 한도는 안 돌아옴), 신고 누적으로 숨겨지거나 관리자가 지우면 회수.
 const ACTIVITY = {
-  post: { amount: 30, daily: 3, minLen: 20, label: "글" },
-  comment: { amount: 10, daily: 5, minLen: 5, label: "댓글", perPost: 2 },
+  post: { amount: 30, daily: 1, minLen: 20, label: "글" },
+  comment: { amount: 10, daily: 3, minLen: 5, label: "댓글", perPost: 2 },
 } as const;
 type ActivityKind = keyof typeof ACTIVITY;
 
