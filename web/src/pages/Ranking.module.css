@@ -271,7 +271,21 @@
 }
 .p1 .baseNo {
   font-size: 30px;
-  animation: base-breath 3.2s ease-in-out infinite;
+}
+/* 1위: 숫자 뒤 둥근 후광이 6초에 걸쳐 천천히 피어올랐다 사라짐 */
+.aura {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 120px;
+  height: 60px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.75);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--pc-lite) 70%, transparent), color-mix(in srgb, var(--pc) 30%, transparent) 55%, transparent);
+  filter: blur(6px);
+  animation: base-aura 6s ease-in-out infinite;
 }
 .p1 .laurel {
   width: 15px;
@@ -320,13 +334,15 @@
     background-position: -130% 0;
   }
 }
-@keyframes base-breath {
+@keyframes base-aura {
   0%,
   100% {
-    filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 var(--pl-sh), transparent));
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
   }
   50% {
-    filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 var(--pl-sh), transparent)) drop-shadow(0 0 8px color-mix(in srgb, var(--pc) 70%, transparent));
+    opacity: 0.75;
+    transform: translate(-50%, -50%) scale(1.05);
   }
 }
 @keyframes base-twinkle {

@@ -121,6 +121,7 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
               <path fill="currentColor" d={STAR_PATH} />
             </svg>
           ))}
+        {i === 0 && <span className={styles.aura} />}
         <Laurel />
         <span className={`${styles.baseNo} num`}>
           {i + 1}
