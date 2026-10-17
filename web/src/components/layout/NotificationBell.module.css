@@ -189,7 +189,8 @@
   background: var(--c-blue-soft);
   color: var(--c-blue);
 }
-.predict {
+.predict,
+.titleKind {
   background: var(--c-gold-soft);
   color: var(--c-gold);
 }

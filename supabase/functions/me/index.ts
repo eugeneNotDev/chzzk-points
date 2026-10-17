@@ -29,6 +29,7 @@
 //   시각 이전 기록은 전부 걸러서 안 보여줌 — 밴 초기화 이후엔 유저 입장에서 로그도 완전히
 //   새로 시작한 것처럼 보이게 하려는 의도(요청사항). points_ledger 행 자체는 안 지우니 관리자
 //   쪽 로그(admin/index.ts)는 이 필터 없이 항상 전체를 봄.)
+//   titleGrants: 관리자가 지급한 일반 칭호와 받은 시각(알림 종 "칭호를 받았어요"용 — 상점에서 산 건 빠짐)
 //   specialTitles/selectedSpecialId/specialLocked: 특수 칭호(닉네임 위 작은 글씨, 0069_special_title_equip.sql).
 //   관리자 지급·지난달 1~3위 칭호 중 하나를 골라 장착. 관리자가 고정(forced)한 칭호가 있으면 그게 항상 보이고
 //   바꿀 수 없음(specialLocked: true).
@@ -217,7 +218,7 @@ async function getProfile(channelId: string) {
 
   const { data: purchasedRows, error: purchasedError } = await admin
     .from("user_purchased_titles")
-    .select("title_id")
+    .select("title_id, purchased_at, source")
     .eq("channel_id", channelId);
   if (purchasedError) throw new Error(`user_purchased_titles 조회 실패: ${purchasedError.message}`);
 
@@ -246,6 +247,7 @@ async function getProfile(channelId: string) {
     tierTitleColor: tierTitle?.color ?? null,
     selectedTitleId: user.selected_title_id,
     purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
+    titleGrants: (purchasedRows ?? []).filter((r) => r.source === "admin").map((r) => ({ titleId: r.title_id, grantedAt: r.purchased_at })),
     rankKey: user.rank_key ?? null,
     specialTitles: specials.map((t) => ({ id: t.id, name: t.name, color: t.color, forced: t.forced, source: t.source, bonusPct: t.bonus_pct ?? 0, grantedAt: t.granted_at })),
     selectedSpecialId: shownSpecial?.id ?? null,

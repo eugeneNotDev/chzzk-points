@@ -6,13 +6,13 @@
 // 창을 열면 "읽음" 처리(그 시각 이후 것만 새 알림) — 열 때의 기준을 고정해 둬서 이번에 새로 온 건 점이 남음.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, ChartColumn, CornerDownRight, Megaphone, MessageCircle } from "lucide-react";
+import { Bell, ChartColumn, CornerDownRight, Crown, Megaphone, MessageCircle } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { relTime } from "../../lib/format";
 import { markNotificationsSeen, useNotifications, type Notif } from "../../lib/notifications";
 import styles from "./NotificationBell.module.css";
 
-const ICON: Record<Notif["kind"], typeof Bell> = { notice: Megaphone, comment: MessageCircle, reply: CornerDownRight, predict: ChartColumn };
+const ICON: Record<Notif["kind"], typeof Bell> = { notice: Megaphone, comment: MessageCircle, reply: CornerDownRight, predict: ChartColumn, title: Crown };
 const reduced = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export function NotificationBell() {
@@ -127,7 +127,7 @@ export function NotificationBell() {
                       nav(n.to);
                     }}
                   >
-                    <span className={`${styles.icon} ${styles[n.kind]}`}>
+                    <span className={`${styles.icon} ${styles[n.kind === "title" ? "titleKind" : n.kind]}`}>
                       <Icon size={16} aria-hidden="true" />
                     </span>
                     <span className={styles.text}>

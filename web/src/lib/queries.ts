@@ -16,6 +16,8 @@ export type Me = {
   tierTitleColor: string | null;
   selectedTitleId: string | null;
   purchasedTitleIds?: string[];
+  // 관리자가 지급한 일반 칭호와 받은 시각(알림 종용 — 상점에서 산 건 빠짐)
+  titleGrants?: { titleId: string; grantedAt: string }[];
   rankKey?: string;
   // 특수 칭호(닉네임 위 작은 글씨) — 하나 골라 장착. specialLocked면 관리자 고정 칭호라 못 바꿈.
   specialTitles?: SpecialOwned[];

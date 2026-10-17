@@ -3,7 +3,7 @@
 --  · ledger_balance_at(channel, times): 그 시각 잔액 — 미니게임 최근 기록에서 씀(게임 기록과 포인트 기록은 같은
 --    트랜잭션이라 created_at이 같음. 비김·x1처럼 포인트 기록이 없는 판도 그 시각 잔액이 나옴).
 --    둘 다 ledger-balance 함수(서비스 롤)만 부름.
---  · 지난달 1~3위 칭호: 모두 왕관, 1위 금색·2위 은색·3위 동색(지급될 때 트리거가 맞춰 줌).
+--  · 지난달 1~3위 칭호: 금속 광택 + 왕관 아이콘, 색은 칭호 꾸미기 팔레트의 금(f2c230)·은(c9d1d9)·동(cd7f32)(지급될 때 트리거가 맞춰 줌).
 
 create or replace function public.ledger_balance_after(p_ids bigint[])
 returns table (id bigint, channel_id text, balance_after bigint)
@@ -43,7 +43,7 @@ begin
     if coalesce(new.bonus_pct, 0) = 0 then
       new.bonus_pct := case new.rank when 1 then 10 when 2 then 7 when 3 then 5 else 0 end;
     end if;
-    new.color := case new.rank when 1 then 'shine-crown-d4af37' when 2 then 'shine-crown-c0c7d1' when 3 then 'shine-crown-cd7f32' else new.color end;
+    new.color := case new.rank when 1 then 'shine-crown-f2c230' when 2 then 'shine-crown-c9d1d9' when 3 then 'shine-crown-cd7f32' else new.color end;
   end if;
   return new;
 end;

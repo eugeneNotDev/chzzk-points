@@ -1,5 +1,8 @@
 // 알림 종 — 세 가지를 모아서 최신순으로:
 //   1) 새 공지(최근 3일)  2) 내 글 댓글 · 내 댓글 답글(board 함수 notifications, 최근 30일)  3) 내가 참여한 투표 결과
+//   4) 새로 받은 칭호(최근 14일) → 누르면 마이페이지 칭호 창
+//      · 특수 칭호: 관리자 지급·지난달 순위(me의 specialTitles.grantedAt)
+//      · 일반 칭호: 관리자가 지급한 것만(me의 titleGrants — 상점에서 직접 산 건 본인이 아니까 뺌)
 // 읽음은 서버에 저장하지 않고 이 브라우저가 "마지막으로 알림을 열어본 시각"으로 판단(그 뒤에 생긴 게 새 알림).
 import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -7,15 +10,17 @@ import { apiFetch, useAuth } from "./auth";
 import { API } from "./config";
 import { boardCall } from "./board";
 import { useNotices } from "./notices";
+import { useMe, useTitles } from "./queries";
 import { readStorage, writeStorage } from "./storage";
 
 const SEEN_KEY = "chzzk_points_notif_seen_at";
 const NOTICE_WINDOW_MS = 3 * 86_400_000;
 const PRED_WINDOW_MS = 3 * 86_400_000;
+const TITLE_WINDOW_MS = 14 * 86_400_000;
 
 export type Notif = {
   id: string;
-  kind: "notice" | "comment" | "reply" | "predict";
+  kind: "notice" | "comment" | "reply" | "predict" | "title";
   title: string;
   body: string;
   to: string;
@@ -56,6 +61,8 @@ export function useNotifications() {
   const { isLoggedIn, token } = useAuth();
   const seen = useSeenAt();
   const notices = useNotices(10);
+  const me = useMe();
+  const titles = useTitles();
   const board = useQuery({
     queryKey: ["notifications", "board", token],
     enabled: isLoggedIn,
@@ -103,6 +110,30 @@ export function useNotifications() {
               : `"${p.title}" 아쉽게 빗나갔어요. 정답: ${p.options.find((o) => o.id === p.winningOptionId)?.label ?? "-"}`;
       items.push({ id: `p-${p.id}-${p.status}`, kind: "predict", title: "투표 결과", body, to: "/predict.html", at });
     }
+  }
+  for (const t of me.data?.specialTitles ?? []) {
+    if (!t.grantedAt || now - new Date(t.grantedAt).getTime() > TITLE_WINDOW_MS) continue;
+    items.push({
+      id: `t-${t.id}`,
+      kind: "title",
+      title: "특수 칭호를 받았어요",
+      body: `${t.name}${t.bonusPct ? ` · 적립 +${t.bonusPct}%` : ""} — 눌러서 장착할 수 있어요`,
+      to: "/mypage.html?titles=special",
+      at: t.grantedAt,
+    });
+  }
+  for (const g of me.data?.titleGrants ?? []) {
+    if (!g.grantedAt || now - new Date(g.grantedAt).getTime() > TITLE_WINDOW_MS) continue;
+    const name = titles.data?.find((t) => t.id === g.titleId)?.name;
+    if (!name) continue;
+    items.push({
+      id: `g-${g.titleId}`,
+      kind: "title",
+      title: "칭호를 받았어요",
+      body: `${name} — 눌러서 장착할 수 있어요`,
+      to: "/mypage.html?titles=title",
+      at: g.grantedAt,
+    });
   }
   items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   const unread = items.filter((i) => new Date(i.at).getTime() > seen).length;

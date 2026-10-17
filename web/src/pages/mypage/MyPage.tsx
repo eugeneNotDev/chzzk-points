@@ -3,7 +3,7 @@ import { SkeletonList } from "../../components/Skeleton";
 import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
@@ -35,7 +35,23 @@ const fmtDateTime = (iso: string) =>
 
 export default function MyPage() {
   const auth = useAuth();
-  const [titlesOpen, setTitlesOpen] = useState(false);
+  // 알림에서 "특수 칭호를 받았어요"를 누르면 ?titles=special 로 와서 칭호 창이 특수 칭호 탭으로 열림
+  const [params, setParams] = useSearchParams();
+  const linked = params.get("titles");
+  const [titlesOpen, setTitlesOpen] = useState(!!linked);
+  const [titlesTab, setTitlesTab] = useState<"title" | "special">(linked === "special" ? "special" : "title");
+  const [lastLinked, setLastLinked] = useState(linked);
+  if (linked !== lastLinked) {
+    setLastLinked(linked);
+    if (linked) {
+      setTitlesTab(linked === "special" ? "special" : "title");
+      setTitlesOpen(true);
+    }
+  }
+  const closeTitles = () => {
+    setTitlesOpen(false);
+    if (linked) setParams({}, { replace: true });
+  };
   const me = useMe();
   const titles = useTitles();
 
@@ -75,7 +91,10 @@ export default function MyPage() {
               <small>P</small>
             </b>
           </div>
-          <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => setTitlesOpen(true)} aria-haspopup="dialog" title="눌러서 칭호 바꾸기">
+          <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => {
+              setTitlesTab("title");
+              setTitlesOpen(true);
+            }} aria-haspopup="dialog" title="눌러서 칭호 바꾸기">
             <span className="muted">칭호</span>
             <span className={`${styles.statVal} ${styles.titleVal}`}>
               {shownSpecial && <SpecialTitleLine list={[shownSpecial]} />}
@@ -95,7 +114,7 @@ export default function MyPage() {
           </p>
         )}
       </Card>
-      <TitlesModal open={titlesOpen} onClose={() => setTitlesOpen(false)} profile={profile} />
+      <TitlesModal open={titlesOpen} onClose={closeTitles} profile={profile} tab={titlesTab} onTab={setTitlesTab} />
 
       <div className={styles.cols}>
         <div className={styles.col}>
@@ -112,9 +131,20 @@ export default function MyPage() {
 }
 
 // 칭호 관리 — 마이페이지 위 "칭호" 박스를 누르면 뜸. 칭호 / 특수 칭호 탭.
-function TitlesModal({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Me | undefined }) {
+function TitlesModal({
+  open,
+  onClose,
+  profile,
+  tab,
+  onTab: setTab,
+}: {
+  open: boolean;
+  onClose: () => void;
+  profile: Me | undefined;
+  tab: "title" | "special";
+  onTab: (t: "title" | "special") => void;
+}) {
   const titles = useTitles();
-  const [tab, setTab] = useState<"title" | "special">("title");
   const ownedCount = (titles.data ?? []).filter((t) => (profile?.purchasedTitleIds ?? []).includes(t.id)).length;
   const spCount = profile?.specialTitles?.length ?? 0;
   return (
