@@ -45,7 +45,8 @@
   color: var(--c-text-4);
 }
 
-/* ── 1~3위 시상대 ── */
+/* ── 1~3위 시상대 ──
+   한 칸 = 윗칸(.stepTop: 닉네임, 칭호 있으면 칭호 플레이트) + 아랫칸(.stepBase: N위 단상, 언제나 순위 색) */
 .podium {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -54,31 +55,63 @@
 }
 .step {
   --pc: var(--c-silver);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.p1 {
+  --pc: var(--c-gold);
+  --pc-lite: #ffe58a;
+  --pc-deep: #b8860b;
+}
+.p2 {
+  --pc-lite: #ffffff;
+  --pc-deep: #8a939c;
+}
+.p3 {
+  --pc: var(--c-bronze);
+  --pc-lite: #f3c9a2;
+  --pc-deep: #9a5b2c;
+}
+:root[data-theme="light"] .p1 {
+  --pc-lite: #d9a514;
+  --pc-deep: #8a6400;
+}
+:root[data-theme="light"] .p2 {
+  --pc-lite: #9aa3ad;
+  --pc-deep: #4f5862;
+}
+:root[data-theme="light"] .p3 {
+  --pc-lite: #c98a55;
+  --pc-deep: #7a4520;
+}
+.stepClick {
+  cursor: pointer;
+}
+
+/* 윗칸 — 칭호 없을 땐 순위 색(칭호 있으면 title-plate.css의 .tp.tp-card가 바탕·테두리를 덮어씀) */
+.stepTop {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 20px 14px 0;
+  padding: 20px 14px 18px;
   border-radius: var(--r-xl) var(--r-xl) var(--r-md) var(--r-md);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 14%, var(--c-surface)), var(--c-surface) 70%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pc) 14%, var(--c-surface)), var(--c-surface) 80%);
   border: 1px solid color-mix(in srgb, var(--pc) 30%, var(--c-border));
   text-align: center;
-  overflow: hidden;
 }
-.p1 {
-  --pc: var(--c-gold);
-  padding-top: 28px;
+.stepTop:global(.tp) {
+  border-color: transparent;
 }
-.p3 {
-  --pc: var(--c-bronze);
+.p1 .stepTop {
+  padding-top: 26px;
 }
 .stepMe {
   box-shadow: inset 0 0 0 2px var(--c-accent);
-}
-.stepClick {
-  cursor: pointer;
 }
 .medal {
   display: grid;
@@ -89,8 +122,6 @@
   background: color-mix(in srgb, var(--pc) 22%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pc) 70%, transparent);
   color: var(--pc);
-  font-size: 17px;
-  font-weight: 800;
 }
 .p1 .medal {
   width: 46px;
@@ -100,10 +131,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   max-width: 100%;
   font-size: 15px;
+  line-height: 1.3;
 }
 .stepName b {
   max-width: 100%;
@@ -111,6 +143,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 800;
+}
+.stepName :global(.rk-sp) {
+  justify-content: center;
+  font-size: 11px;
+  line-height: 1.25;
+  margin-bottom: 1px;
+}
+.stepName :global(.tp-tag) {
+  max-width: 100%;
+  font-size: 12.5px;
 }
 .p1 .stepName {
   font-size: 17px;
@@ -132,25 +174,172 @@
   font-weight: 700;
   color: var(--c-text-3);
 }
-/* 단상 — 1위가 제일 높게 */
+
+/* 아랫칸 — 단상. 위쪽 밝은 띠(윗면) + 금속 광택 숫자 + 월계수 + 숫자 뒤 빛 + 지나가는 반짝임. 1위는 제일 높게 */
 .stepBase {
-  align-self: stretch;
-  display: grid;
-  place-items: center;
-  height: 34px;
-  margin: 6px -14px 0;
-  background: color-mix(in srgb, var(--pc) 16%, var(--c-surface-2));
-  border-top: 1px solid color-mix(in srgb, var(--pc) 35%, transparent);
-  color: color-mix(in srgb, var(--pc) 80%, var(--c-text));
-  font-size: 13px;
+  --pl-top: 34%;
+  --pl-a: 26%;
+  --pl-b: 10%;
+  --pl-hi: 22%;
+  --pl-sw: 0.12;
+  --pl-sh: 55%;
+  --pl-halo: 22%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  border-radius: var(--r-md) var(--r-md) var(--r-lg) var(--r-lg);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--pc) var(--pl-top), transparent) 0 6px, transparent 6px),
+    radial-gradient(60% 120% at 50% 70%, color-mix(in srgb, var(--pc) var(--pl-halo), transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pc) var(--pl-a), var(--c-surface-2)), color-mix(in srgb, var(--pc) var(--pl-b), var(--c-surface-2)));
+  border: 1px solid color-mix(in srgb, var(--pc) 50%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff var(--pl-hi), transparent),
+    inset 0 -2px 0 color-mix(in srgb, var(--pc) 30%, transparent),
+    0 6px 14px -10px color-mix(in srgb, var(--pc) 70%, transparent);
+}
+:root[data-theme="light"] .stepBase {
+  --pl-top: 40%;
+  --pl-a: 24%;
+  --pl-b: 8%;
+  --pl-hi: 80%;
+  --pl-sw: 0.5;
+  --pl-sh: 12%;
+  --pl-halo: 30%;
+}
+/* 윗면과 앞면 경계선 */
+.stepBase::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 1px;
+  background: color-mix(in srgb, var(--pc) 45%, transparent);
+}
+/* 지나가는 반짝임 — 1위 → 2위 → 3위 순서로 */
+.stepBase::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, var(--pl-sw)) 50%, transparent 60%) no-repeat;
+  background-size: 250% 100%;
+  animation: base-sweep 6s ease-in-out infinite;
+}
+.p2 .stepBase::after {
+  animation-delay: 1.2s;
+}
+.p3 .stepBase::after {
+  animation-delay: 2.4s;
+}
+.baseNo {
+  position: relative;
+  top: 3px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  line-height: 1;
+  background: linear-gradient(180deg, var(--pc-lite), var(--pc) 60%, var(--pc-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 var(--pl-sh), transparent));
+}
+.baseNo small {
+  margin-left: 1px;
+  font-size: 0.55em;
+}
+.laurel {
+  position: relative;
+  top: 3px;
+  width: 12px;
+  height: 18px;
+  flex: none;
+  color: color-mix(in srgb, var(--pc) 75%, transparent);
+}
+.laurelR {
+  transform: scaleX(-1);
 }
 .p1 .stepBase {
-  height: 56px;
+  height: 62px;
+  --pl-halo: 34%;
+}
+:root[data-theme="light"] .p1 .stepBase {
+  --pl-halo: 42%;
+}
+.p1 .baseNo {
+  font-size: 30px;
+  animation: base-breath 3.2s ease-in-out infinite;
+}
+.p1 .laurel {
+  width: 15px;
+  height: 23px;
 }
 .p2 .stepBase {
-  height: 44px;
+  height: 50px;
+}
+.p2 .baseNo {
+  font-size: 25px;
+}
+/* 1위: 숫자 주변 반짝이는 별 */
+.twinkle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  color: var(--pc-lite);
+  opacity: 0;
+  filter: drop-shadow(0 0 3px var(--pc));
+  animation: base-twinkle 2.6s ease-in-out infinite;
+}
+.twa {
+  left: calc(50% - 48px);
+  top: 12px;
+}
+.twb {
+  left: calc(50% + 40px);
+  top: 18px;
+  width: 7px;
+  height: 7px;
+  animation-delay: 0.9s;
+}
+.twc {
+  left: calc(50% + 14px);
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  animation-delay: 1.7s;
+}
+@keyframes base-sweep {
+  0%,
+  40% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+@keyframes base-breath {
+  0%,
+  100% {
+    filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 var(--pl-sh), transparent));
+  }
+  50% {
+    filter: drop-shadow(0 1px 0 color-mix(in srgb, #000 var(--pl-sh), transparent)) drop-shadow(0 0 8px color-mix(in srgb, var(--pc) 70%, transparent));
+  }
+}
+@keyframes base-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
 }
 
 /* ── 내 순위 ── */
@@ -198,11 +387,11 @@
   .podium {
     gap: 8px;
   }
-  .step {
-    padding: 14px 8px 0;
+  .stepTop {
+    padding: 14px 8px;
   }
-  .p1 {
-    padding-top: 20px;
+  .p1 .stepTop {
+    padding-top: 18px;
   }
   .stepName {
     font-size: 13px;
@@ -210,8 +399,11 @@
   .p1 .stepName {
     font-size: 14px;
   }
-  .stepName :global(.title-badge) {
-    max-width: 100%;
+  .stepName :global(.tp-tag) {
+    font-size: 11.5px;
+  }
+  .stepName :global(.rk-sp) {
+    font-size: 10px;
   }
   .stepPts {
     font-size: 15px;
@@ -219,7 +411,14 @@
   .p1 .stepPts {
     font-size: 18px;
   }
-  .stepBase {
-    margin: 6px -8px 0;
+  /* 좁은 화면: 월계수는 숨기고 숫자만 */
+  .laurel {
+    display: none;
+  }
+  .twa {
+    left: calc(50% - 30px);
+  }
+  .twb {
+    left: calc(50% + 24px);
   }
 }

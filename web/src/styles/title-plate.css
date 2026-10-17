@@ -1,0 +1,282 @@
+/* 칭호 플레이트 — 랭킹 줄(.tp)과 시상대 닉네임 칸(.tp.tp-card)을 칭호 색·테두리로 꾸밈.
+   색 변수(--tint, --edge 등)는 lib/titlePlate.ts가 테마에 맞춰 계산해서 style로 넣어줌.
+   테두리는 ::before에 그라데이션을 깔고 가운데를 마스크로 뚫어서 그림(둥근 모서리 + 그라데이션 테두리). */
+
+@property --tp-ang {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* 테마별 세기 */
+:root {
+  --tp-sw: 22%; /* 메탈: 지나가는 빛 */
+  --tp-glass: 24%; /* 유리: 바탕 */
+  --tp-gl-hi: 0.26; /* 유리: 위 하이라이트 */
+  --tp-gl-ref: 0.07; /* 유리: 반사광 */
+  --tp-ra: 0.14; /* 무지개: 바탕 */
+  --tp-gw: 18px; /* 빛나는: 바깥 번짐 */
+  --tp-gi: 50%; /* 빛나는: 안쪽 번짐 */
+  --tp-card-a: 16%; /* 시상대 칸: 바탕 */
+  --tp-card-a2: 14%;
+}
+:root[data-theme="light"] {
+  --tp-sw: 70%;
+  --tp-glass: 14%;
+  --tp-gl-hi: 0.95;
+  --tp-gl-ref: 0.55;
+  --tp-ra: 0.11;
+  --tp-gw: 14px;
+  --tp-gi: 22%;
+  --tp-card-a: 12%;
+  --tp-card-a2: 10%;
+}
+
+/* ── 공통 ── */
+.tp {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tint) var(--ta), transparent), color-mix(in srgb, var(--tint) 4%, transparent) 80%);
+}
+.tp > * {
+  position: relative;
+  z-index: 2;
+}
+.tp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--tp-bw, 1.5px);
+  background: var(--bd);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+.tp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 기본 */
+.tp-basic {
+  --bd: color-mix(in srgb, var(--edge) 65%, transparent);
+}
+/* 메탈 */
+.tp-shine {
+  --bd: linear-gradient(115deg, var(--blite), var(--edge) 28%, var(--bdeep) 52%, var(--blite) 78%, var(--edge));
+}
+.tp-shine::after {
+  background: linear-gradient(105deg, transparent 42%, color-mix(in srgb, var(--blite) var(--tp-sw), transparent) 50%, transparent 58%) no-repeat;
+  background-size: 250% 100%;
+  animation: tp-sweep 5s ease-in-out infinite;
+}
+/* 두 색 */
+.tp-two {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--tint) var(--ta), transparent),
+    color-mix(in srgb, var(--tint) calc(var(--ta) * 0.5), transparent) 35%,
+    color-mix(in srgb, var(--tint2) var(--ta2), transparent) 100%
+  );
+}
+.tp-two.tp-basic {
+  --bd: linear-gradient(90deg, var(--edge), var(--edge2));
+}
+.tp-two.tp-shine {
+  --bd: linear-gradient(90deg, var(--blite), var(--edge) 25%, var(--bdeep) 45%, var(--edge2) 75%, var(--blite2));
+}
+/* 빛나는 테두리 */
+.tp-glow {
+  --tp-bw: 2px;
+  background: var(--glow-in);
+  --bd: conic-gradient(from var(--tp-ang), var(--edge), var(--blite), var(--edge), color-mix(in srgb, var(--edge) 25%, transparent), var(--edge));
+  animation: tp-spin 3.5s linear infinite;
+  box-shadow: 0 0 var(--tp-gw) -2px color-mix(in srgb, var(--edge) 50%, transparent), inset 0 0 16px -4px color-mix(in srgb, var(--edge) var(--tp-gi), transparent);
+}
+.tp-glow.tp-two {
+  --bd: conic-gradient(from var(--tp-ang), var(--edge), var(--edge2), var(--edge), var(--edge2), var(--edge));
+}
+/* 유리 */
+.tp-glass {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tint) var(--tp-glass), transparent), color-mix(in srgb, var(--tint) 5%, transparent));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  --bd: linear-gradient(180deg, rgba(255, 255, 255, var(--tp-gl-hi)), color-mix(in srgb, var(--edge) 40%, transparent) 60%, color-mix(in srgb, var(--edge) 25%, transparent));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--tp-gl-hi)), 0 4px 14px -8px rgba(0, 0, 0, 0.3);
+}
+.tp-glass::after {
+  background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, var(--tp-gl-ref)) 24%, transparent 34%, transparent 60%, rgba(255, 255, 255, calc(var(--tp-gl-ref) * 0.6)) 64%, transparent 70%);
+}
+/* 라이트: 흰 하이라이트 테두리가 흰 바탕에 묻히니 칭호 색 한 색 테두리로 */
+:root[data-theme="light"] .tp-glass {
+  --bd: color-mix(in srgb, var(--edge) 45%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 3px 10px -6px rgba(15, 20, 25, 0.25);
+}
+/* 무지개 */
+.tp-rainbow {
+  --bd: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 77, 90, var(--tp-ra)),
+    rgba(255, 212, 59, calc(var(--tp-ra) * 0.7)),
+    rgba(0, 229, 160, calc(var(--tp-ra) * 0.7)),
+    rgba(93, 200, 255, calc(var(--tp-ra) * 0.7)),
+    rgba(155, 107, 255, calc(var(--tp-ra) * 0.8)),
+    rgba(255, 107, 181, calc(var(--tp-ra) * 0.4))
+  );
+}
+.tp-rainbow::before {
+  background-size: 200% 100%;
+  animation: tp-rb 6s linear infinite;
+}
+/* 무지개 + 빛나는 테두리: 링 색을 무지개로(회전 각도는 줄 자신의 --tp-ang을 써야 돌아가서 --bd를 줄에 정의) */
+.tp-rainbow.tp-glow {
+  --edge: #9b6bff;
+  --glow-in: transparent;
+  --bd: conic-gradient(from var(--tp-ang), #ff4d5a, #ffd43b, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+}
+.tp-rainbow.tp-glow::before {
+  animation: none;
+}
+
+/* 반짝 별 */
+.tp .tp-sp {
+  position: absolute;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  color: var(--star, #fff);
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3));
+  animation: tp-tw 2.4s ease-in-out infinite;
+}
+.tp-rainbow .tp-sp {
+  color: #ffd43b;
+}
+.tp .tp-sp1 {
+  right: -3px;
+  top: -5px;
+}
+.tp .tp-sp2 {
+  left: 30%;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  animation-delay: 0.8s;
+}
+.tp .tp-sp3 {
+  right: 22%;
+  bottom: -4px;
+  width: 7px;
+  height: 7px;
+  animation-delay: 1.6s;
+}
+
+/* ── 시상대 닉네임 칸 — 세로 방향 바탕, 테두리 2px ── */
+.tp.tp-card {
+  --tp-bw: 2px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) var(--tp-card-a), var(--c-surface)), color-mix(in srgb, var(--tint) 3%, var(--c-surface)) 80%);
+}
+.tp.tp-card::before {
+  inset: -1px;
+  z-index: 3;
+}
+.tp-card.tp-two {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tint) var(--tp-card-a), var(--c-surface)), var(--c-surface) 55%, color-mix(in srgb, var(--tint2) var(--tp-card-a2), var(--c-surface)));
+}
+.tp-card.tp-rainbow {
+  background: linear-gradient(160deg, rgba(255, 77, 90, 0.12), rgba(255, 212, 59, 0.08) 30%, var(--c-surface) 55%, rgba(93, 200, 255, 0.1) 80%, rgba(155, 107, 255, 0.14));
+}
+.tp-card.tp-glow {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tint) 12%, var(--glow-in)), var(--glow-in) 80%);
+  box-shadow: 0 0 22px -4px color-mix(in srgb, var(--edge) 55%, transparent), inset 0 0 18px -6px color-mix(in srgb, var(--edge) var(--tp-gi), transparent);
+}
+.tp-card.tp-glass {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tint) var(--tp-glass), var(--c-surface)), var(--c-surface));
+  --bd: color-mix(in srgb, var(--edge) 55%, transparent);
+}
+.tp-card.tp-shine {
+  --bd: linear-gradient(160deg, var(--blite), var(--edge) 28%, var(--bdeep) 52%, var(--blite) 78%, var(--edge));
+}
+.tp-card.tp-two.tp-shine,
+.tp-card.tp-two.tp-basic {
+  --bd: linear-gradient(160deg, var(--blite), var(--edge) 30%, var(--edge2) 75%, var(--blite2));
+}
+.tp-card.tp-rainbow:not(.tp-glow) {
+  --bd: linear-gradient(160deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+}
+
+/* ── 닉네임 뒤 칭호 글자 "· 🐺 알파" ── */
+.tp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  white-space: nowrap;
+  font-size: 0.85em;
+  font-weight: 800;
+  color: var(--tc);
+}
+.tp-tag .tp-dot {
+  margin-right: 2px;
+  color: var(--c-text-4);
+  font-weight: 400;
+}
+.tp-tag .tp-icon {
+  width: 1.05em;
+  height: 1.05em;
+  flex: none;
+  color: var(--ic, var(--tc));
+}
+.tp-tag--grad .tp-tx {
+  background: var(--tg);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tp-tag--anim .tp-tx {
+  animation: tp-rb 6s linear infinite;
+}
+.tp-tag--glow .tp-tx {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tc) 55%, transparent);
+}
+
+@keyframes tp-sweep {
+  0%,
+  40% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -130% 0;
+  }
+}
+@keyframes tp-spin {
+  to {
+    --tp-ang: 360deg;
+  }
+}
+@keyframes tp-rb {
+  to {
+    background-position: 200% 0;
+  }
+}
+@keyframes tp-tw {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}

@@ -1,5 +1,6 @@
 // 랭킹 목록 — 랭킹 화면과 홈 미리보기가 같이 씀.
-// 이름 칸 = [비공개 표시(관리자 화면만)][장착 칭호 배지] 닉네임, 특수 칭호는 닉네임 바로 위(칭호 배지 위가 아니라 닉네임 위에만) 작은 글씨.
+// 이름 칸 = [비공개 표시(관리자 화면만)] 닉네임 · 🐺 칭호, 특수 칭호는 닉네임 바로 위 작은 글씨.
+// 장착 칭호가 있으면 줄 전체가 칭호 색·테두리 플레이트가 됨(components/TitlePlate, styles/title-plate.css).
 // 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴(본인도 똑같이 — 설정이 잘 됐는지 보이게).
 //
 // 순위가 바뀌면(Lucian UX/UI Prompt #317 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#317)
@@ -10,7 +11,8 @@ import { useLayoutEffect, useRef } from "react";
 import { fmt } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, type RankingRow } from "../lib/homeData";
-import { SpecialTitleLine, TitleBadge } from "./TitleBadge";
+import { SpecialTitleLine } from "./TitleBadge";
+import { PlateStars, TitleTag, useTitlePlate } from "./TitlePlate";
 import styles from "./RankingList.module.css";
 
 const RANK_COLORS = ["var(--c-gold)", "var(--c-silver)", "var(--c-bronze)"];
@@ -63,41 +65,51 @@ export function RankingList({ rows, onAdminClick, start = 0, className = "" }: {
 
   return (
     <ol ref={list} className={`${styles.list} ${className}`}>
-      {rows.map((r, j) => {
-        const i = j + start;
-        const me = isMyRankingRow(r, channelId);
-        const isPrivate = r.is_public === false;
-        const clickable = !!(onAdminClick && r.admin_view && r.channel_id);
-        const nameInner = (
-          <span className={styles.nameLine}>
-            {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
-            {r.shop_title_name && <TitleBadge name={r.shop_title_name} value={r.shop_title_color} className="rk-shop" />}
-            <span className={styles.nameCol}>
-              {!isPrivate && <SpecialTitleLine list={r.special_titles} />}
-              <span className={`${styles.nameText} ${isPrivate && !r.admin_view ? styles.muted : ""}`}>
-                {r.channel_name || "(이름 없음)"}
-                {me && " (나)"}
-              </span>
-            </span>
-          </span>
-        );
-        return (
-          <li key={keyOf(r, i)} data-k={keyOf(r, i)} className={`${styles.row} ${me ? styles.me : ""} ${i < 3 ? styles.top : ""}`}>
-            <span className={`${styles.no} num`} style={{ color: RANK_COLORS[i] ?? "var(--c-text-4)" }}>
-              {i + 1}
-              <em className={styles.move} aria-hidden="true" />
-            </span>
-            {clickable ? (
-              <button type="button" className={`${styles.name} ${styles.nameBtn}`} onClick={() => onAdminClick!(r.channel_id)} title="유저 상세 보기">
-                {nameInner}
-              </button>
-            ) : (
-              <span className={styles.name}>{nameInner}</span>
-            )}
-            <span className={`${styles.points} num`}>{fmt(r.total_points)}P</span>
-          </li>
-        );
-      })}
+      {rows.map((r, j) => (
+        <Row key={keyOf(r, j + start)} k={keyOf(r, j + start)} r={r} i={j + start} me={isMyRankingRow(r, channelId)} onAdminClick={onAdminClick} />
+      ))}
     </ol>
+  );
+}
+
+function Row({ k, r, i, me, onAdminClick }: { k: string; r: RankingRow; i: number; me: boolean; onAdminClick?: (channelId: string) => void }) {
+  const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
+  const isPrivate = r.is_public === false;
+  const clickable = !!(onAdminClick && r.admin_view && r.channel_id);
+  const nameInner = (
+    <span className={styles.nameLine}>
+      {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
+      <span className={styles.nameCol}>
+        {!isPrivate && <SpecialTitleLine list={r.special_titles} />}
+        <span className={styles.nameRow}>
+          <span className={`${styles.nameText} ${isPrivate && !r.admin_view ? styles.muted : ""}`}>
+            {r.channel_name || "(이름 없음)"}
+            {me && " (나)"}
+          </span>
+          {plate && r.shop_title_name && <TitleTag name={r.shop_title_name} plate={plate} />}
+        </span>
+      </span>
+    </span>
+  );
+  return (
+    <li
+      data-k={k}
+      className={`${styles.row} ${me ? styles.me : ""} ${i < 3 ? styles.top : ""} ${plate ? `${plate.className} ${styles.plated}` : ""}`}
+      style={plate?.style}
+    >
+      {plate?.star && <PlateStars />}
+      <span className={`${styles.no} num`} style={{ color: RANK_COLORS[i] ?? "var(--c-text-4)" }}>
+        {i + 1}
+        <em className={styles.move} aria-hidden="true" />
+      </span>
+      {clickable ? (
+        <button type="button" className={`${styles.name} ${styles.nameBtn}`} onClick={() => onAdminClick!(r.channel_id)} title="유저 상세 보기">
+          {nameInner}
+        </button>
+      ) : (
+        <span className={styles.name}>{nameInner}</span>
+      )}
+      <span className={`${styles.points} num`}>{fmt(r.total_points)}P</span>
+    </li>
   );
 }

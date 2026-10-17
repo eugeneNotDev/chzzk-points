@@ -6,7 +6,8 @@ import { Crown, Medal, TrendingUp } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
 import { PageHead } from "../components/ui";
 import { RankingList } from "../components/RankingList";
-import { SpecialTitleLine, TitleBadge } from "../components/TitleBadge";
+import { SpecialTitleLine } from "../components/TitleBadge";
+import { PlateStars, TitleTag, useTitlePlate } from "../components/TitlePlate";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, useRanking, type RankingRow } from "../lib/homeData";
 import { useMe } from "../lib/queries";
@@ -56,42 +57,78 @@ function HallOfFame() {
   );
 }
 
-// 1~3위 시상대 — 가운데가 1위(제일 높음), 왼쪽 2위, 오른쪽 3위
+// 1~3위 시상대 — 가운데가 1위(제일 높음), 왼쪽 2위, 오른쪽 3위.
+// 칸이 둘로 나뉨: 윗칸(닉네임) = 장착 칭호 색·테두리(없으면 금·은·동), 아랫칸(N위 단상) = 언제나 순위 색.
+// 왕관·메달·1위 점수도 순위 색.
 function Podium({ rows, onAdminClick }: { rows: RankingRow[]; onAdminClick?: (channelId: string) => void }) {
-  const { channelId } = useAuth();
   const order = [1, 0, 2].filter((i) => rows[i]);
   return (
     <section className={styles.podium} aria-label="1~3위">
-      {order.map((i) => {
-        const r = rows[i];
-        const hidden = r.is_public === false && !r.admin_view;
-        const me = isMyRankingRow(r, channelId);
-        return (
-          <div
-            key={r.channel_id + i}
-            className={`${styles.step} ${styles[`p${i + 1}`]} ${me ? styles.stepMe : ""} ${r.admin_view ? styles.stepClick : ""}`}
-            onClick={r.admin_view && r.channel_id ? () => onAdminClick?.(r.channel_id) : undefined}
-          >
-            <span className={`${styles.medal} num`}>{i === 0 ? <Crown size={22} aria-hidden="true" /> : <Medal size={18} aria-hidden="true" />}</span>
-            <div className={styles.stepName}>
-              {!hidden && <SpecialTitleLine list={r.special_titles} />}
-              {r.shop_title_name && <TitleBadge name={r.shop_title_name} value={r.shop_title_color} />}
-              <b className={hidden ? "muted" : ""}>
-                {r.channel_name || "(이름 없음)"}
-                {me && " (나)"}
-              </b>
-            </div>
-            <span className={`${styles.stepPts} num`}>
-              {fmt(r.total_points)}
-              <small>P</small>
-            </span>
-            <span className={styles.stepBase} aria-hidden="true">
-              {i + 1}위
-            </span>
-          </div>
-        );
-      })}
+      {order.map((i) => (
+        <PodiumStep key={rows[i].channel_id + i} r={rows[i]} i={i} onAdminClick={onAdminClick} />
+      ))}
     </section>
+  );
+}
+
+const STAR_PATH = "M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z";
+
+// 단상 옆 월계수 가지
+function Laurel({ flip }: { flip?: boolean }) {
+  return (
+    <svg className={`${styles.laurel} ${flip ? styles.laurelR : ""}`} viewBox="0 0 16 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 23C7 19 5 12 8 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <ellipse cx="5.6" cy="6" rx="1.6" ry="3.2" transform="rotate(-25 5.6 6)" />
+      <ellipse cx="10.6" cy="7.4" rx="1.5" ry="3" transform="rotate(30 10.6 7.4)" />
+      <ellipse cx="4.6" cy="11.6" rx="1.6" ry="3.2" transform="rotate(-45 4.6 11.6)" />
+      <ellipse cx="9.8" cy="13" rx="1.5" ry="3" transform="rotate(45 9.8 13)" />
+      <ellipse cx="6" cy="17.2" rx="1.6" ry="3.1" transform="rotate(-65 6 17.2)" />
+      <ellipse cx="11" cy="18.6" rx="1.4" ry="2.8" transform="rotate(60 11 18.6)" />
+    </svg>
+  );
+}
+
+function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; onAdminClick?: (channelId: string) => void }) {
+  const { channelId } = useAuth();
+  const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
+  const hidden = r.is_public === false && !r.admin_view;
+  const me = isMyRankingRow(r, channelId);
+  return (
+    <div
+      className={`${styles.step} ${styles[`p${i + 1}`]} ${r.admin_view ? styles.stepClick : ""}`}
+      onClick={r.admin_view && r.channel_id ? () => onAdminClick?.(r.channel_id) : undefined}
+    >
+      <div className={`${styles.stepTop} ${me ? styles.stepMe : ""} ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
+        {plate?.star && <PlateStars />}
+        <span className={styles.medal}>{i === 0 ? <Crown size={22} aria-hidden="true" /> : <Medal size={18} aria-hidden="true" />}</span>
+        <div className={styles.stepName}>
+          {!hidden && <SpecialTitleLine list={r.special_titles} />}
+          <b className={hidden ? "muted" : ""}>
+            {r.channel_name || "(이름 없음)"}
+            {me && " (나)"}
+          </b>
+          {plate && r.shop_title_name && <TitleTag name={r.shop_title_name} plate={plate} dot={false} />}
+        </div>
+        <span className={`${styles.stepPts} num`}>
+          {fmt(r.total_points)}
+          <small>P</small>
+        </span>
+      </div>
+      <span className={styles.stepBase} aria-hidden="true">
+        {i === 0 &&
+          ["a", "b", "c"].map((k) => (
+            <svg key={k} className={`${styles.twinkle} ${styles[`tw${k}`]}`} viewBox="0 0 24 24">
+              <path fill="currentColor" d={STAR_PATH} />
+            </svg>
+          ))}
+        <Laurel />
+        <span className={`${styles.baseNo} num`}>
+          {i + 1}
+          <small>위</small>
+        </span>
+        <Laurel flip />
+      </span>
+    </div>
   );
 }
 
