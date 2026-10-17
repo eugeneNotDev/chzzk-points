@@ -6,10 +6,10 @@
   flex-direction: column;
   gap: 4px; /* 칭호 플레이트 줄끼리 붙지 않게 */
 }
-/* 순위·포인트는 닉네임 줄에 맞춤(last baseline) — 특수 칭호가 있는 줄은 그만큼 위로 높아짐(기존 사이트와 같음) */
+/* 순위·포인트는 줄(칭호 플레이트 박스) 세로 가운데 — 특수 칭호가 있어 줄이 높아져도 박스 안에서 균형이 맞게 */
 .row {
   display: flex;
-  align-items: last baseline;
+  align-items: center;
   gap: 12px;
   padding: 14px 12px;
   border-radius: 12px;
