@@ -1144,6 +1144,11 @@
   cursor: pointer;
   transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
+/* 선물 아이콘이 한글 글자보다 1px 낮아 보여서(사용자 화면 기준: 아이콘 가운데 32px, 글자 가운데 31px) 살짝 올림 */
+.actChip > svg {
+  flex: none;
+  transform: translateY(-1px);
+}
 .actChip:hover {
   border-color: var(--c-accent);
 }
