@@ -22,7 +22,8 @@ export type TitlePlate = {
   style: CSSProperties;
   /** 닉네임 뒤 칭호 글자 */
   /** iconStops: 칭호에 그라데이션이 있으면 아이콘도 같은 색으로(왼쪽 위 → 오른쪽 아래). [위치 0~1, 색] 목록 */
-  tag: { className: string; style: CSSProperties; icon: string | null; iconStops?: [number, string][] };
+  /** iconFlow: 아이콘 그라데이션도 글자처럼 흐름(무지개) */
+  tag: { className: string; style: CSSProperties; icon: string | null; iconStops?: [number, string][]; iconFlow?: boolean };
   star: boolean;
 };
 
@@ -43,7 +44,8 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
         className: "tp-tag tp-tag--grad tp-tag--anim",
         style: { "--tc": light ? "#7048e8" : "#ffd43b", "--tg": light ? RB_LIGHT : RB_DARK } as CSSProperties,
         icon,
-        iconStops: evenStops(light ? RB_LIGHT_STOPS.slice(0, -1) : RB_DARK_STOPS.slice(0, -1)),
+        iconStops: evenStops(light ? RB_LIGHT_STOPS : RB_DARK_STOPS), // 처음·끝 색이 같아서 반복해도 이음새 없음
+        iconFlow: true,
       },
       star,
     };

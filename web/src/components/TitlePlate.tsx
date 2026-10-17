@@ -22,7 +22,12 @@ export function TitleTag({ name, plate, dot = true }: { name: string; plate: Non
           ·
         </span>
       )}
-      {plate.tag.icon && (plate.tag.iconStops ? <GradIcon id={plate.tag.icon} stops={plate.tag.iconStops} /> : <TitleIconSvg id={plate.tag.icon} className="tp-icon" />)}
+      {plate.tag.icon &&
+        (plate.tag.iconStops ? (
+          <GradIcon id={plate.tag.icon} stops={plate.tag.iconStops} flow={plate.tag.iconFlow} />
+        ) : (
+          <TitleIconSvg id={plate.tag.icon} className="tp-icon" />
+        ))}
       <span className="tp-tx">{name}</span>
     </span>
   );
@@ -30,7 +35,8 @@ export function TitleTag({ name, plate, dot = true }: { name: string; plate: Non
 
 // 그라데이션 아이콘 — 일반 아이콘과 똑같은 SVG(위치·크기 동일)에, 칠만 SVG 그라데이션으로.
 // 칭호 글자와 같은 색 순서로 왼쪽 위 → 오른쪽 아래.
-function GradIcon({ id, stops }: { id: string; stops: [number, string][] }) {
+// flow(무지개): 글자처럼 가로로 흐름 — 한 바퀴가 아이콘 폭 2배, 6초에 한 바퀴(글자 애니메이션과 같은 속도·방향).
+function GradIcon({ id, stops, flow }: { id: string; stops: [number, string][]; flow?: boolean }) {
   const gid = "tpg" + useId().replace(/[^a-zA-Z0-9]/g, "");
   const icon = TITLE_ICON_MAP.get(id);
   if (!icon) return null;
@@ -38,11 +44,20 @@ function GradIcon({ id, stops }: { id: string; stops: [number, string][] }) {
   return (
     <svg className="tp-icon" viewBox={icon.viewBox ?? "0 0 256 256"} aria-hidden="true">
       <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-          {stops.map(([o, c], i) => (
-            <stop key={i} offset={o} stopColor={c} />
-          ))}
-        </linearGradient>
+        {flow ? (
+          <linearGradient id={gid} x1="0" y1="0" x2="2" y2="0" spreadMethod="repeat">
+            {stops.map(([o, c], i) => (
+              <stop key={i} offset={o} stopColor={c} />
+            ))}
+            <animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="2 0" dur="6s" repeatCount="indefinite" />
+          </linearGradient>
+        ) : (
+          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+            {stops.map(([o, c], i) => (
+              <stop key={i} offset={o} stopColor={c} />
+            ))}
+          </linearGradient>
+        )}
       </defs>
       <g fill={`url(#${gid})`} dangerouslySetInnerHTML={{ __html: inner }} />
     </svg>
