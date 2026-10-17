@@ -36,8 +36,10 @@ export function AnimatedNumber({ value, className }: { value: number; duration?:
     const fromStr = fmt(from);
     // 모양이 같으면 이전 숫자에서, 다르면 모든 자리 0에서 출발
     const start = shape(fromStr) === shape(str) ? fromStr : shape(str);
-    // 글자 한 줄이 차지하는 높이 — 기둥 한 칸을 정확히 이 높이로 맞춰서 기준선이 평소 글자와 같게
-    const h = textRef.current?.getBoundingClientRect().height || 0;
+    // 글자 한 줄이 차지하는 높이 — 기둥 한 칸을 정확히 이 높이로 맞춰서 기준선이 평소 글자와 같게.
+    // getBoundingClientRect는 화면에 보이는 크기라 버튼을 누르는 순간(눌림 효과로 0.94배) 작게 재져서 숫자가 떠 보였음 →
+    // 변형(transform)과 상관없는 실제 배치 높이(offsetHeight)로 잼.
+    const h = textRef.current?.offsetHeight || 0;
     if (h > 0) setRoll({ from: start, at: start, h });
     return () => clearTimeout(tf);
   }, [value, str]);

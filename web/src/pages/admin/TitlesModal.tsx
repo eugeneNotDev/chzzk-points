@@ -15,7 +15,7 @@ import styles from "./Admin.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 type Grantable = { id: string; name: string; color: string; kind: "shop" | "custom" };
-type Special = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; grantedAt: string };
+type Special = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; bonusPct?: number; grantedAt: string };
 type Msg = { text: string; ok?: boolean } | null;
 
 const EXISTING_HELP = {
@@ -33,6 +33,7 @@ const SPECIAL_ERR: Record<string, string> = {
   too_many_titles: "특수 칭호는 한 유저에게 최대 5개까지만 줄 수 있어요.",
   invalid_title_name: "칭호명은 1~20자로 입력해주세요.",
   invalid_title_color: "칭호 색상이 올바르지 않아요.",
+  invalid_bonus: "적립 보너스는 0~30% 사이로 입력해주세요.",
 };
 const errOf = (e: unknown, map: Record<string, string>) => (e instanceof ApiError && map[String(e.body.error)]) || "지급에 실패했어요.";
 
@@ -64,6 +65,7 @@ export function TitlesModal({
   const [spMsg, setSpMsg] = useState<Msg>(null);
   const [spBusy, setSpBusy] = useState(false);
   const [spForced, setSpForced] = useState(false);
+  const [spBonus, setSpBonus] = useState("0");
 
   // 열 때마다 처음 상태로 + 목록 새로 받기(방금 만든 칭호도 보이게)
   useEffect(() => {
@@ -78,6 +80,7 @@ export function TitlesModal({
     setSpColor(DEFAULT_TITLE_COLOR);
     setSpMsg(null);
     setSpForced(false);
+    setSpBonus("0");
     qc.invalidateQueries({ queryKey: ["admin", "grantable-titles"] });
     qc.invalidateQueries({ queryKey: ["admin", "special-titles", channelId] });
   }, [open, channelId, qc]);
@@ -152,12 +155,13 @@ export function TitlesModal({
     if (!n) return setSpMsg({ text: "칭호명을 입력해주세요." });
     setSpBusy(true);
     try {
-      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, name: n, color: spColor, forced: spForced } });
+      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, name: n, color: spColor, forced: spForced, bonusPct: Number(spBonus) || 0 } });
       qc.setQueryData(spKey, r);
       setSpName("");
       setSpColor(DEFAULT_TITLE_COLOR);
       setSpMsg({ text: spForced ? "고정 특수 칭호를 지급했어요. 바로 랭킹 닉네임 위에 보이고, 유저가 바꿀 수 없어요." : "특수 칭호를 지급했어요. 유저가 마이페이지에서 장착할 수 있어요.", ok: true });
       setSpForced(false);
+      setSpBonus("0");
       qc.invalidateQueries({ queryKey: ["ranking"] });
       onChanged();
     } catch (er) {
@@ -175,6 +179,19 @@ export function TitlesModal({
       onChanged();
     } catch {
       alertDialog("고정 상태를 바꾸지 못했어요.");
+    }
+  };
+  const editBonus = async (t: Special) => {
+    const v = window.prompt(`"${t.name}" 적립 보너스(%)를 입력하세요. 0~30, 0이면 없음.`, String(t.bonusPct ?? 0));
+    if (v == null) return;
+    const pct = Number(v.trim());
+    if (!Number.isInteger(pct) || pct < 0 || pct > 30) return alertDialog("0~30 사이 정수로 입력해주세요.");
+    try {
+      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, action: "bonus", id: t.id, bonusPct: pct } });
+      qc.setQueryData(spKey, r);
+      setSpMsg({ text: `"${t.name}" 적립 보너스를 ${pct}%로 바꿨어요.`, ok: true });
+    } catch {
+      alertDialog("적립 보너스를 바꾸지 못했어요.");
     }
   };
   const revokeSpecial = async (t: Special) => {
@@ -299,7 +316,11 @@ export function TitlesModal({
                 <span className={styles.muted}>
                   {t.source === "monthly" ? "랭킹 보상" : "관리자 지급"}
                   {t.forced ? " · 고정" : ""}
+                  {t.bonusPct ? ` · 적립 +${t.bonusPct}%` : ""}
                 </span>
+                <button type="button" className={styles.linkBtn} onClick={() => editBonus(t)}>
+                  보너스
+                </button>
                 <button type="button" className={styles.linkBtn} onClick={() => toggleForced(t)}>
                   {t.forced ? "고정 풀기" : "고정"}
                 </button>
@@ -320,6 +341,11 @@ export function TitlesModal({
             <span className="field-label">칭호 꾸미기</span>
             <TitleColorPicker value={spColor} onChange={setSpColor} previewName={spName} mode="special" />
           </div>
+          <label className="field">
+            <span className="field-label">적립 보너스 % (0~30, 0이면 없음)</span>
+            <input className="input" type="number" min={0} max={30} step={1} inputMode="numeric" value={spBonus} onChange={(e) => setSpBonus(e.target.value)} style={{ maxWidth: 120 }} />
+            <span className={styles.muted}>장착하는 동안 출석체크·방송 코드·방송 후기·게시판 활동으로 받는 포인트가 이만큼 더 들어와요. (미니게임·투표·후원 적립엔 안 붙음)</span>
+          </label>
           <label className={styles.checkRow}>
             <input type="checkbox" checked={spForced} onChange={(e) => setSpForced(e.target.checked)} />
             <span>

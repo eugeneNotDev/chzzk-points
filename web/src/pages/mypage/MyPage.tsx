@@ -5,7 +5,7 @@ import { LoadError } from "../../components/LoadError";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Settings2 } from "lucide-react";
 import { AppInstallCard } from "../../components/AppInstallCard";
 import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
@@ -77,12 +77,15 @@ export default function MyPage() {
             </b>
           </div>
           <button type="button" className={`${styles.stat} ${styles.statBtn}`} onClick={() => setTitlesOpen(true)} aria-haspopup="dialog">
-            <span className="muted">
-              칭호 <ChevronRight size={13} aria-hidden="true" className={styles.statArrow} />
-            </span>
+            <span className="muted">칭호</span>
             <span className={`${styles.statVal} ${styles.titleVal}`}>
               {shownSpecial && <SpecialTitleLine list={[shownSpecial]} />}
               {equipped ? <TitleText name={equipped.name} value={equipped.color} /> : !shownSpecial && "미장착"}
+            </span>
+            <span className={styles.manageChip}>
+              <Settings2 size={12} aria-hidden="true" />
+              칭호 관리
+              <ChevronRight size={12} aria-hidden="true" />
             </span>
           </button>
           <div className={styles.stat}>
@@ -176,7 +179,10 @@ function TitleList({ profile }: { profile: Me | undefined }) {
   return (
     <>
       <p className={`muted ${styles.tabDesc}`}>
-        상점에서 구매했거나 선물받은 칭호예요. 랭킹에서 닉네임 옆에 붙고, 내 줄이 칭호 색으로 꾸며져요. 칭호를 누르면 장착한 모습을 미리 볼 수 있어요.{" "}
+        상점에서 구매했거나 선물받은 칭호예요. 랭킹에서 닉네임 옆에 붙고, 내 줄이 칭호 색으로 꾸며져요.
+        <br />
+        칭호를 누르면 장착한 모습을 미리 볼 수 있어요.
+        <br />
         <Link to="/titles.html" className={styles.link}>
           칭호 상점 가기
         </Link>
@@ -269,9 +275,21 @@ function SpecialList({ profile }: { profile: Me | undefined }) {
   return (
     <>
       <p className={`muted ${styles.tabDesc}`}>
-        {locked
-          ? "관리자가 고정한 특수 칭호가 있어서 그 칭호가 항상 보이고, 해제하거나 바꿀 수 없어요."
-          : "랭킹에서 닉네임 위에 작게 붙는 칭호예요. 하나를 골라 장착할 수 있어요. 칭호를 누르면 미리 볼 수 있어요."}
+        {locked ? (
+          <>
+            관리자가 고정한 특수 칭호가 있어서 그 칭호가 항상 보여요.
+            <br />
+            해제하거나 다른 특수 칭호로 바꿀 수 없어요.
+          </>
+        ) : (
+          <>
+            랭킹에서 닉네임 위에 작게 붙는 칭호예요. 하나를 골라 장착할 수 있어요.
+            <br />
+            칭호를 누르면 장착한 모습을 미리 볼 수 있어요.
+            <br />
+            <b className={styles.bonusNote}>적립 보너스</b>가 있는 칭호는 장착하는 동안 출석·방송 코드·방송 후기·게시판 활동으로 받는 포인트가 늘어나요.
+          </>
+        )}
       </p>
       <div className={styles.titleGrid}>
         {list.map((t) => {
@@ -282,6 +300,7 @@ function SpecialList({ profile }: { profile: Me | undefined }) {
                 <SpecialTitleLine list={[t]} />
                 {sel && <span className={styles.spSub}>{locked ? "고정" : "장착 중"}</span>}
               </button>
+              {!!t.bonusPct && <span className={styles.bonusChip}>적립 +{t.bonusPct}%</span>}
               <span className="muted" style={{ fontSize: 12 }}>
                 {sourceText(t)}
               </span>

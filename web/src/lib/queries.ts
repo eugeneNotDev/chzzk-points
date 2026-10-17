@@ -22,7 +22,8 @@ export type Me = {
   selectedSpecialId?: number | null;
   specialLocked?: boolean;
 };
-export type SpecialOwned = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; grantedAt: string };
+// bonusPct: 장착 중이면 출석·방송 코드·방송 후기·게시판 활동으로 버는 포인트 +n%
+export type SpecialOwned = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; bonusPct?: number; grantedAt: string };
 
 export type TitleRow = { id: string; name: string; color: string; kind: string };
 

@@ -225,7 +225,7 @@ async function getProfile(channelId: string) {
 
   const { data: specialRows, error: specialError } = await admin
     .from("user_special_titles")
-    .select("id, name, color, forced, source, granted_at")
+    .select("id, name, color, forced, source, bonus_pct, granted_at")
     .eq("channel_id", channelId)
     .order("id", { ascending: true });
   if (specialError) throw new Error(`user_special_titles 조회 실패: ${specialError.message}`);
@@ -247,7 +247,7 @@ async function getProfile(channelId: string) {
     selectedTitleId: user.selected_title_id,
     purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
     rankKey: user.rank_key ?? null,
-    specialTitles: specials.map((t) => ({ id: t.id, name: t.name, color: t.color, forced: t.forced, source: t.source, grantedAt: t.granted_at })),
+    specialTitles: specials.map((t) => ({ id: t.id, name: t.name, color: t.color, forced: t.forced, source: t.source, bonusPct: t.bonus_pct ?? 0, grantedAt: t.granted_at })),
     selectedSpecialId: shownSpecial?.id ?? null,
     specialLocked: !!forced,
   };

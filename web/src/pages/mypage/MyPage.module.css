@@ -331,9 +331,6 @@
   border-color: var(--c-border-strong);
   background: var(--c-hover);
 }
-.statArrow {
-  vertical-align: -2px;
-}
 .titleVal {
   flex-direction: column;
   gap: 2px;
@@ -352,4 +349,46 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.55;
+}
+
+/* 칭호 박스 안 "칭호 관리" — 눌러서 바꿀 수 있다는 표시. 회색 알약, 올리면 살짝 밝게 */
+.manageChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 9px 3px 8px;
+  border: 1px solid var(--c-border-strong);
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: color var(--dur), border-color var(--dur), background-color var(--dur);
+}
+.statBtn:hover .manageChip {
+  color: var(--c-text);
+  border-color: var(--c-text-4);
+}
+.bonusChip {
+  align-self: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--c-gold-soft);
+  color: var(--c-gold);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.bonusNote {
+  color: var(--c-gold);
+}
+
+/* 같은 줄 칸 높이가 달라도 버튼은 칸 맨 아래 — 남는 공간은 위쪽 칭호 무대가 늘어나며 채움 */
+.titleItem > :global(.tp-stage-btn),
+.titleItem > .spStage {
+  flex: 1 1 auto;
+}
+.titleItem > :global(.tp-stage-btn) > :global(.tp-stage) {
+  height: 100%;
 }
