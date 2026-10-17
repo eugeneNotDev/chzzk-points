@@ -12,6 +12,7 @@ import { fmt } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, type RankingRow } from "../lib/homeData";
 import { SpecialTitleLine } from "./TitleBadge";
+import { Laurel } from "./Laurel";
 import { PlateStars, TitleTag, useTitlePlate } from "./TitlePlate";
 import styles from "./RankingList.module.css";
 
@@ -112,7 +113,9 @@ function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow
     >
       {plate?.star && <PlateStars />}
       <span className={`${styles.no} num`} style={{ color: hideRank ? "var(--c-text-4)" : (RANK_COLORS[i] ?? "var(--c-text-4)") }}>
+        {!hideRank && i < 3 && <Laurel className={styles.laurelL} />}
         {hideRank ? "–" : i + 1}
+        {!hideRank && i < 3 && <Laurel flip className={styles.laurelR} />}
         <em className={styles.move} aria-hidden="true" />
       </span>
       {clickable ? (

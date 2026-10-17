@@ -8,6 +8,7 @@ import { PageHead } from "../components/ui";
 import { RankingList } from "../components/RankingList";
 import { SpecialTitleLine } from "../components/TitleBadge";
 import { PlateStars, TitleTag, useTitlePlate } from "../components/TitlePlate";
+import { Laurel } from "../components/Laurel";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, useRanking, type RankingRow } from "../lib/homeData";
 import { useMe } from "../lib/queries";
@@ -73,21 +74,6 @@ function Podium({ rows, onAdminClick }: { rows: RankingRow[]; onAdminClick?: (ch
 
 const STAR_PATH = "M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z";
 
-// 단상 옆 월계수 가지
-function Laurel({ flip }: { flip?: boolean }) {
-  return (
-    <svg className={`${styles.laurel} ${flip ? styles.laurelR : ""}`} viewBox="0 0 16 24" fill="currentColor" aria-hidden="true">
-      <path d="M13 23C7 19 5 12 8 3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <ellipse cx="5.6" cy="6" rx="1.6" ry="3.2" transform="rotate(-25 5.6 6)" />
-      <ellipse cx="10.6" cy="7.4" rx="1.5" ry="3" transform="rotate(30 10.6 7.4)" />
-      <ellipse cx="4.6" cy="11.6" rx="1.6" ry="3.2" transform="rotate(-45 4.6 11.6)" />
-      <ellipse cx="9.8" cy="13" rx="1.5" ry="3" transform="rotate(45 9.8 13)" />
-      <ellipse cx="6" cy="17.2" rx="1.6" ry="3.1" transform="rotate(-65 6 17.2)" />
-      <ellipse cx="11" cy="18.6" rx="1.4" ry="2.8" transform="rotate(60 11 18.6)" />
-    </svg>
-  );
-}
-
 export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; onAdminClick?: (channelId: string) => void }) {
   const { channelId } = useAuth();
   const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
@@ -121,12 +107,12 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
               <path fill="currentColor" d={STAR_PATH} />
             </svg>
           ))}
-        <Laurel />
+        <Laurel className={styles.laurel} />
         <span className={`${styles.baseNo} num`}>
           {i + 1}
           <small>위</small>
         </span>
-        <Laurel flip />
+        <Laurel flip className={styles.laurel} />
       </span>
     </div>
   );

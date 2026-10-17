@@ -33,6 +33,22 @@
   font-size: 17px;
   font-weight: 800;
 }
+/* 1~3위 숫자 양옆 월계수(시상대 단상과 같은 모양, 순위 색) */
+.laurelL,
+.laurelR {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 14px;
+  margin-top: -7px;
+  opacity: 0.75;
+}
+.laurelL {
+  left: -6px;
+}
+.laurelR {
+  right: -6px;
+}
 .name {
   flex: 1;
   min-width: 0;

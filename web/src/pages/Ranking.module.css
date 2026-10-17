@@ -260,9 +260,6 @@
   flex: none;
   color: color-mix(in srgb, var(--pc) 75%, transparent);
 }
-.laurelR {
-  transform: scaleX(-1);
-}
 .p1 .stepBase {
   height: 62px;
   --pl-halo: 34%;
