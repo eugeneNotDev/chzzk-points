@@ -84,7 +84,8 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
       className={`${styles.step} ${styles[`p${i + 1}`]} ${r.admin_view ? styles.stepClick : ""}`}
       onClick={r.admin_view && r.channel_id ? () => onAdminClick?.(r.channel_id) : undefined}
     >
-      <div className={`${styles.stepTop} ${me ? styles.stepMe : ""} ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
+      {/* 내 칸 초록 테두리는 칭호가 없을 때만(칭호 테두리를 가리지 않게 — 랭킹 목록과 같음, "(나)"로 구분) */}
+      <div className={`${styles.stepTop} ${me && !plate ? styles.stepMe : ""} ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
         {plate?.star && <PlateStars />}
         <span className={styles.medal}>{i === 0 ? <Crown size={22} aria-hidden="true" /> : <Medal size={18} aria-hidden="true" />}</span>
         <div className={styles.stepName}>
