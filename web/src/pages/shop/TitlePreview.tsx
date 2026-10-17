@@ -9,7 +9,14 @@ import type { RankingRow } from "../../lib/homeData";
 import { PodiumStep } from "../Ranking";
 import styles from "./Shop.module.css";
 
-export type PreviewTitle = { heading: string; name: string; color: string | null | undefined };
+// special: 특수 칭호(닉네임 위 작은 글씨) 미리보기 — 이때 줄 꾸밈은 지금 장착한 상점 칭호(shop)로 보여줌
+export type PreviewTitle = {
+  heading: string;
+  name: string;
+  color: string | null | undefined;
+  special?: boolean;
+  shop?: { name: string; color: string } | null;
+};
 
 export function TitlePreview({ title, balance, actions, onClose }: { title: PreviewTitle | null; balance: number; actions?: ReactNode; onClose: () => void }) {
   const { channelId, channelName } = useAuth();
@@ -21,9 +28,9 @@ export function TitlePreview({ title, balance, actions, onClose }: { title: Prev
         is_public: true,
         tier_title_name: null,
         tier_title_color: null,
-        shop_title_name: title.name,
-        shop_title_color: title.color ?? null,
-        special_titles: null,
+        shop_title_name: title.special ? (title.shop?.name ?? null) : title.name,
+        shop_title_color: title.special ? (title.shop?.color ?? null) : (title.color ?? null),
+        special_titles: title.special ? [{ name: title.name, color: title.color ?? "" }] : null,
       }
     : null;
   return (

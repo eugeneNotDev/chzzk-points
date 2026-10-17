@@ -17,7 +17,12 @@ export type Me = {
   selectedTitleId: string | null;
   purchasedTitleIds?: string[];
   rankKey?: string;
+  // 특수 칭호(닉네임 위 작은 글씨) — 하나 골라 장착. specialLocked면 관리자 고정 칭호라 못 바꿈.
+  specialTitles?: SpecialOwned[];
+  selectedSpecialId?: number | null;
+  specialLocked?: boolean;
 };
+export type SpecialOwned = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; grantedAt: string };
 
 export type TitleRow = { id: string; name: string; color: string; kind: string };
 

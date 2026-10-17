@@ -1,9 +1,11 @@
 // 관리자: 유저 특수 칭호 조회/지급/회수 (0054_special_titles.sql). 관리자 세션 필수.
-// 특수 칭호는 랭킹에서 장착 칭호 앞에 항상 붙는 칭호 — 유저가 장착/해제하지 않음. "지난달 1위"는 자동이라 여기서 안 다룸.
+// 특수 칭호 = 랭킹에서 닉네임 위 작은 글씨. 유저가 마이페이지에서 하나 골라 장착(0069_special_title_equip.sql).
+// forced(고정)로 주면 항상 그게 보이고 유저가 해제·변경 못 함. 지난달 1~3위 칭호(source: monthly)는 매달 자동 지급(DB).
 //
-// GET  ?channelId=...                          → { titles: [{ id, name, color, grantedAt }] }
-// POST { channelId, name, color }              → 지급 → 같은 모양
-// POST { channelId, action: "revoke", id }     → 회수 → 같은 모양
+// GET  ?channelId=...                                   → { titles: [{ id, name, color, forced, source, grantedAt }] }
+// POST { channelId, name, color, forced? }              → 지급 → 같은 모양
+// POST { channelId, action: "revoke", id }              → 회수 → 같은 모양
+// POST { channelId, action: "force", id, forced }       → 고정/고정 풀기 → 같은 모양
 // 오류 400: missing_channel_id / invalid_title_name / invalid_title_color / too_many_titles / already_owned / user_not_found
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
@@ -28,12 +30,12 @@ function getAdminClient() {
 async function listTitles(admin: any, channelId: string) {
   const { data, error } = await admin
     .from("user_special_titles")
-    .select("id, name, color, granted_at")
+    .select("id, name, color, forced, source, granted_at")
     .eq("channel_id", channelId)
     .order("id", { ascending: true });
   if (error) throw new Error(`user_special_titles 조회 실패: ${error.message}`);
   // deno-lint-ignore no-explicit-any
-  return (data ?? []).map((r: any) => ({ id: r.id, name: r.name, color: r.color, grantedAt: r.granted_at }));
+  return (data ?? []).map((r: any) => ({ id: r.id, name: r.name, color: r.color, forced: r.forced, source: r.source, grantedAt: r.granted_at }));
 }
 
 Deno.serve(async (req: Request) => {
@@ -66,6 +68,14 @@ Deno.serve(async (req: Request) => {
       return json({ titles: await listTitles(admin, channelId) }, 200);
     }
 
+    if (body.action === "force") {
+      const id = Number(body.id);
+      if (!Number.isInteger(id)) return json({ error: "invalid_id" }, 400);
+      const { error } = await admin.from("user_special_titles").update({ forced: body.forced === true }).eq("id", id).eq("channel_id", channelId);
+      if (error) throw new Error(`user_special_titles 고정 변경 실패: ${error.message}`);
+      return json({ titles: await listTitles(admin, channelId) }, 200);
+    }
+
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (name.length < 1 || name.length > 20) return json({ error: "invalid_title_name" }, 400);
     // 꾸미기 값(예: "#00e5a0", "glow-wolfh-b22222", "shine-crown-d4af37", "rainbow") — 글자/숫자/#/- 만 허용.
@@ -77,10 +87,11 @@ Deno.serve(async (req: Request) => {
     if (!user) return json({ error: "user_not_found" }, 400);
 
     const current = await listTitles(admin, channelId);
-    if (current.length >= MAX_PER_USER) return json({ error: "too_many_titles" }, 400);
+    // 개수 제한은 관리자가 준 것만 셈(지난달 순위 칭호는 빼고)
+    if (current.filter((t: { source: string }) => t.source === "admin").length >= MAX_PER_USER) return json({ error: "too_many_titles" }, 400);
     if (current.some((t: { name: string }) => t.name === name)) return json({ error: "already_owned" }, 400);
 
-    const { error } = await admin.from("user_special_titles").insert({ channel_id: channelId, name, color });
+    const { error } = await admin.from("user_special_titles").insert({ channel_id: channelId, name, color, forced: body.forced === true });
     if (error) throw new Error(`user_special_titles 지급 실패: ${error.message}`);
     return json({ titles: await listTitles(admin, channelId) }, 200);
   } catch (err) {

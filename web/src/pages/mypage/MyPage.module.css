@@ -270,3 +270,40 @@
   }
 }
 .maTabs { margin-left: auto; }
+
+/* 특수 칭호 카드 */
+.spHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+.spHead .muted {
+  font-size: 13px;
+  font-weight: 500;
+}
+.spStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 10px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: inherit;
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+.spStage:hover {
+  border-color: var(--c-border-strong, var(--c-text-3));
+}
+.spSub {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}

@@ -11,12 +11,13 @@ import { Avatar } from "../../components/Avatar";
 import { Card, EmptyState } from "../../components/Card";
 import { Pagination } from "../../components/Pagination";
 import { TitleStage, TitleText } from "../../components/TitlePlate";
+import { SpecialTitleLine } from "../../components/TitleBadge";
 import { TitlePreview } from "../shop/TitlePreview";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, relTime } from "../../lib/format";
-import { useMe, useTitles, type Me } from "../../lib/queries";
+import { useMe, useTitles, type Me, type SpecialOwned } from "../../lib/queries";
 import { PillTabs } from "../../components/PillTabs";
 import styles from "./MyPage.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
@@ -94,6 +95,7 @@ export default function MyPage() {
       <div className={styles.cols}>
         <div className={styles.col}>
           <TitlesCard profile={profile} />
+          <SpecialTitlesCard profile={profile} />
           <PublicCard profile={profile} />
           <AppInstallCard />
         </div>
@@ -176,6 +178,93 @@ function TitlesCard({ profile }: { profile: Me | undefined }) {
             </button>
           )
         }
+        onClose={() => setPreviewId(null)}
+      />
+    </Card>
+  );
+}
+
+// 특수 칭호 — 랭킹 닉네임 위 작은 글씨. 관리자 지급·지난달 1~3위 칭호 중 하나를 골라 장착.
+// 관리자가 고정한 칭호가 있으면(specialLocked) 그게 항상 보이고 바꿀 수 없음. 가진 게 없으면 카드 자체를 안 보여줌.
+function SpecialTitlesCard({ profile }: { profile: Me | undefined }) {
+  const titles = useTitles();
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<{ text: string; error?: boolean }>({ text: "" });
+  const [busy, setBusy] = useState(false);
+  const [previewId, setPreviewId] = useState<number | null>(null);
+  const list = profile?.specialTitles ?? [];
+  if (!profile || list.length === 0) return null;
+  const locked = !!profile.specialLocked;
+  const shop = titles.data?.find((t) => t.id === profile.selectedTitleId) ?? null;
+  const previewT = previewId != null ? list.find((t) => t.id === previewId) : undefined;
+  const sourceText = (t: SpecialOwned) => (t.forced ? "관리자가 고정한 칭호" : t.source === "monthly" ? "지난달 랭킹 보상 · 다음 달 1일까지" : "관리자가 지급한 칭호");
+
+  async function equip(id: number) {
+    if (!profile || locked) return;
+    const next = profile.selectedSpecialId === id ? null : id;
+    setBusy(true);
+    setStatus({ text: "" });
+    try {
+      const data = await apiFetch<Me>(API.me, { body: { selectedSpecialId: next } });
+      qc.setQueryData(["me", getToken()], data);
+      qc.invalidateQueries({ queryKey: ["ranking"] });
+      setStatus({ text: next ? "특수 칭호를 장착했어요." : "특수 칭호를 해제했어요." });
+    } catch (e) {
+      const code = e instanceof ApiError ? e.body.error : "";
+      setStatus({ text: code === "special_locked" ? "관리자가 고정한 칭호가 있어서 바꿀 수 없어요." : "특수 칭호 변경에 실패했어요.", error: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const button = (t: SpecialOwned, cls = "btn-sm") => {
+    const sel = profile.selectedSpecialId === t.id;
+    if (locked) {
+      return (
+        <button type="button" className={`btn ${cls}`} disabled>
+          {sel ? "고정됨" : "바꿀 수 없음"}
+        </button>
+      );
+    }
+    return (
+      <button type="button" className={`btn ${cls} ${sel ? "" : "btn-primary"}`} disabled={busy} onClick={() => equip(t.id)}>
+        {sel ? "장착 해제" : "장착하기"}
+      </button>
+    );
+  };
+
+  return (
+    <Card>
+      <h2 className={styles.spHead}>
+        특수 칭호 <span className="muted">{list.length}개</span>
+      </h2>
+      <p className="muted" style={{ fontSize: 13 }}>
+        {locked
+          ? "관리자가 고정한 특수 칭호가 있어서 그 칭호가 항상 보이고, 해제하거나 바꿀 수 없어요."
+          : "랭킹에서 닉네임 위에 작게 붙는 칭호예요. 하나를 골라 장착할 수 있어요. 칭호를 누르면 미리 볼 수 있어요."}
+      </p>
+      <div className={styles.titleGrid}>
+        {list.map((t) => {
+          const sel = profile.selectedSpecialId === t.id;
+          return (
+            <div key={t.id} className={`${styles.titleItem} ${sel ? styles.titleSel : ""}`}>
+              <button type="button" className={styles.spStage} onClick={() => setPreviewId(t.id)} aria-label={`${t.name} 특수 칭호 미리보기`}>
+                <SpecialTitleLine list={[t]} />
+                {sel && <span className={styles.spSub}>{locked ? "고정" : "장착 중"}</span>}
+              </button>
+              <span className="muted" style={{ fontSize: 12 }}>
+                {sourceText(t)}
+              </span>
+              {button(t)}
+            </div>
+          );
+        })}
+      </div>
+      <p className={`status ${status.error ? "error" : "ok"}`}>{status.text}</p>
+      <TitlePreview
+        title={previewT ? { heading: previewT.name, name: previewT.name, color: previewT.color, special: true, shop: shop ? { name: shop.name, color: shop.color } : null } : null}
+        balance={profile.balance}
+        actions={previewT && button(previewT, "")}
         onClose={() => setPreviewId(null)}
       />
     </Card>

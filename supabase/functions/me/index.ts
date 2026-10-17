@@ -29,7 +29,10 @@
 //   시각 이전 기록은 전부 걸러서 안 보여줌 — 밴 초기화 이후엔 유저 입장에서 로그도 완전히
 //   새로 시작한 것처럼 보이게 하려는 의도(요청사항). points_ledger 행 자체는 안 지우니 관리자
 //   쪽 로그(admin/index.ts)는 이 필터 없이 항상 전체를 봄.)
-// POST { isPublic?: boolean, selectedTitleId?: string | null } → 갱신 후 프로필 형태로 최신 상태 리턴
+//   specialTitles/selectedSpecialId/specialLocked: 특수 칭호(닉네임 위 작은 글씨, 0069_special_title_equip.sql).
+//   관리자 지급·지난달 1~3위 칭호 중 하나를 골라 장착. 관리자가 고정(forced)한 칭호가 있으면 그게 항상 보이고
+//   바꿀 수 없음(specialLocked: true).
+// POST { isPublic?: boolean, selectedTitleId?: string | null, selectedSpecialId?: number | null } → 갱신 후 프로필 형태로 최신 상태 리턴
 //   (selectedTitleId: null이면 장착 해제. 문자열이면 그게 구매 전용 칭호이고(포인트 구간
 //   칭호는 자동이라 여기 못 넣음 — not_purchasable_title로 거부) 본인이 실제로 구매한 상태인지
 //   서버에서 다시 검증함 — 안 산 칭호를 억지로 장착하려는 요청은 title_locked로 거부.)
@@ -157,6 +160,18 @@ async function setSelectedTitle(channelId: string, titleId: string | null) {
   return { ok: true as const };
 }
 
+// 특수 칭호 장착/해제. null이면 해제. 본인 칭호인지 서버에서 확인하고, 고정 칭호가 있으면 막음.
+async function setSelectedSpecial(channelId: string, id: number | null) {
+  const admin = getAdminClient();
+  const { data: mine, error } = await admin.from("user_special_titles").select("id, forced").eq("channel_id", channelId);
+  if (error) throw new Error(`user_special_titles 조회 실패: ${error.message}`);
+  if ((mine ?? []).some((t) => t.forced)) return { ok: false as const, error: "special_locked" as const };
+  if (id !== null && !(mine ?? []).some((t) => t.id === id)) return { ok: false as const, error: "title_locked" as const };
+  const { error: upErr } = await admin.from("users").update({ selected_special_id: id }).eq("channel_id", channelId);
+  if (upErr) throw new Error(`selected_special_id 갱신 실패: ${upErr.message}`);
+  return { ok: true as const };
+}
+
 // 포인트 구간 칭호(브론즈~다이아) 중 max_balance_reached로 도달한 가장 높은 구간 하나를
 // 찾음 — 저장된 선택값이 아니라 매번 다시 계산(랭킹 뷰의 tier 서브쿼리와 같은 로직).
 async function getTierTitle(admin: ReturnType<typeof getAdminClient>, maxBalanceReached: number) {
@@ -177,7 +192,7 @@ async function getProfile(channelId: string) {
 
   const { data: user, error: userError } = await admin
     .from("users")
-    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, balance, profile_image_url, profile_image_checked_at, rank_key")
+    .select("channel_id, channel_name, is_public, banned, max_balance_reached, selected_title_id, selected_special_id, balance, profile_image_url, profile_image_checked_at, rank_key")
     .eq("channel_id", channelId)
     .single();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
@@ -208,6 +223,17 @@ async function getProfile(channelId: string) {
 
   const tierTitle = await getTierTitle(admin, user.max_balance_reached);
 
+  const { data: specialRows, error: specialError } = await admin
+    .from("user_special_titles")
+    .select("id, name, color, forced, source, granted_at")
+    .eq("channel_id", channelId)
+    .order("id", { ascending: true });
+  if (specialError) throw new Error(`user_special_titles 조회 실패: ${specialError.message}`);
+  const specials = specialRows ?? [];
+  // 랭킹과 같은 규칙: 고정 칭호(최근 것)가 있으면 그것, 없으면 장착한 것
+  const forced = specials.filter((t) => t.forced).sort((a, b) => b.id - a.id)[0];
+  const shownSpecial = forced ?? specials.find((t) => t.id === user.selected_special_id) ?? null;
+
   return {
     channelId: user.channel_id,
     channelName: user.channel_name,
@@ -221,6 +247,9 @@ async function getProfile(channelId: string) {
     selectedTitleId: user.selected_title_id,
     purchasedTitleIds: (purchasedRows ?? []).map((r) => r.title_id),
     rankKey: user.rank_key ?? null,
+    specialTitles: specials.map((t) => ({ id: t.id, name: t.name, color: t.color, forced: t.forced, source: t.source, grantedAt: t.granted_at })),
+    selectedSpecialId: shownSpecial?.id ?? null,
+    specialLocked: !!forced,
   };
 }
 
@@ -290,6 +319,12 @@ Deno.serve(async (req: Request) => {
         if (!result.ok) {
           return jsonResponse({ error: result.error }, 400);
         }
+      }
+      if ("selectedSpecialId" in body) {
+        const sid = body.selectedSpecialId;
+        if (sid !== null && !Number.isSafeInteger(sid)) return jsonResponse({ error: "invalid_title" }, 400);
+        const result = await setSelectedSpecial(session.channelId, sid);
+        if (!result.ok) return jsonResponse({ error: result.error }, 400);
       }
     }
 

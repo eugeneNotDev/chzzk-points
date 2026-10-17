@@ -803,3 +803,17 @@
 .drawOff {
   opacity: 0.55;
 }
+
+/* 특수 칭호 "고정으로 지급" 체크 */
+.checkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--c-text-2);
+  cursor: pointer;
+}
+.checkRow input {
+  margin-top: 2px;
+  accent-color: var(--c-accent);
+}

@@ -15,7 +15,7 @@ import styles from "./Admin.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 
 type Grantable = { id: string; name: string; color: string; kind: "shop" | "custom" };
-type Special = { id: number; name: string; color: string; grantedAt: string };
+type Special = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; grantedAt: string };
 type Msg = { text: string; ok?: boolean } | null;
 
 const EXISTING_HELP = {
@@ -63,6 +63,7 @@ export function TitlesModal({
   const [spColor, setSpColor] = useState(DEFAULT_TITLE_COLOR);
   const [spMsg, setSpMsg] = useState<Msg>(null);
   const [spBusy, setSpBusy] = useState(false);
+  const [spForced, setSpForced] = useState(false);
 
   // 열 때마다 처음 상태로 + 목록 새로 받기(방금 만든 칭호도 보이게)
   useEffect(() => {
@@ -76,6 +77,7 @@ export function TitlesModal({
     setSpName("");
     setSpColor(DEFAULT_TITLE_COLOR);
     setSpMsg(null);
+    setSpForced(false);
     qc.invalidateQueries({ queryKey: ["admin", "grantable-titles"] });
     qc.invalidateQueries({ queryKey: ["admin", "special-titles", channelId] });
   }, [open, channelId, qc]);
@@ -150,17 +152,29 @@ export function TitlesModal({
     if (!n) return setSpMsg({ text: "칭호명을 입력해주세요." });
     setSpBusy(true);
     try {
-      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, name: n, color: spColor } });
+      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, name: n, color: spColor, forced: spForced } });
       qc.setQueryData(spKey, r);
       setSpName("");
       setSpColor(DEFAULT_TITLE_COLOR);
-      setSpMsg({ text: "특수 칭호를 지급했어요. 랭킹에서 닉네임 위에 보여요.", ok: true });
+      setSpMsg({ text: spForced ? "고정 특수 칭호를 지급했어요. 바로 랭킹 닉네임 위에 보이고, 유저가 바꿀 수 없어요." : "특수 칭호를 지급했어요. 유저가 마이페이지에서 장착할 수 있어요.", ok: true });
+      setSpForced(false);
       qc.invalidateQueries({ queryKey: ["ranking"] });
       onChanged();
     } catch (er) {
       setSpMsg({ text: errOf(er, SPECIAL_ERR) });
     } finally {
       setSpBusy(false);
+    }
+  };
+  const toggleForced = async (t: Special) => {
+    try {
+      const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, action: "force", id: t.id, forced: !t.forced } });
+      qc.setQueryData(spKey, r);
+      setSpMsg({ text: t.forced ? `"${t.name}" 고정을 풀었어요. 이제 유저가 고를 수 있어요.` : `"${t.name}"을(를) 고정했어요. 항상 이 칭호가 보여요.`, ok: true });
+      qc.invalidateQueries({ queryKey: ["ranking"] });
+      onChanged();
+    } catch {
+      alertDialog("고정 상태를 바꾸지 못했어요.");
     }
   };
   const revokeSpecial = async (t: Special) => {
@@ -272,13 +286,23 @@ export function TitlesModal({
         </form>
 
         <h4 className={styles.detailH}>특수 칭호</h4>
-        <p className={styles.muted}>랭킹에서 닉네임 위에 작은 글씨로 항상 표시돼요. 유저가 끄거나 바꿀 수 없어요. (비공개 유저는 안 보임)</p>
+        <p className={styles.muted}>
+          랭킹에서 닉네임 위에 작은 글씨로 보여요. 유저가 마이페이지에서 하나 골라 장착해요. <b>고정</b>한 칭호는 항상 그게 보이고 유저가 해제·변경할 수 없어요. 지난달 1~3위
+          칭호는 매달 1일에 자동으로 지급돼요. (비공개 유저는 안 보임)
+        </p>
         {spQ.data && spQ.data.titles.length === 0 && <p className={styles.muted}>지급한 특수 칭호가 없어요.</p>}
         {spQ.data && spQ.data.titles.length > 0 && (
           <div className={styles.chips}>
             {spQ.data.titles.map((t) => (
               <span key={t.id} className={styles.chip}>
                 <SpecialTitleLine list={[t]} />
+                <span className={styles.muted}>
+                  {t.source === "monthly" ? "랭킹 보상" : "관리자 지급"}
+                  {t.forced ? " · 고정" : ""}
+                </span>
+                <button type="button" className={styles.linkBtn} onClick={() => toggleForced(t)}>
+                  {t.forced ? "고정 풀기" : "고정"}
+                </button>
                 <button type="button" className={styles.linkBtn} onClick={() => revokeSpecial(t)}>
                   회수
                 </button>
@@ -296,6 +320,12 @@ export function TitlesModal({
             <span className="field-label">칭호 꾸미기</span>
             <TitleColorPicker value={spColor} onChange={setSpColor} previewName={spName} mode="special" />
           </div>
+          <label className={styles.checkRow}>
+            <input type="checkbox" checked={spForced} onChange={(e) => setSpForced(e.target.checked)} />
+            <span>
+              <b>고정으로 지급</b> — 바로 보이고, 유저가 해제하거나 다른 특수 칭호로 바꿀 수 없어요.
+            </span>
+          </label>
           {spMsg && <p className={`status ${spMsg.ok ? "ok" : "error"}`}>{spMsg.text}</p>}
           <div className={styles.formEnd}>
             <button type="submit" className="btn btn-primary" disabled={spBusy}>
