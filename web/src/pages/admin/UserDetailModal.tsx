@@ -7,6 +7,7 @@ import { apiFetch } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { adminCall, fmtDateTime, num, type UserDetail } from "../../lib/admin";
 import { LogRow } from "./LogRow";
+import { useBalancesById } from "../../lib/balances";
 import { TitlesModal } from "./TitlesModal";
 import styles from "./Admin.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
@@ -31,6 +32,7 @@ export function UserDetailModal({ channelId, onClose, onChanged }: { channelId: 
     queryFn: () => adminCall<UserDetail>({ action: "get-user-detail", channelId, page }),
   });
   const d = q.data && q.data.channelId === channelId ? q.data : undefined;
+  const balances = useBalancesById(d?.log.map((e) => e.id));
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: key });
     onChanged?.();
@@ -88,7 +90,7 @@ export function UserDetailModal({ channelId, onClose, onChanged }: { channelId: 
             ) : (
               <div className={styles.logList}>
                 {d.log.map((e) => (
-                  <LogRow key={e.id} e={e} showName={false} onUndone={refresh} />
+                  <LogRow key={e.id} e={e} showName={false} onUndone={refresh} balance={balances[String(e.id)]} />
                 ))}
               </div>
             )}

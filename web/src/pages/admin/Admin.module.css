@@ -817,3 +817,16 @@
   margin-top: 2px;
   accent-color: var(--c-accent);
 }
+
+/* 포인트 기록 금액 아래 "잔액 N P" */
+.amtCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.amtBal {
+  color: var(--c-text-4);
+  font-size: 11.5px;
+  white-space: nowrap;
+}

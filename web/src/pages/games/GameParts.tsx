@@ -7,6 +7,7 @@ import { fmt } from "../../lib/format";
 import { MIN_BET, type GameStateBase, type Minigame } from "./useMinigame";
 import styles from "./Games.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
+import { useBalancesAt } from "../../lib/balances";
 
 export function GameLock({ state }: { state: GameStateBase | undefined }) {
   if (!state || state.eligible) return null;
@@ -124,6 +125,8 @@ export function GameResult({ result }: { result: ResultView | null }) {
 }
 
 export function RecentList<T>({ items, empty, render }: { items: T[] | undefined; empty: string; render: (item: T) => { tag: string; color: string; detail: string; net: number; createdAt: string } }) {
+  // 판마다 그 시각 잔액(마이페이지 포인트 내역처럼)
+  const balances = useBalancesAt(items?.map((it) => render(it).createdAt));
   return (
     <Card title="최근 기록" flush>
       {!items && <SkeletonList rows={3} variant="rank" />}
@@ -143,10 +146,13 @@ export function RecentList<T>({ items, empty, render }: { items: T[] | undefined
                   {new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(r.createdAt))}
                 </span>
               </span>
-              <b className={`num ${tone}`}>
-                {r.net > 0 ? "+" : r.net === 0 ? "±" : ""}
-                {fmt(r.net)}P
-              </b>
+              <span className={styles.recentNet}>
+                <b className={`num ${tone}`}>
+                  {r.net > 0 ? "+" : r.net === 0 ? "±" : ""}
+                  {fmt(r.net)}P
+                </b>
+                {typeof balances[r.createdAt] === "number" && <span className="num muted">잔액 {fmt(balances[r.createdAt])}P</span>}
+              </span>
             </li>
           );
         })}

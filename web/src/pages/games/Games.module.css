@@ -715,3 +715,15 @@
     transition-duration: 0.01s;
   }
 }
+
+/* 최근 기록 오른쪽: 손익 + 그 판 뒤 잔액 */
+.recentNet {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.recentNet .muted {
+  font-size: 11.5px;
+}

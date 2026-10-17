@@ -5,7 +5,7 @@ import { adminCall, fmtDateTime, num, type LogEntry } from "../../lib/admin";
 import styles from "./Admin.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 
-export function LogRow({ e, onUndone, showName = true }: { e: LogEntry; onUndone?: () => void; showName?: boolean }) {
+export function LogRow({ e, onUndone, showName = true, balance }: { e: LogEntry; onUndone?: () => void; showName?: boolean; balance?: number }) {
   const [busy, setBusy] = useState(false);
   const positive = e.amount > 0;
   const undo = async () => {
@@ -25,9 +25,12 @@ export function LogRow({ e, onUndone, showName = true }: { e: LogEntry; onUndone
         {showName && <strong>{e.channelName || "(알 수 없음)"}</strong>}
         <span>{e.reason || ""}</span>
       </div>
-      <span className={`${styles.amt} ${positive ? styles.plus : styles.minus} num`}>
-        {positive ? "+" : ""}
-        {num(e.amount)}P
+      <span className={styles.amtCol}>
+        <span className={`${styles.amt} ${positive ? styles.plus : styles.minus} num`}>
+          {positive ? "+" : ""}
+          {num(e.amount)}P
+        </span>
+        {typeof balance === "number" && <span className={`${styles.amtBal} num`}>잔액 {num(balance)}P</span>}
       </span>
       <span className={styles.time}>{fmtDateTime(e.createdAt)}</span>
       <span className={styles.logSide}>

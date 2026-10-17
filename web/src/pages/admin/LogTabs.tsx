@@ -6,6 +6,7 @@ import { Card, EmptyState } from "../../components/Card";
 import { Pagination } from "../../components/Pagination";
 import { adminCall, fmtDateTime, num, type LogEntry, type Paged } from "../../lib/admin";
 import { LogRow } from "./LogRow";
+import { useBalancesById } from "../../lib/balances";
 import styles from "./Admin.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 
@@ -40,6 +41,7 @@ export function LogTab() {
     placeholderData: keepPreviousData,
     queryFn: () => adminCall<Paged & { entries: LogEntry[] }>({ action: "list-points-log", q: query, page }),
   });
+  const balances = useBalancesById(q.data?.entries.map((e) => e.id));
   return (
     <>
       <SearchCard
@@ -58,6 +60,7 @@ export function LogTab() {
             <LogRow
               key={e.id}
               e={e}
+              balance={balances[String(e.id)]}
               onUndone={() => {
                 qc.invalidateQueries({ queryKey: ["admin", "points-log"] });
                 qc.invalidateQueries({ queryKey: ["admin", "users"] });

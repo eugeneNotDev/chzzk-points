@@ -30,6 +30,7 @@ export const API = {
   oddEven: `${FUNCTIONS_BASE_URL}/odd-even`,
   songs: `${FUNCTIONS_BASE_URL}/songs`,
   drawings: `${FUNCTIONS_BASE_URL}/drawings`,
+  ledgerBalance: `${FUNCTIONS_BASE_URL}/ledger-balance`,
   push: `${FUNCTIONS_BASE_URL}/push`,
   adminRanking: `${FUNCTIONS_BASE_URL}/admin-ranking`,
   adminBackup: `${FUNCTIONS_BASE_URL}/admin-backup`,
