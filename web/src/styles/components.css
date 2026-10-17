@@ -640,31 +640,43 @@
   font-variant-numeric: tabular-nums;
   transition: color 0.4s;
 }
-/* 굴리는 동안만 자리 기둥으로(평소엔 그냥 글자라 폰트·줄 맞춤이 주변과 똑같음) */
-.odo-rolling {
-  display: inline-flex;
-  align-items: flex-start;
-  height: 1.2em;
-  line-height: 1.2em;
+/* 굴리는 동안: 원래 글자(.odo-text)는 투명하게 자리만 지키고, 그 위에 자리 기둥(.odo-reel)을 겹침.
+   기둥 한 칸 높이 = 원래 글자 줄 높이(--h, 굴리기 직전에 잼)라서 숫자 위치·크기가 평소와 똑같음. */
+.odo {
+  position: relative;
+}
+.odo-rolling > .odo-text {
+  visibility: hidden;
+}
+.odo-reel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  height: var(--h);
   overflow: hidden;
-  vertical-align: -0.2em;
-  -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
-  mask-image: linear-gradient(transparent, #000 14%, #000 86%, transparent);
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent);
+}
+.odo-reel > .odo-sym,
+.odo-reel > .odo-col > span {
+  display: block;
+  height: var(--h);
+  line-height: var(--h);
 }
 .odo-col {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  transform: translateY(calc(var(--d) * -1.2em));
+  transform: translateY(calc(var(--d) * -1 * var(--h)));
   transition: transform 0.9s cubic-bezier(0.3, 1.25, 0.5, 1);
   transition-delay: calc(var(--i) * 45ms);
 }
-.odo-col span {
-  height: 1.2em;
-}
 /* 바깥 페이지의 "xx span" 규칙(여백·글자 크기·색)이 숫자 칸에 묻지 않게 한 단계 더 구체적으로 되돌림 */
-.odo > .odo-col,
-.odo > .odo-sym,
-.odo > .odo-col > span {
+.odo > .odo-text,
+.odo-reel > .odo-col,
+.odo-reel > .odo-sym,
+.odo-reel > .odo-col > span {
   margin: 0;
   padding: 0;
   font-size: inherit;
