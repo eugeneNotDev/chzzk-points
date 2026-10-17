@@ -115,7 +115,7 @@ function ThemeButton() {
   const { theme, toggle } = useTheme();
   return (
     <button type="button" className={styles.iconBtn} onClick={(e) => toggle(e)} aria-label={theme === "dark" ? "라이트 모드로 바꾸기" : "다크 모드로 바꾸기"}>
-      {theme === "dark" ? <Moon size={20} aria-hidden="true" /> : <Sun size={20} aria-hidden="true" />}
+      {theme === "dark" ? <Sun size={20} aria-hidden="true" /> : <Moon size={20} aria-hidden="true" />}
     </button>
   );
 }
@@ -136,7 +136,6 @@ function PointsChip() {
 function MoreSheet({ onClose }: { onClose: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
-  const { theme, toggle } = useTheme();
   const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin));
   return (
     <div className={styles.sheetBackdrop} onClick={onClose}>
@@ -155,10 +154,6 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
           ))}
         </nav>
         <div className={styles.sheetFoot}>
-          <button type="button" className={styles.sheetFootBtn} onClick={(e) => toggle(e)}>
-            {theme === "dark" ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}
-            {theme === "dark" ? "라이트 모드" : "다크 모드"}
-          </button>
           <button type="button" className={styles.sheetFootBtn} onClick={onClose}>
             <X size={17} aria-hidden="true" />
             닫기
