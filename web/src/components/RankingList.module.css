@@ -93,14 +93,21 @@
   gap: 6px;
   min-width: 0;
 }
-/* 닉네임 뒤 칭호: 칭호 글씨가 작아서(0.85배) 상자 가운데를 맞춰도 글자가 1px 낮아 보임
-   (사용자 화면 기준: 닉네임 글자 68~80px, 칭호 글자 70~80px) → 정확히 1px 올림. em으로 올리면 Windows에서 반올림돼 너무 올라감 */
+/* 닉네임 뒤 칭호 — 픽셀 보정(translate) 없이 "글자 상자"끼리 가운데 맞춤.
+   닉네임과 칭호 모두 줄 높이를 1.25배로 고정하고, 칭호는 안쪽(점·아이콘·글자)도 flex로 가운데 맞춤 →
+   아이콘이 있든 없든 상자 높이가 글자 크기로만 정해져서 칭호 종류마다 높이가 달라지지 않음. */
 .nameRow > :global(.tp-tag) {
-  transform: translateY(-1px);
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.25;
+}
+.nameRow > :global(.tp-tag) :global(.tp-icon) {
+  vertical-align: 0;
 }
 .nameText {
   min-width: 0;
   font-size: 15px;
+  line-height: 1.25;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
