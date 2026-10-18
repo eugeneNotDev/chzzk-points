@@ -16,6 +16,26 @@ import styles from "./Notice.module.css";
 import bs from "../board/Board.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 import { SkeletonList, SkeletonPost, useBloom } from "../../components/Skeleton";
+import { Avatar } from "../../components/Avatar";
+import { BRAND_MARK_URL } from "../../lib/config";
+import { boardTime } from "../../lib/board";
+
+// 공지 작성자 표시(공지는 작성자를 따로 저장하지 않음 — 관리자 공지)
+const AUTHOR = "관리자";
+// 목록 미리보기 — HTML 태그를 걷어낸 본문 앞부분
+function previewOf(n: NoticeT) {
+  const raw = String(n.content ?? "");
+  const text = n.is_html ? raw.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ") : raw;
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#?\w+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 140);
+}
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -102,15 +122,20 @@ export default function Notice() {
           {viewing && (
             <article className={bs.post}>
               <div className={bs.meta}>
+                <Avatar name={AUTHOR} image={BRAND_MARK_URL} size={24} />
+                <span className={bs.who}>{AUTHOR}</span>
+                <span className={bs.dot}>·</span>
+                <span title={fmtDate(viewing.created_at)}>{boardTime(viewing.created_at)}</span>
+              </div>
+              <h3 className={bs.postTitle}>
                 {viewing.pinned_at && (
                   <span className="tag tag-accent">
                     <Pin size={11} aria-hidden="true" />
                     고정
                   </span>
                 )}
-                <span className="num">{fmtDate(viewing.created_at)}</span>
-              </div>
-              <h3 className={bs.postTitle}>{viewing.title || "(제목 없음)"}</h3>
+                {viewing.title || "(제목 없음)"}
+              </h3>
               <div className={styles.viewBody}>
                 <NoticeBody content={viewing.content} isHtml={viewing.is_html} attachments={viewing.notice_attachments} />
               </div>
@@ -158,23 +183,38 @@ export default function Notice() {
       />
 
       <Card flush>
-        {q.isLoading && <SkeletonList rows={6} variant="row" />}
+        {q.isLoading && <SkeletonList rows={6} />}
         {q.isError && <LoadError what="공지사항" onRetry={() => q.refetch()} />}
         {q.data?.length === 0 && <EmptyState>등록된 공지사항이 없어요.</EmptyState>}
-        <ul className={`${styles.list} ${bloom}`}>
+        <ul className={`${bs.list} ${bloom}`}>
           {q.data?.map((n) => (
             <li key={n.id} className={n.pinned_at ? styles.pinned : ""}>
-              <button type="button" className="list-row" onClick={() => open(n)}>
-                {n.pinned_at && (
-                  <span className="tag tag-accent">
-                    <Pin size={11} aria-hidden="true" />
-                    고정
-                  </span>
-                )}
-                {isNoticeNew(n) && <span className="tag tag-live">NEW</span>}
-                <span className="list-row-title">{n.title || "(제목 없음)"}</span>
-                <span className="list-row-meta num">{fmtDate(n.created_at)}</span>
-              </button>
+              <a
+                href={`?id=${n.id}`}
+                className={bs.item}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+                  e.preventDefault();
+                  open(n);
+                }}
+              >
+                <span className={bs.itemTitle}>
+                  {n.pinned_at && (
+                    <span className="tag tag-accent">
+                      <Pin size={11} aria-hidden="true" />
+                      고정
+                    </span>
+                  )}
+                  <span className={bs.tt}>{n.title || "(제목 없음)"}</span>
+                  {isNoticeNew(n) && <span className={bs.newMark}>N</span>}
+                </span>
+                <span className={bs.preview}>{previewOf(n)}</span>
+                <span className={bs.meta}>
+                  <span className={bs.who}>{AUTHOR}</span>
+                  <span className={bs.dot}>·</span>
+                  <span title={fmtDate(n.created_at)}>{boardTime(n.created_at)}</span>
+                </span>
+              </a>
               {isAdmin && (
                 <span className={styles.adminRow}>
                   <button type="button" className="link-btn" disabled={busy} onClick={() => onPin(n)}>

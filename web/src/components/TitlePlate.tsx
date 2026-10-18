@@ -1,6 +1,7 @@
 // 칭호 플레이트 부품 — 랭킹 줄·시상대에서 씀(계산은 lib/titlePlate.ts, 모양은 styles/title-plate.css).
-import { useId, useMemo, type ReactNode } from "react";
+import { useId, useMemo, type CSSProperties, type ReactNode } from "react";
 import { TITLE_ICON_MAP } from "../lib/titleIcons";
+import { TITLE_ICON_CY } from "../lib/titleIconCenter";
 import { titlePlate } from "../lib/titlePlate";
 import { useTheme } from "../lib/theme";
 import { TitleIconSvg } from "./TitleBadge";
@@ -16,7 +17,10 @@ export function useTitlePlate(value: string | null | undefined) {
 /** 닉네임 뒤 "· 🐺 알파" */
 export function TitleTag({ name, plate, dot = true }: { name: string; plate: NonNullable<ReturnType<typeof titlePlate>>; dot?: boolean }) {
   return (
-    <span className={plate.tag.className} style={plate.tag.style}>
+    <span
+      className={plate.tag.className}
+      style={plate.tag.icon ? ({ ...plate.tag.style, "--icy": TITLE_ICON_CY[plate.tag.icon] ?? 0 } as CSSProperties) : plate.tag.style}
+    >
       {dot && (
         <span className="tp-dot" aria-hidden="true">
           ·

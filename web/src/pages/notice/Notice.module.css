@@ -10,14 +10,14 @@
 .list li + li {
   border-top: 1px solid var(--c-border);
 }
-.pinned :global(.list-row-title) {
-  font-weight: 700;
+.pinned {
+  background: color-mix(in srgb, var(--c-accent) 4%, transparent);
 }
 .adminRow {
   display: flex;
   gap: 12px;
-  /* 위 제목 줄(배경이 칠해질 수 있음)과 겹치지 않게 간격을 둠 */
-  padding: 6px 12px 10px;
+  margin-top: -6px;
+  padding: 0 18px 12px;
 }
 
 /* ── 글쓰기 ── */

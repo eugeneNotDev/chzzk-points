@@ -97,13 +97,17 @@
    반 픽셀을 그릴 수 없어서 칭호가 0.5px 위/아래로 반올림됨(화면·줄 위치마다 방향이 바뀜) → 같은 크기로 근본 해결.
    줄 높이도 같게, 안쪽(점·아이콘·글자)은 flex로 가운데 맞춤 */
 .nameRow > :global(.tp-tag) {
+  --icon-lift: 0.06em;
   font-size: 15px;
   display: inline-flex;
   align-items: center;
   line-height: 1.25;
 }
+/* 아이콘: 그림마다 상자 안에서 위아래로 치우친 만큼(--icy, lib/titleIconCenter.ts) 되돌려 그림 자체를 가운데로,
+   + 한글 글자는 상자 가운데보다 살짝 위에 그려져서 아이콘도 그만큼(--icon-lift) 올림. SVG라 소수점 이동도 번지지 않음 */
 .nameRow > :global(.tp-tag) :global(.tp-icon) {
   vertical-align: 0;
+  transform: translateY(calc(-1.05em * var(--icy, 0) - var(--icon-lift, 0em)));
 }
 .nameText {
   min-width: 0;
