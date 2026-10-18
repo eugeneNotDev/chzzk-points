@@ -1,20 +1,21 @@
-// 공지사항 — 게시판처럼 제목 목록, 누르면 팝업으로 내용. 관리자는 글쓰기·수정·삭제·고정.
-// 홈 미리보기에서 notice.html?id=5 로 들어오면 그 글이 바로 열림.
+// 공지사항 — 게시판처럼 제목 목록, 누르면 게시글 화면(?id=N)으로 내용. 관리자는 글쓰기·수정·삭제·고정.
+// 홈 미리보기에서 notice.html?id=5 로 들어오면 그 글이 바로 열림. 목록에서 들어왔으면 "← 목록"이 뒤로가기.
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pin, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Pin, PinOff, Plus, Trash2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
-import { Modal, PageHead } from "../../components/ui";
+import { PageHead } from "../../components/ui";
 import { NoticeBody } from "../../components/NoticeContent";
 import { useAuth } from "../../lib/auth";
 import { deleteNotice, isNoticeNew, markNoticeRead, setNoticePin, useNoticeReadVersion, useNotices, type Notice as NoticeT } from "../../lib/notices";
 import { useTableRefetch } from "../../lib/realtime";
 import { NoticeEditor } from "./NoticeEditor";
 import styles from "./Notice.module.css";
+import bs from "../board/Board.module.css";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
-import { SkeletonList, useBloom } from "../../components/Skeleton";
+import { SkeletonList, SkeletonPost, useBloom } from "../../components/Skeleton";
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -27,6 +28,8 @@ export default function Notice() {
   useTableRefetch("notices", [["notices"]], { minIntervalMs: 500 });
 
   const [params, setParams] = useSearchParams();
+  const nav = useNavigate();
+  const fromList = !!(useLocation().state as { fromList?: boolean } | null)?.fromList;
   const viewId = Number(params.get("id")) || null;
   const viewing = useMemo(() => q.data?.find((n) => n.id === viewId) ?? null, [q.data, viewId]);
   const bloom = useBloom(q.isLoading);
@@ -35,10 +38,12 @@ export default function Notice() {
 
   function open(n: NoticeT) {
     markNoticeRead(n.id);
-    setParams({ id: String(n.id) }, { replace: false });
+    setParams({ id: String(n.id) }, { state: { fromList: true } });
   }
+  // 목록에서 들어왔으면 뒤로가기(스크롤·히스토리 유지), 홈·주소로 바로 열었으면 목록으로
   function closeView() {
-    setParams({}, { replace: true });
+    if (fromList) nav(-1);
+    else setParams({}, { replace: true });
   }
   // 주소(?id=)로 바로 열린 글도 읽음 처리
   useEffect(() => {
@@ -67,6 +72,74 @@ export default function Notice() {
     } finally {
       setBusy(false);
     }
+  }
+
+  const editorEl = isAdmin && (
+    <NoticeEditor
+      open={editor.open}
+      notice={editor.notice}
+      onClose={() => setEditor({ open: false, notice: null })}
+      onSaved={() => {
+        setEditor({ open: false, notice: null });
+        refresh();
+      }}
+    />
+  );
+
+  // ── 글 보기(게시판 글처럼 한 화면) ──
+  if (viewId) {
+    return (
+      <div className="page">
+        <PageHead title="공지사항" />
+        <button type="button" className={bs.backBtn} onClick={closeView}>
+          <ArrowLeft size={18} aria-hidden="true" />
+          목록
+        </button>
+        <Card>
+          {q.isLoading && <SkeletonPost />}
+          {q.isError && <LoadError what="공지사항" onRetry={() => q.refetch()} />}
+          {q.data && !viewing && <EmptyState>삭제됐거나 없는 공지예요.</EmptyState>}
+          {viewing && (
+            <article className={bs.post}>
+              <div className={bs.meta}>
+                {viewing.pinned_at && (
+                  <span className="tag tag-accent">
+                    <Pin size={11} aria-hidden="true" />
+                    고정
+                  </span>
+                )}
+                <span className="num">{fmtDate(viewing.created_at)}</span>
+              </div>
+              <h3 className={bs.postTitle}>{viewing.title || "(제목 없음)"}</h3>
+              <div className={styles.viewBody}>
+                <NoticeBody content={viewing.content} isHtml={viewing.is_html} attachments={viewing.notice_attachments} />
+              </div>
+              {isAdmin && (
+                <div className={bs.postActions}>
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onPin(viewing)}>
+                    {viewing.pinned_at ? <PinOff size={15} aria-hidden="true" /> : <Pin size={15} aria-hidden="true" />}
+                    {viewing.pinned_at ? "고정 해제" : "고정"}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditor({ open: true, notice: viewing })}>
+                    <Pencil size={15} aria-hidden="true" /> 수정
+                  </button>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => onDelete(viewing)}>
+                    <Trash2 size={15} aria-hidden="true" /> 삭제
+                  </button>
+                </div>
+              )}
+            </article>
+          )}
+        </Card>
+        <div className={styles.viewFoot}>
+          <button type="button" className="btn" onClick={closeView}>
+            <ArrowLeft size={16} aria-hidden="true" />
+            목록으로
+          </button>
+        </div>
+        {editorEl}
+      </div>
+    );
   }
 
   return (
@@ -120,48 +193,7 @@ export default function Notice() {
         </ul>
       </Card>
 
-      <Modal
-        open={!!viewing}
-        onClose={closeView}
-        wide
-        title={viewing?.title || "(제목 없음)"}
-        subtitle={viewing ? fmtDate(viewing.created_at) : undefined}
-        actions={
-          <>
-            {isAdmin && viewing && (
-              <>
-                <button type="button" className="btn btn-sm" disabled={busy} onClick={() => onPin(viewing)}>
-                  {viewing.pinned_at ? "고정 해제" : "고정"}
-                </button>
-                <button type="button" className="btn btn-sm" onClick={() => setEditor({ open: true, notice: viewing })}>
-                  수정
-                </button>
-                <button type="button" className="btn btn-sm btn-danger" onClick={() => onDelete(viewing)}>
-                  삭제
-                </button>
-                <span className="spacer" />
-              </>
-            )}
-            <button type="button" className="btn" onClick={closeView}>
-              닫기
-            </button>
-          </>
-        }
-      >
-        {viewing && <NoticeBody content={viewing.content} isHtml={viewing.is_html} attachments={viewing.notice_attachments} />}
-      </Modal>
-
-      {isAdmin && (
-        <NoticeEditor
-          open={editor.open}
-          notice={editor.notice}
-          onClose={() => setEditor({ open: false, notice: null })}
-          onSaved={() => {
-            setEditor({ open: false, notice: null });
-            refresh();
-          }}
-        />
-      )}
+      {editorEl}
     </div>
   );
 }

@@ -148,3 +148,12 @@
   text-overflow: ellipsis;
 }
 
+
+/* ── 글 보기 ── */
+.viewBody {
+  min-width: 0;
+}
+.viewFoot {
+  display: flex;
+  justify-content: center;
+}

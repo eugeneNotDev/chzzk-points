@@ -18,6 +18,27 @@ type Grantable = { id: string; name: string; color: string; kind: "shop" | "cust
 type Special = { id: number; name: string; color: string; forced: boolean; source: "admin" | "monthly"; bonusPct?: number; grantedAt: string };
 type Msg = { text: string; ok?: boolean } | null;
 
+const BONUS_PRESETS = [0, 5, 7, 10, 15, 20, 30];
+/** 적립 보너스 고르기 — 자주 쓰는 값 버튼 + 직접 입력(0~30) */
+function BonusPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className={styles.bonusPick}>
+      <div className={styles.bonusPresets} role="group" aria-label="자주 쓰는 보너스">
+        {BONUS_PRESETS.map((n) => (
+          <button key={n} type="button" className={`${styles.bonusPreset} ${value !== "" && Number(value) === n ? styles.bonusPresetOn : ""}`} onClick={() => onChange(String(n))}>
+            {n === 0 ? "없음" : `+${n}%`}
+          </button>
+        ))}
+      </div>
+      <label className={styles.bonusInput}>
+        <span>직접 입력</span>
+        <input type="number" min={0} max={30} step={1} inputMode="numeric" value={value} onChange={(e) => onChange(e.target.value)} aria-label="적립 보너스 %" />
+        <span>%</span>
+      </label>
+    </div>
+  );
+}
+
 const EXISTING_HELP = {
   shop: "상점에서 파는 칭호를 그대로 지급해요. 포인트는 안 빠지고 상품 남은 수량도 안 줄어요.",
   custom: "전에 다른 유저한테 새로 만들어 줬던 칭호를 똑같이 지급해요.",
@@ -66,6 +87,7 @@ export function TitlesModal({
   const [spBusy, setSpBusy] = useState(false);
   const [spForced, setSpForced] = useState(false);
   const [spBonus, setSpBonus] = useState("0");
+  const [bonusEdit, setBonusEdit] = useState<{ id: number; value: string; busy?: boolean; err?: string } | null>(null);
 
   // 열 때마다 처음 상태로 + 목록 새로 받기(방금 만든 칭호도 보이게)
   useEffect(() => {
@@ -181,17 +203,19 @@ export function TitlesModal({
       alertDialog("고정 상태를 바꾸지 못했어요.");
     }
   };
-  const editBonus = async (t: Special) => {
-    const v = window.prompt(`"${t.name}" 적립 보너스(%)를 입력하세요. 0~30, 0이면 없음.`, String(t.bonusPct ?? 0));
-    if (v == null) return;
-    const pct = Number(v.trim());
-    if (!Number.isInteger(pct) || pct < 0 || pct > 30) return alertDialog("0~30 사이 정수로 입력해주세요.");
+  const saveBonus = async (t: Special) => {
+    if (!bonusEdit) return;
+    const raw = bonusEdit.value.trim();
+    const pct = Number(raw);
+    if (raw === "" || !Number.isInteger(pct) || pct < 0 || pct > 30) return setBonusEdit({ ...bonusEdit, err: "0~30 사이 정수로 입력해주세요." });
+    setBonusEdit({ ...bonusEdit, busy: true, err: undefined });
     try {
       const r = await apiFetch<{ titles: Special[] }>(API.adminSpecialTitle, { body: { channelId, action: "bonus", id: t.id, bonusPct: pct } });
       qc.setQueryData(spKey, r);
-      setSpMsg({ text: `"${t.name}" 적립 보너스를 ${pct}%로 바꿨어요.`, ok: true });
+      setBonusEdit(null);
+      setSpMsg({ text: pct ? `"${t.name}" 적립 보너스를 +${pct}%로 바꿨어요.` : `"${t.name}" 적립 보너스를 없앴어요.`, ok: true });
     } catch {
-      alertDialog("적립 보너스를 바꾸지 못했어요.");
+      setBonusEdit((cur) => (cur ? { ...cur, busy: false, err: "적립 보너스를 바꾸지 못했어요." } : cur));
     }
   };
   const revokeSpecial = async (t: Special) => {
@@ -311,14 +335,19 @@ export function TitlesModal({
         {spQ.data && spQ.data.titles.length > 0 && (
           <div className={styles.chips}>
             {spQ.data.titles.map((t) => (
-              <span key={t.id} className={styles.chip}>
+              <span key={t.id} className={`${styles.chip} ${bonusEdit?.id === t.id ? styles.chipEditing : ""}`}>
                 <SpecialTitleLine list={[t]} />
                 <span className={styles.muted}>
                   {t.source === "monthly" ? "랭킹 보상" : "관리자 지급"}
                   {t.forced ? " · 고정" : ""}
                   {t.bonusPct ? ` · 적립 +${t.bonusPct}%` : ""}
                 </span>
-                <button type="button" className={styles.linkBtn} onClick={() => editBonus(t)}>
+                <button
+                  type="button"
+                  className={styles.linkBtn}
+                  aria-expanded={bonusEdit?.id === t.id}
+                  onClick={() => setBonusEdit(bonusEdit?.id === t.id ? null : { id: t.id, value: String(t.bonusPct ?? 0) })}
+                >
                   보너스
                 </button>
                 <button type="button" className={styles.linkBtn} onClick={() => toggleForced(t)}>
@@ -331,6 +360,36 @@ export function TitlesModal({
             ))}
           </div>
         )}
+        {bonusEdit &&
+          (() => {
+            const t = spQ.data?.titles.find((x) => x.id === bonusEdit.id);
+            if (!t) return null;
+            return (
+              <form
+                className={styles.bonusPanel}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  saveBonus(t);
+                }}
+              >
+                <div className={styles.bonusPanelHead}>
+                  <SpecialTitleLine list={[t]} />
+                  <b>적립 보너스 바꾸기</b>
+                  <span className={styles.muted}>지금 {t.bonusPct ? `+${t.bonusPct}%` : "없음"}</span>
+                </div>
+                <BonusPicker value={bonusEdit.value} onChange={(v) => setBonusEdit({ ...bonusEdit, value: v, err: undefined })} />
+                {bonusEdit.err && <p className="status error">{bonusEdit.err}</p>}
+                <div className={styles.bonusPanelEnd}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setBonusEdit(null)}>
+                    취소
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={bonusEdit.busy}>
+                    저장
+                  </button>
+                </div>
+              </form>
+            );
+          })()}
         {spQ.isError && <p className="status error">특수 칭호를 불러오지 못했어요.</p>}
         <form className={styles.grantForm} onSubmit={grantSpecial} autoComplete="off">
           <label className="field">
@@ -341,11 +400,11 @@ export function TitlesModal({
             <span className="field-label">칭호 꾸미기</span>
             <TitleColorPicker value={spColor} onChange={setSpColor} previewName={spName} mode="special" />
           </div>
-          <label className="field">
-            <span className="field-label">적립 보너스 % (0~30, 0이면 없음)</span>
-            <input className="input" type="number" min={0} max={30} step={1} inputMode="numeric" value={spBonus} onChange={(e) => setSpBonus(e.target.value)} style={{ maxWidth: 120 }} />
+          <div className="field">
+            <span className="field-label">적립 보너스</span>
+            <BonusPicker value={spBonus} onChange={setSpBonus} />
             <span className={styles.muted}>장착하는 동안 출석체크·방송 코드·방송 후기·게시판 활동으로 받는 포인트가 이만큼 더 들어와요. (미니게임·투표·후원 적립엔 안 붙음)</span>
-          </label>
+          </div>
           <label className={styles.checkRow}>
             <input type="checkbox" checked={spForced} onChange={(e) => setSpForced(e.target.checked)} />
             <span>
