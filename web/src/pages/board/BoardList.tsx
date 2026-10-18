@@ -178,7 +178,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
 }
 
 // 검색 — [검색 범위 ▾][검색어 🔍] (가운데 정렬)
-function BoardSearch({ board, search, field, onSearch }: { board: BoardKind; search: string; field: Field; onSearch: (q: string, field: Field) => void }) {
+export function BoardSearch({ board, search, field, onSearch }: { board: BoardKind; search: string; field: Field; onSearch: (q: string, field: Field) => void }) {
   const [text, setText] = useState(search);
   const [f, setF] = useState<Field>(field);
   useEffect(() => {
@@ -213,7 +213,7 @@ function BoardSearch({ board, search, field, onSearch }: { board: BoardKind; sea
 // Lucian UX/UI Prompt #043 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#043
 // 늘어나는 페이지 번호 — 강조 알약이 가는 쪽 끝부터 먼저 늘어나고(0.32s) 반대쪽 끝이 늦게 따라와(0.55s 스프링, 0.08s 뒤)
 // 고무줄처럼 도착. 좌우 방향키로도 옮김.
-function Pager({ page, start, end, pages, go }: { page: number; start: number; end: number; pages: number; go: (p: number) => void }) {
+export function Pager({ page, start, end, pages, go }: { page: number; start: number; end: number; pages: number; go: (p: number) => void }) {
   const track = useRef<HTMLDivElement>(null);
   const ind = useRef<HTMLSpanElement>(null);
   const prev = useRef<number | null>(null);
