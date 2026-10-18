@@ -103,11 +103,11 @@
   line-height: 1.25;
 }
 /* 아이콘: 그림마다 상자 안에서 위아래로 치우친 만큼(--icy, lib/titleIconCenter.ts) 되돌려 그림 자체를 가운데로.
-   추가로 올리는 보정은 하지 않음 — 실제 윈도우 크롬에서 100%·125%·200% 배율로 재보니 보정 없이 글자와 0~0.5px 이내로 맞음
-   (리눅스 미리보기 기준으로 0.06em 올렸더니 윈도우에선 1px 떠 보였음) */
+   + 글자는 픽셀 경계로 반올림돼 그려지고 아이콘은 소수점 그대로라, 글자가 반올림된 만큼(--snap, lib/iconSnap.ts가 줄마다 계산) 같이 옮김
+   + 남는 차이 0.026em(15px에서 0.4px)만큼 올림 — 윈도우 크롬 100%에서 줄 위치를 0~0.84px로 바꿔 가며 재서 정한 값 */
 .nameRow > :global(.tp-tag) :global(.tp-icon) {
   vertical-align: 0;
-  transform: translateY(calc(-1.05em * var(--icy, 0)));
+  transform: translateY(calc(-1.05em * var(--icy, 0) + var(--snap, 0px) - 0.026em));
 }
 .nameText {
   min-width: 0;

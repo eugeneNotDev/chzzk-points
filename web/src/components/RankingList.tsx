@@ -15,6 +15,7 @@ import { SpecialTitleLine } from "./TitleBadge";
 import { Laurel } from "./Laurel";
 import { PlateStars, TitleTag, useTitlePlate } from "./TitlePlate";
 import styles from "./RankingList.module.css";
+import { useIconSnap } from "../lib/iconSnap";
 
 const RANK_COLORS = ["var(--c-gold)", "var(--c-silver)", "var(--c-bronze)"];
 const keyOf = (r: RankingRow, i: number) => r.channel_id || `#${i}`;
@@ -37,6 +38,8 @@ export function RankingList({
   const list = useRef<HTMLOListElement>(null);
   const prevTop = useRef(new Map<string, number>());
   const prevIdx = useRef(new Map<string, number>());
+  // 칭호 아이콘을 글자와 같은 픽셀 줄에 맞춤(lib/iconSnap.ts)
+  useIconSnap(list, [rows]);
 
   useLayoutEffect(() => {
     const el = list.current;
