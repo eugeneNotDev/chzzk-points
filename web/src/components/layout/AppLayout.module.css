@@ -533,6 +533,13 @@
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-top: 1px solid var(--c-border);
+    /* 아이폰 사파리: 관성 스크롤 중 고정 바 위치가 어긋나는 걸 막으려고 별도 레이어로 */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+  /* 글 입력 중(키보드 올라옴)엔 하단 바를 숨김 — 아이폰에서 키보드가 내려간 뒤 바가 화면 중간에 남는 버그 방지 + 입력칸 가림 방지 */
+  :global(html.kb-open) .tabbar {
+    display: none;
   }
   .tab {
     display: flex;

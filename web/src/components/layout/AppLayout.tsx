@@ -181,6 +181,36 @@ export function AppLayout() {
     document.title = item && item.path !== "" ? `${item.label} · 유진 팬보드` : "유진 팬보드";
   }, [item]);
 
+  // 폰에서 글 입력칸에 들어가면(키보드 올라옴) 하단 바를 숨기고, 나오면 다시 보이게.
+  // 아이폰 사파리는 키보드가 내려간 뒤 화면 아래 고정 바가 키보드 높이(화면 중간쯤)에 남는 버그가 있어서,
+  // 입력칸에서 나올 때 스크롤 위치를 한 번 다시 맞춰서(제자리 scrollTo) 화면을 다시 그리게 함.
+  useEffect(() => {
+    const editable = (el: Element | null) =>
+      !!el &&
+      (el instanceof HTMLTextAreaElement ||
+        (el instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit", "range", "color", "file"].includes(el.type)) ||
+        (el instanceof HTMLElement && el.isContentEditable));
+    let t = 0;
+    const onIn = (e: FocusEvent) => {
+      if (editable(e.target as Element)) document.documentElement.classList.add("kb-open");
+    };
+    const onOut = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        if (editable(document.activeElement)) return;
+        document.documentElement.classList.remove("kb-open");
+        window.scrollTo(window.scrollX, window.scrollY);
+      }, 120);
+    };
+    document.addEventListener("focusin", onIn);
+    document.addEventListener("focusout", onOut);
+    return () => {
+      document.removeEventListener("focusin", onIn);
+      document.removeEventListener("focusout", onOut);
+      window.clearTimeout(t);
+    };
+  }, []);
+
   useEffect(() => {
     if (!sheetOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSheetOpen(false);
