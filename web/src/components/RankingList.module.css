@@ -93,6 +93,11 @@
   gap: 6px;
   min-width: 0;
 }
+/* 닉네임 뒤 칭호: 칭호 글씨가 작아서(0.85배) 상자 가운데를 맞춰도 글자가 1px 낮아 보임
+   (사용자 화면 기준: 닉네임 글자 68~80px, 칭호 글자 70~80px) → 정확히 1px 올림. em으로 올리면 Windows에서 반올림돼 너무 올라감 */
+.nameRow > :global(.tp-tag) {
+  transform: translateY(-1px);
+}
 .nameText {
   min-width: 0;
   font-size: 15px;
