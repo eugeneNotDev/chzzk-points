@@ -275,7 +275,7 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
       if (existing) {
         await boardCall({ action: "update", id: existing.post.id, title: t, body: text, images: paths });
         await qc.invalidateQueries({ queryKey: ["board", "post", existing.post.id] });
-        nav(`${cfg.path}?post=${existing.post.id}`, { replace: true });
+        nav(`${cfg.path}?post=${existing.post.id}`, { replace: true, state: { fromList: true } });
       } else {
         const r = await boardCall<{ id: number; rewarded?: number; activity?: ActivityGrant }>({ action: "create", board, title: t, body: text, images: paths });
         if (r.rewarded) {
@@ -284,7 +284,7 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
         }
         afterActivity(qc, r.activity, "글");
         qc.invalidateQueries({ queryKey: ["board", "review-status"] });
-        nav(`${cfg.path}?post=${r.id}`, { replace: true });
+        nav(`${cfg.path}?post=${r.id}`, { replace: true, state: { fromList: true } });
       }
     } catch (e) {
       setSaving(false);

@@ -23,6 +23,7 @@ import { AdminChip, Who } from "./BoardList";
 import { Lightbox } from "../../components/Lightbox";
 import { ReportModal, type ReportTarget } from "./ReportModal";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
+import { useListUnderneath, type ListState } from "../../lib/listBack";
 import styles from "./Board.module.css";
 import { alertDialog, confirmDialog, toast } from "../../lib/dialog";
 import { SkeletonPost } from "../../components/Skeleton";
@@ -378,7 +379,9 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
     return () => clearTimeout(t);
   }, [flash]);
 
-  const fromList = !!(useLocation().state as { fromList?: boolean } | null)?.fromList;
+  // 바로 열린 글이면 방문 기록 아래에 목록을 깔아 둠 → 뒤로가기가 항상 목록으로
+  useListUnderneath(cfg.path);
+  const fromList = !!(useLocation().state as ListState)?.fromList;
   const back = () => goBackOr(nav, fromList, cfg.path);
   // 모바일에선 게시판 이름(PageHead), 그 아래 왼쪽에 "← 목록"
   const head = (

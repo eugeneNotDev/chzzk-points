@@ -17,9 +17,8 @@ import bs from "../board/Board.module.css";
 import { BoardSearch, Pager } from "../board/BoardList";
 import { alertDialog, confirmDialog } from "../../lib/dialog";
 import { SkeletonList, SkeletonPost, useBloom } from "../../components/Skeleton";
-import { Avatar } from "../../components/Avatar";
-import { BRAND_MARK_URL } from "../../lib/config";
 import { boardTime } from "../../lib/board";
+import { useListUnderneath, type ListState } from "../../lib/listBack";
 
 // 공지 작성자 표시(공지는 작성자를 따로 저장하지 않음 — 관리자 공지)
 const AUTHOR = "관리자";
@@ -51,7 +50,10 @@ export default function Notice() {
 
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();
-  const fromList = !!(useLocation().state as { fromList?: boolean } | null)?.fromList;
+  const viewIdRaw = Number(params.get("id")) || null;
+  // 홈 미리보기·주소로 바로 열린 공지면 방문 기록 아래에 공지 목록을 깔아 둠 → 뒤로가기가 항상 목록으로
+  useListUnderneath("/notice.html", !!viewIdRaw);
+  const fromList = !!(useLocation().state as ListState)?.fromList;
   const viewId = Number(params.get("id")) || null;
   const viewing = useMemo(() => q.data?.find((n) => n.id === viewId) ?? null, [q.data, viewId]);
   const bloom = useBloom(q.isLoading);
@@ -153,7 +155,6 @@ export default function Notice() {
           {viewing && (
             <article className={bs.post}>
               <div className={bs.meta}>
-                <Avatar name={AUTHOR} image={BRAND_MARK_URL} size={24} />
                 <span className={bs.who}>{AUTHOR}</span>
                 <span className={bs.dot}>·</span>
                 <span title={fmtDate(viewing.created_at)}>{boardTime(viewing.created_at)}</span>
