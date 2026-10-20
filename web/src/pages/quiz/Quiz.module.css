@@ -1617,3 +1617,28 @@
   font-weight: 700;
   color: var(--c-gold, var(--c-accent));
 }
+
+.sumEmpty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  font-size: 14px;
+  color: var(--c-text-3);
+  text-align: center;
+}
+.histTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.histTitle :global(.tag) {
+  flex: none;
+}
+.histName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

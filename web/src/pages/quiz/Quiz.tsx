@@ -5,6 +5,7 @@ import { lazy, Suspense, useState } from "react";
 import { ChevronLeft, ChevronRight, Trash2, Trophy } from "lucide-react";
 import { readStorage, writeStorage } from "../../lib/storage";
 import { useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { PillTabs } from "../../components/PillTabs";
@@ -43,7 +44,17 @@ function QuizTags({ quiz }: { quiz: QuizView }) {
 export default function Quiz() {
   const { isLoggedIn, isAdmin } = useAuth();
   const q = useQuiz();
-  const [tabPick, setTab] = useState<Tab | null>(null);
+  // 탭·지난 기록 상세는 주소(?tab=, ?past=)에 담아서 브라우저 뒤로가기로 한 단계씩 돌아오게 함
+  const [params, setParams] = useSearchParams();
+  const tp = params.get("tab");
+  const tabPick: Tab | null = tp === "now" || tp === "history" || tp === "admin" ? tp : null;
+  const setTab = (t: Tab) =>
+    setParams((p) => {
+      const n = new URLSearchParams(p);
+      n.set("tab", t);
+      n.delete("past");
+      return n;
+    });
   const [pickKind, setPickKind] = useState<"exam" | "ox" | null>(null);
 
   // 방송 화면(OX) — 리모컨의 "방송 화면 열기"로 뜨는 창. 관리자만.
@@ -150,7 +161,24 @@ function History({ items }: { items: QuizHistoryItem[] }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<number | null>(null);
   const [page, setPage] = useState(1);
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const openId = Number(params.get("past")) || null;
+  const setOpenId = (id: number | null) =>
+    setParams((p) => {
+      const n = new URLSearchParams(p);
+      n.set("tab", "history");
+      if (id == null) n.delete("past");
+      else n.set("past", String(id));
+      return n;
+    });
+  // 목록으로: 사이트 안에서 들어왔으면 브라우저 뒤로가기와 같게, 주소로 바로 들어왔으면 목록 주소로 바꿈
+  const backToList = () => (location.key !== "default" ? navigate(-1) : setParams((p) => {
+    const n = new URLSearchParams(p);
+    n.delete("past");
+    return n;
+  }, { replace: true }));
   const [lastSeen, setLastSeen] = useState(readLastSeen);
   const totalPages = Math.max(1, Math.ceil(items.length / HIST_PAGE));
   const cur = Math.min(page, totalPages);
@@ -193,7 +221,7 @@ function History({ items }: { items: QuizHistoryItem[] }) {
     return (
       <>
         <div>
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setOpenId(null)}>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={backToList}>
             <ChevronLeft size={16} aria-hidden="true" /> 지난 기록
           </button>
         </div>
@@ -202,22 +230,15 @@ function History({ items }: { items: QuizHistoryItem[] }) {
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <Card>
-        <EmptyState>아직 참여한 퀴즈가 없어요.</EmptyState>
-      </Card>
-    );
-  }
-
   return (
     <>
       <div className={styles.sumGrid}>
-        {examId != null && <SummaryCard id={examId} onOpen={() => open(items.find((h) => h.id === examId)!)} />}
-        {oxId != null && <SummaryCard id={oxId} onOpen={() => open(items.find((h) => h.id === oxId)!)} />}
+        {examId != null ? <SummaryCard id={examId} onOpen={() => open(items.find((h) => h.id === examId)!)} /> : <EmptySummary kind="exam" />}
+        {oxId != null ? <SummaryCard id={oxId} onOpen={() => open(items.find((h) => h.id === oxId)!)} /> : <EmptySummary kind="ox" />}
       </div>
       <Card title={`지난 기록 ${items.length}개`}>
         <div>
+          {items.length === 0 && <EmptyState>아직 참여한 퀴즈가 없어요.</EmptyState>}
           {shown.map((h) => (
             <div key={h.id} className={styles.histItem}>
               <button
@@ -226,12 +247,10 @@ function History({ items }: { items: QuizHistoryItem[] }) {
                 style={{ flex: 1, minWidth: 0, border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }}
                 onClick={() => open(h)}
               >
-                <span className="list-row-title">
-                  <span className={`tag ${h.kind === "exam" ? "" : "tag-blue"}`} style={{ marginRight: 6 }}>
-                    {h.kind === "exam" ? "모의고사" : "OX"}
-                  </span>
-                  {h.title}
-                  {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
+                <span className={`list-row-title ${styles.histTitle}`}>
+                  <span className={`tag ${h.kind === "exam" ? "" : "tag-blue"}`}>{h.kind === "exam" ? "모의고사" : "OX"}</span>
+                  <span className={styles.histName}>{h.title}</span>
+                  {h.isTest && <span className={`tag ${styles.testTag}`}>테스트</span>}
                 </span>
                 <span className="list-row-meta">
                   {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "데스매치" : "점수전"}
@@ -249,6 +268,17 @@ function History({ items }: { items: QuizHistoryItem[] }) {
         <Pagination page={cur} totalPages={totalPages} onChange={setPage} />
       </Card>
     </>
+  );
+}
+
+function EmptySummary({ kind }: { kind: "exam" | "ox" }) {
+  return (
+    <Card className={styles.sumCard}>
+      <div className={styles.sumHead}>
+        <span className={`tag ${kind === "exam" ? "" : "tag-blue"}`}>{kind === "exam" ? "모의고사" : "OX 퀴즈"}</span>
+      </div>
+      <div className={styles.sumEmpty}>아직 참여한 {kind === "exam" ? "모의고사" : "OX 퀴즈"} 기록이 없어요.</div>
+    </Card>
   );
 }
 

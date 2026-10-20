@@ -15,6 +15,7 @@ import { fmt } from "../../lib/format";
 import { maybeCompressImage } from "../../lib/notices";
 import { ADMIN_QUIZ_ERRORS, oxPhase, type QType, type QuizStatus } from "../../lib/quiz";
 import { supabase } from "../../lib/supabase";
+import { readStorage, writeStorage } from "../../lib/storage";
 import { ExamPaper, leftText } from "./Exam";
 import { OIcon, XIcon } from "./Ox";
 import { useNow } from "./useNow";
@@ -60,6 +61,7 @@ type Detail = {
 };
 type ListItem = { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus; isTest: boolean; rewardedAt: string | null };
 
+const LAST_ADMIN_KEY = "chzzk_quiz_admin_last";
 const adminCall = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.adminQuiz, { body });
 const STATUS_LABEL: Record<"exam" | "ox", Record<QuizStatus, string>> = {
   exam: { draft: "준비 중", open: "제출 받는 중", closed: "채점 중", revealed: "발표 끝" },
@@ -101,19 +103,24 @@ async function uploadImage(file: File): Promise<string> {
 export default function QuizAdmin() {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ["quiz-admin-list"], queryFn: () => adminCall<{ quizzes: ListItem[] }>({ action: "list" }) });
-  const [selId, setSelId] = useState<number | null>(null);
+  const [selId, setSelIdRaw] = useState<number | null>(null);
+  // 마지막으로 다룬 회차를 기억해 두고 다음에 관리 탭을 열면 그 회차부터 보여줌
+  const setSelId = (id: number | null) => {
+    setSelIdRaw(id);
+    writeStorage(LAST_ADMIN_KEY, id == null ? null : String(id));
+  };
   const [createKind, setCreateKind] = useState<"exam" | "ox" | null>(null);
-  const [showDone, setShowDone] = useState(false);
   const all = list.data?.quizzes ?? [];
-  // 보상까지 끝난 회차는 기본으로 숨김(지난 기록에서 보거나 "끝난 회차도 보기"로). 지금 고른 회차는 계속 보임.
-  const items = all.filter((i) => showDone || !i.rewardedAt || i.id === selId);
-  const doneCount = all.filter((i) => i.rewardedAt).length;
+  // 보상 지급까지 끝난 회차는 관리 탭에서 아예 빠짐(결과는 지난 기록에서 봄)
+  const isDone = (i: ListItem) => !!i.rewardedAt;
+  const items = all.filter((i) => !isDone(i) || i.id === selId);
 
   // 처음 들어왔을 때만 진행 중인 회차를 골라둠(새로 만든 회차는 목록이 새로 오기 전에도 그대로 선택돼 있게)
   useEffect(() => {
     if (selId == null && list.isSuccess) {
-      const first = all.find((i) => !i.rewardedAt && i.status !== "revealed") ?? all.find((i) => !i.rewardedAt);
-      if (first) setSelId(first.id);
+      const last = Number(readStorage(LAST_ADMIN_KEY));
+      const first = all.find((i) => i.id === last && !isDone(i)) ?? all.find((i) => !isDone(i));
+      if (first) setSelIdRaw(first.id);
     }
   }, [all, selId, list.isSuccess]);
 
@@ -142,15 +149,10 @@ export default function QuizAdmin() {
             <Select label="회차 고르기" className={styles.grow} value={String(selId ?? options[0].value)} options={options} onChange={(v) => setSelId(Number(v))} />
           ) : (
             <span className="muted" style={{ flex: 1 }}>
-              {doneCount ? "진행 중이거나 준비 중인 회차가 없어요. 새로 만들어 주세요." : "아직 만든 회차가 없어요."}
+              진행 중이거나 준비 중인 회차가 없어요. 새로 만들어 주세요.
             </span>
           )}
-          {doneCount > 0 && (
-            <label className="check" style={{ fontSize: 13 }}>
-              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
-              끝난 회차도 보기({doneCount})
-            </label>
-          )}
+          
           <button type="button" className="btn btn-sm" onClick={() => setCreateKind("exam")}>
             <Plus size={16} aria-hidden="true" /> 새 모의고사
           </button>
@@ -176,7 +178,7 @@ export default function QuizAdmin() {
         <QuizDetail
           key={d.quiz.id}
           d={d}
-          onDeleted={() => {
+          onFinished={() => {
             // 지운 회차는 바로 화면에서 빼기(목록 새로 받기 전에 다시 골라지지 않게)
             qc.setQueryData<{ quizzes: ListItem[] }>(["quiz-admin-list"], (old) => (old ? { quizzes: old.quizzes.filter((x) => x.id !== d.quiz.id) } : old));
             qc.removeQueries({ queryKey: ["quiz-admin", d.quiz.id] });
@@ -210,14 +212,14 @@ function Steps({ quiz }: { quiz: QuizRow }) {
   );
 }
 
-function QuizDetail({ d, onDeleted }: { d: Detail; onDeleted: () => void }) {
+function QuizDetail({ d, onFinished }: { d: Detail; onFinished: () => void }) {
   const { act, busy } = useAct();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const quiz = d.quiz;
 
   async function remove() {
     if (!(await confirmDialog(`"${quiz.title}" 회차를 삭제할까요? 답안·응답도 같이 지워져요.`, { danger: true }))) return;
-    if (await act({ action: "delete", quizId: quiz.id }, "삭제했어요.")) onDeleted();
+    if (await act({ action: "delete", quizId: quiz.id }, "삭제했어요.")) onFinished();
   }
 
   return (
@@ -242,7 +244,7 @@ function QuizDetail({ d, onDeleted }: { d: Detail; onDeleted: () => void }) {
         <Steps quiz={quiz} />
       </Card>
       {settingsOpen && <QuizSettingsModal kind={quiz.kind} quiz={quiz} onClose={() => setSettingsOpen(false)} onSaved={() => setSettingsOpen(false)} />}
-      {quiz.status === "revealed" && <Payouts d={d} />}
+      {quiz.status === "revealed" && <Payouts d={d} onPaid={onFinished} />}
       {quiz.kind === "exam" ? <ExamAdmin d={d} /> : <OxAdmin d={d} />}
     </>
   );
@@ -1190,18 +1192,22 @@ function OxAdmin({ d }: { d: Detail }) {
 }
 
 // ── 보상 지급 ──
-function Payouts({ d }: { d: Detail }) {
+function Payouts({ d, onPaid }: { d: Detail; onPaid: () => void }) {
   const { act, busy } = useAct();
   const quiz = d.quiz;
   const total = useMemo(() => d.payouts.reduce((n, p) => n + p.amount, 0), [d.payouts]);
   const paid = !!quiz.rewarded_at;
 
   async function pay() {
-    const msg = quiz.is_test
-      ? `테스트 회차라 포인트는 안 들어가요. ${d.payouts.length}명 · 총 ${fmt(total)}P로 지급 기록만 남길까요?`
-      : `${d.payouts.length}명에게 총 ${fmt(total)}P를 지급할까요? 되돌릴 수 없어요.`;
-    if (!(await confirmDialog(msg, { okText: "지급" }))) return;
-    await act({ action: "pay", quizId: quiz.id }, quiz.is_test ? "지급 기록을 남겼어요(테스트)." : "보상을 지급했어요.");
+    const none = d.payouts.length === 0;
+    const msg = none
+      ? "보상 받을 사람이 없어요. 이대로 회차를 마칠까요? 관리 탭에서 사라지고 결과는 지난 기록에 남아요."
+      : quiz.is_test
+        ? `테스트 회차라 포인트는 안 들어가요. ${d.payouts.length}명 · 총 ${fmt(total)}P로 지급 기록만 남기고 마칠까요?`
+        : `${d.payouts.length}명에게 총 ${fmt(total)}P를 지급하고 마칠까요? 되돌릴 수 없어요.`;
+    if (!(await confirmDialog(msg, { okText: none ? "마치기" : "지급" }))) return;
+    const r = await act({ action: "pay", quizId: quiz.id }, none ? "회차를 마쳤어요." : quiz.is_test ? "지급 기록을 남기고 마쳤어요(테스트)." : "보상을 지급하고 마쳤어요.");
+    if (r) onPaid(); // 다 끝난 회차는 관리 탭에서 빼고 처음 화면으로
   }
 
   return (
@@ -1228,8 +1234,8 @@ function Payouts({ d }: { d: Detail }) {
       )}
       {!paid && (
         <div className={styles.actions} style={{ marginTop: 14 }}>
-          <button type="button" className="btn btn-primary" disabled={busy || d.payouts.length === 0} onClick={pay}>
-            {quiz.is_test ? "지급 기록만 남기기(테스트)" : "보상 지급"}
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={pay}>
+            {d.payouts.length === 0 ? "보상 없이 마치기" : quiz.is_test ? "지급 기록만 남기고 마치기(테스트)" : "보상 지급하고 마치기"}
           </button>
         </div>
       )}
