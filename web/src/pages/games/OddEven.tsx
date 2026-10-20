@@ -60,17 +60,19 @@ export default function OddEven() {
     const started = Date.now();
     try {
       const d = await apiFetch<{ card: number; result: "win" | "lose"; payout: number; net: number; balance: number}>(API.oddEven, { body: { bet, pick } });
+      // 도중에 다른 화면으로 떠났어도 포인트·기록 캐시는 반영(상단 잔액이 옛 값으로 남지 않게) — 연출만 건너뜀
+      const apply = () => game.applyResult(d.balance, { bet, pick, card: d.card, result: d.result, payout: d.payout, createdAt: new Date().toISOString() });
       const remain = SHUFFLE_MIN_MS - (Date.now() - started);
       if (remain > 0) await sleep(remain);
-      if (!game.alive.current) return;
+      if (!game.alive.current) return apply();
       setShuffling(false);
       const [suit, red] = SUITS[Math.floor(Math.random() * SUITS.length)];
       setCard({ n: d.card, suit, red });
       setOpen(true);
       await sleep(FLIP_MS);
-      if (!game.alive.current) return;
+      if (!game.alive.current) return apply();
       setReveal(parityOf(d.card));
-      game.applyResult(d.balance, { bet, pick, card: d.card, result: d.result, payout: d.payout, createdAt: new Date().toISOString() });
+      apply();
       setResult({
         tone: netTone(d.net),
         color: RESULT_COLOR[d.result],
@@ -106,7 +108,7 @@ export default function OddEven() {
   return (
     <div className="page">
       <PageHead title="홀짝" desc={`카드(A~10) 한 장이 홀일지 짝일지 맞혀보세요. 맞히면 ${mult}배, 틀리면 0`} />
-      <GameLock state={game.state} />
+      <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>
           <div className={styles.oeStage}>

@@ -24,7 +24,8 @@ export const corsHeaders: Record<string, string> = {
 //   if (preflight) return preflight;
 export function handleCors(req: Request): Response | null {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    // 브라우저가 사전 확인(OPTIONS)을 하루 동안 기억하게 — 매 요청마다 OPTIONS 호출이 한 번 더 생기는 걸 줄임
+    return new Response("ok", { headers: { ...corsHeaders, "Access-Control-Max-Age": "86400" } });
   }
   return null;
 }

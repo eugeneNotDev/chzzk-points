@@ -17,11 +17,11 @@ type AdminPrediction = { id: number; title: string; status: string; closesAt: st
 const adminCall = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.admin, { body });
 
 export function PredictAdmin() {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   const qc = useQueryClient();
   const now = useNow();
   const q = useQuery({
-    queryKey: ["prediction-admin", token],
+    queryKey: ["prediction-admin", channelId],
     refetchInterval: 5000,
     queryFn: () => adminCall<{ prediction: AdminPrediction | null }>({ action: "get-prediction-status" }),
   });
@@ -36,6 +36,7 @@ export function PredictAdmin() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["prediction-admin"] });
     qc.invalidateQueries({ queryKey: ["prediction"] });
+    qc.invalidateQueries({ queryKey: ["prediction-live"] }); // 메뉴의 "진행 중" 배지
   };
 
   async function cancel() {

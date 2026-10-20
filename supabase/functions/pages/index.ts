@@ -36,6 +36,10 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const path = cleanPath(new URL(req.url).searchParams.get("path"));
       if (!path) return json({ found: false }, 404);
+      // 주소를 하나씩 대입해서 특별 페이지를 찾아내는 걸 막으려고 IP당 1분에 20번까지(0075_security_hardening.sql)
+      const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+      const { data: ok } = await admin.rpc("rate_limit_hit", { p_key: `pages:${ip}`, p_window_sec: 60, p_max: 20 });
+      if (ok === false) return json({ found: false }, 429);
       const { data, error } = await admin.rpc("hidden_page_get", { p_path: path });
       if (error) throw new Error(`hidden_page_get 실패: ${error.message}`);
       if (!data?.found) return json({ found: false }, 404);

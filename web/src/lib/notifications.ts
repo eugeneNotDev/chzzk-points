@@ -58,13 +58,13 @@ function useSeenAt() {
 }
 
 export function useNotifications() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const seen = useSeenAt();
   const notices = useNotices(10);
   const me = useMe();
   const titles = useTitles();
   const board = useQuery({
-    queryKey: ["notifications", "board", token],
+    queryKey: ["notifications", "board", channelId],
     enabled: isLoggedIn,
     staleTime: 60_000,
     refetchInterval: 90_000,
@@ -72,7 +72,7 @@ export function useNotifications() {
     queryFn: () => boardCall<{ items: BoardNotif[] }>({ action: "notifications" }),
   });
   const pred = useQuery({
-    queryKey: ["prediction", token],
+    queryKey: ["prediction", channelId],
     enabled: isLoggedIn,
     staleTime: 60_000,
     queryFn: () => apiFetch<{ prediction: PredLite | null }>(API.predictions),

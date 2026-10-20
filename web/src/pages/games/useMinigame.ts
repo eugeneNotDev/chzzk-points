@@ -2,7 +2,7 @@
 // 결과는 항상 서버(DB 함수)가 정하고 화면은 연출만 함.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
+import { apiFetch, ApiError, getChannelId, useAuth } from "../../lib/auth";
 import { fmt } from "../../lib/format";
 
 export const MIN_BET = 100;
@@ -26,9 +26,9 @@ export type GameStateBase = {
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function useMinigame<S extends GameStateBase>(url: string, name: string) {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const qc = useQueryClient();
-  const key = ["minigame", url, token];
+  const key = ["minigame", url, channelId];
   const q = useQuery({ queryKey: key, enabled: isLoggedIn, staleTime: 0, queryFn: () => apiFetch<S>(url) });
   const [bet, setBetRaw] = useState(MIN_BET);
   const [waitUntil, setWaitUntil] = useState(0);
@@ -58,7 +58,8 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
   let bad = false;
   let soft = true; // 등급/차단 안내는 빨간 글씨 아님
   if (state?.blocked) [bad, hint] = [true, "미니게임 참여가 제한된 계정이에요"];
-  else if (!state || !state.eligible) [bad, hint] = [true, `${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요`];
+  else if (!state) [bad, hint] = [true, q.isError ? "게임 정보를 불러오지 못했어요" : "불러오는 중…"];
+  else if (!state.eligible) [bad, hint] = [true, `${state.requiredTierName || "브론즈"} 등급부터 할 수 있어요`];
   else {
     soft = false;
     if (balance < MIN_BET) [bad, hint] = [true, `${fmt(MIN_BET)}P 이상 있어야 할 수 있어요`];
@@ -76,8 +77,8 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     qc.setQueryData<S>(key, (prev) =>
       prev ? { ...prev, balance: newBalance, maxBalanceReached: Math.max(prev.maxBalanceReached, newBalance), recent: [recentItem, ...prev.recent].slice(0, 10) } : prev,
     );
-    qc.setQueryData(["me", getToken()], (prev: { balance: number } | undefined) => (prev ? { ...prev, balance: newBalance } : prev));
-    if (bet > newBalance) setBetRaw(Math.max(MIN_BET, Math.min(bet, newBalance)));
+    qc.setQueryData(["me", getChannelId()], (prev: { balance: number } | undefined) => (prev ? { ...prev, balance: newBalance } : prev));
+    if (alive.current && bet > newBalance) setBetRaw(Math.max(MIN_BET, Math.min(bet, newBalance)));
   }
 
   // 공통 실패 처리 — 문구 + 필요하면 상태 다시 받기

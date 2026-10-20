@@ -13,18 +13,24 @@ import NotFound from "./pages/NotFound";
 import { SkelGroup } from "./components/Skeleton";
 import { PAGES } from "./routes";
 import { setupAppMode } from "./lib/pwa";
-import { handleOAuthCallback } from "./lib/auth";
+import { ApiError, handleOAuthCallback } from "./lib/auth";
+import { setupChunkReload } from "./components/ErrorBoundary";
 import { DialogHost } from "./components/DialogHost";
 import { setupPullToRefresh } from "./lib/pullToRefresh";
 import "./styles/global.css";
 
 setupAppMode();
+setupChunkReload();
 handleOAuthCallback();
 setupPullToRefresh();
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: true },
+    // 4xx(권한 없음·없는 글·잘못된 요청)는 다시 해도 똑같으니 바로 실패 처리 — 그 외(네트워크·5xx)만 한 번 더
+    queries: {
+      retry: (count, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 1,
+      refetchOnWindowFocus: true,
+    },
   },
 });
 

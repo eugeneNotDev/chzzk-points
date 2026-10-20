@@ -13,7 +13,7 @@ import { TitleStage, TitleText } from "../../components/TitlePlate";
 import { SpecialTitleLine } from "../../components/TitleBadge";
 import { TitlePreview } from "../shop/TitlePreview";
 import { LoginNeeded, Modal, PageHead } from "../../components/ui";
-import { apiFetch, ApiError, getToken, useAuth } from "../../lib/auth";
+import { apiFetch, ApiError, getChannelId, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt, relTime } from "../../lib/format";
 import { useMe, useTitles, type Me, type SpecialOwned } from "../../lib/queries";
@@ -31,7 +31,7 @@ type Activity = {
 };
 
 const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default function MyPage() {
   const auth = useAuth();
@@ -190,7 +190,7 @@ function TitleList({ profile }: { profile: Me | undefined }) {
     setStatus({ text: "" });
     try {
       const data = await apiFetch<Me>(API.me, { body: { selectedTitleId: next } });
-      qc.setQueryData(["me", getToken()], data);
+      qc.setQueryData(["me", getChannelId()], data);
       qc.invalidateQueries({ queryKey: ["ranking"] });
       setStatus({ text: next ? "칭호를 장착했어요." : "칭호를 해제했어요." });
     } catch (e) {
@@ -269,7 +269,7 @@ function SpecialList({ profile }: { profile: Me | undefined }) {
     setStatus({ text: "" });
     try {
       const data = await apiFetch<Me>(API.me, { body: { selectedSpecialId: next } });
-      qc.setQueryData(["me", getToken()], data);
+      qc.setQueryData(["me", getChannelId()], data);
       qc.invalidateQueries({ queryKey: ["ranking"] });
       setStatus({ text: next ? "특수 칭호를 장착했어요." : "특수 칭호를 해제했어요." });
     } catch (e) {
@@ -354,13 +354,13 @@ function PublicCard({ profile }: { profile: Me | undefined }) {
     setBusy(true);
     setStatus({ text: "" });
     const prev = profile;
-    qc.setQueryData(["me", getToken()], { ...profile, isPublic: next });
+    qc.setQueryData(["me", getChannelId()], { ...profile, isPublic: next });
     try {
       await apiFetch(API.me, { body: { isPublic: next } });
       setStatus({ text: next ? "공개로 설정됐어요." : "비공개로 설정됐어요." });
       qc.invalidateQueries({ queryKey: ["ranking"] });
     } catch {
-      qc.setQueryData(["me", getToken()], prev);
+      qc.setQueryData(["me", getChannelId()], prev);
       setStatus({ text: "저장에 실패했어요. 다시 시도해주세요.", error: true });
     } finally {
       setBusy(false);
@@ -387,10 +387,10 @@ function PublicCard({ profile }: { profile: Me | undefined }) {
 }
 
 function PointsLog() {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   const [page, setPage] = useState(1);
   const q = useQuery({
-    queryKey: ["points-log", token, page],
+    queryKey: ["points-log", channelId, page],
     placeholderData: (prev) => prev,
     queryFn: () => apiFetch<{ entries: LogEntry[]; page: number; totalPages: number }>(`${API.me}?action=points-log&page=${page}`),
   });
@@ -425,10 +425,10 @@ function PointsLog() {
 }
 
 function MyActivity() {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   const [tab, setTab] = useState<"posts" | "comments">("posts");
   const q = useQuery({
-    queryKey: ["board", "my-activity", token],
+    queryKey: ["board", "my-activity", channelId],
     queryFn: () => apiFetch<Activity>(API.board, { body: { action: "my-activity" } }),
   });
   const d = q.data;

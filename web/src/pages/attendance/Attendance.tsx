@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight, Ticket } from "lucide-react";
 import { Card } from "../../components/Card";
+import { LoadError } from "../../components/LoadError";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
@@ -41,7 +42,7 @@ const CODE_ERRORS: Record<string, string> = {
 };
 
 export default function Attendance() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const qc = useQueryClient();
   const today = kstToday();
   const [ty, tm] = today.split("-").map(Number);
@@ -51,12 +52,14 @@ export default function Attendance() {
 
   // 오늘 기준 상태는 항상 "이번 달" 응답에서(다른 달 응답의 checkedToday는 그 달 기준이 아님)
   const todayQ = useQuery({
-    queryKey: ["attendance", token, ty, tm],
+    queryKey: ["attendance", channelId, ty, tm],
     enabled: isLoggedIn,
+    // 아직 출석 전이면 1분마다 다시 받아서 방송이 켜지면(isLive) 새로고침 없이 버튼이 열리게. 출석하면 멈춤.
+    refetchInterval: (query) => (query.state.data?.checkedToday ? false : 60_000),
     queryFn: () => apiFetch<MonthData>(`${API.attendance}?year=${ty}&month=${tm}`),
   });
   const viewQ = useQuery({
-    queryKey: ["attendance", token, view.y, view.m],
+    queryKey: ["attendance", channelId, view.y, view.m],
     enabled: isLoggedIn && !(view.y === ty && view.m === tm),
     queryFn: () => apiFetch<MonthData>(`${API.attendance}?year=${view.y}&month=${view.m}`),
   });
@@ -130,7 +133,7 @@ export default function Attendance() {
     setMsg({ text: "" });
     try {
       const data = await apiFetch<CheckinResult>(API.attendance, { method: "POST", body: {} });
-      qc.setQueryData(["attendance", token, ty, tm], data);
+      qc.setQueryData(["attendance", channelId, ty, tm], data);
       qc.invalidateQueries({ queryKey: ["me"] });
       setMsg({
         text:
@@ -169,10 +172,14 @@ export default function Attendance() {
             <span className={`${styles.dot} ${status?.isLive ? styles.dotLive : ""}`} aria-hidden="true" />
             {status ? (status.isLive ? "방송 중" : "방송 종료") : "확인 중"}
           </div>
-          <button type="button" className={`btn btn-primary btn-lg btn-block ${styles.checkBtn}`} disabled={btnDisabled} onClick={checkin}>
-            {status?.checkedToday && <Check size={20} aria-hidden="true" />}
-            {btnLabel}
-          </button>
+          {todayQ.isError && !status ? (
+            <LoadError what="출석 정보" onRetry={() => todayQ.refetch()} />
+          ) : (
+            <button type="button" className={`btn btn-primary btn-lg btn-block ${styles.checkBtn}`} disabled={btnDisabled} onClick={checkin}>
+              {status?.checkedToday && <Check size={20} aria-hidden="true" />}
+              {btnLabel}
+            </button>
+          )}
           <p className={`status ${msg.kind ?? ""}`} role="status">
             {msg.text}
           </p>

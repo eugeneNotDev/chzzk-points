@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from "react";
 import { API, CHZZK_CLIENT_ID, CHZZK_REDIRECT_URI, OWNER_CHANNEL_ID, STORAGE } from "./config";
 import { readStorage, writeStorage } from "./storage";
-import { alertDialog } from "./dialog";
+import { alertDialog, toast } from "./dialog";
 
 export type AuthState = {
   token: string | null;
@@ -58,6 +58,11 @@ export function getToken() {
   return snapshot.token;
 }
 
+// 쿼리 키에 쓰는 로그인 사용자 구분값 — 토큰 원문을 캐시 키(개발자도구 등에 보임)에 넣지 않으려고 채널 ID를 씀.
+export function getChannelId() {
+  return snapshot.channelId;
+}
+
 export function startLogin() {
   const state = crypto.randomUUID();
   try {
@@ -92,6 +97,7 @@ export async function handleOAuthCallback() {
   history.replaceState(null, "", location.pathname + (rest ? `?${rest}` : "") + location.hash);
   if (!saved || saved !== state) {
     console.error("[auth] OAuth state가 일치하지 않아요. 다시 로그인해 주세요.");
+    loginFailed();
     return;
   }
   try {
@@ -129,7 +135,14 @@ export async function handleOAuthCallback() {
     emit();
   } catch (err) {
     console.error("[auth] 로그인 처리 중 오류", err);
+    loginFailed();
   }
+}
+
+// 이 함수는 앱이 그려지기 전(main.tsx 맨 위)에 불려서, 바로 토스트를 띄우면 <DialogHost />가 아직 없어
+// 보이기도 전에 사라질 수 있음 → 화면이 뜬 뒤(다음 틱 + 약간)에 띄움.
+function loginFailed() {
+  setTimeout(() => toast("로그인에 실패했어요. 다시 시도해 주세요.", "error"), 300);
 }
 
 export function logout() {

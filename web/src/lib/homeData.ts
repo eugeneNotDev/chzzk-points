@@ -41,9 +41,9 @@ export type RankingRow = {
 
 // 관리자면 비공개 유저도 실제 이름으로(admin-ranking), 아니면 공개 랭킹 뷰.
 export function useRanking(limit: number) {
-  const { isAdmin, token } = useAuth();
+  const { isAdmin, channelId } = useAuth();
   return useQuery({
-    queryKey: ["ranking", limit, isAdmin ? token : "public"],
+    queryKey: ["ranking", limit, isAdmin ? channelId : "public"],
     staleTime: 15_000,
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -93,9 +93,9 @@ async function fetchBoard(board: "free" | "review") {
 }
 
 export function useBoardPreview(tab: "all" | "free" | "review", limit = 5) {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   return useQuery({
-    queryKey: ["board", "preview", tab, limit, token],
+    queryKey: ["board", "preview", tab, limit, channelId],
     staleTime: 30_000,
     queryFn: async () => {
       const posts =

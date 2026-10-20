@@ -68,6 +68,22 @@ export const SUBMISSION_COLS = "id, channel_id, answers, marks, submitted_at, sc
 export type OxAnswerRow = { question_id: number; channel_id: string; choice: "O" | "X"; answered_at: string };
 
 // 단답 비교용 — 대소문자·띄어쓰기 무시
+// 1000줄 넘게 나와도 다 받기(Supabase는 한 번에 1000줄까지만 줌) — page(from, to)는 정렬이 고정된 조회여야 함
+export async function fetchAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  label: string,
+  maxPages = 50,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < maxPages; i++) {
+    const { data, error } = await page(i * 1000, i * 1000 + 999);
+    if (error) throw new Error(`${label} 조회 실패: ${error.message}`);
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 export const normAnswer = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
 // "자동 채점" — 객관식은 정답 번호와 같으면, 단답은 기준 정답과(대소문자·띄어쓰기 무시) 같으면 맞음.

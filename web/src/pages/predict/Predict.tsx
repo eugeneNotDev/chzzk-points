@@ -2,7 +2,7 @@
 // 이긴 쪽에 건 비율대로 나눠짐. 다른 유저에겐 누가 어디 걸었는지 안 보임.
 // 처음 건 항목은 못 바꾸고 같은 항목에만 더 걸 수 있음. 관리자는 생성/취소/정산 + 참여자 보기.
 import { SkelInline } from "../../components/Skeleton";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clock, Trophy } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -14,6 +14,7 @@ import { useMe } from "../../lib/queries";
 import { PredictAdmin } from "./PredictAdmin";
 import styles from "./Predict.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
+import { LoadError } from "../../components/LoadError";
 
 export type PredictionOption = { id: number; label: string; totalAmount: number; percent: number; multiplier: number };
 export type Prediction = {
@@ -54,14 +55,20 @@ export function useNow(intervalMs = 1000) {
 }
 
 export default function Predict() {
-  const { isLoggedIn, isAdmin, token } = useAuth();
+  const { isLoggedIn, isAdmin, channelId } = useAuth();
   const me = useMe();
   const qc = useQueryClient();
   const now = useNow();
   const q = useQuery({
-    queryKey: ["prediction", token],
+    queryKey: ["prediction", channelId],
     enabled: isLoggedIn,
-    refetchInterval: 5000, // 다른 사람 베팅이 새로고침 없이 반영되게
+    // 다른 사람 베팅이 새로고침 없이 반영되게 — 베팅을 받는 중엔 5초, 마감 후 정산 기다리는 중엔 15초,
+    // 진행 중인 투표가 없으면 1분(투표가 없을 때까지 5초마다 부르면 서버만 바빠짐)
+    refetchInterval: (query) => {
+      const cur = query.state.data?.prediction;
+      if (!cur || cur.status !== "open") return 60_000;
+      return new Date(cur.closesAt).getTime() > Date.now() ? 5000 : 15_000;
+    },
     queryFn: () => apiFetch<{ prediction: Prediction | null }>(API.predictions),
   });
   const [selected, setSelected] = useState<number | null>(null);
@@ -72,6 +79,17 @@ export default function Predict() {
   const p = q.data?.prediction ?? null;
   const ended = p?.status === "resolved" ? p.resolvedAt : p?.status === "cancelled" ? p.cancelledAt : null;
   const hidden = !p || (ended && now - new Date(ended).getTime() >= EXPIRE_DISPLAY_MS);
+
+  // 정산·취소되거나 내 배당/환불이 바뀌면 상단 보유 포인트도 다시 불러옴(처음 그릴 때는 빼고)
+  const settleSig = p ? `${p.id}:${p.status}:${p.myBet?.payout ?? ""}:${p.myBet?.amount ?? ""}` : "";
+  const prevSettleSig = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevSettleSig.current;
+    prevSettleSig.current = settleSig;
+    if (prev === null || prev === settleSig || !p || p.status === "open") return;
+    qc.invalidateQueries({ queryKey: ["me"] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settleSig, qc]);
 
   // 새 투표로 바뀌면 선택 초기화
   useEffect(() => {
@@ -134,7 +152,8 @@ export default function Predict() {
 
       <Card title={heading} tone={p && !hidden && isOpen ? "feature" : undefined}>
         {q.isLoading && <span className="skeleton" style={{ height: 160 }} />}
-        {!q.isLoading && hidden && <EmptyState>진행 중인 투표가 없어요. 방송 중에 투표가 열리면 여기에 떠요.</EmptyState>}
+        {q.isError && !q.data && <LoadError what="투표" onRetry={() => q.refetch()} />}
+        {!q.isLoading && !(q.isError && !q.data) && hidden && <EmptyState>진행 중인 투표가 없어요. 방송 중에 투표가 열리면 여기에 떠요.</EmptyState>}
         {p && !hidden && (
           <div className={styles.body}>
             <h3 className={styles.title}>{p.title}</h3>

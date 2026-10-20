@@ -45,13 +45,30 @@ function sameString(a: string, b: string): boolean {
   return diff === 0;
 }
 
+// 실제 브라우저 푸시 서버 주소만 받음 — 아무 주소나 받으면 응답 안 하는 가짜 주소로 발송을 막거나,
+// 우리 서버가 남의 주소로 요청을 보내게 악용될 수 있음
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /^web\.push\.apple\.com$/];
 function validEndpoint(v: unknown): v is string {
   if (typeof v !== "string" || v.length > 1000) return false;
   try {
-    return new URL(v).protocol === "https:";
+    const u = new URL(v);
+    return u.protocol === "https:" && PUSH_HOSTS.some((re) => re.test(u.hostname));
   } catch {
     return false;
   }
+}
+
+// 구독 전체(한 번에 1000개까지만 오니 나눠서)
+async function allSubscriptions(admin: Admin) {
+  const out: { id: number; endpoint: string; p256dh: string; auth: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").order("id").range(from, from + 999);
+    if (error) throw new Error(`push_subscriptions 조회 실패: ${error.message}`);
+    out.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  // 예전에 받은 이상한 주소는 보내지 않음
+  return out.filter((r) => validEndpoint(r.endpoint));
 }
 const validKey = (v: unknown, min: number, max: number) => typeof v === "string" && v.length >= min && v.length <= max && /^[A-Za-z0-9_-]+=*$/.test(v);
 
@@ -64,7 +81,7 @@ async function deliver(admin: Admin, rows: { id: number; endpoint: string; p256d
   const gone: number[] = [];
   const ok: number[] = [];
   for (let i = 0; i < rows.length; i += 20) {
-    await Promise.all(rows.slice(i, i + 20).map(async (r) => {
+    await Promise.allSettled(rows.slice(i, i + 20).map(async (r) => {
       try {
         const status = await sendPush(r, payload, keys, { ttl: 1800, urgency: "high", topic: "live" });
         if (status === 404 || status === 410) gone.push(r.id);
@@ -106,9 +123,8 @@ Deno.serve(async (req: Request) => {
         .select("title");
       if (!claimed || claimed.length === 0) return json({ ok: true, skipped: true });
       const title = (claimed[0].title || "").trim();
-      const { data: rows, error } = await admin.from("push_subscriptions").select("id, endpoint, p256dh, auth");
-      if (error) throw new Error(`push_subscriptions 조회 실패: ${error.message}`);
-      const result = await deliver(admin, rows ?? [], {
+      const rows = await allSubscriptions(admin);
+      const result = await deliver(admin, rows, {
         title: "유진 방송 시작!",
         body: title || "지금 방송 중이에요. 놀러 오세요!",
         url: LIVE_URL,

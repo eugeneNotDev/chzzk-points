@@ -112,7 +112,8 @@ export async function sendPush(sub: PushSubscriptionRow, payload: unknown, keys:
     Authorization: await vapidAuthHeader(sub.endpoint, keys),
   };
   if (opts.topic) headers.Topic = opts.topic;
-  const res = await fetch(sub.endpoint, { method: "POST", headers, body });
+  // 응답 없는 주소 하나 때문에 전체 발송이 멈추지 않게 8초 제한
+  const res = await fetch(sub.endpoint, { method: "POST", headers, body, signal: AbortSignal.timeout(8000) });
   await res.body?.cancel();
   return res.status;
 }

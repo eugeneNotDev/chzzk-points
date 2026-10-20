@@ -145,6 +145,30 @@ function cleanImages(v: unknown): string[] | null {
   return v as string[];
 }
 
+// 호출 횟수 제한(0075_security_hardening.sql) — key별로 windowSec초 동안 max번까지. 넘으면 false
+async function allowed(admin: Admin, key: string, windowSec: number, max: number) {
+  const { data, error } = await admin.rpc("rate_limit_hit", { p_key: key, p_window_sec: windowSec, p_max: max });
+  if (error) {
+    console.error(`rate_limit_hit 실패: ${error.message}`);
+    return true; // 제한 기능이 고장 나도 게시판은 쓸 수 있게
+  }
+  return data === true;
+}
+
+function clientIp(req: Request) {
+  return (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+}
+
+// 글에 붙이려는 사진이 전부 "내가 업로드 주소를 받은 사진"이고, 다른 글에 이미 붙어 있지 않은지 확인
+// (남의 사진 경로를 내 글에 붙였다가 글을 지워서 남의 사진까지 지우는 걸 막음)
+async function ownsImages(admin: Admin, me: string, paths: string[], postId: number | null) {
+  if (!paths.length) return true;
+  const { data: mine } = await admin.from("board_uploads").select("path").eq("channel_id", me).in("path", paths);
+  if ((mine ?? []).length !== new Set(paths).size) return false;
+  const { data: used } = await admin.from("board_images").select("storage_path, post_id").in("storage_path", paths);
+  return (used ?? []).every((u: { post_id: number }) => postId !== null && u.post_id === postId);
+}
+
 async function getUser(admin: Admin, channelId: string) {
   const { data } = await admin.from("users").select("channel_id, channel_name, banned").eq("channel_id", channelId).maybeSingle();
   return data as { channel_id: string; channel_name: string | null; banned: boolean } | null;
@@ -176,6 +200,10 @@ Deno.serve(async (req: Request) => {
   try {
     const admin = getAdmin();
 
+    // 읽기는 로그인 없이도 되니 IP당 1분 120번까지(자동으로 마구 부르는 것 방지)
+    if (action === "list" || action === "get" || action === "review-status") {
+      if (!(await allowed(admin, `board_read:${me ?? clientIp(req)}`, 60, 120))) return json({ error: "too_fast" }, 429);
+    }
     if (action === "list") return await list(admin, body, me, isAdmin);
     if (action === "get") return await getPost(admin, body, me, isAdmin);
     if (action === "review-status") return await reviewStatus(admin, me);
@@ -185,7 +213,7 @@ Deno.serve(async (req: Request) => {
     if (!user) return json({ error: "unauthorized" }, 401);
     if (user.banned) return json({ error: "banned" }, 403);
 
-    if (action === "upload-urls") return await uploadUrls(admin, body);
+    if (action === "upload-urls") return await uploadUrls(admin, body, me);
     if (action === "create") return await createPost(admin, body, user);
     if (action === "update") return await updatePost(admin, body, me, isAdmin);
     if (action === "delete") return await deletePost(admin, body, me, isAdmin);
@@ -445,9 +473,12 @@ async function reviewStatus(admin: Admin, me: string | null) {
   return json({ isLive, eligible: key !== null, alreadyRewarded: already, reward: REVIEW_REWARD });
 }
 
-async function uploadUrls(admin: Admin, body: any) {
+async function uploadUrls(admin: Admin, body: any, me: string) {
   const files = body.files;
   if (!Array.isArray(files) || files.length === 0 || files.length > MAX_IMAGES) return json({ error: "invalid_files" }, 400);
+  // 업로드 주소는 10분에 10번(사진 최대 50장)까지 — 글에 안 붙일 파일을 마구 올리는 것 방지
+  if (!(await allowed(admin, `board_upload:${me}`, 600, 10))) return json({ error: "too_fast" }, 429);
+  await purgeStaleUploads(admin);
   const uploads = [];
   for (const f of files) {
     const name = typeof f?.fileName === "string" ? f.fileName : "";
@@ -457,14 +488,31 @@ async function uploadUrls(admin: Admin, body: any) {
     const path = `posts/${crypto.randomUUID()}.${ext}`;
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
     if (error) throw new Error(`signed upload url 발급 실패: ${error.message}`);
+    const { error: oErr } = await admin.from("board_uploads").insert({ path, channel_id: me });
+    if (oErr) throw new Error(`board_uploads insert 실패: ${oErr.message}`);
     uploads.push({ path: data.path, token: data.token, signedUrl: data.signedUrl });
   }
   return json({ uploads });
 }
 
-async function tooFast(admin: Admin, table: string, me: string, ms: number) {
-  const { data } = await admin.from(table).select("created_at").eq("channel_id", me).order("id", { ascending: false }).limit(1);
-  return !!data?.[0] && Date.now() - Date.parse(data[0].created_at) < ms;
+// 주소만 받고 2시간 넘게 글에 안 붙인 사진은 지움(한 번에 50개씩, 업로드할 때마다 조금씩 정리)
+async function purgeStaleUploads(admin: Admin) {
+  const cutoff = new Date(Date.now() - 2 * 3600_000).toISOString();
+  const { data: old } = await admin.from("board_uploads").select("path").lt("created_at", cutoff).order("created_at").limit(50);
+  const paths = (old ?? []).map((r: { path: string }) => r.path);
+  if (!paths.length) return;
+  const { data: used } = await admin.from("board_images").select("storage_path").in("storage_path", paths);
+  const usedSet = new Set((used ?? []).map((u: { storage_path: string }) => u.storage_path));
+  const stale = paths.filter((p) => !usedSet.has(p));
+  if (stale.length) {
+    await admin.storage.from(BUCKET).remove(stale);
+    await admin.from("board_uploads").delete().in("path", stale);
+  }
+}
+
+// 연속 작성 제한 — 마지막 글 시각을 읽고 비교하면 동시에 여러 개 보낼 때 다 통과돼서, DB에서 한 번에 세는 방식으로
+async function tooFast(admin: Admin, kind: string, me: string, ms: number) {
+  return !(await allowed(admin, `board_${kind}:${me}`, Math.max(1, Math.round(ms / 1000)), 1));
 }
 
 function kstDate(ms = Date.now()) {
@@ -493,27 +541,26 @@ async function grantActivity(admin: Admin, me: string, kind: ActivityKind, targe
   const cfg = ACTIVITY[kind];
   if (!meaningful(text, cfg.minLen)) return { amount: 0, reason: "too_short" };
   if (kind === "comment" && postOwner === me) return { amount: 0, reason: "own_post" };
-  const today = kstDate();
-  // 지웠다 다시 써서 한도를 되살리지 못하게 회수된 것도 셈
-  const { count } = await admin.from("board_activity_rewards").select("id", { count: "exact", head: true }).eq("channel_id", me).eq("kind", kind).eq("kst_date", today);
-  if ((count ?? 0) >= cfg.daily) return { amount: 0, reason: "daily_limit" };
-  if (kind === "comment" && postId) {
-    const { count: onPost } = await admin.from("board_activity_rewards").select("id", { count: "exact", head: true }).eq("channel_id", me).eq("kind", "comment").eq("post_id", postId);
-    if ((onPost ?? 0) >= ACTIVITY.comment.perPost) return { amount: 0, reason: "per_post_limit" };
-  }
-  const { error } = await admin.from("board_activity_rewards").insert({ channel_id: me, kind, target_id: targetId, post_id: postId, kst_date: today, amount: cfg.amount });
+  // 한도 확인 + 기록 + 포인트를 DB에서 한 사람씩 잠그고 한 번에(0075) — 동시에 여러 개 보내도 하루 한도를 못 넘음.
+  // 지웠다 다시 써서 한도를 되살리지 못하게 회수된 것도 셈(DB 함수가 revoked 여부와 상관없이 셈)
+  const { data, error } = await admin.rpc("board_grant_activity", {
+    p_channel: me,
+    p_kind: kind,
+    p_target: targetId,
+    p_post: postId,
+    p_kst_date: kstDate(),
+    p_amount: cfg.amount,
+    p_daily: cfg.daily,
+    p_per_post: kind === "comment" ? ACTIVITY.comment.perPost : null,
+    p_reason: `게시판 활동 보상 (${cfg.label})`,
+  });
   if (error) {
-    if (error.code === "23505") return { amount: 0, reason: "duplicate" };
-    console.error(`board_activity_rewards insert 실패: ${error.message}`);
+    console.error(`board_grant_activity 실패: ${error.message}`);
     return { amount: 0, reason: "error" };
   }
-  const { error: lErr } = await admin.from("points_ledger").insert({ channel_id: me, amount: cfg.amount, reason: `게시판 활동 보상 (${cfg.label})` });
-  if (lErr) {
-    await admin.from("board_activity_rewards").delete().eq("kind", kind).eq("target_id", targetId);
-    console.error(`게시판 활동 보상 지급 실패: ${lErr.message}`);
-    return { amount: 0, reason: "error" };
-  }
-  return { amount: cfg.amount, reason: "ok", used: (count ?? 0) + 1, max: cfg.daily };
+  const r = data as { reason: string; used?: number };
+  if (r.reason !== "ok") return { amount: 0, reason: r.reason };
+  return { amount: cfg.amount, reason: "ok", used: r.used, max: cfg.daily };
 }
 
 // 보상 회수 — 보상받은 글·댓글이 지워지거나(언제 지우든) 신고로 가려지면
@@ -536,7 +583,8 @@ async function createPost(admin: Admin, body: any, user: { channel_id: string })
   if (!title) return json({ error: "invalid_title" }, 400);
   if (!text) return json({ error: "invalid_body" }, 400);
   if (!images) return json({ error: "invalid_images" }, 400);
-  if (await tooFast(admin, "board_posts", user.channel_id, POST_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
+  if (!(await ownsImages(admin, user.channel_id, images, null))) return json({ error: "invalid_images" }, 400);
+  if (await tooFast(admin, "post", user.channel_id, POST_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
 
   let key: string | null = null;
   if (board === "review") key = (await reviewBroadcastKey(admin)).key;
@@ -590,6 +638,7 @@ async function updatePost(admin: Admin, body: any, me: string, isAdmin: boolean)
   // 수정은 작성자 본인만(관리자는 삭제만 가능 — 남의 글 내용을 바꾸진 않음)
   if (p.channel_id !== me) return json({ error: "forbidden" }, 403);
   void isAdmin;
+  if (!(await ownsImages(admin, me, images, id))) return json({ error: "invalid_images" }, 400);
   const { error } = await admin.from("board_posts").update({ title, body: text, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw new Error(`board_posts update 실패: ${error.message}`);
   await setImages(admin, id, images);
@@ -653,7 +702,7 @@ async function addComment(admin: Admin, body: any, me: string) {
       replyToId = rid;
     }
   }
-  if (await tooFast(admin, "board_comments", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
+  if (await tooFast(admin, "comment", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
   const { data: ins, error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId }).select("id").single();
   if (error) throw new Error(`board_comments insert 실패: ${error.message}`);
   const act = await grantActivity(admin, me, "comment", ins.id, text, postId, post.channel_id);

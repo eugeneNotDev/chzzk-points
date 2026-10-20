@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, Check, MousePointerClick, Plus } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead, Stat } from "../../components/ui";
-import { ApiError, getToken, useAuth } from "../../lib/auth";
+import { ApiError, getChannelId, useAuth } from "../../lib/auth";
 import { fmt } from "../../lib/format";
 import { useBroadcastStatus, useMe, type Me } from "../../lib/queries";
 import { deleteShopItem, reorderShopItems, SPEND_ERRORS, spendItem, updateShopItem, useShopItems, type ShopItem } from "../../lib/shop";
@@ -63,7 +63,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
     setStatus({ text: "" });
     try {
       const d = await spendItem(item.id);
-      qc.setQueryData<Me>(["me", getToken()], (prev) =>
+      qc.setQueryData<Me>(["me", getChannelId()], (prev) =>
         prev ? { ...prev, balance: d.balance ?? prev.balance, purchasedTitleIds: d.titleGranted ? [...(prev.purchasedTitleIds ?? []), d.titleGranted.id] : prev.purchasedTitleIds } : prev,
       );
       if (d.titleGranted) {

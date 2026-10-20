@@ -227,9 +227,9 @@ export type ActivityStatus = {
 };
 // 서버가 예전 버전이면(이 기능 없음) 오류 → 칩을 안 보여줌
 export function useBoardActivity() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   return useQuery({
-    queryKey: ["board", "activity", token],
+    queryKey: ["board", "activity", channelId],
     enabled: isLoggedIn,
     retry: false,
     staleTime: 30_000,

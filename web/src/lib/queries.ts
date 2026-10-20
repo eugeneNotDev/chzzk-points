@@ -43,9 +43,9 @@ export function useTitles() {
 }
 
 export function useMe() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   return useQuery({
-    queryKey: ["me", token],
+    queryKey: ["me", channelId],
     enabled: isLoggedIn,
     staleTime: 30_000,
     queryFn: async () => {

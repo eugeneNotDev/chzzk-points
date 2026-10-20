@@ -6,7 +6,8 @@ import { ArrowLeft, EyeOff, Flag, MessageCircle, Pencil, Trash2 } from "lucide-r
 import { Card, EmptyState } from "../../components/Card";
 import { PageHead } from "../../components/ui";
 import { Avatar } from "../../components/Avatar";
-import { startLogin, useAuth } from "../../lib/auth";
+import { ApiError, startLogin, useAuth } from "../../lib/auth";
+import { LoadError } from "../../components/LoadError";
 import {
   BOARD_CFG,
   IMG_MARK_RE,
@@ -362,9 +363,10 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
   const review = board === "review";
   const nav = useNavigate();
   const qc = useQueryClient();
-  const { isLoggedIn, isAdmin, token } = useAuth();
-  const key = ["board", "post", id, token];
-  const q = useQuery({ queryKey: key, queryFn: () => boardCall<FullPost>({ action: "get", id }), retry: false });
+  const { isLoggedIn, isAdmin, channelId } = useAuth();
+  const key = ["board", "post", id, channelId];
+  // 없는 글(404) 같은 4xx는 main.tsx의 기본 재시도 규칙이 바로 실패 처리 — 네트워크·서버 오류만 한 번 더
+  const q = useQuery({ queryKey: key, queryFn: () => boardCall<FullPost>({ action: "get", id }) });
   const [replyTo, setReplyTo] = useState<{ parent: number; cid: number; name: string } | null>(null);
   const [flash, setFlash] = useState<number | null>(null);
   const [report, setReport] = useState<ReportTarget | null>(null);
@@ -407,9 +409,14 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
     return (
       <div className="page">
         {head}
-        <Card>
-          <EmptyState>{boardErrCode(q.error) === "not_found" ? "삭제됐거나 없는 글이에요." : "글을 불러오지 못했어요."}</EmptyState>
-        </Card>
+        {/* 없는 글·볼 수 없는 글(4xx)은 다시 해도 같으니 안내만, 네트워크·서버 오류는 다시 시도할 수 있게 */}
+        {q.error instanceof ApiError && q.error.status < 500 ? (
+          <Card>
+            <EmptyState>{boardErrCode(q.error) === "not_found" ? "삭제됐거나 없는 글이에요." : "글을 불러오지 못했어요."}</EmptyState>
+          </Card>
+        ) : (
+          <LoadError what="글" onRetry={() => q.refetch()} />
+        )}
       </div>
     );
 
@@ -422,7 +429,9 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
   };
 
   const del = async () => {
-    const warn = review ? "이 후기를 삭제할까요?\n보상으로 받은 100P가 있다면 함께 회수돼요." : "이 글을 삭제할까요?\n활동 보상으로 받은 포인트가 있다면 함께 회수돼요.";
+    const warn = review ? p.paid
+        ? "이 후기를 삭제할까요?\n후기 보상으로 받은 포인트가 함께 회수돼요."
+        : "이 후기를 삭제할까요?\n받은 활동 보상 포인트가 있다면 함께 회수돼요." : "이 글을 삭제할까요?\n활동 보상으로 받은 포인트가 있다면 함께 회수돼요.";
     if (!(await confirmDialog(warn))) return;
     setDeleting(true);
     try {
@@ -432,6 +441,7 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
         qc.invalidateQueries({ queryKey: ["me"] });
       }
       qc.invalidateQueries({ queryKey: ["board", "list", board] });
+      qc.invalidateQueries({ queryKey: ["board", "preview"] }); // 홈 미리보기에서도 빠지게
       back();
     } catch (e) {
       setDeleting(false);

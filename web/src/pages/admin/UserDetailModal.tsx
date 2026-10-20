@@ -133,7 +133,7 @@ function MinigameBlock({ channelId, name }: { channelId: string; name: string })
       ? "참여 가능"
       : s.forever
         ? "차단 중 — 기간 없이 계속"
-        : `차단 중 — ${new Date(s.until!).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}까지`;
+        : `차단 중 — ${new Date(s.until!).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })}까지`;
   return (
     <div className={styles.detailRow}>
       <div>

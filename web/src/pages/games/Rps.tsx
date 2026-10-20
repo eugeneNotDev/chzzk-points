@@ -54,14 +54,19 @@ export default function Rps() {
     const started = Date.now();
     try {
       const d = await apiFetch<{ cpuHand: Hand; result: Res; payout: number; net: number; balance: number }>(API.rps, { body: { bet, hand } });
+      // 도중에 다른 화면으로 떠났어도 포인트·기록 캐시는 반영(상단 잔액이 옛 값으로 남지 않게) — 연출만 건너뜀
+      const apply = () => game.applyResult(d.balance, { bet, playerHand: hand, cpuHand: d.cpuHand, result: d.result, payout: d.payout, createdAt: new Date().toISOString() });
       const remain = SHAKE_MIN_MS - (Date.now() - started);
       if (remain > 0) await sleep(remain);
-      if (!game.alive.current) return;
+      if (!game.alive.current) {
+        clearInterval(cycler.current!);
+        return apply();
+      }
       clearInterval(cycler.current!);
       setShaking(false);
       setCpu(d.cpuHand);
       setOutcome(d.result);
-      game.applyResult(d.balance, { bet, playerHand: hand, cpuHand: d.cpuHand, result: d.result, payout: d.payout, createdAt: new Date().toISOString() });
+      apply();
       setResult({
         tone: netTone(d.net),
         color: RESULT_COLOR[d.result],
@@ -97,7 +102,7 @@ export default function Rps() {
   return (
     <div className="page">
       <PageHead title="가위바위보" desc={`손을 고르면 바로 한 판. 이기면 ${mult}배 · 비기면 그대로 · 지면 0`} />
-      <GameLock state={game.state} />
+      <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>
           <div className={styles.rpsStage}>

@@ -1,12 +1,13 @@
 import { LoadError } from "../components/LoadError";
 import { useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, CircleCheck, Gift, Image as ImageIcon, Play, Store, Ticket, type LucideIcon } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
 import { RankingList } from "../components/RankingList";
-import { useAuth } from "../lib/auth";
-import { BRAND_MARK_URL, CHZZK_CHANNEL_URL } from "../lib/config";
-import { fmt, relTime, shortDate, WEEK_KO } from "../lib/format";
+import { apiFetch, useAuth } from "../lib/auth";
+import { API, BRAND_MARK_URL, CHZZK_CHANNEL_URL } from "../lib/config";
+import { fmt, kstToday, relTime, shortDate, WEEK_KO } from "../lib/format";
 import { useFreeBox } from "../lib/freeBox";
 import { isBoardPostNew, useBoardPreview, useNoticePreview, useRanking, useUpcomingSchedule } from "../lib/homeData";
 import { isNoticeNew, useNoticeReadVersion } from "../lib/notices";
@@ -131,13 +132,23 @@ function QuickTile({ to, icon: Icon, tone, title, desc }: { to: string; icon: Lu
   );
 }
 
+// 출석 1회 포인트 — 출석체크 화면이 받아둔 이번 달 응답(서버가 금액을 내려줌)이 캐시에 있으면 그 값, 없으면 기본 100P.
+// 홈에서 출석 정보를 따로 부르진 않음(enabled: false — 캐시만 읽음).
+function useAttendancePoints() {
+  const { channelId } = useAuth();
+  const [y, m] = kstToday().split("-").map(Number);
+  const q = useQuery<{ pointsPerCheck?: number }>({ queryKey: ["attendance", channelId, y, m], enabled: false, queryFn: () => apiFetch(`${API.attendance}?year=${y}&month=${m}`) });
+  return q.data?.pointsPerCheck ?? 100;
+}
+
 function QuickTiles() {
   const { isLoggedIn } = useAuth();
   const box = useFreeBox();
+  const perCheck = useAttendancePoints();
   const boxDesc = !isLoggedIn ? "하루 한 번 공짜 상자" : box.data?.openedToday ? `오늘 +${fmt(box.data.todayPoints ?? 0)}P 받았어요` : "오늘 상자가 도착했어요";
   return (
     <section aria-label="바로가기" className={styles.tiles}>
-      <QuickTile to="/attendance.html" icon={CircleCheck} tone="green" title="출석체크" desc={<>방송 중에 출석하고 <b className={styles.plus}>+100P</b></>} />
+      <QuickTile to="/attendance.html" icon={CircleCheck} tone="green" title="출석체크" desc={<>방송 중에 출석하고 <b className={styles.plus}>+{fmt(perCheck)}P</b></>} />
       <QuickTile to="/freebox.html" icon={Gift} tone="pink" title="무료 뽑기" desc={boxDesc} />
       <QuickTile to="/attendance.html" icon={Ticket} tone="blue" title="방송 코드" desc="방송 화면 코드 입력하기" />
       <QuickTile to="/shop.html" icon={Store} tone="gold" title="포인트 상점" desc="칭호랑 상품 둘러보기" />
@@ -150,6 +161,7 @@ function NoticePreview() {
   const bloomN = useBloom(q.isLoading);
   useNoticeReadVersion();
   useTableRefetch("notices", [["notices"]]);
+  useTableRefetch("notice_attachments", [["notices"]]); // 첨부는 글보다 늦게 저장됨(사진 표시 갱신)
   return (
     <Card title="공지사항" moreTo="/notice.html" flush className={styles.notices}>
       {q.isLoading && <SkeletonList rows={5} variant="row" />}

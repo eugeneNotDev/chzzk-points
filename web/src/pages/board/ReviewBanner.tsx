@@ -5,9 +5,9 @@ import { boardCall } from "../../lib/board";
 import styles from "./Board.module.css";
 
 export function ReviewBanner() {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   const q = useQuery({
-    queryKey: ["board", "review-status", token],
+    queryKey: ["board", "review-status", channelId],
     staleTime: 60_000,
     queryFn: () => boardCall<{ isLive: boolean; eligible: boolean; alreadyRewarded: boolean; reward: number }>({ action: "review-status" }),
   });

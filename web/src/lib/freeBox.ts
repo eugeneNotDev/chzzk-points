@@ -14,9 +14,9 @@ export type FreeBoxState = {
 export type FreeBoxOpenResult = { points: number; jackpot: boolean; balance: number; nextResetAt: string; serverNow: string };
 
 export function useFreeBox() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   return useQuery({
-    queryKey: ["free-box", token],
+    queryKey: ["free-box", channelId],
     enabled: isLoggedIn,
     staleTime: 30_000,
     queryFn: () => apiFetch<FreeBoxState>(API.freeBox),

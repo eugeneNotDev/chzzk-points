@@ -31,10 +31,10 @@ import { SkeletonPost } from "../../components/Skeleton";
 type Img = { key: number; path?: string; url: string; file?: File };
 
 export function PostEditor({ board, editId }: { board: BoardKind; editId?: number }) {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const cfg = BOARD_CFG[board];
   const q = useQuery({
-    queryKey: ["board", "post", editId, token],
+    queryKey: ["board", "post", editId, channelId],
     enabled: !!editId && isLoggedIn,
     queryFn: () => boardCall<FullPost>({ action: "get", id: editId }),
     retry: false,
@@ -275,6 +275,7 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
       if (existing) {
         await boardCall({ action: "update", id: existing.post.id, title: t, body: text, images: paths });
         await qc.invalidateQueries({ queryKey: ["board", "post", existing.post.id] });
+        qc.invalidateQueries({ queryKey: ["board", "preview"] }); // 홈 미리보기의 제목도 새로
         nav(`${cfg.path}?post=${existing.post.id}`, { replace: true, state: { fromList: true } });
       } else {
         const r = await boardCall<{ id: number; rewarded?: number; activity?: ActivityGrant }>({ action: "create", board, title: t, body: text, images: paths });
@@ -284,6 +285,9 @@ function EditorForm({ board, existing, head }: { board: BoardKind; existing?: Fu
         }
         afterActivity(qc, r.activity, "글");
         qc.invalidateQueries({ queryKey: ["board", "review-status"] });
+        // 목록·홈 미리보기에 새 글이 바로 보이게(위의 목록 갱신은 저장 전이라 새 글이 빠질 수 있음)
+        qc.invalidateQueries({ queryKey: ["board", "list", board] });
+        qc.invalidateQueries({ queryKey: ["board", "preview"] });
         nav(`${cfg.path}?post=${r.id}`, { replace: true, state: { fromList: true } });
       }
     } catch (e) {

@@ -84,10 +84,10 @@ function ArmedButton({ className, label, armedLabel, onConfirm, children, ...res
 }
 
 export default function Songs() {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const qc = useQueryClient();
   const q = useQuery({
-    queryKey: ["songs", token],
+    queryKey: ["songs", channelId],
     queryFn: () => call<SongList>({ action: "list" }),
     // 다른 시청자 신청이 들어오면 보이도록 30초마다(탭이 보일 때만) 새로고침
     refetchInterval: 30_000,

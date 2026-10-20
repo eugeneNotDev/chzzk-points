@@ -29,7 +29,7 @@ const BASE = 138;
 type Layer = { el: SVGPathElement; w: number; h: number; ph: number; sw: number };
 
 export function StreakFlame({ today, lastAttended }: { today: string; lastAttended?: string[] }) {
-  const { token } = useAuth();
+  const { channelId } = useAuth();
   const [ty, tm] = today.split("-").map(Number);
   // 최근 석 달 출석 기록(이번 달은 출석 화면과 같은 키라 같이 씀)
   const months = [0, 1, 2].map((k) => {
@@ -38,7 +38,7 @@ export function StreakFlame({ today, lastAttended }: { today: string; lastAttend
   });
   const att = useQueries({
     queries: months.map(({ y, m }) => ({
-      queryKey: ["attendance", token, y, m],
+      queryKey: ["attendance", channelId, y, m],
       queryFn: () => apiFetch<{ attendedDates: string[] }>(`${API.attendance}?year=${y}&month=${m}`),
       staleTime: 60_000,
     })),

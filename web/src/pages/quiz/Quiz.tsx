@@ -10,11 +10,12 @@ import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { PillTabs } from "../../components/PillTabs";
 import { Pagination } from "../../components/Pagination";
+import { LoadError } from "../../components/LoadError";
 import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt, shortDate } from "../../lib/format";
-import { ADMIN_QUIZ_ERRORS, useQuiz, useQuizById, type QuizHistoryItem, type QuizView } from "../../lib/quiz";
+import { ADMIN_QUIZ_ERRORS, useQuiz, useQuizById, useQuizHistory, type QuizHistoryItem, type QuizView } from "../../lib/quiz";
 import { ExamPanel } from "./Exam";
 import { OxPanel } from "./Ox";
 import styles from "./Quiz.module.css";
@@ -44,6 +45,7 @@ function QuizTags({ quiz }: { quiz: QuizView }) {
 export default function Quiz() {
   const { isLoggedIn, isAdmin } = useAuth();
   const q = useQuiz();
+  const hist = useQuizHistory();
   // 탭·지난 기록 상세는 주소(?tab=, ?past=)에 담아서 브라우저 뒤로가기로 한 단계씩 돌아오게 함
   const [params, setParams] = useSearchParams();
   const tp = params.get("tab");
@@ -90,7 +92,7 @@ export default function Quiz() {
   // 지금 회차엔 진행 중(제출 받는 중·채점 중·OX 진행 중)인 것만. 끝난 회차 결과는 지난 기록에서 봄.
   const live = (q.data?.quizzes ?? []).filter((x) => x.status !== "revealed");
   // 처음 들어왔을 때 진행 중인 회차가 없으면 지난 기록부터 보여줌
-  const tab: Tab = tabPick ?? (q.data && live.length === 0 && (q.data.history ?? []).length > 0 ? "history" : "now");
+  const tab: Tab = tabPick ?? (q.data && live.length === 0 && (hist.data?.history ?? []).length > 0 ? "history" : "now");
   const quiz = live.find((x) => x.kind === pickKind) ?? live[0] ?? null;
   const tabs = [
     { value: "now" as Tab, label: "지금 회차" },
@@ -132,7 +134,14 @@ export default function Quiz() {
         </>
       )}
 
-      {tab === "history" && (q.isLoading ? <span className="skeleton" style={{ height: 320 }} /> : <History items={q.data?.history ?? []} />)}
+      {tab === "history" &&
+        (hist.isLoading ? (
+          <span className="skeleton" style={{ height: 320 }} />
+        ) : hist.isError && !hist.data ? (
+          <LoadError what="지난 기록" onRetry={() => hist.refetch()} />
+        ) : (
+          <History items={hist.data?.history ?? []} />
+        ))}
 
       {tab === "admin" && isAdmin && (
         <Suspense fallback={<span className="skeleton" style={{ height: 320 }} />}>
@@ -213,7 +222,7 @@ function History({ items }: { items: QuizHistoryItem[] }) {
       toast(ADMIN_QUIZ_ERRORS[code] || "삭제하지 못했어요.", "error");
     } finally {
       setBusy(null);
-      ["quiz", "quiz-peek", "quiz-by-id", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      ["quiz", "quiz-history", "quiz-peek", "quiz-by-id", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     }
   }
 

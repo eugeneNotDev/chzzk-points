@@ -27,8 +27,8 @@
 //     "다른 사람이 동시에 써서 꼬이는" 문제는 애초에 없음.
 //   - 같은 유저가 아주 짧은 간격으로 연타해도 잔액 이상은 절대 못 씀 — 잔액 확인과 차감을
 //     DB 함수 debit_points()가 유저 행을 잠근 채 한 번에 처리함(0032_users_balance.sql). 쿨타임
-//     체크 자체는 여전히 조회 후 기록이라 아주 짧은 연타에 쿨타임이 한 번 뚫릴 여지는 있지만,
-//     그래도 잔액 범위 안에서만 가능함.
+//     쿨타임과 한정 수량은 DB 함수 shop_purchase_claim()이 같은 사람·같은 상품을 잠그고 자리를 먼저 잡아서
+//     연타해도 한 번만 통과함(0075_security_hardening.sql).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
@@ -165,12 +165,34 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "sold_out" }, 400);
     }
 
+    // 쿨타임·한정 수량 자리를 DB에서 잠그고 먼저 잡음(0075_security_hardening.sql) — 위의 확인은 빠른 안내용이고,
+    // 동시에 여러 번 눌러도 여기서 한 번만 통과함. 결제가 실패하면 아래에서 자리를 되돌림.
+    const { data: claim, error: claimError } = await admin.rpc("shop_purchase_claim", {
+      p_channel: session.channelId,
+      p_item: item.id,
+      p_cooldown_sec: item.cooldown_seconds ?? 0,
+    });
+    if (claimError) throw new Error(`shop_purchase_claim 실패: ${claimError.message}`);
+    if (claim?.error === "cooldown") return jsonResponse({ error: "cooldown", retryAfterSeconds: claim.retryAfterSeconds }, 400);
+    if (claim?.error === "sold_out") return jsonResponse({ error: "sold_out" }, 400);
+    const claimId = claim?.claimId as number;
+    const release = () => admin.rpc("shop_purchase_release", { p_claim: claimId });
+
     // reason은 관리자 포인트 로그/마이페이지 로그에 그대로 노출되니 상품 코드가 아니라
     // 사람이 읽을 문구로 남김 (예전엔 "spend:water"처럼 코드로 남겨서 뭘 산건지 알아보기
     // 힘들었음 — 0015_backfill_spend_reason_names.sql 참고). 차감이 제일 먼저라, 잔액이
     // 모자라서 거절되면 아래 칭호 지급/재고/오버레이 기록은 아무것도 안 일어남.
-    const newBalance = await debitPoints(admin, session.channelId, item.cost, `포인트 상점 사용: ${item.name}`);
-    if (newBalance === null) return jsonResponse({ error: "insufficient_balance" }, 400);
+    let newBalance: number | null;
+    try {
+      newBalance = await debitPoints(admin, session.channelId, item.cost, `포인트 상점 사용: ${item.name}`);
+    } catch (e) {
+      await release();
+      throw e;
+    }
+    if (newBalance === null) {
+      await release();
+      return jsonResponse({ error: "insufficient_balance" }, 400);
+    }
 
     // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. source="purchase"는 상점에서 산 칭호라는
     // 표시(관리자가 준 칭호는 "admin") — 기록용일 뿐 재고와는 상관없음(0036 참고).
@@ -186,17 +208,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 한정 수량 상품이면 판매 개수를 1 늘림. 읽고-다시-쓰는 방식이라 아주 짧은 간격의
-    // 동시 요청에는 이론적 레이스가 남아있지만(파일 상단 "동시성 참고"와 같은 이유로 지금
-    // 규모에선 감수), 위에서 재고 체크를 이미 통과한 뒤라 최악의 경우도 한두 개 초과 판매
-    // 정도라 실사용에 문제 없음.
-    if (item.stock_limit != null) {
-      const { error: stockUpdateError } = await admin
-        .from("shop_items")
-        .update({ sold_count: item.sold_count + 1 })
-        .eq("id", item.id);
-      if (stockUpdateError) throw new Error(`sold_count 갱신 실패: ${stockUpdateError.message}`);
-    }
+    // 한정 수량 판매 개수는 위의 shop_purchase_claim에서 이미 1 늘림(동시 구매로 초과 판매 안 되게)
 
     // 오버레이 표시용 이름 스냅샷 — 유저 이름은 세션 토큰의 channelName, 아이템 이름은 위에서
     // 이미 조회해둔 item.name을 그대로 씀(둘 다 추가 조회 불필요). 아이템 이름도 스냅샷으로

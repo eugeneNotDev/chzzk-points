@@ -39,7 +39,7 @@ function previewOf(n: NoticeT, max = 140) {
 }
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default function Notice() {
   const { isAdmin } = useAuth();
@@ -47,6 +47,8 @@ export default function Notice() {
   const qc = useQueryClient();
   useNoticeReadVersion();
   useTableRefetch("notices", [["notices"]], { minIntervalMs: 500 });
+  // 첨부(사진·파일)는 공지 글보다 늦게 따로 저장돼서 — 새 공지의 사진이 새로고침 없이 뜨게 첨부 테이블도 구독
+  useTableRefetch("notice_attachments", [["notices"]], { minIntervalMs: 500 });
 
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();

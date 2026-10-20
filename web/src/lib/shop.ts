@@ -23,9 +23,9 @@ export type ShopItem = {
 
 // 관리자는 판매 중지 상품까지(shop-items 함수), 일반 유저는 판매 중인 상품만(anon, RLS가 걸러줌).
 export function useShopItems() {
-  const { isAdmin, token } = useAuth();
+  const { isAdmin, channelId } = useAuth();
   return useQuery({
-    queryKey: ["shop-items", isAdmin ? token : "public"],
+    queryKey: ["shop-items", isAdmin ? channelId : "public"],
     staleTime: 30_000,
     queryFn: async () => {
       if (isAdmin) {

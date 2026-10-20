@@ -40,10 +40,10 @@ const PAGE_SIZE = 10;
 
 export function BoardList({ board, page, q: search, field }: { board: BoardKind; page: number; q: string; field: Field }) {
   const cfg = BOARD_CFG[board];
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   const nav = useNavigate();
   const q = useQuery({
-    queryKey: ["board", "list", board, page, search, field, token],
+    queryKey: ["board", "list", board, page, search, field, channelId],
     placeholderData: (p) => p,
     queryFn: async () => ({ ...(await fetchBoardPage(board, page, search, field)), pageSize: PAGE_SIZE }),
   });

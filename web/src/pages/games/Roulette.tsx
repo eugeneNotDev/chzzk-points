@@ -57,6 +57,8 @@ export default function Roulette() {
     setHit(null);
     try {
       const d = await apiFetch<{ multiplier: number; payout: number; net: number; balance: number }>(API.roulette, { body: { bet } });
+      // 도중에 다른 화면으로 떠났어도 포인트·기록 캐시는 반영(상단 잔액이 옛 값으로 남지 않게) — 연출만 건너뜀
+      const apply = () => game.applyResult(d.balance, { bet, multiplier: d.multiplier, payout: d.payout, createdAt: new Date().toISOString() });
       // 지금 보이는 카드 몇 장은 그대로 두고 뒤에 새 카드를 이어 붙인 뒤, 결과 카드까지 굴림
       const keepFrom = Math.max(0, center.idx - 5);
       const kept = tiles.slice(keepFrom, center.idx + 6);
@@ -71,9 +73,9 @@ export default function Roulette() {
       const jitter = Math.round((Math.random() - 0.5) * (TILE_W - 20));
       setCenter({ idx: target, jitter, animate: true });
       await new Promise((r) => setTimeout(r, SPIN_MS + 80));
-      if (!game.alive.current) return;
+      if (!game.alive.current) return apply();
       setHit(target);
-      game.applyResult(d.balance, { bet, multiplier: d.multiplier, payout: d.payout, createdAt: new Date().toISOString() });
+      apply();
       setResult({
         tone: netTone(d.net),
         color: colorOf(d.multiplier),
@@ -108,7 +110,7 @@ export default function Roulette() {
   return (
     <div className="page">
       <PageHead title="룰렛" desc="배율 카드가 굴러가다 멈춘 곳의 배율만큼 받아요. 브론즈 등급부터, 최소 100P." />
-      <GameLock state={game.state} />
+      <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>
           <div className={styles.reelView} ref={viewRef}>

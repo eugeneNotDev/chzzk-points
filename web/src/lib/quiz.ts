@@ -1,5 +1,6 @@
 // 유진고사(모의고사·OX 퀴즈) — 서버 응답 타입과 조회 훅. 서버는 quiz(시청자) / admin-quiz(관리자) 함수.
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { supabase } from "./supabase";
@@ -113,26 +114,56 @@ export function useQuizPeek() {
   });
 }
 
-// 지금 회차 + 내 지난 기록. OX가 진행 중이면 1.5초마다, 모의고사는 며칠씩 열려 있으니 30초마다 새로 받음.
+// 지금 회차(지난 기록은 빼고 — ?nohist=1). 지난 기록은 계산이 무거워서 useQuizHistory로 따로, 가끔만 받음.
+// 새로 받는 간격: OX 문제가 답을 받는 중이면 1.5초, OX 회차는 열렸지만 문제 사이(다음 문제 대기·정답 공개 후)면 3초,
+// 모의고사만 열려 있거나(며칠씩 열려 있음) 진행 중인 게 없으면 30초.
+// 회차 상태가 바뀌면(발표 등) 지난 기록을, 내 보상이 생기거나 바뀌면 보유 포인트(me)를 다시 불러옴.
 export function useQuiz() {
-  const { isLoggedIn, token } = useAuth();
-  return useQuery({
-    queryKey: ["quiz", token],
+  const { isLoggedIn, channelId } = useAuth();
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["quiz", channelId],
     enabled: isLoggedIn && QUIZ_ENABLED,
     refetchInterval: (q) => {
       const vs = q.state.data?.quizzes ?? [];
-      if (vs.some((v) => v.kind === "ox" && v.status === "open")) return 1500;
-      return vs.length ? 30_000 : 15_000;
+      const oxOpen = vs.filter((v): v is OxView => v.kind === "ox" && v.status === "open");
+      if (oxOpen.some((v) => v.current && !v.current.closed && !v.current.revealed)) return 1500;
+      if (oxOpen.length) return 3000;
+      return 30_000;
     },
-    queryFn: () => apiFetch<{ quizzes: QuizView[]; history: QuizHistoryItem[] }>(API.quiz),
+    queryFn: () => apiFetch<{ quizzes: QuizView[]; history: QuizHistoryItem[] }>(`${API.quiz}?nohist=1`),
+  });
+
+  const vs = q.data?.quizzes;
+  const statusSig = vs ? vs.map((v) => `${v.id}:${v.status}`).join(",") : null;
+  const rewardSig = vs ? vs.map((v) => (v.myReward ? `${v.id}:${v.myReward.amount}` : "")).join(",") : null;
+  const prev = useRef<{ status: string | null; reward: string | null }>({ status: null, reward: null });
+  useEffect(() => {
+    const p = prev.current;
+    prev.current = { status: statusSig, reward: rewardSig };
+    if (p.status !== null && statusSig !== null && p.status !== statusSig) qc.invalidateQueries({ queryKey: ["quiz-history"] });
+    if (p.reward !== null && rewardSig !== null && p.reward !== rewardSig) qc.invalidateQueries({ queryKey: ["me"] });
+  }, [statusSig, rewardSig, qc]);
+
+  return q;
+}
+
+// 내 지난 기록(?histOnly=1) — 자주 안 바뀌니 1분 캐시, 따로 폴링 안 함(회차 상태가 바뀌면 useQuiz가 다시 불러오게 함)
+export function useQuizHistory() {
+  const { isLoggedIn, channelId } = useAuth();
+  return useQuery({
+    queryKey: ["quiz-history", channelId],
+    enabled: isLoggedIn && QUIZ_ENABLED,
+    staleTime: 60_000,
+    queryFn: () => apiFetch<{ quizzes: QuizView[]; history: QuizHistoryItem[] }>(`${API.quiz}?histOnly=1`),
   });
 }
 
 // 지난 회차 다시 보기
 export function useQuizById(id: number | null) {
-  const { isLoggedIn, token } = useAuth();
+  const { isLoggedIn, channelId } = useAuth();
   return useQuery({
-    queryKey: ["quiz-by-id", id, token],
+    queryKey: ["quiz-by-id", id, channelId],
     enabled: isLoggedIn && id != null,
     queryFn: () => apiFetch<{ quiz: QuizView | null }>(`${API.quiz}?quizId=${id}`),
   });

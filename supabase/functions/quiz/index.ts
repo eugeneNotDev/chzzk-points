@@ -15,6 +15,7 @@ import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import {
   canAnswerOx,
+  fetchAll,
   findActiveQuizzes,
   getAdminClient,
   loadNames,
@@ -65,9 +66,7 @@ function baseView(quiz: QuizRow, channelId: string) {
 
 async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
   const questions = await loadQuestions(admin, quiz.id);
-  const { data: subsData, error } = await admin.from("quiz_exam_submissions").select(SUBMISSION_COLS).eq("quiz_id", quiz.id);
-  if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
-  const subs = (subsData ?? []) as SubmissionRow[];
+  const subs = await fetchAll<SubmissionRow>((a, b) => admin.from("quiz_exam_submissions").select(SUBMISSION_COLS).eq("quiz_id", quiz.id).order("id").range(a, b), "quiz_exam_submissions");
   const mine = subs.find((s) => s.channel_id === channelId) ?? null;
   const revealed = quiz.status === "revealed";
 
@@ -103,9 +102,7 @@ async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
 
 async function oxView(admin: Admin, quiz: QuizRow, channelId: string) {
   const questions = await loadQuestions(admin, quiz.id);
-  const { data: ansData, error } = await admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quiz.id);
-  if (error) throw new Error(`quiz_ox_answers 조회 실패: ${error.message}`);
-  const answers = (ansData ?? []) as OxAnswerRow[];
+  const answers = await fetchAll<OxAnswerRow>((a, b) => admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quiz.id).order("id").range(a, b), "quiz_ox_answers");
   const standings = oxStandings(questions, answers, quiz.ox_mode);
   const asked = questions.filter((q) => q.asked_at).sort((a, b) => a.asked_at!.localeCompare(b.asked_at!));
   const now = Date.now();
@@ -223,8 +220,11 @@ Deno.serve(async (req: Request) => {
         if (error) throw new Error(`quizzes 조회 실패: ${error.message}`);
         return json({ quiz: data ? await buildView(admin, data as QuizRow, session.channelId) : null }, 200);
       }
+      // ?nohist=1: 진행 중 화면을 자주 새로 받을 때(지난 기록 계산은 빼서 가볍게) / ?histOnly=1: 지난 기록만
+      if (url.searchParams.get("histOnly") === "1") return json({ quizzes: [], history: await history(admin, session.channelId) }, 200);
       const active = await findActiveQuizzes(admin);
-      const [views, hist] = await Promise.all([Promise.all(active.map((q) => buildView(admin, q, session.channelId))), history(admin, session.channelId)]);
+      const noHist = url.searchParams.get("nohist") === "1";
+      const [views, hist] = await Promise.all([Promise.all(active.map((q) => buildView(admin, q, session.channelId))), noHist ? Promise.resolve([]) : history(admin, session.channelId)]);
       return json({ quizzes: views, history: hist }, 200);
     }
 
@@ -275,9 +275,8 @@ Deno.serve(async (req: Request) => {
 
       if ((quiz as QuizRow).ox_mode === "deathmatch") {
         const questions = await loadQuestions(admin, question.quiz_id);
-        const { data: ans, error: ae } = await admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", question.quiz_id);
-        if (ae) throw new Error(`quiz_ox_answers 조회 실패: ${ae.message}`);
-        const st = oxStandings(questions, (ans ?? []) as OxAnswerRow[], "deathmatch");
+        const ans = await fetchAll<OxAnswerRow>((a, b) => admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", question.quiz_id).order("id").range(a, b), "quiz_ox_answers");
+        const st = oxStandings(questions, ans, "deathmatch");
         if (!canAnswerOx("deathmatch", st, session.channelId)) return json({ error: "eliminated" }, 400);
       }
 

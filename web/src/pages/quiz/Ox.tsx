@@ -1,5 +1,5 @@
 // 유진고사 — OX 퀴즈(시청자). 문제가 뜨면 시간 안에 O/X. 데스매치면 틀리는 순간 탈락.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -38,16 +38,33 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
   const myChoice = local && local.id === cur?.id ? local.choice : cur?.myChoice ?? null;
   const deathmatch = quiz.oxMode === "deathmatch";
 
+  // 답 보내기는 한 번에 하나씩 차례로 — O→X를 빠르게 누르면 요청이 엇갈려 서버엔 앞의 답이 남을 수 있어서.
+  // 보내는 중에 또 누르면 마지막으로 누른 것만 기억했다가, 앞 요청이 끝나면 그걸 보냄(서버 최종 답 = 마지막 선택).
+  // 화면(내 선택 표시)은 누르는 즉시 바뀜.
+  const inFlight = useRef(false);
+  const pending = useRef<{ questionId: number; choice: "O" | "X" } | null>(null);
+
   async function answer(choice: "O" | "X") {
     if (!cur || !open || !quiz.me.canAnswer) return;
     setLocal({ id: cur.id, choice });
+    pending.current = { questionId: cur.id, choice };
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
-      await apiFetch(API.quiz, { body: { action: "ox-answer", questionId: cur.id, choice } });
-    } catch (e) {
-      setLocal(null);
-      const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
-      toast(QUIZ_ERRORS[code] || "응답을 못 보냈어요. 다시 눌러주세요.", "error");
+      while (pending.current) {
+        const next = pending.current;
+        pending.current = null;
+        try {
+          await apiFetch(API.quiz, { body: { action: "ox-answer", questionId: next.questionId, choice: next.choice } });
+        } catch (e) {
+          if (pending.current) continue; // 그 사이 다시 골랐으면 그걸로 다시 보냄
+          setLocal(null);
+          const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
+          toast(QUIZ_ERRORS[code] || "응답을 못 보냈어요. 다시 눌러주세요.", "error");
+        }
+      }
     } finally {
+      inFlight.current = false;
       qc.invalidateQueries({ queryKey: ["quiz"] });
     }
   }

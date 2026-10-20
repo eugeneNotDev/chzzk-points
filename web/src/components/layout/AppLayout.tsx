@@ -1,6 +1,6 @@
 import { SkelInline } from "../Skeleton";
-import { useEffect, useLayoutEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
 import { isReady, preloadPages } from "../../routes";
@@ -16,7 +16,11 @@ import { Avatar } from "../Avatar";
 import { NotificationBell } from "./NotificationBell";
 import { useScrollHeader } from "./useScrollHeader";
 import { ScrollTopButton } from "./ScrollTopButton";
+import { ErrorBoundary } from "../ErrorBoundary";
 import styles from "./AppLayout.module.css";
+
+// 화면(기록 항목)별 마지막 스크롤 위치 — 뒤로/앞으로 가기 때 그 자리로 돌려놓으려고 저장.
+const scrollPositions = new Map<string, number>();
 
 function currentItem(pathname: string): NavItem | undefined {
   const file = pathname.replace(/^\//, "");
@@ -181,12 +185,52 @@ export function AppLayout() {
   const item = currentItem(location.pathname);
   const headerRef = useScrollHeader();
 
+  const navType = useNavigationType();
+
   useEffect(() => preloadPages(), []);
+  // 스크롤 위치는 브라우저 자동 복원 대신 직접 관리(아래) — 둘이 겹치면 엉뚱한 곳으로 튐
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  }, []);
+  // 지금 화면의 스크롤 위치를 계속 기억해둠(떠나기 직전 값이 남게).
+  // 키는 ref로 — 화면이 바뀌며 생기는 스크롤 이벤트(맨 위로 올림·내용이 짧아져 잘림)가 이전 화면 값을 덮어쓰지 않게,
+  // 아래 화면 전환 처리(useLayoutEffect)에서 스크롤을 옮기기 전에 새 키로 바꿔둠.
+  const scrollKey = useRef(location.key);
+  useEffect(() => {
+    const save = () => scrollPositions.set(scrollKey.current, window.scrollY);
+    window.addEventListener("scroll", save, { passive: true });
+    return () => window.removeEventListener("scroll", save);
+  }, []);
   // 화면이 바뀌면 맨 위로(그려지기 전에 올려서 깜빡임 없게).
   // 게시판 글 열기·페이지 넘기기처럼 주소의 ?뒤만 바뀌는 것도 포함. 더보기 창은 닫음.
+  // 뒤로/앞으로 가기(POP)면 그 화면에서 보던 위치로 돌려놓음 — 내용이 늦게 그려져 아직 짧으면
+  // 길어질 때까지 잠깐(최대 1초) 다시 시도하고, 그 사이 직접 스크롤하면 그만둠.
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0 });
+    scrollKey.current = location.key;
     setSheetOpen(false);
+    const target = navType === "POP" ? (scrollPositions.get(location.key) ?? 0) : 0;
+    window.scrollTo({ top: target });
+    if (target <= 0 || Math.abs(window.scrollY - target) < 2) return;
+    let raf = 0;
+    const until = performance.now() + 1000;
+    const stop = () => cancelAnimationFrame(raf);
+    const tick = () => {
+      window.scrollTo({ top: target });
+      if (Math.abs(window.scrollY - target) < 2 || performance.now() > until) return cleanup();
+      raf = requestAnimationFrame(tick);
+    };
+    const cleanup = () => {
+      stop();
+      window.removeEventListener("wheel", cleanup);
+      window.removeEventListener("touchstart", cleanup);
+      window.removeEventListener("keydown", cleanup);
+    };
+    window.addEventListener("wheel", cleanup, { passive: true });
+    window.addEventListener("touchstart", cleanup, { passive: true });
+    window.addEventListener("keydown", cleanup);
+    raf = requestAnimationFrame(tick);
+    return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search]);
   useEffect(() => {
     document.title = item && item.path !== "" ? `${item.label} · 유진 팬보드` : "유진 팬보드";
@@ -255,7 +299,9 @@ export function AppLayout() {
           <span className={styles.topProgress} data-progress aria-hidden="true" />
         </header>
         <main className={styles.content}>
-          <Outlet />
+          <ErrorBoundary resetKey={location.pathname + location.search}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

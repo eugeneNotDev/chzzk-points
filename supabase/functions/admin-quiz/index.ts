@@ -32,6 +32,7 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import {
   autoMark,
   buildPayouts,
+  fetchAll,
   getAdminClient,
   loadNames,
   OX_DELAY_GRACE_SEC,
@@ -84,14 +85,10 @@ async function loadQuestions(admin: Admin, quizId: number) {
   return (data ?? []) as QuestionRow[];
 }
 async function loadSubs(admin: Admin, quizId: number) {
-  const { data, error } = await admin.from("quiz_exam_submissions").select(`${SUBMISSION_COLS}, picks`).eq("quiz_id", quizId).order("submitted_at", { ascending: true });
-  if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
-  return (data ?? []) as Sub[];
+  return await fetchAll<Sub>((a, b) => admin.from("quiz_exam_submissions").select(`${SUBMISSION_COLS}, picks`).eq("quiz_id", quizId).order("submitted_at", { ascending: true }).order("id").range(a, b), "quiz_exam_submissions");
 }
 async function loadOxAnswers(admin: Admin, quizId: number) {
-  const { data, error } = await admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quizId);
-  if (error) throw new Error(`quiz_ox_answers 조회 실패: ${error.message}`);
-  return (data ?? []) as OxAnswerRow[];
+  return await fetchAll<OxAnswerRow>((a, b) => admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quizId).order("id").range(a, b), "quiz_ox_answers");
 }
 
 async function upd(admin: Admin, table: string, id: number, patch: Record<string, unknown>) {

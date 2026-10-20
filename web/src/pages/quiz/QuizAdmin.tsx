@@ -86,7 +86,7 @@ function useAct() {
       return null;
     } finally {
       setBusy(false);
-      ["quiz-admin", "quiz-admin-list", "quiz", "quiz-peek"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      ["quiz-admin", "quiz-admin-list", "quiz", "quiz-history", "quiz-peek"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     }
   }
   return { act, busy };
@@ -1269,9 +1269,6 @@ export function OxStream({ quizId }: { quizId: number }) {
   const urgent = ph?.phase === "counting" && ph.left < 3000;
   const frac = ph ? Math.max(0, Math.min(1, ph.left / ph.total)) : 0;
 
-  // 아래 띠 — 데스매치는 생존자, 점수전은 상위 5명
-  const strip = deathmatch && ox?.started ? alive : [...players].sort((a, b) => b.correct - a.correct).slice(0, 5);
-  const STRIP_MAX = 24;
 
   if (!d) {
     return (
@@ -1365,20 +1362,6 @@ export function OxStream({ quizId }: { quizId: number }) {
         </div>
       )}
 
-      {!ended && strip.length > 0 && (
-        <div className={styles.streamStrip}>
-          <span className={styles.streamStripLabel}>{deathmatch && ox?.started ? "생존자" : "상위권"}</span>
-          <div className={styles.streamStripNames}>
-            {strip.slice(0, STRIP_MAX).map((p, i) => (
-              <span key={i} className={styles.streamName}>
-                {p.name}
-                {!(deathmatch && ox?.started) && <small className="num">{p.correct}</small>}
-              </span>
-            ))}
-            {strip.length > STRIP_MAX && <span className={`${styles.streamName} ${styles.streamNameMore}`}>+{strip.length - STRIP_MAX}</span>}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

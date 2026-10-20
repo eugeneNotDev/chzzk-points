@@ -6,12 +6,13 @@ import { useReducedMotion } from "motion/react";
 import { Gift, LogIn } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, EmptyState } from "../components/Card";
-import { ApiError, getToken, startLogin, useAuth } from "../lib/auth";
+import { ApiError, getChannelId, startLogin, useAuth } from "../lib/auth";
 import { fmt, formatLeft, kstToday } from "../lib/format";
 import { openFreeBox, useFreeBox, type FreeBoxState } from "../lib/freeBox";
 import { fireConfetti } from "../lib/confetti";
 import styles from "./Freebox.module.css";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { LoadError } from "../components/LoadError";
 
 type Phase = "ready" | "opening" | "opened" | "done";
 
@@ -119,16 +120,28 @@ export default function Freebox() {
   const [error, setError] = useState<string | null>(null);
   const left = useCountdown(q.data);
 
-  // 서버 상태가 오면 화면 단계 맞추기(이미 열었으면 done)
+  // 서버 상태가 오면 화면 단계 맞추기(이미 열었으면 done).
+  // 방금 연 연출(opened)은 그대로 두되, 자정이 지나 새 상자(openedToday:false)가 오면 opened/done 모두 ready로.
   useEffect(() => {
-    if (!q.data || phase === "opening" || phase === "opened") return;
-    setPhase(q.data.openedToday ? "done" : "ready");
+    if (!q.data || phase === "opening") return;
+    if (!q.data.openedToday) {
+      if (phase !== "ready") {
+        setPhase("ready");
+        setResult(null);
+      }
+      return;
+    }
+    if (phase !== "opened") setPhase("done");
   }, [q.data, phase]);
 
-  // 자정이 지나면 새 상자 다시 불러오기
+  // 자정이 지나면 새 상자 다시 불러오기 — 초기화 시각마다 한 번만(카운트다운이 매초 돌아도 요청은 한 번)
+  const resetFetched = useRef<string | null>(null);
+  const nextResetAt = q.data?.nextResetAt;
   useEffect(() => {
-    if (q.data?.openedToday && left <= 0) qc.invalidateQueries({ queryKey: ["free-box"] });
-  }, [left, q.data?.openedToday, qc]);
+    if (!q.data?.openedToday || left > 0 || !nextResetAt || resetFetched.current === nextResetAt) return;
+    resetFetched.current = nextResetAt;
+    qc.invalidateQueries({ queryKey: ["free-box"] });
+  }, [left, q.data?.openedToday, nextResetAt, qc]);
 
   async function onOpen() {
     if (phase !== "ready" || !q.data || q.data.openedToday) return;
@@ -141,7 +154,7 @@ export default function Freebox() {
       // 황금 상자면 상자가 열린 뒤(쪽지가 떠오를 때쯤) 금빛 색종이
       if (res.jackpot) setTimeout(() => fireConfetti(document.querySelector(`.${styles.rbBox}`), ["#FCC419", "#FFE066", "#F59F00", "#fff", "#FF922B"]), 800);
       // 캐시 갱신 — 상단 포인트, 홈 바로가기 문구, 최근 기록이 같이 바뀜
-      qc.setQueryData<FreeBoxState>(["free-box", getToken()], (prev) =>
+      qc.setQueryData<FreeBoxState>(["free-box", getChannelId()], (prev) =>
         prev
           ? {
               ...prev,
@@ -180,6 +193,15 @@ export default function Freebox() {
             </button>
           </div>
         </Card>
+      </div>
+    );
+  }
+
+  if (q.isError && !q.data) {
+    return (
+      <div className={styles.page}>
+        <PageHead />
+        <LoadError what="선물 상자" onRetry={() => q.refetch()} />
       </div>
     );
   }

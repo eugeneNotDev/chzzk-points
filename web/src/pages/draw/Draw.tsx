@@ -95,7 +95,7 @@ function leftText(iso: string) {
 }
 
 export default function Draw() {
-  const { isLoggedIn, isAdmin } = useAuth();
+  const { isLoggedIn, isAdmin, channelId } = useAuth();
   const qc = useQueryClient();
   // 방송 중에만 보낼 수 있음(그리기는 언제든 — 그리던 그림은 저장됨). 스트리머 계정은 시험용으로 예외.
   const live = useBroadcastStatus();
@@ -107,7 +107,7 @@ export default function Draw() {
   const [sent, setSent] = useState<{ code: string; expiresAt: string } | null>(null);
   const screen = useLiveScreen((live.data?.isLive === true || isAdmin) && !sent);
   const mine = useQuery({
-    queryKey: ["drawings", "mine"],
+    queryKey: ["drawings", "mine", channelId],
     enabled: isLoggedIn,
     queryFn: () => call<Mine>({ action: "mine" }),
     // 후원 기다리는 그림이 있으면 상태 확인(방송에 나왔는지) — 보낸 지 10분까지는 5초마다, 그 뒤엔 30초마다.

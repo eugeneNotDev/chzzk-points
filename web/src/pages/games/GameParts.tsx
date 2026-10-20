@@ -8,12 +8,15 @@ import { MIN_BET, type GameStateBase, type Minigame } from "./useMinigame";
 import styles from "./Games.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 import { useBalancesAt } from "../../lib/balances";
+import { LoadError } from "../../components/LoadError";
 
-export function GameLock({ state }: { state: GameStateBase | undefined }) {
+export function GameLock({ state, query }: { state: GameStateBase | undefined; query?: Minigame["query"] }) {
+  // 상태를 못 불러왔으면 "등급 부족"이 아니라 불러오기 실패로 안내(다시 시도 가능)
+  if (!state && query?.isError) return <LoadError what="게임 정보" onRetry={() => query.refetch()} />;
   if (!state || state.eligible) return null;
   if (state.blocked) {
     const until = state.blockedUntil
-      ? `${new Date(state.blockedUntil).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}까지`
+      ? `${new Date(state.blockedUntil).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}까지`
       : "별도 해제 전까지";
     return (
       <div className={styles.lock}>
