@@ -154,7 +154,7 @@ export default function OddEven() {
                 <button
                   key={p}
                   type="button"
-                  className={`${styles.oePick} ${p === "odd" ? styles.oeOdd : styles.oeEven} ${chosen === p ? styles.chosen : ""} ${reveal === p ? styles.hit : ""}`}
+                  className={`${styles.oePick} ${p === "odd" ? styles.oeOdd : styles.oeEven} ${chosen === p ? styles.chosen : ""} ${reveal === p && chosen ? styles.hit : ""}`}
                   disabled={!game.canPlay}
                   onClick={() => play(p)}
                 >
