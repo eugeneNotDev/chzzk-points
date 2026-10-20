@@ -28,6 +28,20 @@ export function Prompt({ text }: { text: string }) {
   );
 }
 
+// 빨간 펜 채점 표시 — 손으로 그린 듯한 동그라미(맞음)·빗금(틀림). 나타날 때 펜으로 긋는 것처럼 그려짐.
+export function PenMark({ kind, size = "md" }: { kind: "o" | "x"; size?: "md" | "sm" }) {
+  return kind === "o" ? (
+    <svg className={`${styles.penMark} ${size === "sm" ? styles.penSm : styles.penMd}`} viewBox="0 0 64 48" aria-hidden="true">
+      <path d="M36 6 C 17 3, 4 12, 5 25 C 6 39, 29 45, 47 39 C 60 34, 62 17, 50 9 C 42 4, 30 4, 21 8" />
+    </svg>
+  ) : (
+    <svg className={`${styles.penMark} ${styles.penSlash} ${size === "sm" ? styles.penSm : styles.penMd}`} viewBox="0 0 64 48" aria-hidden="true">
+      <path d="M44 2 C 36 14, 24 30, 11 47" />
+      <path d="M48 7 C 40 18, 30 31, 19 44" className={styles.penThin} />
+    </svg>
+  );
+}
+
 export type PaperQuestion = { id: number; qtype: QType; prompt: string; imageUrl: string | null; choices: string[]; answer?: string };
 
 // 시험지 한 장. 실제 시험지처럼 왼쪽 단을 위에서 아래로 다 채운 뒤 오른쪽 단으로 넘어감(폰에선 한 단).
@@ -72,7 +86,10 @@ export function ExamPaper({
     return (
       <div key={q.id} id={`q-${q.id}`} className={styles.q}>
         <div className={styles.qTitle}>
-          <span className={`${styles.qNo} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}>{no}.</span>
+          <span className={styles.qNo}>
+            {no}.
+            {mark !== undefined && <PenMark key={String(mark)} kind={mark ? "o" : "x"} />}
+          </span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <Prompt text={q.prompt} />
             {q.qtype === "short" && <span className={styles.qMeta}>[단답형]</span>}
@@ -96,7 +113,10 @@ export function ExamPaper({
                   className={`${styles.choice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""} ${pen === v ? styles.pen : ""} ${onKeyPick ? styles.choiceGrade : ""}`}
                   onClick={() => choose(v)}
                 >
-                  <span className={styles.num}>{k + 1}</span>
+                  <span className={styles.num}>
+                    {k + 1}
+                    {pen === v && <PenMark kind="o" size="sm" />}
+                  </span>
                   <span>{c}</span>
                 </button>
               );
@@ -121,7 +141,10 @@ export function ExamPaper({
                   onClick={() => choose(v)}
                 >
                   <img src={src} alt="" loading="lazy" />
-                  <span className={styles.num}>{k + 1}</span>
+                  <span className={styles.num}>
+                    {k + 1}
+                    {pen === v && <PenMark kind="o" size="sm" />}
+                  </span>
                 </button>
               );
             })}

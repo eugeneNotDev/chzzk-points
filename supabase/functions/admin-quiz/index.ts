@@ -230,9 +230,9 @@ Deno.serve(async (req: Request) => {
 
     switch (body.action) {
       case "list": {
-        const { data, error } = await admin.from("quizzes").select("id, kind, title, status, is_test, ox_mode, created_at").order("created_at", { ascending: false }).limit(30);
+        const { data, error } = await admin.from("quizzes").select("id, kind, title, status, is_test, ox_mode, rewarded_at, created_at").order("created_at", { ascending: false }).limit(50);
         if (error) throw new Error(`quizzes 조회 실패: ${error.message}`);
-        return json({ quizzes: (data ?? []).map((q) => ({ id: q.id, kind: q.kind, title: q.title, status: q.status, isTest: q.is_test, oxMode: q.ox_mode, createdAt: q.created_at })) }, 200);
+        return json({ quizzes: (data ?? []).map((q) => ({ id: q.id, kind: q.kind, title: q.title, status: q.status, isTest: q.is_test, oxMode: q.ox_mode, rewardedAt: q.rewarded_at, createdAt: q.created_at })) }, 200);
       }
 
       case "get":

@@ -105,26 +105,52 @@
   min-width: 22px;
   font-family: var(--font-num);
 }
-.markO::after,
-.markX::after {
-  content: "";
+/* 빨간 펜(채점) */
+.penMark {
   position: absolute;
   pointer-events: none;
+  overflow: visible;
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 0.5px rgba(239, 68, 68, 0.6));
 }
-.markO::after {
-  inset: -7px -9px -7px -10px;
-  border: 2.5px solid var(--c-danger);
-  border-radius: 50%;
-  transform: rotate(-8deg);
+.penMark path {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 0;
+  animation: penDraw 0.32s ease-out both;
 }
-.markX::after {
-  left: -6px;
-  right: -6px;
-  top: 50%;
-  height: 2.5px;
-  background: var(--c-danger);
-  transform: rotate(-55deg);
-  border-radius: 2px;
+.penThin {
+  stroke-width: 1.6;
+  opacity: 0.55;
+  animation-delay: 0.08s !important;
+}
+.penMd {
+  left: -14px;
+  top: -10px;
+  width: 52px;
+  height: 46px;
+}
+.penSm {
+  left: -10px;
+  top: -9px;
+  width: 44px;
+  height: 42px;
+}
+.penSlash {
+  stroke-width: 3.6;
+}
+@keyframes penDraw {
+  from {
+    stroke-dashoffset: 220;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .penMark path {
+    animation: none;
+  }
 }
 .keyed {
   outline: 1.5px dashed var(--c-accent);
@@ -237,20 +263,8 @@
 .choiceGrade:hover {
   background: var(--c-hover);
 }
-.pen .num {
+.num {
   position: relative;
-}
-.pen .num::after {
-  content: "";
-  position: absolute;
-  inset: -7px -8px -6px -7px;
-  border: 2.5px solid var(--c-danger);
-  border-radius: 50%;
-  transform: rotate(-10deg);
-  pointer-events: none;
-}
-.imgChoice.pen .num::after {
-  inset: -6px;
 }
 .pickHint {
   padding-left: 14px;
@@ -1529,4 +1543,77 @@
 }
 .histOn :global(.list-row-title) {
   color: var(--c-accent);
+}
+
+/* 지난 기록 요약 카드 */
+.sumGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 900px) {
+  .sumGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sumCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sumHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sumTitle {
+  font-size: 17px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sumStats {
+  display: flex;
+  gap: 10px;
+}
+.sumStat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+}
+.sumStat > span {
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.sumStat b {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.sumStat small {
+  margin-left: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.sumAccent {
+  color: var(--c-accent);
+}
+.sumFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sumReward {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-gold, var(--c-accent));
 }

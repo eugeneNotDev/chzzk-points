@@ -58,7 +58,7 @@ type Detail = {
     revealedCount: number;
   };
 };
-type ListItem = { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus; isTest: boolean };
+type ListItem = { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus; isTest: boolean; rewardedAt: string | null };
 
 const adminCall = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.adminQuiz, { body });
 const STATUS_LABEL: Record<"exam" | "ox", Record<QuizStatus, string>> = {
@@ -103,12 +103,19 @@ export default function QuizAdmin() {
   const list = useQuery({ queryKey: ["quiz-admin-list"], queryFn: () => adminCall<{ quizzes: ListItem[] }>({ action: "list" }) });
   const [selId, setSelId] = useState<number | null>(null);
   const [createKind, setCreateKind] = useState<"exam" | "ox" | null>(null);
-  const items = list.data?.quizzes ?? [];
+  const [showDone, setShowDone] = useState(false);
+  const all = list.data?.quizzes ?? [];
+  // 보상까지 끝난 회차는 기본으로 숨김(지난 기록에서 보거나 "끝난 회차도 보기"로). 지금 고른 회차는 계속 보임.
+  const items = all.filter((i) => showDone || !i.rewardedAt || i.id === selId);
+  const doneCount = all.filter((i) => i.rewardedAt).length;
 
+  // 처음 들어왔을 때만 진행 중인 회차를 골라둠(새로 만든 회차는 목록이 새로 오기 전에도 그대로 선택돼 있게)
   useEffect(() => {
-    if ((selId == null || !items.some((i) => i.id === selId)) && items.length) setSelId((items.find((i) => i.status !== "revealed") ?? items[0]).id);
-    else if (selId != null && list.isSuccess && items.length === 0) setSelId(null);
-  }, [items, selId, list.isSuccess]);
+    if (selId == null && list.isSuccess) {
+      const first = all.find((i) => !i.rewardedAt && i.status !== "revealed") ?? all.find((i) => !i.rewardedAt);
+      if (first) setSelId(first.id);
+    }
+  }, [all, selId, list.isSuccess]);
 
   const detail = useQuery({
     queryKey: ["quiz-admin", selId],
@@ -135,8 +142,14 @@ export default function QuizAdmin() {
             <Select label="회차 고르기" className={styles.grow} value={String(selId ?? options[0].value)} options={options} onChange={(v) => setSelId(Number(v))} />
           ) : (
             <span className="muted" style={{ flex: 1 }}>
-              아직 만든 회차가 없어요.
+              {doneCount ? "진행 중이거나 준비 중인 회차가 없어요. 새로 만들어 주세요." : "아직 만든 회차가 없어요."}
             </span>
+          )}
+          {doneCount > 0 && (
+            <label className="check" style={{ fontSize: 13 }}>
+              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} />
+              끝난 회차도 보기({doneCount})
+            </label>
           )}
           <button type="button" className="btn btn-sm" onClick={() => setCreateKind("exam")}>
             <Plus size={16} aria-hidden="true" /> 새 모의고사
@@ -159,7 +172,7 @@ export default function QuizAdmin() {
       )}
 
       {selId != null && detail.isLoading && <span className="skeleton" style={{ height: 320 }} />}
-      {d && items.some((i) => i.id === d.quiz.id) && (
+      {d && d.quiz.id === selId && (
         <QuizDetail
           key={d.quiz.id}
           d={d}

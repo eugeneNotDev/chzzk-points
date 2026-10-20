@@ -2,7 +2,8 @@
 // 모의고사는 며칠씩 열어둘 수 있어서, 그 사이에 OX가 열리면 둘을 위쪽 버튼으로 오가며 봄.
 // 관리자는 "관리" 탭에서 회차를 만들고 진행함(QuizAdmin).
 import { lazy, Suspense, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trash2, Trophy } from "lucide-react";
+import { readStorage, writeStorage } from "../../lib/storage";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
@@ -131,19 +132,45 @@ export default function Quiz() {
   );
 }
 
-// 지난 기록 — 위: 고른 회차의 결과 요약(기본은 가장 최근), 아래: 기록 목록(한 페이지 5개). 관리자는 회차를 지울 수 있음.
+// 지난 기록 — 위: 종류별(모의고사 / OX) 최근에 본 회차 간단 요약, 아래: 기록 목록(한 페이지 5개).
+// 목록을 누르면 게시판 글처럼 따로 들어가서 시험지·문항별 결과 등 자세히 봄. 관리자는 회차를 지울 수 있음.
 const HIST_PAGE = 5;
+const LAST_SEEN_KEY = "chzzk_quiz_last_seen";
+
+function readLastSeen(): Partial<Record<"exam" | "ox", number>> {
+  try {
+    return JSON.parse(readStorage(LAST_SEEN_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
 
 function History({ items }: { items: QuizHistoryItem[] }) {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [busy, setBusy] = useState<number | null>(null);
   const [page, setPage] = useState(1);
-  const [pickId, setPickId] = useState<number | null>(null);
-  const selId = items.some((h) => h.id === pickId) ? pickId : items[0]?.id ?? null;
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [lastSeen, setLastSeen] = useState(readLastSeen);
   const totalPages = Math.max(1, Math.ceil(items.length / HIST_PAGE));
   const cur = Math.min(page, totalPages);
   const shown = items.slice((cur - 1) * HIST_PAGE, cur * HIST_PAGE);
+
+  // 종류별 요약에 띄울 회차: 최근에 들어가 본 것, 없으면 가장 최근 회차
+  const pickFor = (kind: "exam" | "ox") => {
+    const seen = lastSeen[kind];
+    return (items.find((h) => h.kind === kind && h.id === seen) ?? items.find((h) => h.kind === kind))?.id ?? null;
+  };
+  const examId = pickFor("exam");
+  const oxId = pickFor("ox");
+
+  function open(h: QuizHistoryItem) {
+    const next = { ...lastSeen, [h.kind]: h.id };
+    setLastSeen(next);
+    writeStorage(LAST_SEEN_KEY, JSON.stringify(next));
+    setOpenId(h.id);
+    window.scrollTo({ top: 0 });
+  }
 
   async function remove(h: QuizHistoryItem) {
     const msg = `"${h.title}" 회차를 삭제할까요? 모든 사람의 기록에서 사라져요.${!h.isTest && h.reward ? " 이미 지급한 포인트는 그대로 남아요." : ""}`;
@@ -152,7 +179,7 @@ function History({ items }: { items: QuizHistoryItem[] }) {
     try {
       await apiFetch(API.adminQuiz, { body: { action: "delete", quizId: h.id } });
       toast("삭제했어요.");
-      if (pickId === h.id) setPickId(null);
+      if (openId === h.id) setOpenId(null);
     } catch (e) {
       const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
       toast(ADMIN_QUIZ_ERRORS[code] || "삭제하지 못했어요.", "error");
@@ -160,6 +187,19 @@ function History({ items }: { items: QuizHistoryItem[] }) {
       setBusy(null);
       ["quiz", "quiz-peek", "quiz-by-id", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     }
+  }
+
+  if (openId != null && items.some((h) => h.id === openId)) {
+    return (
+      <>
+        <div>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => setOpenId(null)}>
+            <ChevronLeft size={16} aria-hidden="true" /> 지난 기록
+          </button>
+        </div>
+        <PastQuiz id={openId} />
+      </>
+    );
   }
 
   if (items.length === 0) {
@@ -172,27 +212,29 @@ function History({ items }: { items: QuizHistoryItem[] }) {
 
   return (
     <>
-      {selId != null && <PastQuiz key={selId} id={selId} />}
+      <div className={styles.sumGrid}>
+        {examId != null && <SummaryCard id={examId} onOpen={() => open(items.find((h) => h.id === examId)!)} />}
+        {oxId != null && <SummaryCard id={oxId} onOpen={() => open(items.find((h) => h.id === oxId)!)} />}
+      </div>
       <Card title={`지난 기록 ${items.length}개`}>
         <div>
           {shown.map((h) => (
-            <div key={h.id} className={`${styles.histItem} ${h.id === selId ? styles.histOn : ""}`}>
+            <div key={h.id} className={styles.histItem}>
               <button
                 type="button"
                 className="list-row"
-                aria-current={h.id === selId ? "true" : undefined}
                 style={{ flex: 1, minWidth: 0, border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }}
-                onClick={() => {
-                  setPickId(h.id);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onClick={() => open(h)}
               >
                 <span className="list-row-title">
+                  <span className={`tag ${h.kind === "exam" ? "" : "tag-blue"}`} style={{ marginRight: 6 }}>
+                    {h.kind === "exam" ? "모의고사" : "OX"}
+                  </span>
                   {h.title}
                   {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
                 </span>
                 <span className="list-row-meta">
-                  {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}
+                  {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "데스매치" : "점수전"}
                   {h.reward ? ` · +${fmt(h.reward.amount)}P` : ""} · {shortDate(h.revealedAt)}
                 </span>
               </button>
@@ -210,10 +252,74 @@ function History({ items }: { items: QuizHistoryItem[] }) {
   );
 }
 
+// 요약 카드 — 모의고사: 맞힌 수·순위·보상 / OX: 결과(생존·탈락·순위)·맞힌 수·보상
+function SummaryCard({ id, onOpen }: { id: number; onOpen: () => void }) {
+  const q = useQuizById(id);
+  const quiz = q.data?.quiz;
+  if (q.isLoading) return <span className="skeleton" style={{ height: 180 }} />;
+  if (!quiz) return null;
+
+  let stats: { label: string; value: string; sub?: string; accent?: boolean }[];
+  if (quiz.kind === "exam") {
+    const total = quiz.questions.length;
+    const correct = quiz.mine ? quiz.questions.filter((x) => x.myCorrect).length : 0;
+    stats = [
+      { label: "맞힌 문항", value: quiz.mine ? String(correct) : "–", sub: `/ ${total}`, accent: true },
+      { label: "순위", value: quiz.mine?.rank ? `${quiz.mine.rank}위` : "–", sub: `/ ${quiz.participants}명` },
+    ];
+  } else {
+    const dm = quiz.oxMode === "deathmatch";
+    const me = quiz.ranking.find((r) => r.isMe);
+    stats = [
+      { label: "결과", value: dm ? (quiz.me.joined ? (quiz.me.alive ? "생존" : "탈락") : "–") : me ? `${me.rank}위` : "–", accent: dm ? quiz.me.alive && quiz.me.joined : !!me },
+      { label: "맞힌 문제", value: String(quiz.me.correct), sub: `/ ${quiz.revealedCount}` },
+      { label: dm ? "생존자" : "참여", value: String(dm ? quiz.aliveCount : quiz.participants), sub: "명" },
+    ];
+  }
+
+  return (
+    <Card className={styles.sumCard}>
+      <div className={styles.sumHead}>
+        <span className={`tag ${quiz.kind === "exam" ? "" : "tag-blue"}`}>{quiz.kind === "exam" ? "모의고사" : quiz.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}</span>
+        {quiz.isTest && <span className={`tag ${styles.testTag}`}>테스트</span>}
+        <span className="muted" style={{ marginLeft: "auto", fontSize: 12 }}>
+          {quiz.revealedAt ? shortDate(quiz.revealedAt) : ""}
+        </span>
+      </div>
+      <b className={styles.sumTitle}>{quiz.title}</b>
+      <div className={styles.sumStats}>
+        {stats.map((s) => (
+          <div key={s.label} className={styles.sumStat}>
+            <span>{s.label}</span>
+            <b className={`num ${s.accent ? styles.sumAccent : ""}`}>
+              {s.value}
+              {s.sub && <small>{s.sub}</small>}
+            </b>
+          </div>
+        ))}
+      </div>
+      <div className={styles.sumFoot}>
+        {quiz.myReward ? (
+          <span className={styles.sumReward}>
+            <Trophy size={14} aria-hidden="true" /> {quiz.myReward.label} +{fmt(quiz.myReward.amount)}P
+          </span>
+        ) : (
+          <span className="muted" style={{ fontSize: 13 }}>
+            보상 없음
+          </span>
+        )}
+        <button type="button" className="btn btn-sm" onClick={onOpen}>
+          자세히 보기 <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 function PastQuiz({ id }: { id: number }) {
   const q = useQuizById(id);
   const quiz = q.data?.quiz;
-  if (q.isLoading) return <span className="skeleton" style={{ height: 240 }} />;
+  if (q.isLoading) return <span className="skeleton" style={{ height: 320 }} />;
   if (!quiz)
     return (
       <Card>
