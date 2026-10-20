@@ -53,7 +53,7 @@ export function DonationsTab() {
           </button>
         }
       >
-        <p className={styles.muted} style={{ marginTop: 0 }}>
+        <p className={`${styles.muted} ${styles.mt0}`}>
           1만 치즈 이상 후원은 금액의 10%가 자동으로 적립돼요. 익명 후원은 아래 목록에서 리모컨을 보고 누군지 골라 적립해 주세요.
         </p>
         {q.isError && <p className="status error">후원 기록을 불러오지 못했어요.</p>}

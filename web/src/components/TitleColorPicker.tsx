@@ -90,7 +90,7 @@ export function TitleColorPicker({
             <ArrowLeftRight size={14} aria-hidden="true" /> 순서 바꾸기
           </button>
         )}
-        {isRainbow && <span className="muted" style={{ fontSize: 12 }}>무지개는 두 번째 색이랑 같이 못 써요</span>}
+        {isRainbow && <span className={`muted ${styles.fs12}`}>무지개는 두 번째 색이랑 같이 못 써요</span>}
       </div>
 
       {duoOn && <ColorGroup label={labels[1]} current={state.color2!} onPick={(v) => setGroupColor(2, v)} />}
@@ -131,7 +131,7 @@ export function TitleColorPicker({
       </div>
 
       <div className={styles.preview}>
-        <span className="muted" style={{ fontSize: 12 }}>
+        <span className={`muted ${styles.fs12}`}>
           {special ? "랭킹 미리보기" : "미리보기"}
         </span>
         {/* 실제 랭킹 줄과 같은 부품으로 — 일반 칭호는 줄 플레이트 + 닉네임 뒤 글자, 특수 칭호는 닉네임 위 */}
@@ -240,10 +240,10 @@ function IconDialog({ current, preview, onPick, onClose }: { current: string | n
   let lastGroup = "";
   return (
     <dialog ref={ref} className={`modal ${styles.iconDialog}`} aria-label="아이콘 고르기" onClick={(e) => e.target === ref.current && onClose()}>
-      <div className="modal-head" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className={`modal-head ${styles.dFlex} ${styles.aiCenter} ${styles.gap12}`}>
         <h3>아이콘 고르기</h3>
-        <span style={{ fontSize: 16 }}>{preview}</span>
-        <button type="button" className="btn btn-ghost icon-btn" style={{ marginLeft: "auto" }} aria-label="닫기" onClick={onClose}>
+        <span className={styles.fs16}>{preview}</span>
+        <button type="button" className={`btn btn-ghost icon-btn ${styles.mlAuto}`} aria-label="닫기" onClick={onClose}>
           <X size={18} />
         </button>
       </div>
@@ -256,7 +256,7 @@ function IconDialog({ current, preview, onPick, onClose }: { current: string | n
             const head = i.group !== lastGroup;
             lastGroup = i.group;
             return (
-              <span key={i.id} style={{ display: "contents" }}>
+              <span className={styles.dContents} key={i.id}>
                 {head && <span className={styles.iconGroup}>{i.group}</span>}
                 <button type="button" role="radio" aria-checked={current === i.id} title={i.name} aria-label={i.name} className={`${styles.iconOpt} ${current === i.id ? styles.iconSel : ""}`} onClick={() => onPick(i.id)}>
                   <TitleIconSvg id={i.id} className={styles.iconGlyph} />

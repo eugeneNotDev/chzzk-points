@@ -515,6 +515,8 @@
   .brand.mobileOnly {
     padding: 0;
     font-size: 16px;
+    white-space: nowrap; /* 좁은 폰에서 "유진 팬보 / 드"로 쪼개지지 않게 */
+    flex-shrink: 0;
   }
   .content {
     padding: 4px 16px calc(var(--mobile-bar-h) + 28px + env(safe-area-inset-bottom));
@@ -577,4 +579,15 @@
   font-size: 11px;
   font-weight: 800;
   line-height: 16px;
+}
+
+@media (max-width: 374px) {
+  /* 아주 좁은 폰은 포인트·알림 자리가 모자라서 로고 그림만 */
+  .brand.mobileOnly span {
+    display: none;
+  }
+  .pointsChip {
+    padding: 0 10px;
+    margin-right: 0;
+  }
 }

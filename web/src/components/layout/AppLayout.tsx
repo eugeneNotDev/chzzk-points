@@ -187,7 +187,8 @@ export function AppLayout() {
 
   const navType = useNavigationType();
 
-  useEffect(() => preloadPages(), []);
+  const { isAdmin } = useAuth();
+  useEffect(() => preloadPages(isAdmin), [isAdmin]);
   // 스크롤 위치는 브라우저 자동 복원 대신 직접 관리(아래) — 둘이 겹치면 엉뚱한 곳으로 튐
   useEffect(() => {
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";

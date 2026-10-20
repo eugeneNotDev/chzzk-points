@@ -67,7 +67,7 @@ export function useBroadcastStatus() {
     queryFn: async () => {
       const res = await fetch(API.broadcastStatus);
       if (!res.ok) throw new Error(String(res.status));
-      return (await res.json()) as { isLive: boolean; liveTitle: string | null };
+      return (await res.json()) as { isLive: boolean; liveTitle: string | null; endedToday?: boolean };
     },
   });
 }

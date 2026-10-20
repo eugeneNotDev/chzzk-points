@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { supabase } from "./supabase";
+import { useTableRefetch } from "./realtime";
 
 // 퀴즈 기능 켜기/끄기. 2026-10-20 실제 사이트에 적용(베타 테스트 끝). 다시 베타 전용으로 돌리려면 import.meta.env.MODE !== "live"로.
 export const QUIZ_ENABLED: boolean = true;
@@ -100,11 +101,12 @@ export type QuizHistoryItem = {
 
 // 메뉴에 띄울지(로그인 없이도) — 진행 중이거나 방금 끝난 회차가 있을 때만
 export function useQuizPeek() {
+  useTableRefetch("quiz_pings", [["quiz-peek"]], { event: "INSERT", filter: "kind=eq.state", minIntervalMs: 3000, settleMs: 400, enabled: QUIZ_ENABLED });
   return useQuery({
     queryKey: ["quiz-peek"],
     enabled: QUIZ_ENABLED,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const res = await fetch(`${API.quiz}?peek=1`);
       if (!res.ok) throw new Error(String(res.status));
@@ -115,8 +117,8 @@ export function useQuizPeek() {
 }
 
 // 지금 회차(지난 기록은 빼고 — ?nohist=1). 지난 기록은 계산이 무거워서 useQuizHistory로 따로, 가끔만 받음.
-// 새로 받는 간격: OX 문제가 답을 받는 중이면 1.5초, OX 회차는 열렸지만 문제 사이(다음 문제 대기·정답 공개 후)면 3초,
-// 모의고사만 열려 있거나(며칠씩 열려 있음) 진행 중인 게 없으면 30초.
+// 회차·문제가 바뀌면(시작·출제·마감·정답 공개·보상) quiz_pings 실시간 신호로 바로 다시 불러옴(0077_quiz_pings.sql).
+// 주기적으로 받는 건 신호를 놓쳤을 때 대비용 — OX 진행 중이면 15초, 아니면 60초.
 // 회차 상태가 바뀌면(발표 등) 지난 기록을, 내 보상이 생기거나 바뀌면 보유 포인트(me)를 다시 불러옴.
 export function useQuiz() {
   const { isLoggedIn, channelId } = useAuth();
@@ -126,12 +128,16 @@ export function useQuiz() {
     enabled: isLoggedIn && QUIZ_ENABLED,
     refetchInterval: (q) => {
       const vs = q.state.data?.quizzes ?? [];
-      const oxOpen = vs.filter((v): v is OxView => v.kind === "ox" && v.status === "open");
-      if (oxOpen.some((v) => v.current && !v.current.closed && !v.current.revealed)) return 1500;
-      if (oxOpen.length) return 3000;
-      return 30_000;
+      return vs.some((v) => v.kind === "ox" && v.status === "open") ? 15_000 : 60_000;
     },
     queryFn: () => apiFetch<{ quizzes: QuizView[]; history: QuizHistoryItem[] }>(`${API.quiz}?nohist=1`),
+  });
+  useTableRefetch("quiz_pings", [["quiz"], ["quiz-peek"], ["quiz-by-id"]], {
+    event: "INSERT",
+    filter: "kind=eq.state",
+    minIntervalMs: 700,
+    settleMs: 150,
+    enabled: isLoggedIn && QUIZ_ENABLED,
   });
 
   const vs = q.data?.quizzes;

@@ -117,7 +117,7 @@ export function ScheduleEditor({ day, row, onClose, onSaved }: { day: string | n
                   <b className="num">
                     {h12}:{pad(min)}
                   </b>
-                  <div className="segment" style={{ marginLeft: "auto" }}>
+                  <div className={`segment ${styles.mlAuto}`}>
                     <button type="button" aria-selected={!pm} onClick={() => setH24(h24 % 12)}>
                       오전
                     </button>

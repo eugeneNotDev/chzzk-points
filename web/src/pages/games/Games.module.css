@@ -618,6 +618,13 @@
 .evenText {
   color: #5cb6ff;
 }
+/* 홀짝 무대(.oeStage)는 라이트 테마에서도 어두운 바탕 그대로라 글자도 다크 테마 색으로 고정(안 그러면 검은 글자가 묻힘) */
+:global(html[data-theme="light"]) .oeStage .reveal {
+  color: #f1f4f6;
+}
+:global(html[data-theme="light"]) .oeStage .oeRule {
+  color: #8a939c;
+}
 .oePicks {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -648,6 +655,13 @@
 .oeEven {
   --pc: #5cb6ff;
 }
+/* 라이트 테마 — 연한 분홍·하늘색 글자가 밝은 버튼 위에서 흐려서 진한 색으로 */
+:global(html[data-theme="light"]) .oeOdd {
+  --pc: var(--c-red-text);
+}
+:global(html[data-theme="light"]) .oeEven {
+  --pc: var(--c-blue);
+}
 .oePick:hover:not(:disabled),
 .chosen {
   background: color-mix(in srgb, var(--pc) 12%, var(--c-surface-2));
@@ -677,6 +691,10 @@
   font-size: 10.5px;
   font-weight: 700;
   line-height: 1.6;
+}
+/* 라이트 테마에선 흰색 반투명이 밝은 버튼 위에서 안 보여서 어두운 반투명으로 */
+:global(html[data-theme="light"]) .mine {
+  background: rgba(15, 23, 42, 0.08);
 }
 
 @media (max-width: 599px) {

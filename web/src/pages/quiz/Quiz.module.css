@@ -1642,3 +1642,142 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.accentC {
+  accent-color: var(--c-accent);
+}
+.bd0 {
+  border: 0;
+}
+.cAccent {
+  color: var(--c-accent);
+}
+.cAmber {
+  color: var(--c-amber);
+}
+.cBlue {
+  color: var(--c-blue);
+}
+.cGold {
+  color: var(--c-gold);
+}
+.cText {
+  color: var(--c-text);
+}
+.dFlex {
+  display: flex;
+}
+.fdColumn {
+  flex-direction: column;
+}
+.flex1 {
+  flex: 1;
+}
+.flexNone {
+  flex: none;
+}
+.flex_1_1_320 {
+  flex: 1 1 320px;
+}
+.fs12 {
+  font-size: 12px;
+}
+.fs13 {
+  font-size: 13px;
+}
+.fs14 {
+  font-size: 14px;
+}
+.fs15 {
+  font-size: 15px;
+}
+.fs16 {
+  font-size: 16px;
+}
+.fs17 {
+  font-size: 17px;
+}
+.fs18 {
+  font-size: 18px;
+}
+.fs22 {
+  font-size: 22px;
+}
+.fw500 {
+  font-weight: 500;
+}
+.gap16 {
+  gap: 16px;
+}
+.h180 {
+  height: 180px;
+}
+.h20 {
+  height: 20px;
+}
+.h320 {
+  height: 320px;
+}
+.lh1_5 {
+  line-height: 1.5;
+}
+.m0 {
+  margin: 0;
+}
+.m_0_0_14 {
+  margin: 0 0 14px;
+}
+.mb16 {
+  margin-bottom: 16px;
+}
+.mb6 {
+  margin-bottom: 6px;
+}
+.minW0 {
+  min-width: 0;
+}
+.ml8 {
+  margin-left: 8px;
+}
+.mlAuto {
+  margin-left: auto;
+}
+.mr8 {
+  margin-right: 8px;
+}
+.mt10 {
+  margin-top: 10px;
+}
+.mt12 {
+  margin-top: 12px;
+}
+.mt14 {
+  margin-top: 14px;
+}
+.mt16 {
+  margin-top: 16px;
+}
+.p0 {
+  padding: 0;
+}
+.taCenter {
+  text-align: center;
+}
+.taRight {
+  text-align: right;
+}
+.w18 {
+  width: 18px;
+}
+.w20 {
+  width: 20px;
+}
+.wsNowrap {
+  white-space: nowrap;
+}
+/* 보상 지급 합계 줄 */
+.payTotal {
+  border-top: 1px solid var(--c-border);
+  padding-top: 10px;
+}

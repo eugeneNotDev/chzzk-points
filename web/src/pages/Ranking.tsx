@@ -33,7 +33,7 @@ function HallOfFame() {
     },
   });
   return (
-    <Card title="명예의 전당" extra={<span className="muted" style={{ fontSize: 13 }}>매달 1위 기록</span>} className={styles.hofWrap}>
+    <Card title="명예의 전당" extra={<span className={`muted ${styles.fs13}`}>매달 1위 기록</span>} className={styles.hofWrap}>
       {q.isError && <LoadError what="명예의 전당" onRetry={() => q.refetch()} />}
       {q.data?.length === 0 && <EmptyState>매달 1위가 여기에 기록돼요</EmptyState>}
       {!!q.data?.length && (

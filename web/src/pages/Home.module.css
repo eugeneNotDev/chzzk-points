@@ -506,3 +506,29 @@
     display: none;
   }
 }
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.h13 {
+  height: 13px;
+}
+.h15 {
+  height: 15px;
+}
+.h17 {
+  height: 17px;
+}
+.h30 {
+  height: 30px;
+}
+.w34p {
+  width: 34%;
+}
+.w46p {
+  width: 46%;
+}
+.w62p {
+  width: 62%;
+}
+.w64 {
+  width: 64px;
+}

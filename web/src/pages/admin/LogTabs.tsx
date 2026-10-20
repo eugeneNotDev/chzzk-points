@@ -14,7 +14,7 @@ function SearchCard({ title, desc, onSearch }: { title: string; desc?: ReactNode
   const [input, setInput] = useState("");
   return (
     <Card title={title}>
-      {desc && <p className={styles.muted} style={{ marginTop: 0 }}>{desc}</p>}
+      {desc && <p className={`${styles.muted} ${styles.mt0}`}>{desc}</p>}
       <form
         className={styles.searchRow}
         onSubmit={(e) => {

@@ -231,7 +231,7 @@ export default function Freebox() {
             <div className={styles.glow} aria-hidden="true" />
 
             {q.isLoading ? (
-              <span className="skeleton" style={{ width: 200, height: 200, borderRadius: 24 }} />
+              <span className={`skeleton ${styles.boxSkel}`} />
             ) : (
               <RibbonBox
                 state={phase === "done" ? "static-open" : opened ? "open" : phase === "opening" ? "wobble" : "closed"}

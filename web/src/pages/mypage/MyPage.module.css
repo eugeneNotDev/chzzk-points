@@ -386,3 +386,25 @@
   align-content: center;
   flex-wrap: wrap;
 }
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.fs12 {
+  font-size: 12px;
+}
+.fs13 {
+  font-size: 13px;
+}
+.mt8 {
+  margin-top: 8px;
+}
+.p_0_12_8 {
+  padding: 0 12px 8px;
+}
+.p_10_12_6 {
+  padding: 10px 12px 6px;
+}
+/* 칭호 목록 불러오는 중 뼈대 — 전역 .skeleton의 모서리를 확실히 덮도록 같이 묶어서 씀 */
+:global(.skeleton).titlesSkel {
+  height: 116px;
+  border-radius: 14px;
+}

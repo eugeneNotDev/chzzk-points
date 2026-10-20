@@ -31,8 +31,13 @@ export const PAGES: Record<string, LazyExoticComponent<ComponentType>> = Object.
   Object.entries(LOADERS).map(([k, load]) => [k, lazy(load)]),
 );
 
-export function preloadPages() {
-  const run = () => Object.values(LOADERS).forEach((load) => load().catch(() => undefined));
+// 관리자 화면은 관리자일 때만 미리 받음(일반 시청자는 열 일이 없는데 받는 양만 늘어서)
+const ADMIN_ONLY = new Set(["admin.html"]);
+export function preloadPages(isAdmin = false) {
+  const run = () =>
+    Object.entries(LOADERS)
+      .filter(([k]) => isAdmin || !ADMIN_ONLY.has(k))
+      .forEach(([, load]) => load().catch(() => undefined));
   const ric = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
   if (ric) ric(run);
   else setTimeout(run, 1500);

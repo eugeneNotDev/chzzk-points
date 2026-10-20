@@ -368,7 +368,7 @@ function CodeCard() {
 
   return (
     <Card title={<span className={styles.codeTitle}><Ticket size={18} aria-hidden="true" /> 방송 코드</span>}>
-      <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>
+      <p className={`muted ${styles.fs14} ${styles.mb14}`}>
         방송 화면 왼쪽 위에 뜬 코드를 입력하면 포인트를 받아요. 코드마다 받을 수 있는 시간이 정해져 있으니 뜨면 바로 입력해 주세요.
       </p>
       {isLoggedIn ? (

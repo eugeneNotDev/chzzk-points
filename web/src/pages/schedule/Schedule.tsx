@@ -86,8 +86,7 @@ export default function Schedule() {
             </button>
             <button
               type="button"
-              className="btn btn-sm"
-              style={{ marginLeft: "auto" }}
+              className={`btn btn-sm ${styles.mlAuto}`}
               onClick={() => {
                 setView({ y: ty, m: tm - 1 });
                 setSelected(today);

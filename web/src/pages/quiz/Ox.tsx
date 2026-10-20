@@ -81,16 +81,16 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
             <div className={styles.tags}>
               <span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`}>{deathmatch ? "데스매치" : "점수전"}</span>
               {cur && <span className="tag num">{cur.number}번째 문제</span>}
-              <span className="muted" style={{ marginLeft: "auto", fontSize: 14 }}>
+              <span className={`muted ${styles.mlAuto} ${styles.fs14}`}>
                 {quiz.participants === 0 ? (
                   "참여 대기 중"
                 ) : deathmatch && quiz.revealedCount > 0 ? (
                   <>
-                    생존 <b className="num" style={{ color: "var(--c-text)", fontSize: 17 }}>{quiz.aliveCount}</b> / {quiz.participants}명
+                    생존 <b className={`num ${styles.cText} ${styles.fs17}`}>{quiz.aliveCount}</b> / {quiz.participants}명
                   </>
                 ) : (
                   <>
-                    참여 <b className="num" style={{ color: "var(--c-text)", fontSize: 17 }}>{quiz.participants}</b>명
+                    참여 <b className={`num ${styles.cText} ${styles.fs17}`}>{quiz.participants}</b>명
                   </>
                 )}
               </span>
@@ -130,8 +130,8 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
                 {cur.counts && total > 0 && (
                   <div className={styles.rows}>
                     <div className={styles.row}>
-                      <b style={{ color: "var(--c-blue)" }}>O · {cur.counts.O}명</b>
-                      <b style={{ color: "var(--c-amber)" }}>X · {cur.counts.X}명</b>
+                      <b className={styles.cBlue}>O · {cur.counts.O}명</b>
+                      <b className={styles.cAmber}>X · {cur.counts.X}명</b>
                     </div>
                     <div className={styles.split2}>
                       <i style={{ width: `${(cur.counts.O / total) * 100}%` }} />
@@ -155,7 +155,7 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
                     </button>
                   ))}
                 </div>
-                <p className="muted" style={{ textAlign: "center", fontSize: 13, margin: 0 }}>
+                <p className={`muted ${styles.taCenter} ${styles.fs13} ${styles.m0}`}>
                   {!quiz.me.canAnswer
                     ? quiz.me.joined
                       ? "탈락했어요. 끝까지 관전할 수 있어요."
@@ -177,7 +177,7 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
             </div>
             <div className={styles.row}>
               <span>보상</span>
-              <b style={{ color: "var(--c-gold)", textAlign: "right" }}>
+              <b className={`${styles.cGold} ${styles.taRight}`}>
                 {deathmatch
                   ? quiz.rewardSurvivor > 0
                     ? `최후 생존자 각 ${fmt(quiz.rewardSurvivor)}P`
@@ -201,14 +201,14 @@ function MyOx({ quiz }: { quiz: OxView }) {
       title={quiz.me.joined ? "내 기록" : "문제별 정답"}
       extra={
         quiz.me.joined && (
-          <span className={`tag ${!deathmatch || quiz.me.alive ? "tag-accent" : ""}`} style={{ marginLeft: "auto" }}>
+          <span className={`tag ${!deathmatch || quiz.me.alive ? "tag-accent" : ""} ${styles.mlAuto}`}>
             {deathmatch ? (quiz.me.alive ? "생존 중" : "탈락") : `${quiz.me.correct}개 맞힘`}
           </span>
         )
       }
     >
       {quiz.me.history.length === 0 ? (
-        <p className="muted" style={{ fontSize: 14 }}>
+        <p className={`muted ${styles.fs14}`}>
           정답이 공개된 문제가 여기에 쌓여요.
         </p>
       ) : (
@@ -216,7 +216,7 @@ function MyOx({ quiz }: { quiz: OxView }) {
           {quiz.me.history.map((h) => (
             <div key={h.number} className={styles.histRow}>
               <b>Q{h.number}</b>
-              <span className={styles.ellipsis} style={{ flex: 1, minWidth: 0 }}>
+              <span className={`${styles.ellipsis} ${styles.flex1} ${styles.minW0}`}>
                 {h.prompt.replace(/__/g, "")}
               </span>
               {/* 참여했으면 내 답(맞으면 초록, 틀리면 빨강), 그리고 항상 실제 정답 */}
@@ -225,7 +225,7 @@ function MyOx({ quiz }: { quiz: OxView }) {
                   {h.mine ?? "–"}
                 </b>
               )}
-              <span className="tag tag-accent" style={{ flex: "none" }}>
+              <span className={`tag tag-accent ${styles.flexNone}`}>
                 정답 {h.answer}
               </span>
             </div>
@@ -257,7 +257,7 @@ function OxResult({ quiz }: { quiz: OxView }) {
               </b>
             </div>
             {quiz.myReward && (
-              <p className={`${styles.banner} ${styles.bannerOk}`} style={{ marginLeft: "auto" }}>
+              <p className={`${styles.banner} ${styles.bannerOk} ${styles.mlAuto}`}>
                 <Trophy size={16} aria-hidden="true" /> {quiz.myReward.label} 보상 +{fmt(quiz.myReward.amount)}P{quiz.isTest ? " (테스트라 실제 지급 안 됨)" : ""}
               </p>
             )}

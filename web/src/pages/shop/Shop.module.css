@@ -286,3 +286,49 @@
   width: min(240px, 100%);
   margin: 0 auto 4px;
 }
+
+/* 폰에선 상품 카드를 촘촘하게 — 한 화면에 더 많이 보이게 */
+@media (max-width: 599px) {
+  .grid {
+    gap: 10px;
+  }
+  .cardBody {
+    gap: 6px;
+    padding: 14px 16px 4px;
+  }
+  .name {
+    font-size: 15px;
+  }
+  .cardFoot {
+    padding: 8px 16px 14px;
+  }
+  .cost {
+    font-size: 18px;
+  }
+  .useBtn {
+    height: 36px;
+  }
+  .adminRow {
+    padding: 8px 16px 10px;
+  }
+  .stagePlate {
+    min-height: 96px;
+    padding: 14px;
+  }
+}
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.flex1 {
+  flex: 1;
+}
+.fs12 {
+  font-size: 12px;
+}
+.fs13 {
+  font-size: 13px;
+}
+/* 상품 카드 불러오는 중 뼈대 — 전역 .skeleton의 모서리를 확실히 덮도록 같이 묶어서 씀 */
+:global(.skeleton).cardSkel {
+  height: 200px;
+  border-radius: 20px;
+}

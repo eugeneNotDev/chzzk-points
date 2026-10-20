@@ -90,7 +90,7 @@ export function ExamPaper({
             {no}.
             {mark !== undefined && <PenMark key={String(mark)} kind={mark ? "o" : "x"} />}
           </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
+          <span className={`${styles.flex1} ${styles.minW0}`}>
             <Prompt text={q.prompt} />
             {q.qtype === "short" && <span className={styles.qMeta}>[단답형]</span>}
           </span>
@@ -255,7 +255,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
             <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
               답안 제출 ({done}/{quiz.questions.length})
             </button>
-            <span className="muted" style={{ fontSize: 12 }}>
+            <span className={`muted ${styles.fs12}`}>
               한 번 제출하면 고칠 수 없어요.
             </span>
           </div>
@@ -298,7 +298,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
                 <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
                   답안 제출
                 </button>
-                <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+                <p className={`muted ${styles.fs12} ${styles.m0}`}>
                   한 번 제출하면 고칠 수 없어요.
                 </p>
               </>
@@ -315,7 +315,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
             {quiz.rewardRanks.length > 0 && (
               <div className={styles.row}>
                 <span>보상</span>
-                <b style={{ color: "var(--c-gold)", textAlign: "right" }}>{quiz.rewardRanks.map((p, i) => `${i + 1}등 ${fmt(p)}P`).join(" · ")}</b>
+                <b className={`${styles.cGold} ${styles.taRight}`}>{quiz.rewardRanks.map((p, i) => `${i + 1}등 ${fmt(p)}P`).join(" · ")}</b>
               </div>
             )}
             <div className={styles.row}>
@@ -361,7 +361,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
                 </b>
               </div>
               {quiz.myReward && (
-                <p className={`${styles.banner} ${styles.bannerOk}`} style={{ marginLeft: "auto" }}>
+                <p className={`${styles.banner} ${styles.bannerOk} ${styles.mlAuto}`}>
                   <Trophy size={16} aria-hidden="true" /> {quiz.myReward.label} 보상 +{fmt(quiz.myReward.amount)}P{quiz.isTest ? " (테스트라 실제 지급 안 됨)" : ""}
                 </p>
               )}
@@ -375,7 +375,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
           title="문항별 결과"
           extra={
             mine && (
-              <div className="segment" style={{ marginLeft: "auto" }} role="tablist">
+              <div className={`segment ${styles.mlAuto}`} role="tablist">
                 <button type="button" role="tab" aria-selected={!onlyWrong} onClick={() => setOnlyWrong(false)}>
                   전체
                 </button>
@@ -426,7 +426,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
               </li>
             ))}
           </ol>
-          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+          <p className={`muted ${styles.fs12} ${styles.mt10}`}>
             맞힌 개수가 같으면 먼저 제출한 사람이 위예요.
           </p>
         </Card>
@@ -436,7 +436,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
               <b>
                 {quiz.questions.indexOf(killer) + 1}. <Prompt text={killer.prompt} />
               </b>
-              <span className="muted" style={{ fontSize: 13 }}>
+              <span className={`muted ${styles.fs13}`}>
                 정답률 <b className="num">{killer.rate}%</b>
               </span>
             </div>

@@ -55,7 +55,7 @@ export function BackupTab() {
         </button>
       }
     >
-      <p className={styles.muted} style={{ marginTop: 0 }}>
+      <p className={`${styles.muted} ${styles.mt0}`}>
         매주 월요일 새벽 5시(한국 시간)에 자동으로 백업돼요. 자동 백업은 최근 8개, 수동 백업은 최근 10개까지 보관해요.
         <br />
         가끔 하나씩 내려받아 PC에 따로 보관해 두면 더 안전해요. (사이트 저장소 폴더에는 넣지 마세요.)

@@ -408,6 +408,10 @@
   color: var(--c-gold);
 }
 @media (max-width: 599px) {
+  /* 폰에선 제목·설명이 한 줄을 다 쓰고, 옆에 붙던 탭·버튼·칩은 아랫줄로 */
+  .page-head-text {
+    flex-basis: 100%;
+  }
   .page-stats {
     width: 100%;
   }

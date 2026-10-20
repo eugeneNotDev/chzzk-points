@@ -274,3 +274,23 @@
   font-size: 13px;
   color: var(--c-text-3);
 }
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.flex1 {
+  flex: 1;
+}
+.fs12 {
+  font-size: 12px;
+}
+.h160 {
+  height: 160px;
+}
+.mlAuto {
+  margin-left: auto;
+}
+.mt12 {
+  margin-top: 12px;
+}
+.selfStart {
+  align-self: flex-start;
+}

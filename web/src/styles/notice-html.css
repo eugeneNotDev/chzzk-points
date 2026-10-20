@@ -115,3 +115,16 @@
 
 .notice-html span[class^="bg-"] { padding: 1px 4px; border-radius: 4px; }
 
+
+/* 라이트 테마 — 위 글자색들은 어두운 바탕 기준이라 흰 바탕에선 흐려서 안 읽힘. 같은 색 계열로 진하게 */
+html[data-theme="light"] .notice-html code { color: #d6336c; }
+
+html[data-theme="light"] .notice-html .c-gray { color: #6b737b; }
+
+html[data-theme="light"] .notice-html .c-orange { color: #d9480f; }
+
+html[data-theme="light"] .notice-html .c-green { color: #2b8a3e; }
+
+html[data-theme="light"] .notice-html .c-purple { color: #7048e8; }
+
+html[data-theme="light"] .notice-html .c-pink { color: #c2255c; }

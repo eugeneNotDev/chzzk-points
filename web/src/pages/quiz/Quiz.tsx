@@ -37,7 +37,7 @@ function QuizTags({ quiz }: { quiz: QuizView }) {
       <span className="tag">{quiz.kind === "exam" ? "모의고사" : "OX 퀴즈"}</span>
       <span className={`tag ${quiz.status === "revealed" ? "tag-accent" : "tag-live"}`}>{label}</span>
       {quiz.isTest && <span className={`tag ${styles.testTag}`}>테스트 회차</span>}
-      <b style={{ fontSize: 15 }}>{quiz.title}</b>
+      <b className={styles.fs15}>{quiz.title}</b>
     </div>
   );
 }
@@ -110,7 +110,7 @@ export default function Quiz() {
 
       {tab === "now" && (
         <>
-          {q.isLoading && <span className="skeleton" style={{ height: 320 }} />}
+          {q.isLoading && <span className={`skeleton ${styles.h320}`} />}
           {!q.isLoading && !quiz && (
             <Card>
               <EmptyState>지금 진행 중인 퀴즈가 없어요. 끝난 회차 결과는 "지난 기록"에서 볼 수 있어요.</EmptyState>
@@ -136,7 +136,7 @@ export default function Quiz() {
 
       {tab === "history" &&
         (hist.isLoading ? (
-          <span className="skeleton" style={{ height: 320 }} />
+          <span className={`skeleton ${styles.h320}`} />
         ) : hist.isError && !hist.data ? (
           <LoadError what="지난 기록" onRetry={() => hist.refetch()} />
         ) : (
@@ -144,7 +144,7 @@ export default function Quiz() {
         ))}
 
       {tab === "admin" && isAdmin && (
-        <Suspense fallback={<span className="skeleton" style={{ height: 320 }} />}>
+        <Suspense fallback={<span className={`skeleton ${styles.h320}`} />}>
           <QuizAdmin />
         </Suspense>
       )}
@@ -294,12 +294,34 @@ function EmptySummary({ kind }: { kind: "exam" | "ox" }) {
 // 요약 카드 — 모의고사: 맞힌 수·순위·보상 / OX: 결과(생존·탈락·순위)·맞힌 수·보상
 function SummaryCard({ id, onOpen }: { id: number; onOpen: () => void }) {
   const q = useQuizById(id);
+  const { isAdmin } = useAuth();
   const quiz = q.data?.quiz;
-  if (q.isLoading) return <span className="skeleton" style={{ height: 180 }} />;
+  if (q.isLoading) return <span className={`skeleton ${styles.h180}`} />;
   if (!quiz) return null;
 
+  // 관리자가 직접 안 푼 회차는 "내 결과"(전부 –) 대신 회차 전체 숫자로
+  const joined = quiz.kind === "exam" ? !!quiz.mine : quiz.me.joined;
+  const overview = isAdmin && !joined;
+
   let stats: { label: string; value: string; sub?: string; accent?: boolean }[];
-  if (quiz.kind === "exam") {
+  if (overview && quiz.kind === "exam") {
+    const top = quiz.ranking[0];
+    stats = [
+      { label: "응시", value: String(quiz.participants), sub: "명", accent: true },
+      { label: "문항", value: String(quiz.questions.length), sub: "개" },
+      { label: "1등", value: top ? String(top.score) : "–", sub: top ? "개" : undefined },
+    ];
+  } else if (overview && quiz.kind === "ox") {
+    const dm = quiz.oxMode === "deathmatch";
+    const top = quiz.ranking[0];
+    stats = [
+      { label: "참여", value: String(quiz.participants), sub: "명", accent: true },
+      { label: "문제", value: String(quiz.revealedCount), sub: "개" },
+      dm
+        ? { label: "생존자", value: String(quiz.aliveCount), sub: "명" }
+        : { label: "1등", value: top ? String(top.correct) : "–", sub: top ? "개" : undefined },
+    ];
+  } else if (quiz.kind === "exam") {
     const total = quiz.questions.length;
     const correct = quiz.mine ? quiz.questions.filter((x) => x.myCorrect).length : 0;
     stats = [
@@ -321,7 +343,7 @@ function SummaryCard({ id, onOpen }: { id: number; onOpen: () => void }) {
       <div className={styles.sumHead}>
         <span className={`tag ${quiz.kind === "exam" ? "" : "tag-blue"}`}>{quiz.kind === "exam" ? "모의고사" : quiz.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}</span>
         {quiz.isTest && <span className={`tag ${styles.testTag}`}>테스트</span>}
-        <span className="muted" style={{ marginLeft: "auto", fontSize: 12 }}>
+        <span className={`muted ${styles.mlAuto} ${styles.fs12}`}>
           {quiz.revealedAt ? shortDate(quiz.revealedAt) : ""}
         </span>
       </div>
@@ -338,12 +360,16 @@ function SummaryCard({ id, onOpen }: { id: number; onOpen: () => void }) {
         ))}
       </div>
       <div className={styles.sumFoot}>
-        {quiz.myReward ? (
+        {overview ? (
+          <span className={`muted ${styles.fs13}`}>
+            관리자 보기 · 회차 전체
+          </span>
+        ) : quiz.myReward ? (
           <span className={styles.sumReward}>
             <Trophy size={14} aria-hidden="true" /> {quiz.myReward.label} +{fmt(quiz.myReward.amount)}P
           </span>
         ) : (
-          <span className="muted" style={{ fontSize: 13 }}>
+          <span className={`muted ${styles.fs13}`}>
             보상 없음
           </span>
         )}
@@ -358,7 +384,7 @@ function SummaryCard({ id, onOpen }: { id: number; onOpen: () => void }) {
 function PastQuiz({ id }: { id: number }) {
   const q = useQuizById(id);
   const quiz = q.data?.quiz;
-  if (q.isLoading) return <span className="skeleton" style={{ height: 320 }} />;
+  if (q.isLoading) return <span className={`skeleton ${styles.h320}`} />;
   if (!quiz)
     return (
       <Card>

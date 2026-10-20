@@ -76,6 +76,11 @@
 .dow .sun {
   color: #ff7a7a;
 }
+/* 라이트 테마에선 연한 빨강이 흰 바탕에서 흐려서 진한 빨강으로 */
+:global(html[data-theme="light"]) .sun .num,
+:global(html[data-theme="light"]) .dow .sun {
+  color: var(--c-red-text);
+}
 .sat .num,
 .dow .sat {
   color: var(--c-blue);
@@ -283,4 +288,9 @@
   .detail {
     position: static;
   }
+}
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.mlAuto {
+  margin-left: auto;
 }

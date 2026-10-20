@@ -56,6 +56,10 @@ function LiveHero() {
     kicker = "지금 방송 중";
     headline = status.data?.liveTitle || "지금 방송 중이에요";
     sub = "출석체크랑 방송 코드는 방송 중에만 받을 수 있어요.";
+  } else if (today && today.kind === "live" && status.data?.endedToday) {
+    kicker = "오늘 방송 끝";
+    headline = "오늘 방송은 끝났어요";
+    sub = next ? `다음 방송 · ${dayLabel(next.day)} ${next.start_time ?? ""} ${next.title ?? ""}`.trim() : "함께해줘서 고마워요!";
   } else if (today && today.kind === "live") {
     kicker = "오늘 방송";
     headline = today.start_time ? `오늘 ${today.start_time}에 만나요` : "오늘 방송이 있어요";
@@ -90,10 +94,10 @@ function LiveHero() {
         {loading ? (
           // 실제 글줄과 같은 높이로(방송 종류·제목·방제·메모) — 다 불러와도 카드 크기가 안 바뀌게
           <SkelGroup className={styles.heroSkel}>
-            <span className="skeleton" style={{ width: 64, height: 13 }} />
-            <span className="skeleton" style={{ width: "62%", height: 30 }} />
-            <span className="skeleton" style={{ width: "34%", height: 17 }} />
-            <span className="skeleton" style={{ width: "46%", height: 15 }} />
+            <span className={`skeleton ${styles.w64} ${styles.h13}`} />
+            <span className={`skeleton ${styles.w62p} ${styles.h30}`} />
+            <span className={`skeleton ${styles.w34p} ${styles.h17}`} />
+            <span className={`skeleton ${styles.w46p} ${styles.h15}`} />
           </SkelGroup>
         ) : (
           <div className={`${styles.heroText} bloom`}>
@@ -145,13 +149,13 @@ function QuickTiles() {
   const { isLoggedIn } = useAuth();
   const box = useFreeBox();
   const perCheck = useAttendancePoints();
-  const boxDesc = !isLoggedIn ? "하루 한 번 공짜 상자" : box.data?.openedToday ? `오늘 +${fmt(box.data.todayPoints ?? 0)}P 받았어요` : "오늘 상자가 도착했어요";
+  const boxDesc = !isLoggedIn ? "하루 한 번 공짜" : box.data?.openedToday ? `오늘 +${fmt(box.data.todayPoints ?? 0)}P 받음` : "오늘 상자 도착!";
   return (
     <section aria-label="바로가기" className={styles.tiles}>
-      <QuickTile to="/attendance.html" icon={CircleCheck} tone="green" title="출석체크" desc={<>방송 중에 출석하고 <b className={styles.plus}>+{fmt(perCheck)}P</b></>} />
+      <QuickTile to="/attendance.html" icon={CircleCheck} tone="green" title="출석체크" desc={<>방송 중 <b className={styles.plus}>+{fmt(perCheck)}P</b></>} />
       <QuickTile to="/freebox.html" icon={Gift} tone="pink" title="무료 뽑기" desc={boxDesc} />
-      <QuickTile to="/attendance.html" icon={Ticket} tone="blue" title="방송 코드" desc="방송 화면 코드 입력하기" />
-      <QuickTile to="/shop.html" icon={Store} tone="gold" title="포인트 상점" desc="칭호랑 상품 둘러보기" />
+      <QuickTile to="/attendance.html" icon={Ticket} tone="blue" title="방송 코드" desc="화면 코드 입력" />
+      <QuickTile to="/shop.html" icon={Store} tone="gold" title="포인트 상점" desc="칭호·상품 보기" />
     </section>
   );
 }

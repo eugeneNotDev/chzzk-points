@@ -149,7 +149,7 @@ export function ShopItemEditor({
               <span className="field-label">{isEdit ? "남은 수량 (비워두면 무제한)" : "한정 수량 (비워두면 무제한)"}</span>
               <input className="input num" type="number" min={isEdit ? 0 : 1} placeholder="예: 10" value={stock} onChange={(e) => setStock(e.target.value)} />
               {isEdit && (sold > 0 || item?.stock_limit != null) && (
-                <span className="muted" style={{ fontSize: 12 }}>
+                <span className={`muted ${styles.fs12}`}>
                   지금까지 {fmt(sold)}개 팔렸어요. 품절된 상품도 여기 숫자를 늘리면 다시 팔 수 있어요.
                 </span>
               )}

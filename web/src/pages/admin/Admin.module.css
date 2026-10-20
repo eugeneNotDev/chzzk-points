@@ -918,3 +918,14 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* 자주 쓰던 inline style을 옮겨온 작은 유틸 클래스들 — 맨 뒤에 둬서 위 클래스보다 우선함 */
+.fs13 {
+  font-size: 13px;
+}
+.mt0 {
+  margin-top: 0;
+}
+.p_0_12_10 {
+  padding: 0 12px 10px;
+}

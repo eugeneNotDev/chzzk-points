@@ -47,7 +47,7 @@ export function DrawingsTab() {
 
   return (
     <Card title="그림 후원" flush>
-      <p className="muted" style={{ fontSize: 13, padding: "0 12px 10px" }}>
+      <p className={`muted ${styles.fs13} ${styles.p_0_12_10}`}>
         후원 메시지에 그림 코드를 넣고 3,000치즈 이상 후원하면 오버레이에 10초 동안 떠요. 문제 있는 그림은 "화면에서 끄기"로 바로 내리세요.
       </p>
       {q.isLoading && <SkeletonList rows={3} variant="row" />}

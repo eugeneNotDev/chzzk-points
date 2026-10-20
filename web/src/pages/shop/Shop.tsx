@@ -207,10 +207,10 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
         <div className={styles.adminBar}>
           {reorder ? (
             <>
-              <span className="muted" style={{ fontSize: 13 }}>
+              <span className={`muted ${styles.fs13}`}>
                 카드를 끌어서 원하는 자리에 놓아주세요. (폰은 손잡이를 잡고 끌어요)
               </span>
-              <span style={{ flex: 1 }} />
+              <span className={styles.flex1} />
               <button type="button" className="btn btn-sm" disabled={saving} onClick={() => setReorder(null)}>
                 취소
               </button>
@@ -249,7 +249,7 @@ export function ShopPage({ kind }: { kind: "general" | "title" }) {
       {itemsQ.isLoading && (
         <SkelGroup className={styles.grid}>
           {[0, 1, 2].map((i) => (
-            <span key={i} className="skeleton" style={{ height: 200, borderRadius: 20 }} />
+            <span key={i} className={`skeleton ${styles.cardSkel}`} />
           ))}
         </SkelGroup>
       )}

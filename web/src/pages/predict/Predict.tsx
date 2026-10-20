@@ -151,7 +151,7 @@ export default function Predict() {
       {isAdmin && <PredictAdmin />}
 
       <Card title={heading} tone={p && !hidden && isOpen ? "feature" : undefined}>
-        {q.isLoading && <span className="skeleton" style={{ height: 160 }} />}
+        {q.isLoading && <span className={`skeleton ${styles.h160}`} />}
         {q.isError && !q.data && <LoadError what="투표" onRetry={() => q.refetch()} />}
         {!q.isLoading && !(q.isError && !q.data) && hidden && <EmptyState>진행 중인 투표가 없어요. 방송 중에 투표가 열리면 여기에 떠요.</EmptyState>}
         {p && !hidden && (
@@ -208,7 +208,7 @@ export default function Predict() {
                 );
               })}
             </div>
-            <p className="muted" style={{ fontSize: 12 }}>
+            <p className={`muted ${styles.fs12}`}>
               총 <b className="num">{fmt(p.totalPool)}P</b> 걸렸어요
             </p>
 

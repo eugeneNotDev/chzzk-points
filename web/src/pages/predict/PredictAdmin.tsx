@@ -56,7 +56,7 @@ export function PredictAdmin() {
       title="투표 관리"
       className={styles.adminCard}
       extra={
-        <button type="button" className="btn btn-sm" style={{ marginLeft: "auto" }} disabled={open} title={open ? "진행 중인 투표가 있어요(한 번에 하나만)" : ""} onClick={() => setCreateOpen(true)}>
+        <button type="button" className={`btn btn-sm ${styles.mlAuto}`} disabled={open} title={open ? "진행 중인 투표가 있어요(한 번에 하나만)" : ""} onClick={() => setCreateOpen(true)}>
           <Plus size={16} aria-hidden="true" />
           투표 생성
         </button>
@@ -84,7 +84,7 @@ export function PredictAdmin() {
               <Users size={16} aria-hidden="true" />
               참여자 보기 ({fmt(p.bets?.length ?? 0)}명)
             </button>
-            <span style={{ flex: 1 }} />
+            <span className={styles.flex1} />
             <button type="button" className="btn btn-sm btn-danger" onClick={cancel}>
               투표 취소 (전액 환불)
             </button>
@@ -185,7 +185,7 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
               )}
             </div>
           ))}
-          <button type="button" className="btn btn-sm" style={{ alignSelf: "flex-start" }} onClick={() => setOptions([...options, ""])}>
+          <button type="button" className={`btn btn-sm ${styles.selfStart}`} onClick={() => setOptions([...options, ""])}>
             <Plus size={16} aria-hidden="true" />
             투표 항목 추가
           </button>
@@ -273,7 +273,7 @@ function ResolveModal({ prediction, onClose, onDone }: { prediction: AdminPredic
           </button>
         ))}
       </div>
-      <p className={`status ${status.error ? "error" : ""}`} style={{ marginTop: 12 }}>
+      <p className={`status ${status.error ? "error" : ""} ${styles.mt12}`}>
         {status.text}
       </p>
     </Modal>

@@ -211,7 +211,7 @@ function TitleList({ profile }: { profile: Me | undefined }) {
           칭호 상점 가기
         </Link>
       </p>
-      {titles.isLoading && <span className="skeleton" style={{ height: 116, borderRadius: 14 }} />}
+      {titles.isLoading && <span className={`skeleton ${styles.titlesSkel}`} />}
       {profile && titles.data && owned.length === 0 && <EmptyState>보유한 칭호가 없어요.</EmptyState>}
       <div className={styles.titleGrid}>
         {owned.map((t) => {
@@ -219,7 +219,7 @@ function TitleList({ profile }: { profile: Me | undefined }) {
           return (
             <div key={t.id} className={`${styles.titleItem} ${sel ? styles.titleSel : ""}`}>
               <TitleStage name={t.name} value={t.color} sub={sel ? "장착 중" : undefined} onClick={() => setPreviewId(t.id)} />
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span className={`muted ${styles.fs12}`}>
                 {t.kind === "custom" ? "관리자가 지급한 칭호" : "상점에서 구매한 칭호"}
               </span>
               <button type="button" className={`btn btn-sm ${sel ? "" : "btn-primary"}`} disabled={busy} onClick={() => equip(t.id)}>
@@ -325,7 +325,7 @@ function SpecialList({ profile }: { profile: Me | undefined }) {
                 {sel && <span className={styles.spSub}>{locked ? "고정" : "장착 중"}</span>}
               </button>
               {!!t.bonusPct && <span className={styles.bonusChip}>적립 +{t.bonusPct}%</span>}
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span className={`muted ${styles.fs12}`}>
                 {sourceText(t)}
               </span>
               {button(t)}
@@ -379,7 +379,7 @@ function PublicCard({ profile }: { profile: Me | undefined }) {
           <span className="slider" />
         </span>
       </label>
-      <p className={`status ${status.error ? "error" : "ok"}`} style={{ marginTop: 8 }}>
+      <p className={`status ${status.error ? "error" : "ok"} ${styles.mt8}`}>
         {status.text}
       </p>
     </Card>
@@ -396,7 +396,7 @@ function PointsLog() {
   });
   return (
     <Card title="포인트 내역" flush>
-      <p className="muted" style={{ fontSize: 13, padding: "0 12px 8px" }}>
+      <p className={`muted ${styles.fs13} ${styles.p_0_12_8}`}>
         출석·상점·미니게임·관리자 지급/차감 내역을 최신순으로 보여줘요.
       </p>
       {q.isLoading && <SkeletonList rows={5} variant="log" />}
@@ -482,7 +482,7 @@ function MyActivity() {
                 {p.board === "free" && <span className="tag">익명으로 올림</span>}
                 {p.hidden && <span className="tag tag-live">신고로 가려짐</span>}
               </span>
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span className={`muted ${styles.fs12}`}>
                 {p.broadcast ? `${p.broadcast} 방송 · ` : ""}
                 {relTime(p.createdAt)}
               </span>
@@ -498,13 +498,13 @@ function MyActivity() {
                 {c.body}
                 {c.hidden && <span className="tag tag-live">신고로 가려짐</span>}
               </span>
-              <span className="muted" style={{ fontSize: 12 }}>
+              <span className={`muted ${styles.fs12}`}>
                 {c.postTitle === null ? "삭제된 글" : c.postTitle === "" ? "가려진 글" : `글: ${c.postTitle}`} · {relTime(c.createdAt)}
               </span>
             </span>
           </Link>
         ))}
-      <p className="muted" style={{ fontSize: 12, padding: "10px 12px 6px" }}>
+      <p className={`muted ${styles.fs12} ${styles.p_10_12_6}`}>
         익명으로 쓴 글도 여기선 나에게만 보여요. 누르면 그 글로 이동해요.
       </p>
     </Card>

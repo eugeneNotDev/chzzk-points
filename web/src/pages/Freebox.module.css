@@ -546,3 +546,10 @@
     animation: none !important;
   }
 }
+
+/* 불러오는 중 상자 뼈대 — 전역 .skeleton의 모서리를 확실히 덮도록 같이 묶어서 씀 */
+:global(.skeleton).boxSkel {
+  width: 200px;
+  height: 200px;
+  border-radius: 24px;
+}
