@@ -253,9 +253,8 @@ function QuizDetail({ d, onFinished }: { d: Detail; onFinished: () => void }) {
 // ── 회차 만들기 / 설정 ──
 function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "ox"; quiz?: QuizRow; onClose: () => void; onSaved: (id?: number) => void }) {
   const { act, busy } = useAct();
-  const [title, setTitle] = useState(quiz?.title ?? (kind === "exam" ? "2026년도 제3회 유진능력고사" : "OX 데스매치"));
+  const [title, setTitle] = useState(quiz?.title ?? (kind === "exam" ? "2026년도 제3회 유진능력고사" : "OX 퀴즈"));
   const [subtitle, setSubtitle] = useState(quiz?.subtitle ?? "유진 영역");
-  const [isTest, setIsTest] = useState(quiz?.is_test ?? true);
   const [oxMode, setOxMode] = useState<"score" | "deathmatch">(quiz?.ox_mode ?? "deathmatch");
   const [ranks, setRanks] = useState((quiz?.reward_ranks ?? [5000, 3000, 1000]).join(", "));
   const [survivor, setSurvivor] = useState(String(quiz?.reward_survivor ?? 1000));
@@ -266,13 +265,13 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
       .split(/[,\s]+/)
       .filter(Boolean)
       .map((s) => Number(s.replace(/[^0-9]/g, "")));
-    const body: Record<string, unknown> = { title, isTest, rewardRanks, rewardSurvivor: Number(survivor) || 0 };
+    const body: Record<string, unknown> = { title, rewardRanks, rewardSurvivor: Number(survivor) || 0 };
     if (kind === "exam") body.subtitle = subtitle;
     else body.oxMode = oxMode;
     if (quiz) {
       if (await act({ action: "update", quizId: quiz.id, ...body }, "저장했어요.")) onSaved();
     } else {
-      const r = await act<{ id: number }>({ action: "create", kind, ...body }, "회차를 만들었어요.");
+      const r = await act<{ id: number }>({ action: "create", kind, isTest: false, ...body }, "회차를 만들었어요.");
       if (r) onSaved(r.id);
     }
   }
@@ -327,10 +326,6 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
             <input className="input num" disabled={paid} value={ranks} onChange={(e) => setRanks(e.target.value)} placeholder="5000, 3000, 1000" />
           </label>
         )}
-        <label className="check">
-          <input type="checkbox" checked={isTest} disabled={paid} onChange={(e) => setIsTest(e.target.checked)} />
-          테스트 회차(보상 지급을 눌러도 포인트는 안 들어가요)
-        </label>
       </div>
     </Modal>
   );
