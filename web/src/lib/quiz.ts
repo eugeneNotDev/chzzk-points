@@ -4,9 +4,8 @@ import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { supabase } from "./supabase";
 
-// 베타(/beta/) 빌드에서만 메뉴·화면이 들어감. 실제 사이트(npm run build:live)에선 아예 빠짐.
-// 테스트가 끝나면 이 줄을 true로 바꾸고 build:live 하면 실제 사이트에 적용됨.
-export const QUIZ_ENABLED = import.meta.env.MODE !== "live";
+// 퀴즈 기능 켜기/끄기. 2026-10-20 실제 사이트에 적용(베타 테스트 끝). 다시 베타 전용으로 돌리려면 import.meta.env.MODE !== "live"로.
+export const QUIZ_ENABLED: boolean = true;
 
 // OX: 출제 후 이 시간 동안은 "곧 시작" 안내만 보여주고(방송 딜레이 여유), 그 뒤부터 제한시간을 셈. 서버의 OX_DELAY_GRACE_SEC와 같아야 함.
 export const OX_READY_MS = 3000;
