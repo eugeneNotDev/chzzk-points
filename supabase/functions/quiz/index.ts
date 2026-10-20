@@ -164,14 +164,14 @@ const buildView = (admin: Admin, quiz: QuizRow, channelId: string) => (quiz.kind
 
 async function history(admin: Admin, channelId: string) {
   const [{ data: subs, error: e1 }, { data: oxs, error: e2 }] = await Promise.all([
-    admin.from("quiz_exam_submissions").select("quiz_id, score, rank").eq("channel_id", channelId).order("submitted_at", { ascending: false }).limit(20),
-    admin.from("quiz_ox_answers").select("quiz_id").eq("channel_id", channelId).order("answered_at", { ascending: false }).limit(200),
+    admin.from("quiz_exam_submissions").select("quiz_id, score, rank").eq("channel_id", channelId).order("submitted_at", { ascending: false }).limit(200),
+    admin.from("quiz_ox_answers").select("quiz_id").eq("channel_id", channelId).order("answered_at", { ascending: false }).limit(5000),
   ]);
   if (e1) throw new Error(`history 조회 실패: ${e1.message}`);
   if (e2) throw new Error(`history 조회 실패: ${e2.message}`);
   const ids = [...new Set([...(subs ?? []).map((s) => s.quiz_id), ...(oxs ?? []).map((o) => o.quiz_id)])];
   if (ids.length === 0) return [];
-  const { data: quizzes, error } = await admin.from("quizzes").select(QUIZ_COLS).in("id", ids).eq("status", "revealed").order("revealed_at", { ascending: false }).limit(20);
+  const { data: quizzes, error } = await admin.from("quizzes").select(QUIZ_COLS).in("id", ids).eq("status", "revealed").order("revealed_at", { ascending: false }).limit(200);
   if (error) throw new Error(`history 조회 실패: ${error.message}`);
   return ((quizzes ?? []) as QuizRow[]).map((q) => {
     const s = (subs ?? []).find((x) => x.quiz_id === q.id);

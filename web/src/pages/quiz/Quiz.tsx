@@ -2,11 +2,12 @@
 // 모의고사는 며칠씩 열어둘 수 있어서, 그 사이에 OX가 열리면 둘을 위쪽 버튼으로 오가며 봄.
 // 관리자는 "관리" 탭에서 회차를 만들고 진행함(QuizAdmin).
 import { lazy, Suspense, useState } from "react";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { PillTabs } from "../../components/PillTabs";
+import { Pagination } from "../../components/Pagination";
 import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
@@ -41,8 +42,7 @@ function QuizTags({ quiz }: { quiz: QuizView }) {
 export default function Quiz() {
   const { isLoggedIn, isAdmin } = useAuth();
   const q = useQuiz();
-  const [tab, setTab] = useState<Tab>("now");
-  const [pastId, setPastId] = useState<number | null>(null);
+  const [tabPick, setTab] = useState<Tab | null>(null);
   const [pickKind, setPickKind] = useState<"exam" | "ox" | null>(null);
 
   // 방송 화면(OX) — 리모컨의 "방송 화면 열기"로 뜨는 창. 관리자만.
@@ -75,7 +75,10 @@ export default function Quiz() {
     );
   }
 
-  const live = q.data?.quizzes ?? [];
+  // 지금 회차엔 진행 중(제출 받는 중·채점 중·OX 진행 중)인 것만. 끝난 회차 결과는 지난 기록에서 봄.
+  const live = (q.data?.quizzes ?? []).filter((x) => x.status !== "revealed");
+  // 처음 들어왔을 때 진행 중인 회차가 없으면 지난 기록부터 보여줌
+  const tab: Tab = tabPick ?? (q.data && live.length === 0 && (q.data.history ?? []).length > 0 ? "history" : "now");
   const quiz = live.find((x) => x.kind === pickKind) ?? live[0] ?? null;
   const tabs = [
     { value: "now" as Tab, label: "지금 회차" },
@@ -88,10 +91,7 @@ export default function Quiz() {
       <PageHead
         title="퀴즈"
         desc="방송 중에 열리는 유진고사(모의고사)와 OX 퀴즈예요. 순위권·생존자에게 포인트를 드려요."
-        actions={<PillTabs label="퀴즈 보기" value={tab} options={tabs} onChange={(t) => {
-              setTab(t);
-              setPastId(null);
-            }} />}
+        actions={<PillTabs label="퀴즈 보기" value={tab} options={tabs} onChange={setTab} />}
       />
 
       {tab === "now" && (
@@ -99,7 +99,7 @@ export default function Quiz() {
           {q.isLoading && <span className="skeleton" style={{ height: 320 }} />}
           {!q.isLoading && !quiz && (
             <Card>
-              <EmptyState>지금 열린 퀴즈가 없어요. 방송 중에 유진고사나 OX 퀴즈가 열리면 메뉴에 나타나요.</EmptyState>
+              <EmptyState>지금 진행 중인 퀴즈가 없어요. 끝난 회차 결과는 "지난 기록"에서 볼 수 있어요.</EmptyState>
             </Card>
           )}
           {live.length > 1 && (
@@ -120,8 +120,7 @@ export default function Quiz() {
         </>
       )}
 
-      {tab === "history" &&
-        (pastId != null ? <PastQuiz id={pastId} onBack={() => setPastId(null)} /> : <History items={q.data?.history ?? []} onOpen={setPastId} />)}
+      {tab === "history" && (q.isLoading ? <span className="skeleton" style={{ height: 320 }} /> : <History items={q.data?.history ?? []} />)}
 
       {tab === "admin" && isAdmin && (
         <Suspense fallback={<span className="skeleton" style={{ height: 320 }} />}>
@@ -132,11 +131,19 @@ export default function Quiz() {
   );
 }
 
-// 지난 기록 — 관리자는 회차를 지울 수 있음(진행 중인 실제 회차 빼고. 이미 지급한 포인트는 그대로 남음)
-function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: number) => void }) {
+// 지난 기록 — 위: 고른 회차의 결과 요약(기본은 가장 최근), 아래: 기록 목록(한 페이지 5개). 관리자는 회차를 지울 수 있음.
+const HIST_PAGE = 5;
+
+function History({ items }: { items: QuizHistoryItem[] }) {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [busy, setBusy] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pickId, setPickId] = useState<number | null>(null);
+  const selId = items.some((h) => h.id === pickId) ? pickId : items[0]?.id ?? null;
+  const totalPages = Math.max(1, Math.ceil(items.length / HIST_PAGE));
+  const cur = Math.min(page, totalPages);
+  const shown = items.slice((cur - 1) * HIST_PAGE, cur * HIST_PAGE);
 
   async function remove(h: QuizHistoryItem) {
     const msg = `"${h.title}" 회차를 삭제할까요? 모든 사람의 기록에서 사라져요.${!h.isTest && h.reward ? " 이미 지급한 포인트는 그대로 남아요." : ""}`;
@@ -145,24 +152,41 @@ function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: num
     try {
       await apiFetch(API.adminQuiz, { body: { action: "delete", quizId: h.id } });
       toast("삭제했어요.");
+      if (pickId === h.id) setPickId(null);
     } catch (e) {
       const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
       toast(ADMIN_QUIZ_ERRORS[code] || "삭제하지 못했어요.", "error");
     } finally {
       setBusy(null);
-      ["quiz", "quiz-peek", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      ["quiz", "quiz-peek", "quiz-by-id", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
     }
   }
 
-  return (
-    <Card title="내 지난 기록">
-      {items.length === 0 ? (
+  if (items.length === 0) {
+    return (
+      <Card>
         <EmptyState>아직 참여한 퀴즈가 없어요.</EmptyState>
-      ) : (
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      {selId != null && <PastQuiz key={selId} id={selId} />}
+      <Card title={`지난 기록 ${items.length}개`}>
         <div>
-          {items.map((h) => (
-            <div key={h.id} className={styles.histItem}>
-              <button type="button" className="list-row" style={{ flex: 1, minWidth: 0, border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }} onClick={() => onOpen(h.id)}>
+          {shown.map((h) => (
+            <div key={h.id} className={`${styles.histItem} ${h.id === selId ? styles.histOn : ""}`}>
+              <button
+                type="button"
+                className="list-row"
+                aria-current={h.id === selId ? "true" : undefined}
+                style={{ flex: 1, minWidth: 0, border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }}
+                onClick={() => {
+                  setPickId(h.id);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
                 <span className="list-row-title">
                   {h.title}
                   {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
@@ -180,33 +204,26 @@ function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: num
             </div>
           ))}
         </div>
-      )}
-    </Card>
+        <Pagination page={cur} totalPages={totalPages} onChange={setPage} />
+      </Card>
+    </>
   );
 }
 
-function PastQuiz({ id, onBack }: { id: number; onBack: () => void }) {
+function PastQuiz({ id }: { id: number }) {
   const q = useQuizById(id);
   const quiz = q.data?.quiz;
+  if (q.isLoading) return <span className="skeleton" style={{ height: 240 }} />;
+  if (!quiz)
+    return (
+      <Card>
+        <EmptyState>이 회차를 불러오지 못했어요.</EmptyState>
+      </Card>
+    );
   return (
     <>
-      <div>
-        <button type="button" className="btn btn-sm btn-ghost" onClick={onBack}>
-          <ChevronLeft size={16} aria-hidden="true" /> 지난 기록
-        </button>
-      </div>
-      {q.isLoading && <span className="skeleton" style={{ height: 320 }} />}
-      {!q.isLoading && !quiz && (
-        <Card>
-          <EmptyState>이 회차를 불러오지 못했어요.</EmptyState>
-        </Card>
-      )}
-      {quiz && (
-        <>
-          <QuizTags quiz={quiz} />
-          <QuizBody quiz={quiz} />
-        </>
-      )}
+      <QuizTags quiz={quiz} />
+      <QuizBody quiz={quiz} />
     </>
   );
 }

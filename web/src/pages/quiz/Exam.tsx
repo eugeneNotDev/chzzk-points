@@ -33,7 +33,8 @@ export type PaperQuestion = { id: number; qtype: QType; prompt: string; imageUrl
 // 시험지 한 장. 실제 시험지처럼 왼쪽 단을 위에서 아래로 다 채운 뒤 오른쪽 단으로 넘어감(폰에선 한 단).
 //  - onPick: 시청자가 푸는 중
 //  - marks: 채점 결과(빨간 펜 ○/✕) — 관리자 채점 화면, 결과 발표 뒤 내 시험지
-//  - onMark: 관리자가 문항마다 ○/✕를 매김
+//  - onMark: 관리자가 단답형에 ○/✕를 매김
+//  - picks / onKeyPick: 객관식 채점 — 관리자가 정답 번호를 누르면 그 번호가 정답(제출한 번호와 같으면 ○, 다르면 ✕)
 //  - showKey: 정답 표시(관리자)
 export function ExamPaper({
   title,
@@ -43,6 +44,8 @@ export function ExamPaper({
   onPick,
   marks,
   onMark,
+  picks,
+  onKeyPick,
   showKey = false,
 }: {
   title: string;
@@ -52,6 +55,8 @@ export function ExamPaper({
   onPick?: (qid: number, v: string) => void;
   marks?: Record<string, boolean | undefined>;
   onMark?: (qid: number, v: boolean | null) => void;
+  picks?: Record<string, string | undefined>;
+  onKeyPick?: (qid: number, v: string | null) => void;
   showKey?: boolean;
 }) {
   const half = Math.ceil(questions.length / 2);
@@ -62,22 +67,12 @@ export function ExamPaper({
     const mine = answers[String(q.id)] ?? "";
     const mark = marks?.[String(q.id)];
     const key = showKey ? q.answer : undefined;
+    const pen = picks?.[String(q.id)]; // 채점 때 관리자가 고른 정답 번호(빨간 펜 동그라미)
+    const choose = (v: string) => (onKeyPick ? onKeyPick(q.id, pen === v ? null : v) : onPick?.(q.id, v));
     return (
       <div key={q.id} id={`q-${q.id}`} className={styles.q}>
         <div className={styles.qTitle}>
-          {onMark ? (
-            // 채점: 번호를 누르면 ○ → ✕ → 지움 순서로 바뀜(옆 ○/✕ 버튼으로 바로 골라도 됨)
-            <button
-              type="button"
-              className={`${styles.qNo} ${styles.qNoBtn} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}
-              aria-label={`${no}번 채점: ${mark === true ? "맞음" : mark === false ? "틀림" : "안 매김"}`}
-              onClick={() => onMark(q.id, mark === undefined ? true : mark === true ? false : null)}
-            >
-              {no}.
-            </button>
-          ) : (
-            <span className={`${styles.qNo} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}>{no}.</span>
-          )}
+          <span className={`${styles.qNo} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}>{no}.</span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <Prompt text={q.prompt} />
             {q.qtype === "short" && <span className={styles.qMeta}>[단답형]</span>}
@@ -96,9 +91,10 @@ export function ExamPaper({
                   type="button"
                   role={editable ? "radio" : undefined}
                   aria-checked={editable ? picked : undefined}
-                  disabled={!editable}
-                  className={`${styles.choice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""}`}
-                  onClick={() => onPick?.(q.id, v)}
+                  aria-label={onKeyPick ? `${no}번 정답을 ${k + 1}번으로` : undefined}
+                  disabled={!editable && !onKeyPick}
+                  className={`${styles.choice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""} ${pen === v ? styles.pen : ""} ${onKeyPick ? styles.choiceGrade : ""}`}
+                  onClick={() => choose(v)}
                 >
                   <span className={styles.num}>{k + 1}</span>
                   <span>{c}</span>
@@ -119,10 +115,10 @@ export function ExamPaper({
                   type="button"
                   role={editable ? "radio" : undefined}
                   aria-checked={editable ? picked : undefined}
-                  aria-label={`${k + 1}번 그림`}
-                  disabled={!editable}
-                  className={`${styles.imgChoice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""}`}
-                  onClick={() => onPick?.(q.id, v)}
+                  aria-label={onKeyPick ? `${no}번 정답을 ${k + 1}번 그림으로` : `${k + 1}번 그림`}
+                  disabled={!editable && !onKeyPick}
+                  className={`${styles.imgChoice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""} ${pen === v ? styles.pen : ""} ${onKeyPick ? styles.choiceGrade : ""}`}
+                  onClick={() => choose(v)}
                 >
                   <img src={src} alt="" loading="lazy" />
                   <span className={styles.num}>{k + 1}</span>
@@ -148,7 +144,9 @@ export function ExamPaper({
           </label>
         )}
 
-        {onMark && (
+        {onKeyPick && q.qtype !== "short" && pen === undefined && <span className={styles.pickHint}>정답 번호를 누르면 채점돼요</span>}
+
+        {onMark && q.qtype === "short" && (
           <div className={styles.markBar}>
             <span className={styles.markLabel}>채점</span>
             <button type="button" className={`${styles.markBtn} ${mark === true ? styles.markBtnO : ""}`} aria-label={`${no}번 맞음`} aria-pressed={mark === true} onClick={() => onMark(q.id, mark === true ? null : true)}>
@@ -167,7 +165,7 @@ export function ExamPaper({
     <section className={styles.paper} aria-label="시험지">
       <div className={styles.paperHead}>
         <span className={styles.paperRound}>{title}</span>
-        <span className={styles.paperArea}>{subtitle || "유진 영역"}</span>
+        {subtitle && <span className={styles.paperArea}>{subtitle}</span>}
       </div>
       <div className={styles.paperRule} />
       <div className={styles.questions}>

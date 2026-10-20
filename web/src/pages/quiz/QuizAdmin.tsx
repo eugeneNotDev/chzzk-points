@@ -43,7 +43,7 @@ type QuestionRow = {
   asked_at: string | null;
   revealed_at: string | null;
 };
-type Sheet = { id: number; name: string; submittedAt: string; answers: Record<string, string>; marks: Record<string, boolean>; correct: number; marked: number; total: number };
+type Sheet = { id: number; name: string; submittedAt: string; answers: Record<string, string>; marks: Record<string, boolean>; picks: Record<string, string>; correct: number; marked: number; total: number };
 type Payout = { channelId: string; channelName: string; amount: number; label: string };
 type Detail = {
   quiz: QuizRow;
@@ -99,14 +99,16 @@ async function uploadImage(file: File): Promise<string> {
 }
 
 export default function QuizAdmin() {
+  const qc = useQueryClient();
   const list = useQuery({ queryKey: ["quiz-admin-list"], queryFn: () => adminCall<{ quizzes: ListItem[] }>({ action: "list" }) });
   const [selId, setSelId] = useState<number | null>(null);
   const [createKind, setCreateKind] = useState<"exam" | "ox" | null>(null);
   const items = list.data?.quizzes ?? [];
 
   useEffect(() => {
-    if (selId == null && items.length) setSelId((items.find((i) => i.status !== "revealed") ?? items[0]).id);
-  }, [items, selId]);
+    if ((selId == null || !items.some((i) => i.id === selId)) && items.length) setSelId((items.find((i) => i.status !== "revealed") ?? items[0]).id);
+    else if (selId != null && list.isSuccess && items.length === 0) setSelId(null);
+  }, [items, selId, list.isSuccess]);
 
   const detail = useQuery({
     queryKey: ["quiz-admin", selId],
@@ -157,7 +159,18 @@ export default function QuizAdmin() {
       )}
 
       {selId != null && detail.isLoading && <span className="skeleton" style={{ height: 320 }} />}
-      {d && <QuizDetail key={d.quiz.id} d={d} onDeleted={() => setSelId(null)} />}
+      {d && items.some((i) => i.id === d.quiz.id) && (
+        <QuizDetail
+          key={d.quiz.id}
+          d={d}
+          onDeleted={() => {
+            // 지운 회차는 바로 화면에서 빼기(목록 새로 받기 전에 다시 골라지지 않게)
+            qc.setQueryData<{ quizzes: ListItem[] }>(["quiz-admin-list"], (old) => (old ? { quizzes: old.quizzes.filter((x) => x.id !== d.quiz.id) } : old));
+            qc.removeQueries({ queryKey: ["quiz-admin", d.quiz.id] });
+            setSelId(null);
+          }}
+        />
+      )}
     </>
   );
 }
@@ -216,8 +229,8 @@ function QuizDetail({ d, onDeleted }: { d: Detail; onDeleted: () => void }) {
         <Steps quiz={quiz} />
       </Card>
       {settingsOpen && <QuizSettingsModal kind={quiz.kind} quiz={quiz} onClose={() => setSettingsOpen(false)} onSaved={() => setSettingsOpen(false)} />}
-      {quiz.kind === "exam" ? <ExamAdmin d={d} /> : <OxAdmin d={d} />}
       {quiz.status === "revealed" && <Payouts d={d} />}
+      {quiz.kind === "exam" ? <ExamAdmin d={d} /> : <OxAdmin d={d} />}
     </>
   );
 }
@@ -272,7 +285,7 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
         </label>
         {kind === "exam" ? (
           <label className="field">
-            <span className="field-label">영역 이름(시험지 큰 글씨)</span>
+            <span className="field-label">시험지 큰 제목 — 예: 유진 영역, 게임 영역(비워두면 안 보임)</span>
             <input className="input" maxLength={30} value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
           </label>
         ) : (
@@ -436,6 +449,7 @@ function QuestionsTab({ d }: { d: Detail }) {
   const quiz = d.quiz;
   const isDraft = quiz.status === "draft";
   const [sel, setSel] = useState<number | "new" | null>(d.questions[0]?.id ?? (isDraft ? "new" : null));
+  const [draftNo, setDraftNo] = useState(0); // 새 문항을 추가할 때마다 올려서 작성 칸을 빈 상태로 새로 띄움
   const selected = typeof sel === "number" ? d.questions.find((q) => q.id === sel) ?? null : null;
 
   async function move(id: number, dir: -1 | 1) {
@@ -490,11 +504,16 @@ function QuestionsTab({ d }: { d: Detail }) {
 
       {sel != null ? (
         <QuestionEditor
-          key={`${sel}-${selected ? "q" : "n"}`}
+          key={sel === "new" ? `new-${draftNo}` : `${sel}-${selected ? "q" : "n"}`}
           quiz={quiz}
           question={selected}
           number={selected ? d.questions.indexOf(selected) + 1 : d.questions.length + 1}
-          onSaved={(id, wasNew) => setSel(wasNew ? "new" : id)}
+          onSaved={(id, wasNew) => {
+            if (wasNew) {
+              setDraftNo((n) => n + 1);
+              setSel("new");
+            } else setSel(id);
+          }}
           onDeleted={() => setSel(d.questions[0]?.id ?? null)}
           onCancelNew={() => setSel(d.questions[0]?.id ?? null)}
         />
@@ -679,11 +698,15 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
   const [sid, setSid] = useState<number | null>(sheets[0]?.id ?? null);
   const [showKey, setShowKey] = useState(false);
   const [local, setLocal] = useState<Record<string, boolean | null>>({});
+  const [localPick, setLocalPick] = useState<Record<string, string | null>>({});
   const idx = Math.max(0, sheets.findIndex((s) => s.id === sid));
   const sheet = sheets[idx];
   const paid = !!d.quiz.rewarded_at;
 
-  useEffect(() => setLocal({}), [sid]);
+  useEffect(() => {
+    setLocal({});
+    setLocalPick({});
+  }, [sid]);
   useEffect(() => {
     if (sid == null && sheets.length) setSid(sheets[0].id);
   }, [sheets, sid]);
@@ -693,6 +716,11 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
     for (const [k, v] of Object.entries(local)) m[k] = v === null ? undefined : v;
     return m;
   }, [sheet, local]);
+  const picks = useMemo(() => {
+    const m: Record<string, string | undefined> = { ...(sheet?.picks ?? {}) };
+    for (const [k, v] of Object.entries(localPick)) m[k] = v === null ? undefined : v;
+    return m;
+  }, [sheet, localPick]);
   const correct = d.questions.filter((q) => marks[String(q.id)] === true).length;
   const marked = d.questions.filter((q) => marks[String(q.id)] !== undefined).length;
 
@@ -713,11 +741,34 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
     }
   }
 
+  // 객관식 — 고른 번호가 정답. 낸 번호와 같으면 ○, 다르면 ✕
+  async function pickKey(qid: number, v: string | null) {
+    if (!sheet || paid) return;
+    const k = String(qid);
+    setLocalPick((l) => ({ ...l, [k]: v }));
+    setLocal((l) => ({ ...l, [k]: v === null ? null : sheet.answers[k] === v }));
+    try {
+      await adminCall({ action: "mark", submissionId: sheet.id, questionId: qid, pick: v });
+    } catch (e) {
+      const drop = <T,>(l: Record<string, T>) => {
+        const n = { ...l };
+        delete n[k];
+        return n;
+      };
+      setLocalPick(drop);
+      setLocal(drop);
+      toast(errMsg(e, "채점을 저장하지 못했어요."), "error");
+    } finally {
+      qc.invalidateQueries({ queryKey: ["quiz-admin"] });
+    }
+  }
+
   async function auto() {
     if (!sheet) return;
     if (marked > 0 && !(await confirmDialog("이 시험지를 정답과 비교해서 자동 채점할까요? 이미 매긴 ○/✕도 다시 매겨져요.", { okText: "자동 채점" }))) return;
     await act({ action: "auto-mark", submissionId: sheet.id }, "자동 채점했어요.");
     setLocal({});
+    setLocalPick({});
   }
 
   const paper = sheet && (
@@ -728,7 +779,9 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
       answers={sheet.answers}
       marks={marks}
       onMark={paid ? undefined : mark}
-      showKey={showKey}
+      picks={picks}
+      onKeyPick={paid ? undefined : pickKey}
+      showKey={stream ? false : showKey}
     />
   );
   const nextReady = marked === d.questions.length && idx < sheets.length - 1;
@@ -738,13 +791,14 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
     return (
       <div className={`${styles.stream} ${styles.gradeStream}`}>
         <div className={styles.gradeBar}>
-          <span className={styles.streamTag}>{d.quiz.title}</span>
+          <b className={styles.gradeTitle}>{d.quiz.title}</b>
           {sheets.length > 0 && sheet ? (
             <>
+              <div className={styles.gradeLeft}>
               <button type="button" className="btn btn-sm" aria-label="이전 시험지" disabled={idx === 0} onClick={() => setSid(sheets[idx - 1].id)}>
                 <ChevronLeft size={16} aria-hidden="true" />
               </button>
-              <Select label="시험지 고르기" value={String(sheet.id)} options={sheets.map((x, i) => ({ value: String(x.id), label: `${i + 1}. ${x.name}` }))} onChange={(v) => setSid(Number(v))} />
+              <Select label="시험지 고르기" className={styles.gradeSelect} value={String(sheet.id)} options={sheets.map((x, i) => ({ value: String(x.id), label: `${i + 1}. ${x.name}` }))} onChange={(v) => setSid(Number(v))} />
               <button type="button" className="btn btn-sm" aria-label="다음 시험지" disabled={idx === sheets.length - 1} onClick={() => setSid(sheets[idx + 1].id)}>
                 <ChevronRight size={16} aria-hidden="true" />
               </button>
@@ -752,10 +806,11 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
                 <b className="num">{correct}</b>
                 <span className="num">/ {d.questions.length} 맞음</span>
               </span>
-              <span className="muted num" style={{ fontSize: 13 }}>
+              <span className="muted num" style={{ fontSize: 13, whiteSpace: "nowrap" }}>
                 채점 {marked}/{d.questions.length}
               </span>
-              <span style={{ marginLeft: "auto" }} />
+              </div>
+              <div className={styles.gradeRight}>
               <button type="button" className="btn btn-sm" disabled={busy || paid} onClick={auto}>
                 <Wand2 size={16} aria-hidden="true" /> 자동 채점
               </button>
@@ -764,9 +819,10 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
                   다음 시험지 <ChevronRight size={16} aria-hidden="true" />
                 </button>
               )}
+              </div>
             </>
           ) : (
-            <span className="muted">아직 제출된 시험지가 없어요.</span>
+            <span className={`muted ${styles.gradeLeft}`}>아직 제출된 시험지가 없어요.</span>
           )}
         </div>
         <div className={styles.gradeBody}>{paper}</div>

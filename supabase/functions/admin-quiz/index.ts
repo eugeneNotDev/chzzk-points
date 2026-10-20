@@ -14,7 +14,8 @@
 // 진행
 //   open { quizId }               → 모의고사: 제출 받기 시작(제한시간 없음) / OX: 진행 시작
 //   close { quizId }              → 모의고사 제출 마감 → 채점 단계
-//   mark { submissionId, questionId, correct: true | false | null } → 시험지 한 장의 한 문항 ○/✕(null이면 지움)
+//   mark { submissionId, questionId, correct: true | false | null } → 시험지 한 장의 한 문항 ○/✕(null이면 지움) — 단답형
+//   mark { submissionId, questionId, pick: "1"~"4" | null }      → 객관식: 관리자가 고른 번호가 정답, 제출한 번호와 같으면 맞음(null이면 지움)
 //   auto-mark { submissionId } | { quizId, onlyEmpty: true } → 자동 채점(그 시험지 전체 / 전체 시험지의 안 매긴 칸만)
 //   reveal { quizId }             → 모의고사: 맞은 수로 순위 확정하고 결과 발표(안 매긴 칸은 틀림) / OX: 종료
 //   pay { quizId }                → 보상 지급(테스트 회차면 기록만) → { ok, test, count, total, payouts }
@@ -48,6 +49,8 @@ import {
 } from "../_shared/quiz.ts";
 
 const BUCKET = "quiz-images";
+type Sub = SubmissionRow & { picks: Record<string, string> };
+const isChoice = (q: QuestionRow) => q.qtype === "choice" || q.qtype === "image";
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -81,9 +84,9 @@ async function loadQuestions(admin: Admin, quizId: number) {
   return (data ?? []) as QuestionRow[];
 }
 async function loadSubs(admin: Admin, quizId: number) {
-  const { data, error } = await admin.from("quiz_exam_submissions").select(SUBMISSION_COLS).eq("quiz_id", quizId).order("submitted_at", { ascending: true });
+  const { data, error } = await admin.from("quiz_exam_submissions").select(`${SUBMISSION_COLS}, picks`).eq("quiz_id", quizId).order("submitted_at", { ascending: true });
   if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
-  return (data ?? []) as SubmissionRow[];
+  return (data ?? []) as Sub[];
 }
 async function loadOxAnswers(admin: Admin, quizId: number) {
   const { data, error } = await admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quizId);
@@ -167,7 +170,7 @@ async function detail(admin: Admin, quiz: QuizRow) {
     const subs = await loadSubs(admin, quiz.id);
     const ranked = scoreExam(questions, subs);
     const names = await loadNames(admin, subs.map((s) => s.channel_id), true);
-    const sheets = subs.map((s) => ({ id: s.id, name: names.get(s.channel_id) ?? "", submittedAt: s.submitted_at, answers: s.answers, marks: s.marks ?? {}, ...sheetTally(questions, s.marks ?? {}) }));
+    const sheets = subs.map((s) => ({ id: s.id, name: names.get(s.channel_id) ?? "", submittedAt: s.submitted_at, answers: s.answers, marks: s.marks ?? {}, picks: s.picks ?? {}, ...sheetTally(questions, s.marks ?? {}) }));
     return {
       ...base,
       exam: {
@@ -343,29 +346,45 @@ Deno.serve(async (req: Request) => {
         const sid = Number(body.submissionId);
         const q = await getQuestion(admin, body.questionId);
         if (!Number.isInteger(sid)) bad("invalid_request");
-        const { data: sub, error } = await admin.from("quiz_exam_submissions").select("id, quiz_id, marks").eq("id", sid).maybeSingle();
+        const { data: sub, error } = await admin.from("quiz_exam_submissions").select("id, quiz_id, answers, marks, picks").eq("id", sid).maybeSingle();
         if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
         if (!sub || sub.quiz_id !== q.quiz_id) bad("invalid_request");
         const quiz = await getQuiz(admin, q.quiz_id);
         if (quiz.rewarded_at) bad("already_paid");
+        const k = String(q.id);
         const marks = { ...(sub!.marks ?? {}) } as Record<string, boolean>;
-        if (body.correct === true || body.correct === false) marks[String(q.id)] = body.correct;
-        else delete marks[String(q.id)];
-        await upd(admin, "quiz_exam_submissions", sid, { marks });
+        const picks = { ...(sub!.picks ?? {}) } as Record<string, string>;
+        if ("pick" in body && isChoice(q)) {
+          // 객관식 — 관리자가 고른 번호가 정답. 시청자가 낸 번호와 같으면 맞음
+          if (["1", "2", "3", "4"].includes(body.pick)) {
+            picks[k] = body.pick;
+            marks[k] = (sub!.answers as Record<string, string>)?.[k] === body.pick;
+          } else {
+            delete picks[k];
+            delete marks[k];
+          }
+        } else if (body.correct === true || body.correct === false) {
+          marks[k] = body.correct;
+          delete picks[k];
+        } else {
+          delete marks[k];
+          delete picks[k];
+        }
+        await upd(admin, "quiz_exam_submissions", sid, { marks, picks });
         if (quiz.status === "revealed") await finalizeExam(admin, quiz);
         return json({ ok: true, marks }, 200);
       }
 
       case "auto-mark": {
         let quizId: number;
-        let targets: SubmissionRow[];
+        let targets: Sub[];
         if (body.submissionId !== undefined) {
           const sid = Number(body.submissionId);
-          const { data, error } = await admin.from("quiz_exam_submissions").select(`quiz_id, ${SUBMISSION_COLS}`).eq("id", sid).maybeSingle();
+          const { data, error } = await admin.from("quiz_exam_submissions").select(`quiz_id, ${SUBMISSION_COLS}, picks`).eq("id", sid).maybeSingle();
           if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
           if (!data) bad("invalid_request");
           quizId = (data as { quiz_id: number }).quiz_id;
-          targets = [data as unknown as SubmissionRow];
+          targets = [data as unknown as Sub];
         } else {
           quizId = (await getQuiz(admin, body.quizId)).id;
           targets = await loadSubs(admin, quizId);
@@ -376,11 +395,13 @@ Deno.serve(async (req: Request) => {
         const onlyEmpty = body.onlyEmpty === true;
         for (const t of targets) {
           const marks = { ...(t.marks ?? {}) };
+          const picks = { ...(t.picks ?? {}) };
           for (const q of questions) {
             if (onlyEmpty && (marks[String(q.id)] === true || marks[String(q.id)] === false)) continue;
             marks[String(q.id)] = autoMark(q, t.answers[String(q.id)]);
+            if (isChoice(q)) picks[String(q.id)] = q.answer;
           }
-          await upd(admin, "quiz_exam_submissions", t.id, { marks });
+          await upd(admin, "quiz_exam_submissions", t.id, { marks, picks });
         }
         if (quiz.status === "revealed") await finalizeExam(admin, quiz);
         return json({ ok: true, count: targets.length }, 200);
