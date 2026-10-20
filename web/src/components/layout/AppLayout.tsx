@@ -27,12 +27,14 @@ function currentItem(pathname: string): NavItem | undefined {
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
-  const quizLive = !!useQuizPeek().data?.active;
+  const quizPeek = useQuizPeek().data;
+  const quizLive = !!quizPeek?.active; // "진행 중" 배지는 진행 중일 때만
+  const quizShown = quizLive || !!quizPeek?.recent; // 발표 직후 30분은 결과 보러 들어올 수 있게 메뉴만 남김
   const predictLive = !!usePredictionLive().data;
   return (
     <nav aria-label="사이트 메뉴" className={styles.nav}>
       {NAV_GROUPS.map((g, gi) => {
-        const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.quiz || quizLive || isAdmin));
+        const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.quiz || quizShown || isAdmin));
         if (items.length === 0) return null;
         return (
           <div key={gi} className={styles.navGroup}>
@@ -140,9 +142,11 @@ function PointsChip() {
 function MoreSheet({ onClose }: { onClose: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
-  const quizLive = !!useQuizPeek().data?.active;
+  const quizPeek = useQuizPeek().data;
+  const quizLive = !!quizPeek?.active; // "진행 중" 배지는 진행 중일 때만
+  const quizShown = quizLive || !!quizPeek?.recent; // 발표 직후 30분은 결과 보러 들어올 수 있게 메뉴만 남김
   const predictLive = !!usePredictionLive().data;
-  const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin) && (!i.quiz || quizLive || isAdmin));
+  const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin) && (!i.quiz || quizShown || isAdmin));
   return (
     <div className={styles.sheetBackdrop} onClick={onClose}>
       <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="더보기" onClick={(e) => e.stopPropagation()}>

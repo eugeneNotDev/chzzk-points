@@ -82,16 +82,6 @@ export function ExamPaper({
             <Prompt text={q.prompt} />
             {q.qtype === "short" && <span className={styles.qMeta}>[단답형]</span>}
           </span>
-          {onMark && (
-            <span className={styles.markBar}>
-              <button type="button" className={`${styles.markBtn} ${mark === true ? styles.markBtnO : ""}`} aria-label={`${no}번 맞음`} aria-pressed={mark === true} onClick={() => onMark(q.id, mark === true ? null : true)}>
-                ○
-              </button>
-              <button type="button" className={`${styles.markBtn} ${mark === false ? styles.markBtnX : ""}`} aria-label={`${no}번 틀림`} aria-pressed={mark === false} onClick={() => onMark(q.id, mark === false ? null : false)}>
-                ✕
-              </button>
-            </span>
-          )}
         </div>
         {q.imageUrl && <img className={styles.qImage} src={q.imageUrl} alt="문제 그림" loading="lazy" />}
 
@@ -158,6 +148,17 @@ export function ExamPaper({
           </label>
         )}
 
+        {onMark && (
+          <div className={styles.markBar}>
+            <span className={styles.markLabel}>채점</span>
+            <button type="button" className={`${styles.markBtn} ${mark === true ? styles.markBtnO : ""}`} aria-label={`${no}번 맞음`} aria-pressed={mark === true} onClick={() => onMark(q.id, mark === true ? null : true)}>
+              ○ 맞음
+            </button>
+            <button type="button" className={`${styles.markBtn} ${mark === false ? styles.markBtnX : ""}`} aria-label={`${no}번 틀림`} aria-pressed={mark === false} onClick={() => onMark(q.id, mark === false ? null : false)}>
+              ✕ 틀림
+            </button>
+          </div>
+        )}
       </div>
     );
   };

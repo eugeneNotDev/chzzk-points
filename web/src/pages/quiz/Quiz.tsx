@@ -2,18 +2,22 @@
 // 모의고사는 며칠씩 열어둘 수 있어서, 그 사이에 OX가 열리면 둘을 위쪽 버튼으로 오가며 봄.
 // 관리자는 "관리" 탭에서 회차를 만들고 진행함(QuizAdmin).
 import { lazy, Suspense, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, EmptyState } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { PillTabs } from "../../components/PillTabs";
-import { useAuth } from "../../lib/auth";
+import { apiFetch, ApiError, useAuth } from "../../lib/auth";
+import { API } from "../../lib/config";
+import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt, shortDate } from "../../lib/format";
-import { useQuiz, useQuizById, type QuizHistoryItem, type QuizView } from "../../lib/quiz";
+import { ADMIN_QUIZ_ERRORS, useQuiz, useQuizById, type QuizHistoryItem, type QuizView } from "../../lib/quiz";
 import { ExamPanel } from "./Exam";
 import { OxPanel } from "./Ox";
 import styles from "./Quiz.module.css";
 
 const QuizAdmin = lazy(() => import("./QuizAdmin"));
+const OxStream = lazy(() => import("./QuizAdmin").then((m) => ({ default: m.OxStream })));
 
 type Tab = "now" | "history" | "admin";
 
@@ -39,6 +43,16 @@ export default function Quiz() {
   const [tab, setTab] = useState<Tab>("now");
   const [pastId, setPastId] = useState<number | null>(null);
   const [pickKind, setPickKind] = useState<"exam" | "ox" | null>(null);
+
+  // 방송 화면(OX) — 리모컨의 "방송 화면 열기"로 뜨는 창. 관리자만.
+  const streamId = Number(new URLSearchParams(location.search).get("stream"));
+  if (isAdmin && Number.isInteger(streamId) && streamId > 0) {
+    return (
+      <Suspense fallback={null}>
+        <OxStream quizId={streamId} />
+      </Suspense>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -108,7 +122,28 @@ export default function Quiz() {
   );
 }
 
+// 지난 기록 — 관리자는 회차를 지울 수 있음(진행 중인 실제 회차 빼고. 이미 지급한 포인트는 그대로 남음)
 function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: number) => void }) {
+  const { isAdmin } = useAuth();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<number | null>(null);
+
+  async function remove(h: QuizHistoryItem) {
+    const msg = `"${h.title}" 회차를 삭제할까요? 모든 사람의 기록에서 사라져요.${!h.isTest && h.reward ? " 이미 지급한 포인트는 그대로 남아요." : ""}`;
+    if (!(await confirmDialog(msg, { danger: true }))) return;
+    setBusy(h.id);
+    try {
+      await apiFetch(API.adminQuiz, { body: { action: "delete", quizId: h.id } });
+      toast("삭제했어요.");
+    } catch (e) {
+      const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
+      toast(ADMIN_QUIZ_ERRORS[code] || "삭제하지 못했어요.", "error");
+    } finally {
+      setBusy(null);
+      ["quiz", "quiz-peek", "quiz-admin-list", "quiz-admin"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    }
+  }
+
   return (
     <Card title="내 지난 기록">
       {items.length === 0 ? (
@@ -116,16 +151,23 @@ function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: num
       ) : (
         <div>
           {items.map((h) => (
-            <button key={h.id} type="button" className="list-row" style={{ width: "100%", border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }} onClick={() => onOpen(h.id)}>
-              <span className="list-row-title">
-                {h.title}
-                {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
-              </span>
-              <span className="list-row-meta">
-                {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}
-                {h.reward ? ` · +${fmt(h.reward.amount)}P` : ""} · {shortDate(h.revealedAt)}
-              </span>
-            </button>
+            <div key={h.id} className={styles.histItem}>
+              <button type="button" className="list-row" style={{ flex: 1, minWidth: 0, border: 0, background: "transparent", color: "inherit", font: "inherit", textAlign: "left", cursor: "pointer" }} onClick={() => onOpen(h.id)}>
+                <span className="list-row-title">
+                  {h.title}
+                  {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
+                </span>
+                <span className="list-row-meta">
+                  {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}
+                  {h.reward ? ` · +${fmt(h.reward.amount)}P` : ""} · {shortDate(h.revealedAt)}
+                </span>
+              </button>
+              {isAdmin && (
+                <button type="button" className="btn btn-sm btn-ghost" aria-label={`${h.title} 삭제`} disabled={busy === h.id} onClick={() => remove(h)}>
+                  <Trash2 size={16} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

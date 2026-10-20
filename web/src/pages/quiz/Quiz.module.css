@@ -13,6 +13,7 @@
 
 /* ── 시험지 ── */
 .paper {
+  container: paper / inline-size;
   min-width: 0;
   padding: 36px 40px 40px;
   border-radius: var(--r-xl);
@@ -44,6 +45,8 @@
   border-radius: 2px;
   background: var(--c-border-strong);
 }
+/* 시험지 단 나누기 — 화면 폭이 아니라 시험지 자체 폭으로 정함(옆 칸·관리자 목록이 있어도 안 깨지게).
+   시험지가 760px 이상이면 두 단, 아니면 한 단. */
 .questions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -60,12 +63,12 @@
 .qCol:empty {
   display: none;
 }
-@media (min-width: 900px) {
+@container paper (min-width: 760px) {
   .questions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .qCol {
-    padding: 0 36px;
+    padding: 0 32px;
   }
   .qCol:first-child {
     padding-left: 0;
@@ -90,6 +93,7 @@
   font-weight: 700;
   line-height: 1.6;
   word-break: keep-all;
+  overflow-wrap: anywhere; /* 띄어쓰기 없는 긴 글자도 칸 안에서 줄바꿈 */
 }
 .qTitle u {
   text-underline-offset: 4px;
@@ -127,21 +131,33 @@
   outline-offset: -1.5px;
 }
 .markBar {
-  flex: none;
-  display: inline-flex;
-  gap: 6px;
-  margin-left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  border: 1px dashed var(--c-border-strong);
+}
+.markLabel {
+  margin-right: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-3);
 }
 .markBtn {
-  width: 44px;
+  min-width: 96px;
   height: 44px;
+  padding: 0 14px;
   border: 1.5px solid var(--c-border-strong);
-  border-radius: 50%;
+  border-radius: var(--r-md);
   background: var(--c-surface-2);
   color: var(--c-text-3);
   font: inherit;
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 15px;
+  font-weight: 800;
   line-height: 1;
   cursor: pointer;
 }
@@ -205,6 +221,11 @@
   text-align: left;
   cursor: pointer;
   transition: background var(--dur-fast);
+}
+.choice > span:last-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .choice:hover:not(:disabled) {
   background: var(--c-hover);
@@ -1001,4 +1022,138 @@
 .grow {
   flex: 1 1 280px;
   min-width: 0;
+}
+
+/* ── 방송 화면(OX) — 화면 전체를 덮는 창. 방송 캡처용 ── */
+.stream {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: max(24px, 4vh) max(24px, 4vw);
+  background: var(--c-bg);
+  color: var(--c-text);
+  overflow: auto;
+}
+.streamTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.streamTag {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+  font-size: 18px;
+  font-weight: 800;
+}
+.streamCount {
+  margin-left: auto;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-accent);
+}
+.streamMain {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  text-align: center;
+}
+.streamPrompt {
+  max-width: 1100px;
+  font-size: clamp(28px, 4.6vw, 60px);
+  line-height: 1.35;
+  font-weight: 900;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.streamHint {
+  font-size: clamp(16px, 2vw, 24px);
+  color: var(--c-text-2);
+  font-weight: 700;
+}
+.streamTimer {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--c-live-text);
+}
+.streamTimer b {
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 800;
+  line-height: 1;
+}
+.streamTimer span {
+  font-size: 24px;
+  font-weight: 800;
+}
+.streamOX {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 3vw, 40px);
+  width: min(900px, 100%);
+}
+.streamCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(16px, 3vw, 32px);
+  border: 4px solid var(--c-border-strong);
+  border-radius: var(--r-2xl);
+  background: var(--c-surface);
+  transition: opacity var(--dur), transform var(--dur) var(--ease-spring);
+}
+.streamCard svg {
+  width: clamp(72px, 10vw, 140px);
+  height: clamp(72px, 10vw, 140px);
+}
+.streamCard b {
+  font-size: clamp(24px, 3.4vw, 44px);
+  font-weight: 800;
+}
+.streamCard span {
+  font-size: 18px;
+  color: var(--c-text-2);
+}
+.streamO {
+  color: var(--c-blue);
+}
+.streamX {
+  color: var(--c-amber);
+}
+.streamWin {
+  border-color: currentColor;
+  transform: scale(1.04);
+}
+.streamLose {
+  opacity: 0.35;
+}
+.streamNames {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 1100px;
+}
+.streamName {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: clamp(16px, 2vw, 24px);
+  font-weight: 800;
+}
+
+.histItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }

@@ -6,7 +6,7 @@
 // 회차
 //   create { kind, title, subtitle?, isTest?, oxMode?, timeLimitSec?, rewardRanks?, rewardSurvivor? } → { id }
 //   update { quizId, title?, subtitle?, isTest?, oxMode?, timeLimitSec?, rewardRanks?, rewardSurvivor? }
-//   delete { quizId }             → 준비 중이거나 테스트 회차만
+//   delete { quizId }             → 진행 중(제출 받는 중·채점 중)인 실제 회차만 빼고 지울 수 있음. 이미 지급한 포인트는 그대로 남음
 // 문항(모의고사)
 //   save-question { quizId, question: { id?, qtype, prompt, imageUrl?, choices, answer } } → { id }
 //   delete-question { questionId } / reorder { quizId, ids }
@@ -259,7 +259,7 @@ Deno.serve(async (req: Request) => {
 
       case "delete": {
         const quiz = await getQuiz(admin, body.quizId);
-        if (quiz.status !== "draft" && !quiz.is_test) bad("not_deletable");
+        if ((quiz.status === "open" || quiz.status === "closed") && !quiz.is_test) bad("not_deletable");
         const { error } = await admin.from("quizzes").delete().eq("id", quiz.id);
         if (error) throw new Error(`quizzes 삭제 실패: ${error.message}`);
         return json({ ok: true }, 200);

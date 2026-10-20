@@ -1,6 +1,6 @@
 // 유진고사 — 시청자용. 조회(GET)와 제출(POST). 회차 만들기·진행·채점·지급은 admin-quiz 함수.
 //
-// GET ?peek=1 (로그인 없이) → 메뉴에 띄울지: { active: { id, kind, title, status } | null }
+// GET ?peek=1 (로그인 없이) → 메뉴 표시용: { active: 진행 중(제출 받는 중·채점 중·OX 진행 중) 회차 | null, recent: 발표 끝난 지 30분 안 된 회차 | null }
 // GET (로그인)              → 지금 회차(종류별 하나씩, OX 먼저) + 내 지난 기록: { quizzes: QuizView[], history: HistoryItem[] }
 // GET ?quizId=N (로그인)    → 그 회차(발표가 끝났거나 진행 중인 것만): { quiz: QuizView | null }
 //
@@ -199,8 +199,8 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === "GET" && url.searchParams.get("peek") === "1") {
       const qs = await findActiveQuizzes(admin);
-      const q = qs[0];
-      return json({ active: q ? { id: q.id, kind: q.kind, title: q.title, status: q.status } : null }, 200);
+      const pick = (q: QuizRow | undefined) => (q ? { id: q.id, kind: q.kind, title: q.title, status: q.status } : null);
+      return json({ active: pick(qs.find((q) => q.status !== "revealed")), recent: pick(qs.find((q) => q.status === "revealed")) }, 200);
     }
 
     const session = await requireSession(req);

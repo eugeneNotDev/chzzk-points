@@ -4,7 +4,7 @@
 // 테스트 회차는 보상 지급을 눌러도 포인트가 안 들어가고 "누구에게 얼마"만 남음.
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, Plus, Settings, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, MonitorPlay, Plus, Settings, Trash2, Wand2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { Select } from "../../components/Select";
 import { Modal } from "../../components/ui";
@@ -16,6 +16,7 @@ import { maybeCompressImage } from "../../lib/notices";
 import { ADMIN_QUIZ_ERRORS, type QType, type QuizStatus } from "../../lib/quiz";
 import { supabase } from "../../lib/supabase";
 import { ExamPaper, leftText } from "./Exam";
+import { OIcon, XIcon } from "./Ox";
 import { useNow } from "./useNow";
 import styles from "./Quiz.module.css";
 
@@ -823,7 +824,26 @@ function OxAdmin({ d }: { d: Detail }) {
 
   return (
     <>
-      <Card className={styles.admin} title="OX 리모컨" extra={<span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`} style={{ marginLeft: "auto" }}>{deathmatch ? "데스매치" : "점수전"}</span>}>
+      <Card
+        className={styles.admin}
+        title="OX 리모컨"
+        extra={
+          <div className={styles.actions} style={{ marginLeft: "auto" }}>
+            <span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`}>{deathmatch ? "데스매치" : "점수전"}</span>
+            <button
+              type="button"
+              className="btn btn-sm"
+              title="정답·대기열 없이 문제와 결과만 크게 보여주는 창이에요. 이 창을 방송에 띄우고, 리모컨은 내 화면에만 두세요."
+              onClick={() => window.open(`${location.pathname}?stream=${quiz.id}`, `quiz-stream-${quiz.id}`, "width=1280,height=720")}
+            >
+              <MonitorPlay size={16} aria-hidden="true" /> 방송 화면 열기
+            </button>
+          </div>
+        }
+      >
+        <p className="muted" style={{ margin: "0 0 14px", fontSize: 12 }}>
+          이 리모컨엔 미리 정한 정답과 대기열이 보여요. 방송엔 "방송 화면 열기"로 뜨는 창을 띄워 주세요.
+        </p>
         {quiz.status === "draft" && (
           <div className={styles.actions} style={{ marginBottom: 16 }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act({ action: "open", quizId: quiz.id }, "OX 퀴즈를 열었어요. 시청자 메뉴에 떠요.")}>
@@ -1079,5 +1099,84 @@ function Payouts({ d }: { d: Detail }) {
         </div>
       )}
     </Card>
+  );
+}
+
+// ── 방송 화면(OX) — 방송에 띄우는 창. 정답은 공개한 뒤에만, 대기열·미리 정한 정답은 절대 안 보임 ──
+export function OxStream({ quizId }: { quizId: number }) {
+  const now = useNow(200);
+  const q = useQuery({ queryKey: ["quiz-admin", quizId], refetchInterval: 1000, queryFn: () => adminCall<Detail>({ action: "get", quizId }) });
+  const d = q.data;
+  const ox = d?.ox;
+  const cur = ox?.current ?? null;
+  const closesAt = cur?.closesAt ? new Date(cur.closesAt).getTime() : 0;
+  const open = !!cur && !cur.revealed && closesAt > now;
+  const closed = !!cur && !open;
+  const deathmatch = d?.quiz.ox_mode === "deathmatch";
+  const alive = ox?.players.filter((p) => p.alive) ?? [];
+  const total = cur ? cur.counts.O + cur.counts.X : 0;
+  const ended = d?.quiz.status === "revealed";
+
+  return (
+    <div className={styles.stream}>
+      {!d ? (
+        <span className={styles.streamHint}>불러오는 중…</span>
+      ) : (
+        <>
+          <div className={styles.streamTop}>
+            <span className={styles.streamTag}>{deathmatch ? "OX 데스매치" : "OX 퀴즈"}</span>
+            {cur && !ended && <span className={styles.streamTag}>{cur.number}번째 문제</span>}
+            <span className={styles.streamCount}>
+              {deathmatch && ox?.started ? `생존 ${alive.length}명` : `참여 ${ox?.players.length ?? 0}명`}
+            </span>
+          </div>
+
+          {ended ? (
+            <div className={styles.streamMain}>
+              <b className={styles.streamPrompt}>{deathmatch ? "최후 생존자" : "OX 퀴즈 끝!"}</b>
+              <div className={styles.streamNames}>
+                {(deathmatch ? alive : ox!.players.slice(0, 10)).map((p, i) => (
+                  <span key={i} className={styles.streamName}>
+                    {p.name}
+                    {!deathmatch && ` · ${p.correct}개`}
+                  </span>
+                ))}
+                {deathmatch && alive.length === 0 && <span className={styles.streamHint}>살아남은 사람이 없어요</span>}
+              </div>
+            </div>
+          ) : !cur ? (
+            <div className={styles.streamMain}>
+              <b className={styles.streamPrompt}>곧 첫 문제가 나와요</b>
+              <span className={styles.streamHint}>팬보드 퀴즈 메뉴에서 O / X를 골라주세요</span>
+            </div>
+          ) : (
+            <div className={styles.streamMain}>
+              <b className={styles.streamPrompt}>{cur.prompt.replace(/__/g, "")}</b>
+              {open ? (
+                <div className={styles.streamTimer}>
+                  <b className="num">{Math.max(0, Math.ceil((closesAt - now) / 1000))}</b>
+                  <span>초</span>
+                </div>
+              ) : (
+                <span className={styles.streamHint}>{cur.revealed ? "정답 공개!" : "마감! 정답은…?"}</span>
+              )}
+              <div className={styles.streamOX}>
+                {(["O", "X"] as const).map((c) => {
+                  const win = cur.revealed && cur.answer === c;
+                  const lose = cur.revealed && cur.answer !== c;
+                  return (
+                    <div key={c} className={`${styles.streamCard} ${c === "O" ? styles.streamO : styles.streamX} ${win ? styles.streamWin : ""} ${lose ? styles.streamLose : ""}`}>
+                      {c === "O" ? <OIcon /> : <XIcon />}
+                      <b className="num">{closed ? `${cur.counts[c]}명` : "?"}</b>
+                      {closed && total > 0 && <span className="num">{Math.round((cur.counts[c] / total) * 100)}%</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }

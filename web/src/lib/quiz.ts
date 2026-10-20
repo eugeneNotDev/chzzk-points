@@ -93,7 +93,8 @@ export function useQuizPeek() {
     queryFn: async () => {
       const res = await fetch(`${API.quiz}?peek=1`);
       if (!res.ok) throw new Error(String(res.status));
-      return (await res.json()) as { active: { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus } | null };
+      type Peek = { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus } | null;
+      return (await res.json()) as { active: Peek; recent?: Peek };
     },
   });
 }
@@ -146,7 +147,7 @@ export const ADMIN_QUIZ_ERRORS: Record<string, string> = {
   not_revealed: "결과 발표 후에 지급할 수 있어요.",
   already_paid: "이미 보상을 지급했어요.",
   previous_not_revealed: "앞 문제의 정답을 먼저 공개해주세요.",
-  not_deletable: "준비 중이거나 테스트 회차만 지울 수 있어요.",
+  not_deletable: "진행 중인 회차는 먼저 결과 발표까지 끝내고 지워주세요.",
   invalid_file: "PNG·JPG·WEBP·GIF 이미지만 올릴 수 있어요.",
 };
 
