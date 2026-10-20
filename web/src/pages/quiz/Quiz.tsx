@@ -253,7 +253,7 @@ function History({ items }: { items: QuizHistoryItem[] }) {
                   {h.isTest && <span className={`tag ${styles.testTag}`}>테스트</span>}
                 </span>
                 <span className="list-row-meta">
-                  {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "데스매치" : "점수전"}
+                  {h.kind === "exam" ? (h.rank != null ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : "참여 안 함") : h.oxMode === "deathmatch" ? "데스매치" : "점수전"}
                   {h.reward ? ` · +${fmt(h.reward.amount)}P` : ""} · {shortDate(h.revealedAt)}
                 </span>
               </button>

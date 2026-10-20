@@ -12,6 +12,7 @@
 
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
+import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import {
   canAnswerOx,
   findActiveQuizzes,
@@ -169,9 +170,13 @@ async function history(admin: Admin, channelId: string) {
   ]);
   if (e1) throw new Error(`history 조회 실패: ${e1.message}`);
   if (e2) throw new Error(`history 조회 실패: ${e2.message}`);
+  // 관리자(채널 주인)는 참여 여부와 상관없이 끝난 회차 전부
+  const isOwner = channelId === OWNER_CHANNEL_ID;
   const ids = [...new Set([...(subs ?? []).map((s) => s.quiz_id), ...(oxs ?? []).map((o) => o.quiz_id)])];
-  if (ids.length === 0) return [];
-  const { data: quizzes, error } = await admin.from("quizzes").select(QUIZ_COLS).in("id", ids).eq("status", "revealed").order("revealed_at", { ascending: false }).limit(200);
+  if (ids.length === 0 && !isOwner) return [];
+  let hq = admin.from("quizzes").select(QUIZ_COLS).eq("status", "revealed");
+  if (!isOwner) hq = hq.in("id", ids);
+  const { data: quizzes, error } = await hq.order("revealed_at", { ascending: false }).limit(200);
   if (error) throw new Error(`history 조회 실패: ${error.message}`);
   return ((quizzes ?? []) as QuizRow[]).map((q) => {
     const s = (subs ?? []).find((x) => x.quiz_id === q.id);
