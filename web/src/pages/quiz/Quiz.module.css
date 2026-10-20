@@ -233,6 +233,30 @@
 .choice:disabled {
   cursor: default;
 }
+/* 객관식 채점 — 관리자가 누른 정답 번호에 빨간 펜 동그라미 */
+.choiceGrade:hover {
+  background: var(--c-hover);
+}
+.pen .num {
+  position: relative;
+}
+.pen .num::after {
+  content: "";
+  position: absolute;
+  inset: -7px -8px -6px -7px;
+  border: 2.5px solid var(--c-danger);
+  border-radius: 50%;
+  transform: rotate(-10deg);
+  pointer-events: none;
+}
+.imgChoice.pen .num::after {
+  inset: -6px;
+}
+.pickHint {
+  padding-left: 14px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
 .num {
   flex: none;
   display: grid;
@@ -608,6 +632,7 @@
 }
 .oxPrompt {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 28px;
   line-height: 1.45;
   font-weight: 800;
@@ -941,6 +966,9 @@
   border: 1px solid var(--c-border);
   min-width: 0;
 }
+.panel {
+  overflow-wrap: anywhere;
+}
 .panelLabel {
   font-size: 12px;
   font-weight: 700;
@@ -1116,7 +1144,11 @@
   flex-direction: column;
   align-items: center;
   gap: 18px;
-  width: min(1200px, 100%);
+  /* 문제 길이에 맞춰 카드 폭이 늘었다 줄었다 함 */
+  width: fit-content;
+  min-width: min(360px, 100%);
+  max-width: min(1200px, 100%);
+  box-sizing: border-box;
   padding: clamp(24px, 4vh, 44px) clamp(20px, 4vw, 56px);
   border-radius: var(--r-2xl);
   background: color-mix(in srgb, var(--c-surface) 88%, transparent);
@@ -1360,6 +1392,48 @@
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--c-border);
 }
+.gradeBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.gradeLeft,
+.gradeRight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.gradeLeft {
+  order: 1;
+}
+.gradeTitle {
+  order: 2;
+  font-family: var(--font-logo);
+  font-size: clamp(18px, 1.8vw, 24px);
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+}
+.gradeRight {
+  order: 3;
+  justify-content: flex-end;
+}
+.gradeSelect {
+  width: 200px;
+  white-space: nowrap;
+}
+@media (max-width: 900px) {
+  .gradeBar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gradeTitle {
+    order: 0;
+  }
+  .gradeRight {
+    justify-content: flex-start;
+  }
+}
 .gradeScore {
   display: inline-flex;
   align-items: baseline;
@@ -1448,4 +1522,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  border-radius: var(--r-sm);
+}
+.histOn {
+  background: var(--c-accent-soft);
+}
+.histOn :global(.list-row-title) {
+  color: var(--c-accent);
 }
