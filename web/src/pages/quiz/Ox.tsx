@@ -1,5 +1,5 @@
 // 유진고사 — OX 퀴즈(시청자). 문제가 뜨면 시간 안에 O/X. 데스매치면 틀리는 순간 탈락.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
@@ -7,7 +7,7 @@ import { apiFetch, ApiError } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { toast } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
-import { QUIZ_ERRORS, type OxView } from "../../lib/quiz";
+import { oxPhase, QUIZ_ERRORS, type OxView } from "../../lib/quiz";
 import { leftText, Prompt } from "./Exam";
 import { useNow } from "./useNow";
 import styles from "./Quiz.module.css";
@@ -28,12 +28,11 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
   const now = useNow(250);
   const cur = quiz.current;
   const [local, setLocal] = useState<{ id: number; choice: "O" | "X" } | null>(null);
-  const firstLeft = useRef<{ id: number; ms: number } | null>(null);
 
-  const closesAt = cur?.closesAt ? new Date(cur.closesAt).getTime() : 0;
-  const open = !!cur && !cur.closed && closesAt > now;
-  if (cur && firstLeft.current?.id !== cur.id) firstLeft.current = { id: cur.id, ms: Math.max(1000, closesAt - now) };
-  const pct = open && firstLeft.current ? Math.max(0, Math.min(100, ((closesAt - now) / firstLeft.current.ms) * 100)) : 0;
+  // 출제 직후 3초(방송 딜레이 여유)는 "곧 시작" 안내만, 그 뒤부터 실제 제한시간을 셈. 답은 그 사이에도 고를 수 있음.
+  const ph = cur ? oxPhase(cur.askedAt, cur.closesAt, cur.revealed || cur.closed, now) : null;
+  const open = !!ph && ph.phase !== "closed";
+  const pct = ph ? Math.max(0, Math.min(100, (ph.left / ph.total) * 100)) : 0;
 
   useEffect(() => setLocal(null), [cur?.id]);
   const myChoice = local && local.id === cur?.id ? local.choice : cur?.myChoice ?? null;
@@ -94,9 +93,14 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
                   <Prompt text={cur.prompt} />
                 </h3>
                 {cur.imageUrl && <img className={styles.qImage} src={cur.imageUrl} alt="문제 그림" />}
-                {open ? (
-                  <div className={`${styles.progress} ${closesAt - now < 3000 ? styles.progressUrgent : ""}`} aria-label={`남은 시간 ${leftText(closesAt - now)}`}>
-                    <i style={{ width: `${pct}%` }} />
+                {open && ph ? (
+                  <div className={styles.oxTimer}>
+                    <span className={ph.phase === "ready" ? styles.oxReady : styles.oxLeft}>
+                      {ph.phase === "ready" ? "곧 카운트다운이 시작됩니다" : <b className="num">{Math.ceil(ph.left / 1000)}초</b>}
+                    </span>
+                    <div className={`${styles.progress} ${ph.phase === "counting" && ph.left < 3000 ? styles.progressUrgent : ""}`} aria-label={ph.phase === "ready" ? "곧 시작" : `남은 시간 ${leftText(ph.left)}`}>
+                      <i style={{ width: `${pct}%`, transition: ph.phase === "ready" ? "none" : undefined }} />
+                    </div>
                   </div>
                 ) : cur.revealed ? (
                   <p className={`${styles.banner} ${myChoice === cur.answer ? styles.bannerOk : ""}`}>

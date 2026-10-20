@@ -18,6 +18,7 @@ import styles from "./Quiz.module.css";
 
 const QuizAdmin = lazy(() => import("./QuizAdmin"));
 const OxStream = lazy(() => import("./QuizAdmin").then((m) => ({ default: m.OxStream })));
+const ExamGradeStream = lazy(() => import("./QuizAdmin").then((m) => ({ default: m.ExamGradeStream })));
 
 type Tab = "now" | "history" | "admin";
 
@@ -45,7 +46,16 @@ export default function Quiz() {
   const [pickKind, setPickKind] = useState<"exam" | "ox" | null>(null);
 
   // 방송 화면(OX) — 리모컨의 "방송 화면 열기"로 뜨는 창. 관리자만.
-  const streamId = Number(new URLSearchParams(location.search).get("stream"));
+  const sp = new URLSearchParams(location.search);
+  const streamId = Number(sp.get("stream"));
+  const gradeId = Number(sp.get("grade"));
+  if (isAdmin && Number.isInteger(gradeId) && gradeId > 0) {
+    return (
+      <Suspense fallback={null}>
+        <ExamGradeStream quizId={gradeId} />
+      </Suspense>
+    );
+  }
   if (isAdmin && Number.isInteger(streamId) && streamId > 0) {
     return (
       <Suspense fallback={null}>

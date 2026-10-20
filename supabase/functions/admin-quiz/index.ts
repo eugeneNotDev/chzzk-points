@@ -196,6 +196,7 @@ async function detail(admin: Admin, quiz: QuizRow) {
             number: asked.length,
             prompt: cur.prompt,
             answer: cur.answer,
+            askedAt: cur.asked_at,
             closesAt: cur.closes_at,
             revealed: !!cur.revealed_at,
             counts: { O: curAns.filter((a) => a.choice === "O").length, X: curAns.filter((a) => a.choice === "X").length },

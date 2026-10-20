@@ -4,7 +4,7 @@
 // 테스트 회차는 보상 지급을 눌러도 포인트가 안 들어가고 "누구에게 얼마"만 남음.
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, MonitorPlay, Plus, Settings, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Crown, ImagePlus, MonitorPlay, Plus, Settings, Trash2, Users, Wand2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { Select } from "../../components/Select";
 import { Modal } from "../../components/ui";
@@ -13,7 +13,7 @@ import { API } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import { maybeCompressImage } from "../../lib/notices";
-import { ADMIN_QUIZ_ERRORS, type QType, type QuizStatus } from "../../lib/quiz";
+import { ADMIN_QUIZ_ERRORS, oxPhase, type QType, type QuizStatus } from "../../lib/quiz";
 import { supabase } from "../../lib/supabase";
 import { ExamPaper, leftText } from "./Exam";
 import { OIcon, XIcon } from "./Ox";
@@ -51,7 +51,7 @@ type Detail = {
   payouts: Payout[];
   exam?: { sheets: Sheet[]; unmarked: number; ranking: { rank: number; name: string; score: number; marked: number }[] };
   ox?: {
-    current: { id: number; number: number; prompt: string; answer: string; closesAt: string | null; revealed: boolean; counts: { O: number; X: number } } | null;
+    current: { id: number; number: number; prompt: string; answer: string; askedAt: string | null; closesAt: string | null; revealed: boolean; counts: { O: number; X: number } } | null;
     queue: { id: number; prompt: string; answer: string }[];
     players: { name: string; correct: number; alive: boolean; outAt: number | null; answeredCurrent: "O" | "X" | null }[];
     started: boolean;
@@ -380,6 +380,7 @@ function ExamAdmin({ d }: { d: Detail }) {
         </div>
       </Card>
 
+      <div className={styles.actions}>
       <div className="segment" role="tablist" aria-label="모의고사 관리">
         <button type="button" role="tab" aria-selected={tab === "questions"} onClick={() => setTab("questions")}>
           문항 {d.questions.length}
@@ -390,6 +391,18 @@ function ExamAdmin({ d }: { d: Detail }) {
         <button type="button" role="tab" aria-selected={tab === "ranking"} disabled={quiz.status === "draft"} onClick={() => setTab("ranking")}>
           순위
         </button>
+      </div>
+        {quiz.status !== "draft" && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{ marginLeft: "auto" }}
+            title="시험지를 크게 띄우고 그 창에서 바로 ○/✕를 매겨요. 정답은 안 보여요."
+            onClick={() => window.open(`${location.pathname}?grade=${quiz.id}`, `quiz-grade-${quiz.id}`, "width=1280,height=900")}
+          >
+            <MonitorPlay size={16} aria-hidden="true" /> 채점 방송 화면 열기
+          </button>
+        )}
       </div>
 
       {tab === "questions" && <QuestionsTab d={d} />}
@@ -477,11 +490,11 @@ function QuestionsTab({ d }: { d: Detail }) {
 
       {sel != null ? (
         <QuestionEditor
-          key={String(sel)}
+          key={`${sel}-${selected ? "q" : "n"}`}
           quiz={quiz}
           question={selected}
           number={selected ? d.questions.indexOf(selected) + 1 : d.questions.length + 1}
-          onSaved={(id) => setSel(id)}
+          onSaved={(id, wasNew) => setSel(wasNew ? "new" : id)}
           onDeleted={() => setSel(d.questions[0]?.id ?? null)}
           onCancelNew={() => setSel(d.questions[0]?.id ?? null)}
         />
@@ -505,7 +518,7 @@ function QuestionEditor({
   quiz: QuizRow;
   question: QuestionRow | null;
   number: number;
-  onSaved: (id: number) => void;
+  onSaved: (id: number, wasNew: boolean) => void;
   onDeleted: () => void;
   onCancelNew: () => void;
 }) {
@@ -544,9 +557,9 @@ function QuestionEditor({
     const choices = qtype === "choice" ? texts : qtype === "image" ? imgs : [];
     const r = await act<{ id: number }>(
       { action: "save-question", quizId: quiz.id, question: { id: question?.id, qtype, prompt, imageUrl, choices, answer } },
-      isNew ? `${number}번 문항을 추가했어요.` : "수정했어요.",
+      isNew ? `${number}번 문항을 추가했어요. 이어서 ${number + 1}번을 적어요.` : "수정했어요.",
     );
-    if (r) onSaved(r.id);
+    if (r) onSaved(r.id, isNew);
   }
 
   async function remove() {
@@ -659,7 +672,7 @@ function QuestionEditor({
 }
 
 // 제출된 시험지를 한 장씩 띄워 놓고 문항마다 ○/✕ — 방송에 띄우는 화면
-function GradingTab({ d }: { d: Detail }) {
+function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
   const qc = useQueryClient();
   const { act, busy } = useAct();
   const sheets = d.exam!.sheets;
@@ -705,6 +718,60 @@ function GradingTab({ d }: { d: Detail }) {
     if (marked > 0 && !(await confirmDialog("이 시험지를 정답과 비교해서 자동 채점할까요? 이미 매긴 ○/✕도 다시 매겨져요.", { okText: "자동 채점" }))) return;
     await act({ action: "auto-mark", submissionId: sheet.id }, "자동 채점했어요.");
     setLocal({});
+  }
+
+  const paper = sheet && (
+    <ExamPaper
+      title={`${sheet.name} 님의 답안`}
+      subtitle={d.quiz.subtitle}
+      questions={d.questions.map((q) => ({ id: q.id, qtype: q.qtype, prompt: q.prompt, imageUrl: q.image_url, choices: q.choices, answer: q.answer }))}
+      answers={sheet.answers}
+      marks={marks}
+      onMark={paid ? undefined : mark}
+      showKey={showKey}
+    />
+  );
+  const nextReady = marked === d.questions.length && idx < sheets.length - 1;
+
+  // 방송 화면 — 시험지를 크게 띄우고 이 창에서 바로 ○/✕. 목록 대신 위쪽 막대에서 이전/다음.
+  if (stream) {
+    return (
+      <div className={`${styles.stream} ${styles.gradeStream}`}>
+        <div className={styles.gradeBar}>
+          <span className={styles.streamTag}>{d.quiz.title}</span>
+          {sheets.length > 0 && sheet ? (
+            <>
+              <button type="button" className="btn btn-sm" aria-label="이전 시험지" disabled={idx === 0} onClick={() => setSid(sheets[idx - 1].id)}>
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              <Select label="시험지 고르기" value={String(sheet.id)} options={sheets.map((x, i) => ({ value: String(x.id), label: `${i + 1}. ${x.name}` }))} onChange={(v) => setSid(Number(v))} />
+              <button type="button" className="btn btn-sm" aria-label="다음 시험지" disabled={idx === sheets.length - 1} onClick={() => setSid(sheets[idx + 1].id)}>
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+              <span className={styles.gradeScore}>
+                <b className="num">{correct}</b>
+                <span className="num">/ {d.questions.length} 맞음</span>
+              </span>
+              <span className="muted num" style={{ fontSize: 13 }}>
+                채점 {marked}/{d.questions.length}
+              </span>
+              <span style={{ marginLeft: "auto" }} />
+              <button type="button" className="btn btn-sm" disabled={busy || paid} onClick={auto}>
+                <Wand2 size={16} aria-hidden="true" /> 자동 채점
+              </button>
+              {nextReady && (
+                <button type="button" className="btn btn-sm btn-primary" onClick={() => setSid(sheets[idx + 1].id)}>
+                  다음 시험지 <ChevronRight size={16} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="muted">아직 제출된 시험지가 없어요.</span>
+          )}
+        </div>
+        <div className={styles.gradeBody}>{paper}</div>
+      </div>
+    );
   }
 
   if (sheets.length === 0) {
@@ -762,26 +829,25 @@ function GradingTab({ d }: { d: Detail }) {
                 <input type="checkbox" checked={showKey} onChange={(e) => setShowKey(e.target.checked)} />
                 정답 표시(방송 화면에 보일 수 있어요)
               </label>
-              {marked === d.questions.length && idx < sheets.length - 1 && (
+              {nextReady && (
                 <button type="button" className="btn btn-sm btn-primary" style={{ marginLeft: "auto" }} onClick={() => setSid(sheets[idx + 1].id)}>
                   다음 시험지 <ChevronRight size={16} aria-hidden="true" />
                 </button>
               )}
             </div>
           </Card>
-          <ExamPaper
-            title={`${sheet.name} 님의 답안`}
-            subtitle={d.quiz.subtitle}
-            questions={d.questions.map((q) => ({ id: q.id, qtype: q.qtype, prompt: q.prompt, imageUrl: q.image_url, choices: q.choices, answer: q.answer }))}
-            answers={sheet.answers}
-            marks={marks}
-            onMark={paid ? undefined : mark}
-            showKey={showKey}
-          />
+          {paper}
         </div>
       )}
     </div>
   );
+}
+
+// 모의고사 채점 방송 화면 — 관리 탭의 "채점 방송 화면 열기"로 뜨는 창. 이 창에서 바로 채점함(정답은 안 보임).
+export function ExamGradeStream({ quizId }: { quizId: number }) {
+  const q = useQuery({ queryKey: ["quiz-admin", quizId], refetchInterval: 5000, queryFn: () => adminCall<Detail>({ action: "get", quizId }) });
+  if (!q.data) return <div className={styles.stream}><span className={styles.streamHint}>불러오는 중…</span></div>;
+  return <GradingTab d={q.data} stream />;
 }
 
 // ── OX ──
@@ -795,8 +861,8 @@ function OxAdmin({ d }: { d: Detail }) {
   const [seconds, setSeconds] = useState(10);
   const cur = ox.current;
   const pendingCur = !!cur && !cur.revealed;
-  const closesAt = cur?.closesAt ? new Date(cur.closesAt).getTime() : 0;
-  const curOpen = pendingCur && closesAt > now;
+  const ph = cur ? oxPhase(cur.askedAt, cur.closesAt, cur.revealed, now) : null;
+  const curOpen = pendingCur && !!ph && ph.phase !== "closed";
   const answered = cur ? cur.counts.O + cur.counts.X : 0;
   const alive = ox.players.filter((p) => p.alive).length;
   const deathmatch = quiz.ox_mode === "deathmatch";
@@ -860,9 +926,9 @@ function OxAdmin({ d }: { d: Detail }) {
               <div className={styles.tags}>
                 <span className={styles.panelLabel}>지금 문제</span>
                 {cur && <span className="tag num">{cur.number}번째 · {cur.revealed ? "정답 공개됨" : curOpen ? "응답 받는 중" : "마감"}</span>}
-                {curOpen && (
-                  <b className="num" style={{ marginLeft: "auto", color: "var(--c-live-text)", fontSize: 22 }}>
-                    {leftText(closesAt - now)}
+                {curOpen && ph && (
+                  <b className="num" style={{ marginLeft: "auto", color: ph.phase === "ready" ? "var(--c-text-2)" : "var(--c-live-text)", fontSize: ph.phase === "ready" ? 15 : 22 }}>
+                    {ph.phase === "ready" ? "곧 시작" : leftText(ph.left)}
                   </b>
                 )}
               </div>
@@ -1103,79 +1169,135 @@ function Payouts({ d }: { d: Detail }) {
 }
 
 // ── 방송 화면(OX) — 방송에 띄우는 창. 정답은 공개한 뒤에만, 대기열·미리 정한 정답은 절대 안 보임 ──
+const RING_R = 54;
+const RING_C = 2 * Math.PI * RING_R;
+
 export function OxStream({ quizId }: { quizId: number }) {
-  const now = useNow(200);
+  const now = useNow(100);
   const q = useQuery({ queryKey: ["quiz-admin", quizId], refetchInterval: 1000, queryFn: () => adminCall<Detail>({ action: "get", quizId }) });
   const d = q.data;
   const ox = d?.ox;
   const cur = ox?.current ?? null;
-  const closesAt = cur?.closesAt ? new Date(cur.closesAt).getTime() : 0;
-  const open = !!cur && !cur.revealed && closesAt > now;
+  const ph = cur ? oxPhase(cur.askedAt, cur.closesAt, cur.revealed, now) : null;
+  const open = !!ph && ph.phase !== "closed";
   const closed = !!cur && !open;
   const deathmatch = d?.quiz.ox_mode === "deathmatch";
-  const alive = ox?.players.filter((p) => p.alive) ?? [];
+  const players = ox?.players ?? [];
+  const alive = players.filter((p) => p.alive);
   const total = cur ? cur.counts.O + cur.counts.X : 0;
   const ended = d?.quiz.status === "revealed";
+  const urgent = ph?.phase === "counting" && ph.left < 3000;
+  const frac = ph ? Math.max(0, Math.min(1, ph.left / ph.total)) : 0;
+
+  // 아래 띠 — 데스매치는 생존자, 점수전은 상위 5명
+  const strip = deathmatch && ox?.started ? alive : [...players].sort((a, b) => b.correct - a.correct).slice(0, 5);
+  const STRIP_MAX = 24;
+
+  if (!d) {
+    return (
+      <div className={`${styles.stream} ${styles.oxStream}`}>
+        <span className={styles.streamHint}>불러오는 중…</span>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.stream}>
-      {!d ? (
-        <span className={styles.streamHint}>불러오는 중…</span>
+    <div className={`${styles.stream} ${styles.oxStream}`}>
+      <div className={styles.streamTop}>
+        <span className={styles.streamBrand}>{d.quiz.title}</span>
+        <span className={`${styles.streamTag} ${deathmatch ? styles.streamTagHot : ""}`}>{deathmatch ? "데스매치" : "점수전"}</span>
+        <span className={styles.streamCount}>
+          <Users size={22} aria-hidden="true" />
+          {deathmatch && ox?.started ? (
+            <>
+              생존 <b className="num">{alive.length}</b>
+              <span className={styles.streamCountSub}>/ {players.length}</span>
+            </>
+          ) : (
+            <>
+              참여 <b className="num">{players.length}</b>
+            </>
+          )}
+        </span>
+      </div>
+
+      {ended ? (
+        <div className={styles.streamMain}>
+          <Crown className={styles.streamCrown} aria-hidden="true" />
+          <b className={styles.streamPrompt}>{deathmatch ? "최후의 생존자" : "OX 퀴즈 끝!"}</b>
+          <div className={styles.streamNames}>
+            {(deathmatch ? alive : [...players].sort((a, b) => b.correct - a.correct).slice(0, 10)).map((p, i) => (
+              <span key={i} className={`${styles.streamName} ${styles.streamNameBig}`}>
+                {!deathmatch && <b className="num">{i + 1}</b>}
+                {p.name}
+                {!deathmatch && <small className="num">{p.correct}개</small>}
+              </span>
+            ))}
+            {deathmatch && alive.length === 0 && <span className={styles.streamHint}>살아남은 사람이 없어요</span>}
+          </div>
+        </div>
+      ) : !cur ? (
+        <div className={styles.streamMain}>
+          <span className={styles.streamPulse} aria-hidden="true" />
+          <b className={styles.streamPrompt}>곧 첫 문제가 나와요</b>
+          <span className={styles.streamHint}>팬보드 → 퀴즈 메뉴에서 O / X를 골라주세요</span>
+        </div>
       ) : (
-        <>
-          <div className={styles.streamTop}>
-            <span className={styles.streamTag}>{deathmatch ? "OX 데스매치" : "OX 퀴즈"}</span>
-            {cur && !ended && <span className={styles.streamTag}>{cur.number}번째 문제</span>}
-            <span className={styles.streamCount}>
-              {deathmatch && ox?.started ? `생존 ${alive.length}명` : `참여 ${ox?.players.length ?? 0}명`}
+        <div className={styles.streamMain}>
+          <div className={styles.streamQ}>
+            <span className={styles.streamQNo}>
+              Q<b className="num">{cur.number}</b>
             </span>
+            <b className={styles.streamPrompt}>{cur.prompt.replace(/__/g, "")}</b>
           </div>
 
-          {ended ? (
-            <div className={styles.streamMain}>
-              <b className={styles.streamPrompt}>{deathmatch ? "최후 생존자" : "OX 퀴즈 끝!"}</b>
-              <div className={styles.streamNames}>
-                {(deathmatch ? alive : ox!.players.slice(0, 10)).map((p, i) => (
-                  <span key={i} className={styles.streamName}>
-                    {p.name}
-                    {!deathmatch && ` · ${p.correct}개`}
-                  </span>
-                ))}
-                {deathmatch && alive.length === 0 && <span className={styles.streamHint}>살아남은 사람이 없어요</span>}
+          <div className={styles.streamState}>
+            {ph?.phase === "ready" ? (
+              <span className={styles.streamReady}>곧 카운트다운이 시작됩니다</span>
+            ) : ph?.phase === "counting" ? (
+              <div className={`${styles.streamRing} ${urgent ? styles.streamRingUrgent : ""}`}>
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <circle cx="60" cy="60" r={RING_R} className={styles.streamRingBg} />
+                  <circle cx="60" cy="60" r={RING_R} className={styles.streamRingFg} strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - frac)} />
+                </svg>
+                <b className="num">{Math.ceil(ph.left / 1000)}</b>
               </div>
-            </div>
-          ) : !cur ? (
-            <div className={styles.streamMain}>
-              <b className={styles.streamPrompt}>곧 첫 문제가 나와요</b>
-              <span className={styles.streamHint}>팬보드 퀴즈 메뉴에서 O / X를 골라주세요</span>
-            </div>
-          ) : (
-            <div className={styles.streamMain}>
-              <b className={styles.streamPrompt}>{cur.prompt.replace(/__/g, "")}</b>
-              {open ? (
-                <div className={styles.streamTimer}>
-                  <b className="num">{Math.max(0, Math.ceil((closesAt - now) / 1000))}</b>
-                  <span>초</span>
+            ) : (
+              <span className={`${styles.streamReady} ${cur.revealed ? styles.streamReveal : ""}`}>{cur.revealed ? `정답은 ${cur.answer}!` : "마감! 정답은…?"}</span>
+            )}
+          </div>
+
+          <div className={styles.streamOX}>
+            {(["O", "X"] as const).map((c) => {
+              const win = cur.revealed && cur.answer === c;
+              const lose = cur.revealed && cur.answer !== c;
+              const share = closed && total > 0 ? cur.counts[c] / total : 0;
+              return (
+                <div key={c} className={`${styles.streamCard} ${c === "O" ? styles.streamO : styles.streamX} ${win ? styles.streamWin : ""} ${lose ? styles.streamLose : ""}`}>
+                  <i className={styles.streamFill} style={{ height: `${share * 100}%` }} aria-hidden="true" />
+                  {c === "O" ? <OIcon /> : <XIcon />}
+                  <b className="num">{closed ? `${cur.counts[c]}명` : "?"}</b>
+                  <span className="num">{closed && total > 0 ? `${Math.round(share * 100)}%` : c === "O" ? "맞다" : "아니다"}</span>
                 </div>
-              ) : (
-                <span className={styles.streamHint}>{cur.revealed ? "정답 공개!" : "마감! 정답은…?"}</span>
-              )}
-              <div className={styles.streamOX}>
-                {(["O", "X"] as const).map((c) => {
-                  const win = cur.revealed && cur.answer === c;
-                  const lose = cur.revealed && cur.answer !== c;
-                  return (
-                    <div key={c} className={`${styles.streamCard} ${c === "O" ? styles.streamO : styles.streamX} ${win ? styles.streamWin : ""} ${lose ? styles.streamLose : ""}`}>
-                      {c === "O" ? <OIcon /> : <XIcon />}
-                      <b className="num">{closed ? `${cur.counts[c]}명` : "?"}</b>
-                      {closed && total > 0 && <span className="num">{Math.round((cur.counts[c] / total) * 100)}%</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!ended && strip.length > 0 && (
+        <div className={styles.streamStrip}>
+          <span className={styles.streamStripLabel}>{deathmatch && ox?.started ? "생존자" : "상위권"}</span>
+          <div className={styles.streamStripNames}>
+            {strip.slice(0, STRIP_MAX).map((p, i) => (
+              <span key={i} className={styles.streamName}>
+                {p.name}
+                {!(deathmatch && ox?.started) && <small className="num">{p.correct}</small>}
+              </span>
+            ))}
+            {strip.length > STRIP_MAX && <span className={`${styles.streamName} ${styles.streamNameMore}`}>+{strip.length - STRIP_MAX}</span>}
+          </div>
+        </div>
       )}
     </div>
   );

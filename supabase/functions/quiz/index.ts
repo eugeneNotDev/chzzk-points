@@ -119,6 +119,7 @@ async function oxView(admin: Admin, quiz: QuizRow, channelId: string) {
       number: asked.length,
       prompt: cur.prompt,
       imageUrl: cur.image_url,
+      askedAt: cur.asked_at,
       closesAt: cur.closes_at,
       closed,
       revealed: !!cur.revealed_at,

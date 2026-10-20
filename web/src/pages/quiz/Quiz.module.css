@@ -1024,7 +1024,7 @@
   min-width: 0;
 }
 
-/* ── 방송 화면(OX) — 화면 전체를 덮는 창. 방송 캡처용 ── */
+/* ── 방송 화면 — 화면 전체를 덮는 창. 방송 캡처용 ── */
 .stream {
   position: fixed;
   inset: 0;
@@ -1037,11 +1037,37 @@
   color: var(--c-text);
   overflow: auto;
 }
+/* OX 방송 — 은은한 포인트색 배경 + 격자 무늬 */
+.oxStream {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, color-mix(in srgb, var(--c-accent) 22%, transparent), transparent 70%),
+    radial-gradient(900px 500px at 110% 110%, color-mix(in srgb, var(--c-blue) 14%, transparent), transparent 70%),
+    var(--c-bg);
+}
+.oxStream::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(var(--c-border) 1px, transparent 1px), linear-gradient(90deg, var(--c-border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%);
+  opacity: 0.5;
+}
+.oxStream > * {
+  position: relative;
+}
 .streamTop {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+.streamBrand {
+  font-family: var(--font-logo);
+  font-size: clamp(20px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .streamTag {
   padding: 6px 14px;
@@ -1050,11 +1076,31 @@
   font-size: 18px;
   font-weight: 800;
 }
+.streamTagHot {
+  background: var(--c-live-soft);
+  color: var(--c-live-text);
+}
 .streamCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
-  font-size: 22px;
-  font-weight: 800;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text-2);
+}
+.streamCount b {
+  font-size: 28px;
+  font-weight: 900;
   color: var(--c-accent);
+}
+.streamCountSub {
+  font-size: 18px;
+  color: var(--c-text-3);
 }
 .streamMain {
   flex: 1;
@@ -1062,12 +1108,38 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
+  gap: clamp(20px, 3.4vh, 36px);
   text-align: center;
+}
+.streamQ {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  width: min(1200px, 100%);
+  padding: clamp(24px, 4vh, 44px) clamp(20px, 4vw, 56px);
+  border-radius: var(--r-2xl);
+  background: color-mix(in srgb, var(--c-surface) 88%, transparent);
+  border: 1px solid var(--c-border);
+  box-shadow: 0 20px 60px -30px rgb(0 0 0 / 0.35);
+}
+.streamQNo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 4px 16px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: var(--c-on-accent, #fff);
+  font-size: 22px;
+  font-weight: 900;
+}
+.streamQNo b {
+  font-size: 26px;
 }
 .streamPrompt {
   max-width: 1100px;
-  font-size: clamp(28px, 4.6vw, 60px);
+  font-size: clamp(28px, 4.4vw, 58px);
   line-height: 1.35;
   font-weight: 900;
   word-break: keep-all;
@@ -1079,20 +1151,72 @@
   color: var(--c-text-2);
   font-weight: 700;
 }
-.streamTimer {
+.streamState {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(96px, 14vh, 140px);
+}
+.streamReady {
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: var(--c-surface);
+  border: 2px dashed var(--c-border-strong);
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 800;
+  color: var(--c-text-2);
+  animation: streamBlink 1.2s ease-in-out infinite;
+}
+.streamReveal {
+  border-style: solid;
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+  animation: none;
+}
+@keyframes streamBlink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.streamRing {
+  position: relative;
+  width: clamp(96px, 14vh, 140px);
+  aspect-ratio: 1;
+  color: var(--c-accent);
+}
+.streamRingUrgent {
   color: var(--c-live-text);
+  animation: streamThrob 0.5s ease-in-out infinite alternate;
 }
-.streamTimer b {
-  font-size: clamp(48px, 8vw, 96px);
-  font-weight: 800;
-  line-height: 1;
+@keyframes streamThrob {
+  to {
+    transform: scale(1.06);
+  }
 }
-.streamTimer span {
-  font-size: 24px;
-  font-weight: 800;
+.streamRing svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.streamRingBg {
+  fill: var(--c-surface);
+  stroke: var(--c-surface-3);
+  stroke-width: 10;
+}
+.streamRingFg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.streamRing b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(40px, 6vh, 60px);
+  font-weight: 900;
 }
 .streamOX {
   display: grid;
@@ -1101,19 +1225,32 @@
   width: min(900px, 100%);
 }
 .streamCard {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: clamp(16px, 3vw, 32px);
-  border: 4px solid var(--c-border-strong);
+  gap: 6px;
+  padding: clamp(16px, 2.6vh, 28px);
+  border: 4px solid color-mix(in srgb, currentColor 35%, var(--c-border-strong));
   border-radius: var(--r-2xl);
   background: var(--c-surface);
-  transition: opacity var(--dur), transform var(--dur) var(--ease-spring);
+  transition: opacity var(--dur), transform var(--dur) var(--ease-spring), border-color var(--dur);
+}
+.streamCard > :not(.streamFill) {
+  position: relative;
+}
+.streamFill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  transition: height 0.8s var(--ease-spring);
 }
 .streamCard svg {
-  width: clamp(72px, 10vw, 140px);
-  height: clamp(72px, 10vw, 140px);
+  width: clamp(64px, 10vh, 120px);
+  height: clamp(64px, 10vh, 120px);
 }
 .streamCard b {
   font-size: clamp(24px, 3.4vw, 44px);
@@ -1121,6 +1258,7 @@
 }
 .streamCard span {
   font-size: 18px;
+  font-weight: 700;
   color: var(--c-text-2);
 }
 .streamO {
@@ -1131,10 +1269,23 @@
 }
 .streamWin {
   border-color: currentColor;
-  transform: scale(1.04);
+  transform: scale(1.05);
+  box-shadow: 0 0 0 8px color-mix(in srgb, currentColor 18%, transparent);
 }
 .streamLose {
-  opacity: 0.35;
+  opacity: 0.3;
+}
+.streamCrown {
+  width: clamp(56px, 8vh, 88px);
+  height: clamp(56px, 8vh, 88px);
+  color: var(--c-amber);
+}
+.streamPulse {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  animation: quizPulse 1.4s ease-in-out infinite;
 }
 .streamNames {
   display: flex;
@@ -1144,12 +1295,153 @@
   max-width: 1100px;
 }
 .streamName {
-  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
   border-radius: 999px;
   background: var(--c-accent-soft);
   color: var(--c-accent);
-  font-size: clamp(16px, 2vw, 24px);
+  font-size: clamp(14px, 1.6vw, 18px);
   font-weight: 800;
+}
+.streamName small {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.streamNameBig {
+  padding: 10px 20px;
+  font-size: clamp(18px, 2.2vw, 26px);
+}
+.streamNameMore {
+  background: var(--c-surface-3);
+  color: var(--c-text-2);
+}
+.streamStrip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--c-surface) 80%, transparent);
+  border: 1px solid var(--c-border);
+}
+.streamStripLabel {
+  flex: none;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--c-text-3);
+}
+.streamStripNames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-height: 92px;
+  overflow: hidden;
+}
+
+/* 모의고사 채점 방송 — 위쪽 막대에서 시험지를 넘기고, 아래 시험지에서 바로 ○/✕ */
+.gradeStream {
+  gap: 16px;
+  padding: 16px max(16px, 3vw) 24px;
+}
+.gradeBar {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: -16px calc(-1 * max(16px, 3vw)) 0;
+  padding: 12px max(16px, 3vw);
+  background: color-mix(in srgb, var(--c-bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--c-border);
+}
+.gradeScore {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-weight: 700;
+}
+.gradeScore b {
+  font-size: 26px;
+  font-weight: 900;
+}
+.gradeBody {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+}
+.gradeBody .paper {
+  padding: 32px 40px 40px;
+}
+.gradeBody .qTitle {
+  font-size: 18px;
+}
+
+/* 좁은 화면(모바일) — 여백 줄이기 */
+@media (max-width: 640px) {
+  .qCol {
+    gap: 34px;
+  }
+  .qCol + .qCol {
+    margin-top: 34px;
+  }
+  .q {
+    gap: 10px;
+  }
+  .paperFoot {
+    margin-top: 32px;
+  }
+  .oxBody {
+    gap: 16px;
+  }
+  .oxPrompt {
+    font-size: 22px;
+  }
+  .oxBtn {
+    height: 128px;
+  }
+  .oxBtn svg {
+    width: 56px;
+    height: 56px;
+  }
+  .waiting {
+    padding: 24px 8px;
+  }
+  .omr {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  }
+  .omrCell {
+    height: 42px;
+  }
+  .stream {
+    gap: 16px;
+  }
+}
+
+/* OX 남은 시간 */
+.oxTimer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.oxReady {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-text-2);
+  animation: streamBlink 1.2s ease-in-out infinite;
+}
+.oxLeft {
+  font-size: 15px;
+  color: var(--c-live-text);
 }
 
 .histItem {

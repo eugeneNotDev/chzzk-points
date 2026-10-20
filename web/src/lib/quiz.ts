@@ -8,6 +8,20 @@ import { supabase } from "./supabase";
 // 테스트가 끝나면 이 줄을 true로 바꾸고 build:live 하면 실제 사이트에 적용됨.
 export const QUIZ_ENABLED = import.meta.env.MODE !== "live";
 
+// OX: 출제 후 이 시간 동안은 "곧 시작" 안내만 보여주고(방송 딜레이 여유), 그 뒤부터 제한시간을 셈. 서버의 OX_DELAY_GRACE_SEC와 같아야 함.
+export const OX_READY_MS = 3000;
+
+// OX 타이머 단계 — ready(곧 시작) → counting(남은 초) → closed
+export function oxPhase(askedAt: string | null, closesAt: string | null, revealed: boolean, now: number) {
+  if (revealed || !closesAt) return { phase: "closed" as const, left: 0, total: 1 };
+  const end = new Date(closesAt).getTime();
+  const start = askedAt ? new Date(askedAt).getTime() + OX_READY_MS : end;
+  if (now >= end) return { phase: "closed" as const, left: 0, total: 1 };
+  const total = Math.max(1, end - start);
+  if (now < start) return { phase: "ready" as const, left: total, total, readyLeft: start - now };
+  return { phase: "counting" as const, left: end - now, total };
+}
+
 export type QuizStatus = "draft" | "open" | "closed" | "revealed";
 export type QType = "choice" | "image" | "short" | "ox";
 
@@ -55,6 +69,7 @@ export type OxView = QuizBase & {
     number: number;
     prompt: string;
     imageUrl: string | null;
+    askedAt: string | null;
     closesAt: string | null;
     closed: boolean;
     revealed: boolean;
