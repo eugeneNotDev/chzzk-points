@@ -152,6 +152,8 @@ async function allowed(admin: Admin, key: string, windowSec: number, max: number
     console.error(`rate_limit_hit 실패: ${error.message}`);
     return true; // 제한 기능이 고장 나도 게시판은 쓸 수 있게
   }
+  // 가끔 하루 지난 기록 정리
+  if (Math.random() < 0.01) await admin.from("rate_limits").delete().lt("window_start", new Date(Date.now() - 86400_000).toISOString());
   return data === true;
 }
 

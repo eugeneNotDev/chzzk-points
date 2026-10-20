@@ -1,5 +1,5 @@
 -- 보안 점검(2026-10-20) 후속 — 연타·대량 호출로 포인트를 더 받거나 저장소·DB를 낭비하는 구멍 막기.
---  1) 호출 횟수 제한(rate_limit_hit): 키별로 "N초 동안 M번까지" — 함수들이 로그인 계정·IP 단위로 씀
+--  1) 호출 횟수 제한(rate_limit_hit): 키별로 "N초 동안 M번까지" — 함수들이 로그인 계정·IP 단위로 씀(지난 기록 정리는 board 함수가 가끔)
 --  2) 게시판 사진: 업로드 주소를 받은 사람만 그 사진을 글에 붙일 수 있게(board_uploads), 같은 사진을 두 글에 못 붙이게
 --  3) 게시판 활동 보상: 동시에 여러 번 보내도 하루 한도를 넘지 않게 한 번에 잠그고 처리(board_grant_activity)
 --  4) 상점: 동시 구매로 한정 수량 초과·쿨타임 무시가 안 되게(shop_purchase_claim / shop_purchase_release)
@@ -28,10 +28,6 @@ begin
   insert into public.rate_limits (key, window_start, hits) values (p_key, v_start, 1)
   on conflict (key, window_start) do update set hits = public.rate_limits.hits + 1
   returning hits into v_hits;
-  -- 가끔 지난 기록 정리(하루 지난 것)
-  if random() < 0.01 then
-    delete from public.rate_limits where window_start < now() - interval '1 day';
-  end if;
   return v_hits <= p_max;
 end;
 $$;
@@ -54,10 +50,7 @@ on conflict (path) do nothing;
 -- 같은 사진 파일을 두 글에 못 붙이게(남의 사진을 내 글에 붙였다 지워서 같이 지우는 것 방지)
 create unique index if not exists board_images_storage_path_key on public.board_images (storage_path);
 
--- 게시판 사진 저장소는 이미지 파일만(크기 5MB는 이미 설정됨)
-update storage.buckets
-set allowed_mime_types = array['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-where id = 'board-images';
+-- 게시판 사진 저장소를 이미지 파일만 받게 하는 건 0076_board_images_mime.sql
 
 -- 3) 게시판 활동 보상 — 사람별로 잠그고 한도 확인 + 기록 + 포인트를 한 번에 ----------------
 -- 돌려주는 값: 'ok' | 'daily_limit' | 'per_post_limit' | 'duplicate'
@@ -154,9 +147,8 @@ begin
 end;
 $$;
 
--- 5) 포인트 내역의 "그때 잔액" — 요청한 사람 기록만 계산(관리자는 p_channel 없이 전체) ----------------
-drop function if exists public.ledger_balance_after(bigint[]);
-create or replace function public.ledger_balance_after(p_ids bigint[], p_channel text default null)
+-- 5) 포인트 내역의 "그때 잔액" — 요청한 사람 기록만 계산(관리자는 p_channel = null로 전체). 예전 ledger_balance_after는 안 씀
+create or replace function public.ledger_balance_after_mine(p_ids bigint[], p_channel text)
 returns table(id bigint, channel_id text, balance_after bigint)
 language sql
 stable
@@ -178,5 +170,5 @@ revoke all on function public.rate_limit_hit(text, integer, integer) from public
 revoke all on function public.board_grant_activity(text, text, bigint, bigint, date, integer, integer, integer, text) from public, anon, authenticated;
 revoke all on function public.shop_purchase_claim(text, text, integer) from public, anon, authenticated;
 revoke all on function public.shop_purchase_release(bigint) from public, anon, authenticated;
-revoke all on function public.ledger_balance_after(bigint[], text) from public, anon, authenticated;
+revoke all on function public.ledger_balance_after_mine(bigint[], text) from public, anon, authenticated;
 revoke all on public.rate_limits, public.board_uploads, public.shop_purchase_claims from anon, authenticated;

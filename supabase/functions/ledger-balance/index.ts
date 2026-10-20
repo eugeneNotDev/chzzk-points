@@ -31,8 +31,8 @@ Deno.serve(async (req: Request) => {
     if (Array.isArray(body.ids) && body.ids.length) {
       const ids = body.ids.map(Number).filter((n: number) => Number.isSafeInteger(n) && n > 0).slice(0, MAX);
       // 본인 줄만 DB에서 계산(남의 기록 id를 잔뜩 넣어 무거운 계산을 시키지 못하게) — 관리자는 전체
-      const { data, error } = await admin.rpc("ledger_balance_after", { p_ids: ids, p_channel: me === OWNER_CHANNEL_ID ? null : me });
-      if (error) throw new Error(`ledger_balance_after 실패: ${error.message}`);
+      const { data, error } = await admin.rpc("ledger_balance_after_mine", { p_ids: ids, p_channel: me === OWNER_CHANNEL_ID ? null : me });
+      if (error) throw new Error(`ledger_balance_after_mine 실패: ${error.message}`);
       out.byId = {};
       for (const r of (data ?? []) as { id: number; channel_id: string; balance_after: number }[]) {
         if (me === OWNER_CHANNEL_ID || r.channel_id === me) out.byId[String(r.id)] = Number(r.balance_after);
