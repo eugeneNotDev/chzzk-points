@@ -51,3 +51,9 @@ verify_jwt = false
 
 [functions.drawings]
 verify_jwt = false
+
+[functions.quiz]
+verify_jwt = false
+
+[functions.admin-quiz]
+verify_jwt = false

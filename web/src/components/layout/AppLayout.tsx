@@ -5,6 +5,7 @@ import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
 import { isReady, preloadPages } from "../../routes";
 import { useHasNewNotice } from "../../lib/notices";
+import { useQuizPeek } from "../../lib/quiz";
 import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
 import { useTheme } from "../../lib/theme";
@@ -26,10 +27,11 @@ function currentItem(pathname: string): NavItem | undefined {
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
+  const quizLive = !!useQuizPeek().data?.active;
   return (
     <nav aria-label="사이트 메뉴" className={styles.nav}>
       {NAV_GROUPS.map((g, gi) => {
-        const items = g.items.filter((i) => !i.adminOnly || isAdmin);
+        const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.quiz || quizLive || isAdmin));
         if (items.length === 0) return null;
         return (
           <div key={gi} className={styles.navGroup}>
@@ -46,6 +48,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 <span>{item.label}</span>
                 {item.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
                 {!isReady(item.path) && <span className={styles.soon}>준비 중</span>}
+                {item.quiz && quizLive && <span className={styles.liveTag}>진행 중</span>}
               </NavLink>
             ))}
           </div>
@@ -136,7 +139,8 @@ function PointsChip() {
 function MoreSheet({ onClose }: { onClose: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
-  const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin));
+  const quizLive = !!useQuizPeek().data?.active;
+  const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin) && (!i.quiz || quizLive || isAdmin));
   return (
     <div className={styles.sheetBackdrop} onClick={onClose}>
       <div className={styles.sheet} role="dialog" aria-modal="true" aria-label="더보기" onClick={(e) => e.stopPropagation()}>
@@ -148,6 +152,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
               <span className={styles.sheetIcon}>
                 <it.icon size={22} aria-hidden="true" />
                 {it.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
+                {it.quiz && quizLive && <span className={styles.newDot} aria-label="진행 중" />}
               </span>
               <span>{it.label}</span>
             </NavLink>

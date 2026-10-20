@@ -566,3 +566,15 @@
 :root[data-theme="light"] .userName {
   color: var(--nm-l, var(--c-text));
 }
+
+/* 유진고사 진행 중 표시 */
+.liveTag {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--c-live-soft);
+  color: var(--c-live-text);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
+}
