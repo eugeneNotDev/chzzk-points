@@ -437,11 +437,11 @@
   width: 16px;
   height: 16px;
   margin-left: 5px;
-  border-radius: 50%;
+  border-radius: 4px; /* 게시판·공지 목록의 N과 같은 네모 */
   background: var(--c-live);
   color: #fff;
-  font-size: 9px;
-  font-weight: 800;
+  /* 게시판 목록의 N 표시와 같은 글꼴·줄높이 — 기본 글꼴(Pretendard)·줄높이를 물려받으면 글자가 아래로 쏠림 */
+  font: 800 10px/1 var(--font-num);
   vertical-align: 1px;
 }
 .cc {
