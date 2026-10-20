@@ -181,7 +181,7 @@ function MyOx({ quiz }: { quiz: OxView }) {
   const deathmatch = quiz.oxMode === "deathmatch";
   return (
     <Card
-      title="내 기록"
+      title={quiz.me.joined ? "내 기록" : "문제별 정답"}
       extra={
         quiz.me.joined && (
           <span className={`tag ${!deathmatch || quiz.me.alive ? "tag-accent" : ""}`} style={{ marginLeft: "auto" }}>
@@ -202,10 +202,15 @@ function MyOx({ quiz }: { quiz: OxView }) {
               <span className={styles.ellipsis} style={{ flex: 1, minWidth: 0 }}>
                 {h.prompt.replace(/__/g, "")}
               </span>
-              <b>{h.mine ?? "–"}</b>
-              <b className={h.correct ? styles.ok : styles.no} style={{ width: 36, textAlign: "right" }}>
-                {h.correct ? "정답" : "오답"}
-              </b>
+              {/* 참여했으면 내 답(맞으면 초록, 틀리면 빨강), 그리고 항상 실제 정답 */}
+              {quiz.me.joined && (
+                <b className={h.correct ? styles.ok : styles.no} title={h.correct ? "맞힘" : "틀림"}>
+                  {h.mine ?? "–"}
+                </b>
+              )}
+              <span className="tag tag-accent" style={{ flex: "none" }}>
+                정답 {h.answer}
+              </span>
             </div>
           ))}
         </div>

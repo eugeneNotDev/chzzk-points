@@ -916,6 +916,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
 
 // 모의고사 채점 방송 화면 — 관리 탭의 "채점 방송 화면 열기"로 뜨는 창. 이 창에서 바로 채점함(정답은 안 보임).
 export function ExamGradeStream({ quizId }: { quizId: number }) {
+  useStreamTitle("유진고사 채점 방송화면 · 유진 팬보드");
   const q = useQuery({ queryKey: ["quiz-admin", quizId], refetchInterval: 5000, queryFn: () => adminCall<Detail>({ action: "get", quizId }) });
   if (!q.data) return <div className={styles.stream}><span className={styles.streamHint}>불러오는 중…</span></div>;
   return <GradingTab d={q.data} stream />;
@@ -1067,9 +1068,9 @@ function OxAdmin({ d }: { d: Detail }) {
               <div className={styles.actions}>
                 <span className="muted" style={{ fontSize: 13 }}>제한시간</span>
                 <div className="segment" role="tablist" aria-label="제한시간">
-                  {[5, 10, 20].map((s) => (
+                  {[5, 10, 20, 30, 60].map((s) => (
                     <button key={s} type="button" role="tab" aria-selected={seconds === s} onClick={() => setSeconds(s)}>
-                      {s}초
+                      {s === 60 ? "1분" : `${s}초`}
                     </button>
                   ))}
                 </div>
@@ -1247,7 +1248,16 @@ function Payouts({ d, onPaid }: { d: Detail; onPaid: () => void }) {
 const RING_R = 54;
 const RING_C = 2 * Math.PI * RING_R;
 
+// 방송 화면 창 제목 — OBS 창 캡처에서 구분하기 쉽게 고정된 이름으로(사이트 기본 제목 "퀴즈 · 유진 팬보드"를 덮어씀)
+function useStreamTitle(title: string) {
+  useEffect(() => {
+    const t = window.setTimeout(() => (document.title = title), 0);
+    return () => window.clearTimeout(t);
+  }, [title]);
+}
+
 export function OxStream({ quizId }: { quizId: number }) {
+  useStreamTitle("OX 퀴즈 방송화면 · 유진 팬보드");
   const now = useNow(100);
   const q = useQuery({ queryKey: ["quiz-admin", quizId], refetchInterval: 1000, queryFn: () => adminCall<Detail>({ action: "get", quizId }) });
   const d = q.data;
@@ -1279,7 +1289,7 @@ export function OxStream({ quizId }: { quizId: number }) {
   return (
     <div className={`${styles.stream} ${styles.oxStream}`}>
       <div className={styles.streamTop}>
-        <span className={styles.streamBrand}>{d.quiz.title}</span>
+        <span className={styles.streamBrand}>OX 퀴즈</span>
         <span className={`${styles.streamTag} ${deathmatch ? styles.streamTagHot : ""}`}>{deathmatch ? "데스매치" : "점수전"}</span>
         <span className={styles.streamCount}>
           <Users size={22} aria-hidden="true" />
