@@ -1,10 +1,10 @@
 // 유진고사 — 시청자용. 조회(GET)와 제출(POST). 회차 만들기·진행·채점·지급은 admin-quiz 함수.
 //
 // GET ?peek=1 (로그인 없이) → 메뉴에 띄울지: { active: { id, kind, title, status } | null }
-// GET (로그인)              → 지금 회차 + 내 지난 기록: { quiz: QuizView | null, history: HistoryItem[] }
+// GET (로그인)              → 지금 회차(종류별 하나씩, OX 먼저) + 내 지난 기록: { quizzes: QuizView[], history: HistoryItem[] }
 // GET ?quizId=N (로그인)    → 그 회차(발표가 끝났거나 진행 중인 것만): { quiz: QuizView | null }
 //
-// POST { action: "submit-exam", quizId, answers: { "<문항 id>": "2" | "답" } } → { ok: true, submittedAt }
+// POST { action: "submit-exam", quizId, answers: { "<문항 id>": "2" | "답" } } → { ok: true, submittedAt }  (한 사람당 한 번만, 고칠 수 없음)
 // POST { action: "ox-answer", questionId, choice: "O" | "X" } → { ok: true, choice }
 //   실패 400 { error }: quiz_not_found / quiz_closed / already_submitted / question_closed / eliminated / invalid_request
 //
@@ -14,16 +14,13 @@ import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import {
   canAnswerOx,
-  EXAM_SUBMIT_GRACE_SEC,
-  findActiveQuiz,
+  findActiveQuizzes,
   getAdminClient,
-  isCorrect,
-  loadGrades,
   loadNames,
-  normAnswer,
   oxStandings,
   QUESTION_COLS,
   QUIZ_COLS,
+  SUBMISSION_COLS,
   type Admin,
   type OxAnswerRow,
   type QuestionRow,
@@ -67,24 +64,22 @@ function baseView(quiz: QuizRow, channelId: string) {
 
 async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
   const questions = await loadQuestions(admin, quiz.id);
-  const { data: subsData, error } = await admin.from("quiz_exam_submissions").select("channel_id, answers, submitted_at, score, rank").eq("quiz_id", quiz.id);
+  const { data: subsData, error } = await admin.from("quiz_exam_submissions").select(SUBMISSION_COLS).eq("quiz_id", quiz.id);
   if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
   const subs = (subsData ?? []) as SubmissionRow[];
   const mine = subs.find((s) => s.channel_id === channelId) ?? null;
   const revealed = quiz.status === "revealed";
-  const grades = revealed ? await loadGrades(admin, questions.filter((q) => q.qtype === "short").map((q) => q.id)) : new Map();
 
+  // 정답·채점 결과는 결과 발표 뒤에만
   const qs = questions.map((q) => {
-    const base = { id: q.id, position: q.position, qtype: q.qtype, prompt: q.prompt, imageUrl: q.image_url, choices: q.choices, points: q.points };
+    const base = { id: q.id, position: q.position, qtype: q.qtype, prompt: q.prompt, imageUrl: q.image_url, choices: q.choices };
     if (!revealed) return base;
-    const right = subs.filter((s) => isCorrect(q, s.answers[String(q.id)], grades) === true).length;
+    const right = subs.filter((s) => s.marks?.[String(q.id)] === true).length;
     return {
       ...base,
       answer: q.answer,
       rate: subs.length ? Math.round((right / subs.length) * 100) : 0,
-      myCorrect: mine ? isCorrect(q, mine.answers[String(q.id)], grades) === true : null,
-      // 기준 정답과 달라도 방장이 맞다고 처리한 단답
-      myAccepted: !!mine && q.qtype === "short" && isCorrect(q, mine.answers[String(q.id)], grades) === true && normAnswer(mine.answers[String(q.id)] ?? "") !== normAnswer(q.answer),
+      myCorrect: mine ? mine.marks?.[String(q.id)] === true : null,
     };
   });
 
@@ -99,7 +94,6 @@ async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
   return {
     ...baseView(quiz, channelId),
     questions: quiz.status === "draft" ? [] : qs,
-    totalPoints: questions.reduce((n, q) => n + q.points, 0),
     participants: subs.length,
     mine: mine ? { answers: mine.answers, submittedAt: mine.submitted_at, score: revealed ? mine.score : null, rank: revealed ? mine.rank : null } : null,
     ranking,
@@ -204,7 +198,8 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
 
     if (req.method === "GET" && url.searchParams.get("peek") === "1") {
-      const q = await findActiveQuiz(admin);
+      const qs = await findActiveQuizzes(admin);
+      const q = qs[0];
       return json({ active: q ? { id: q.id, kind: q.kind, title: q.title, status: q.status } : null }, 200);
     }
 
@@ -222,9 +217,9 @@ Deno.serve(async (req: Request) => {
         if (error) throw new Error(`quizzes 조회 실패: ${error.message}`);
         return json({ quiz: data ? await buildView(admin, data as QuizRow, session.channelId) : null }, 200);
       }
-      const active = await findActiveQuiz(admin);
-      const [view, hist] = await Promise.all([active ? buildView(admin, active, session.channelId) : null, history(admin, session.channelId)]);
-      return json({ quiz: view, history: hist }, 200);
+      const active = await findActiveQuizzes(admin);
+      const [views, hist] = await Promise.all([Promise.all(active.map((q) => buildView(admin, q, session.channelId))), history(admin, session.channelId)]);
+      return json({ quizzes: views, history: hist }, 200);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -236,8 +231,7 @@ Deno.serve(async (req: Request) => {
       if (error) throw new Error(`quizzes 조회 실패: ${error.message}`);
       if (!quiz || quiz.kind !== "exam") return json({ error: "quiz_not_found" }, 400);
       const q = quiz as QuizRow;
-      const deadline = q.closes_at ? new Date(q.closes_at).getTime() + EXAM_SUBMIT_GRACE_SEC * 1000 : 0;
-      if (q.status !== "open" || Date.now() > deadline) return json({ error: "quiz_closed" }, 400);
+      if (q.status !== "open") return json({ error: "quiz_closed" }, 400);
 
       const questions = await loadQuestions(admin, quizId);
       const answers: Record<string, string> = {};
@@ -251,6 +245,7 @@ Deno.serve(async (req: Request) => {
           answers[String(qu.id)] = v;
         }
       }
+      // 한 사람당 한 번만 — 이미 냈으면 unique 제약에 걸림(고쳐서 다시 낼 수 없음)
       const { data: ins, error: ie } = await admin.from("quiz_exam_submissions").insert({ quiz_id: quizId, channel_id: session.channelId, answers }).select("submitted_at").maybeSingle();
       if (ie) {
         if (ie.code === "23505") return json({ error: "already_submitted" }, 400);

@@ -55,77 +55,50 @@ export type QuestionRow = {
 };
 export const QUESTION_COLS = "id, quiz_id, position, qtype, prompt, image_url, choices, answer, points, grading, asked_at, closes_at, revealed_at";
 
-export type SubmissionRow = { channel_id: string; answers: Record<string, string>; submitted_at: string; score: number | null; rank: number | null };
+export type SubmissionRow = {
+  id: number;
+  channel_id: string;
+  answers: Record<string, string>;
+  marks: Record<string, boolean>;
+  submitted_at: string;
+  score: number | null;
+  rank: number | null;
+};
+export const SUBMISSION_COLS = "id, channel_id, answers, marks, submitted_at, score, rank";
 export type OxAnswerRow = { question_id: number; channel_id: string; choice: "O" | "X"; answered_at: string };
 
 // 단답 비교용 — 대소문자·띄어쓰기 무시
 export const normAnswer = (s: string) => s.toLowerCase().replace(/\s+/g, "");
 
-// 단답 채점표: 문항 id → (정규화한 답 → 정답 여부). 표에 없으면 기준 정답과 같은지로 판단.
-export type Grades = Map<number, Map<string, boolean>>;
-
-export async function loadGrades(admin: Admin, questionIds: number[]): Promise<Grades> {
-  const out: Grades = new Map();
-  if (questionIds.length === 0) return out;
-  const { data, error } = await admin.from("quiz_short_grades").select("question_id, norm_answer, correct").in("question_id", questionIds);
-  if (error) throw new Error(`quiz_short_grades 조회 실패: ${error.message}`);
-  for (const g of data ?? []) {
-    if (!out.has(g.question_id)) out.set(g.question_id, new Map());
-    out.get(g.question_id)!.set(g.norm_answer, g.correct);
-  }
-  return out;
+// "자동 채점" — 객관식은 정답 번호와 같으면, 단답은 기준 정답과(대소문자·띄어쓰기 무시) 같으면 맞음.
+// 기본은 방송에서 한 문항씩 손으로 채점하고, 관리자가 자동 채점을 누른 시험지만 이걸로 채움.
+export function autoMark(q: QuestionRow, given: string | undefined) {
+  const v = (given ?? "").trim();
+  if (!v) return false;
+  if (q.qtype === "short") return normAnswer(v) === normAnswer(q.answer);
+  return v === q.answer;
 }
 
-// 한 문항이 맞았는지 — null이면 아직 채점 안 된 단답(수동 채점 문항에서 기준 정답과 다른 답)
-export function isCorrect(q: QuestionRow, given: string | undefined, grades: Grades): boolean | null {
-  if (given === undefined || given === "") return false;
-  if (q.qtype === "short") {
-    const n = normAnswer(given);
-    const g = grades.get(q.id)?.get(n);
-    if (g !== undefined) return g;
-    if (n === normAnswer(q.answer)) return true;
-    return q.grading === "manual" ? null : false;
+// 시험지 한 장의 채점 현황 — 맞은 수, 매긴 수
+export function sheetTally(questions: QuestionRow[], marks: Record<string, boolean>) {
+  let correct = 0;
+  let marked = 0;
+  for (const q of questions) {
+    const m = marks[String(q.id)];
+    if (m === true) correct += 1;
+    if (m === true || m === false) marked += 1;
   }
-  return given === q.answer;
+  return { correct, marked, total: questions.length };
 }
 
-// 모의고사 점수·순위. 같은 점수면 먼저 제출한 사람이 위.
-export function scoreExam(questions: QuestionRow[], subs: SubmissionRow[], grades: Grades) {
+// 모의고사 순위 — 맞은 문항 수(배점 없음). 같으면 먼저 제출한 사람이 위.
+export function scoreExam(questions: QuestionRow[], subs: SubmissionRow[]) {
   const scored = subs.map((s) => {
-    let score = 0;
-    let correct = 0;
-    for (const q of questions) {
-      if (isCorrect(q, s.answers[String(q.id)], grades) === true) {
-        score += q.points;
-        correct += 1;
-      }
-    }
-    return { channelId: s.channel_id, score, correct, submittedAt: s.submitted_at };
+    const t = sheetTally(questions, s.marks ?? {});
+    return { channelId: s.channel_id, submissionId: s.id, score: t.correct, correct: t.correct, marked: t.marked, submittedAt: s.submitted_at };
   });
   scored.sort((a, b) => b.score - a.score || a.submittedAt.localeCompare(b.submittedAt));
   return scored.map((s, i) => ({ ...s, rank: i + 1 }));
-}
-
-// 단답 문항의 답 묶음(관리자 채점 화면) — 같은 답끼리 몇 명인지 + 지금 정답/오답/미채점
-export function shortGroups(q: QuestionRow, subs: SubmissionRow[], grades: Grades) {
-  const groups = new Map<string, { norm: string; display: string; count: number }>();
-  for (const s of subs) {
-    const raw = (s.answers[String(q.id)] ?? "").trim();
-    if (!raw) continue;
-    const n = normAnswer(raw);
-    const g = groups.get(n);
-    if (g) g.count += 1;
-    else groups.set(n, { norm: n, display: raw, count: 1 });
-  }
-  return [...groups.values()]
-    .map((g) => {
-      const explicit = grades.get(q.id)?.get(g.norm);
-      const isKey = g.norm === normAnswer(q.answer);
-      const state: "correct" | "wrong" | "pending" =
-        explicit === true ? "correct" : explicit === false ? "wrong" : isKey ? "correct" : q.grading === "manual" ? "pending" : "wrong";
-      return { norm: g.norm, display: g.display, count: g.count, isKey, state };
-    })
-    .sort((a, b) => Number(b.isKey) - Number(a.isKey) || b.count - a.count);
 }
 
 // OX 진행 상황 — 공개된 문제 순서대로 따라가며 사람별 맞힌 수·생존 여부를 계산.
@@ -199,14 +172,18 @@ export async function loadNames(admin: Admin, ids: string[], adminView: boolean)
   return out;
 }
 
-// 지금 화면에 띄울 회차 — 진행 중(open/closed)이거나 발표 후 30분 이내. 준비중(draft)은 관리자만.
-export async function findActiveQuiz(admin: Admin): Promise<QuizRow | null> {
-  const { data, error } = await admin.from("quizzes").select(QUIZ_COLS).neq("status", "draft").order("created_at", { ascending: false }).limit(5);
+// 지금 화면에 띄울 회차 — 종류(모의고사/OX)마다 하나씩: 진행 중(open/closed)이거나 발표 후 30분 이내. 준비중(draft)은 안 보임.
+// 모의고사는 며칠씩 열어두니까 그 사이에 OX를 따로 열 수 있음. 둘 다 있으면 OX가 먼저.
+export async function findActiveQuizzes(admin: Admin): Promise<QuizRow[]> {
+  const { data, error } = await admin.from("quizzes").select(QUIZ_COLS).neq("status", "draft").order("created_at", { ascending: false }).limit(10);
   if (error) throw new Error(`quizzes 조회 실패: ${error.message}`);
   const now = Date.now();
-  for (const q of (data ?? []) as QuizRow[]) {
-    if (q.status === "open" || q.status === "closed") return q;
-    if (q.status === "revealed" && q.revealed_at && now - new Date(q.revealed_at).getTime() < REVEALED_VISIBLE_MS) return q;
+  const out: QuizRow[] = [];
+  for (const kind of ["ox", "exam"] as const) {
+    const q = ((data ?? []) as QuizRow[]).find(
+      (x) => x.kind === kind && (x.status === "open" || x.status === "closed" || (x.status === "revealed" && !!x.revealed_at && now - new Date(x.revealed_at).getTime() < REVEALED_VISIBLE_MS)),
+    );
+    if (q) out.push(q);
   }
-  return null;
+  return out;
 }

@@ -47,24 +47,45 @@
 .questions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  row-gap: 48px;
+}
+.qCol {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  min-width: 0;
+}
+.qCol + .qCol {
+  margin-top: 56px;
+}
+.qCol:empty {
+  display: none;
 }
 @media (min-width: 900px) {
   .questions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 64px;
-    row-gap: 56px;
-    background: linear-gradient(var(--c-border), var(--c-border)) center / 1px 100% no-repeat;
+  }
+  .qCol {
+    padding: 0 36px;
+  }
+  .qCol:first-child {
+    padding-left: 0;
+  }
+  .qCol + .qCol {
+    margin-top: 0;
+    padding-right: 0;
+    border-left: 1px solid var(--c-border-strong);
   }
 }
 .q {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
   scroll-margin-top: 90px;
 }
 .qTitle {
+  display: flex;
+  gap: 8px;
   font-size: 16px;
   font-weight: 700;
   line-height: 1.6;
@@ -73,6 +94,82 @@
 .qTitle u {
   text-underline-offset: 4px;
 }
+/* 문항 번호 — 채점되면 빨간 펜 ○ / 빗금 */
+.qNo {
+  position: relative;
+  flex: none;
+  min-width: 22px;
+  font-family: var(--font-num);
+}
+.markO::after,
+.markX::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+.markO::after {
+  inset: -7px -9px -7px -10px;
+  border: 2.5px solid var(--c-danger);
+  border-radius: 50%;
+  transform: rotate(-8deg);
+}
+.markX::after {
+  left: -6px;
+  right: -6px;
+  top: 50%;
+  height: 2.5px;
+  background: var(--c-danger);
+  transform: rotate(-55deg);
+  border-radius: 2px;
+}
+.keyed {
+  outline: 1.5px dashed var(--c-accent);
+  outline-offset: -1.5px;
+}
+.markBar {
+  flex: none;
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+.markBtn {
+  width: 44px;
+  height: 44px;
+  border: 1.5px solid var(--c-border-strong);
+  border-radius: 50%;
+  background: var(--c-surface-2);
+  color: var(--c-text-3);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.markBtn:hover {
+  border-color: var(--c-text-3);
+  color: var(--c-text);
+}
+.markBtnO {
+  border-color: var(--c-danger);
+  background: color-mix(in srgb, var(--c-danger) 14%, transparent);
+  color: var(--c-red-text);
+}
+.markBtnX {
+  border-color: var(--c-text-3);
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.qNoBtn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-family: var(--font-num);
+  cursor: pointer;
+  height: fit-content;
+}
+
 .qMeta {
   margin-left: 6px;
   font-size: 12px;
@@ -90,14 +187,14 @@
 .choices {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   padding-left: 14px;
 }
 .choice {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
+  min-height: 42px;
   padding: 6px 12px;
   border: 1px solid transparent;
   border-radius: var(--r-sm);
@@ -758,4 +855,150 @@
   flex-direction: column;
   gap: 6px;
   font-size: 14px;
+}
+
+/* OX 대기 */
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 12px;
+  text-align: center;
+}
+.waiting b {
+  font-size: 18px;
+}
+.waitingDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c-accent);
+  animation: quizPulse 1.4s ease-in-out infinite;
+}
+@keyframes quizPulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .waitingDot {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .paper {
+    padding: 24px 18px 28px;
+  }
+  .paperArea {
+    font-size: 32px;
+  }
+  .paperRule {
+    margin: 16px 0 28px;
+  }
+}
+
+/* OX 리모컨 */
+.remote {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 900px) {
+  .remote {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  min-width: 0;
+}
+.panelLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-3);
+  letter-spacing: 0.02em;
+}
+.twoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .twoCol {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+.queueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px 4px 4px 12px;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 14px;
+}
+.queueRow:last-child {
+  border-bottom: 0;
+}
+.queueRow > b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.queueNext {
+  background: var(--c-accent-soft);
+  border-radius: var(--r-sm);
+}
+
+/* 채점 화면 */
+.sheetList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+.sheetItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.sheetItem:hover {
+  background: var(--c-hover);
+}
+.sheetItem > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.draftItem {
+  border: 1px dashed var(--c-accent);
+  color: var(--c-accent);
+}
+.grow {
+  flex: 1 1 280px;
+  min-width: 0;
 }

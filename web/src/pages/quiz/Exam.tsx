@@ -1,15 +1,15 @@
-// 유진고사 — 모의고사(시청자). 응시 중엔 시험지 + 답안지(OMR), 발표 후엔 점수·내 답안·순위.
+// 퀴즈(유진고사) — 모의고사(시청자). 제출 마감 전까진 시험지를 풀고 몇 번이든 다시 제출할 수 있음.
+// 채점은 방송에서 시험지를 한 장씩 띄워 놓고 함(관리자 화면). 결과 발표 뒤엔 맞은 수·순위·내 시험지 채점 결과.
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Clock, Trophy, X } from "lucide-react";
+import { Check, Trophy } from "lucide-react";
 import { Card } from "../../components/Card";
 import { apiFetch, ApiError } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
-import { QUIZ_ERRORS, underlineParts, type ExamQuestion, type ExamView } from "../../lib/quiz";
+import { QUIZ_ERRORS, underlineParts, type ExamView, type QType } from "../../lib/quiz";
 import { readStorage, writeStorage } from "../../lib/storage";
-import { useNow } from "./useNow";
 import styles from "./Quiz.module.css";
 
 const CIRCLED = ["①", "②", "③", "④"];
@@ -28,115 +28,153 @@ export function Prompt({ text }: { text: string }) {
   );
 }
 
-// 시험지 한 장 — 응시(onPick 있음) / 읽기 전용 / 결과(revealed) 모두 이걸로 그림
+export type PaperQuestion = { id: number; qtype: QType; prompt: string; imageUrl: string | null; choices: string[]; answer?: string };
+
+// 시험지 한 장. 실제 시험지처럼 왼쪽 단을 위에서 아래로 다 채운 뒤 오른쪽 단으로 넘어감(폰에선 한 단).
+//  - onPick: 시청자가 푸는 중
+//  - marks: 채점 결과(빨간 펜 ○/✕) — 관리자 채점 화면, 결과 발표 뒤 내 시험지
+//  - onMark: 관리자가 문항마다 ○/✕를 매김
+//  - showKey: 정답 표시(관리자)
 export function ExamPaper({
-  quiz,
+  title,
+  subtitle,
+  questions,
   answers,
   onPick,
-  revealed = false,
+  marks,
+  onMark,
+  showKey = false,
 }: {
-  quiz: Pick<ExamView, "title" | "subtitle"> & { questions: ExamQuestion[] };
+  title: string;
+  subtitle: string;
+  questions: PaperQuestion[];
   answers: Record<string, string>;
   onPick?: (qid: number, v: string) => void;
-  revealed?: boolean;
+  marks?: Record<string, boolean | undefined>;
+  onMark?: (qid: number, v: boolean | null) => void;
+  showKey?: boolean;
 }) {
+  const half = Math.ceil(questions.length / 2);
+  const cols = [questions.slice(0, half), questions.slice(half)];
   const editable = !!onPick;
+
+  const renderQ = (q: PaperQuestion, no: number) => {
+    const mine = answers[String(q.id)] ?? "";
+    const mark = marks?.[String(q.id)];
+    const key = showKey ? q.answer : undefined;
+    return (
+      <div key={q.id} id={`q-${q.id}`} className={styles.q}>
+        <div className={styles.qTitle}>
+          {onMark ? (
+            // 채점: 번호를 누르면 ○ → ✕ → 지움 순서로 바뀜(옆 ○/✕ 버튼으로 바로 골라도 됨)
+            <button
+              type="button"
+              className={`${styles.qNo} ${styles.qNoBtn} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}
+              aria-label={`${no}번 채점: ${mark === true ? "맞음" : mark === false ? "틀림" : "안 매김"}`}
+              onClick={() => onMark(q.id, mark === undefined ? true : mark === true ? false : null)}
+            >
+              {no}.
+            </button>
+          ) : (
+            <span className={`${styles.qNo} ${mark === true ? styles.markO : mark === false ? styles.markX : ""}`}>{no}.</span>
+          )}
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <Prompt text={q.prompt} />
+            {q.qtype === "short" && <span className={styles.qMeta}>[단답형]</span>}
+          </span>
+          {onMark && (
+            <span className={styles.markBar}>
+              <button type="button" className={`${styles.markBtn} ${mark === true ? styles.markBtnO : ""}`} aria-label={`${no}번 맞음`} aria-pressed={mark === true} onClick={() => onMark(q.id, mark === true ? null : true)}>
+                ○
+              </button>
+              <button type="button" className={`${styles.markBtn} ${mark === false ? styles.markBtnX : ""}`} aria-label={`${no}번 틀림`} aria-pressed={mark === false} onClick={() => onMark(q.id, mark === false ? null : false)}>
+                ✕
+              </button>
+            </span>
+          )}
+        </div>
+        {q.imageUrl && <img className={styles.qImage} src={q.imageUrl} alt="문제 그림" loading="lazy" />}
+
+        {q.qtype === "choice" && (
+          <div className={styles.choices} role={editable ? "radiogroup" : undefined} aria-label={`${no}번 보기`}>
+            {q.choices.map((c, k) => {
+              const v = String(k + 1);
+              const picked = mine === v;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role={editable ? "radio" : undefined}
+                  aria-checked={editable ? picked : undefined}
+                  disabled={!editable}
+                  className={`${styles.choice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""}`}
+                  onClick={() => onPick?.(q.id, v)}
+                >
+                  <span className={styles.num}>{k + 1}</span>
+                  <span>{c}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {q.qtype === "image" && (
+          <div className={styles.imgChoices} role={editable ? "radiogroup" : undefined} aria-label={`${no}번 보기`}>
+            {q.choices.map((src, k) => {
+              const v = String(k + 1);
+              const picked = mine === v;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role={editable ? "radio" : undefined}
+                  aria-checked={editable ? picked : undefined}
+                  aria-label={`${k + 1}번 그림`}
+                  disabled={!editable}
+                  className={`${styles.imgChoice} ${picked ? styles.picked : ""} ${key === v ? styles.keyed : ""}`}
+                  onClick={() => onPick?.(q.id, v)}
+                >
+                  <img src={src} alt="" loading="lazy" />
+                  <span className={styles.num}>{k + 1}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {q.qtype === "short" && (
+          <label className={styles.short}>
+            <span className={styles.shortLabel}>답</span>
+            <input
+              className={styles.shortInput}
+              type="text"
+              maxLength={100}
+              value={mine}
+              readOnly={!editable}
+              placeholder={editable ? "여기에 적어요" : "안 적음"}
+              onChange={(e) => onPick?.(q.id, e.target.value)}
+            />
+            {key && <span className={styles.shortKey}>정답: {key}</span>}
+          </label>
+        )}
+
+      </div>
+    );
+  };
+
   return (
     <section className={styles.paper} aria-label="시험지">
       <div className={styles.paperHead}>
-        <span className={styles.paperRound}>{quiz.title}</span>
-        <span className={styles.paperArea}>{quiz.subtitle || "유진 영역"}</span>
+        <span className={styles.paperRound}>{title}</span>
+        <span className={styles.paperArea}>{subtitle || "유진 영역"}</span>
       </div>
       <div className={styles.paperRule} />
       <div className={styles.questions}>
-        {quiz.questions.map((q, i) => {
-          const mine = answers[String(q.id)] ?? "";
-          return (
-            <div key={q.id} id={`q-${q.id}`} className={styles.q}>
-              <div className={styles.qTitle}>
-                {i + 1}. <Prompt text={q.prompt} />
-                <span className={styles.qMeta}>
-                  [{q.points}점{q.qtype === "short" ? " · 단답형" : ""}]
-                </span>
-              </div>
-              {q.imageUrl && <img className={styles.qImage} src={q.imageUrl} alt="문제 그림" loading="lazy" />}
-
-              {q.qtype === "choice" && (
-                <div className={styles.choices} role={editable ? "radiogroup" : undefined} aria-label={`${i + 1}번 보기`}>
-                  {q.choices.map((c, k) => {
-                    const v = String(k + 1);
-                    const picked = mine === v;
-                    const right = revealed && q.answer === v;
-                    const wrong = revealed && picked && !right;
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        role={editable ? "radio" : undefined}
-                        aria-checked={editable ? picked : undefined}
-                        disabled={!editable}
-                        className={`${styles.choice} ${picked ? styles.picked : ""} ${right ? styles.right : ""} ${wrong ? styles.wrong : ""}`}
-                        onClick={() => onPick?.(q.id, v)}
-                      >
-                        <span className={styles.num}>{k + 1}</span>
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {q.qtype === "image" && (
-                <div className={styles.imgChoices} role={editable ? "radiogroup" : undefined} aria-label={`${i + 1}번 보기`}>
-                  {q.choices.map((src, k) => {
-                    const v = String(k + 1);
-                    const picked = mine === v;
-                    const right = revealed && q.answer === v;
-                    const wrong = revealed && picked && !right;
-                    return (
-                      <button
-                        key={k}
-                        type="button"
-                        role={editable ? "radio" : undefined}
-                        aria-checked={editable ? picked : undefined}
-                        aria-label={`${k + 1}번 그림`}
-                        disabled={!editable}
-                        className={`${styles.imgChoice} ${picked ? styles.picked : ""} ${right ? styles.right : ""} ${wrong ? styles.wrong : ""}`}
-                        onClick={() => onPick?.(q.id, v)}
-                      >
-                        <img src={src} alt="" loading="lazy" />
-                        <span className={styles.num}>{k + 1}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {q.qtype === "short" && (
-                <label className={styles.short}>
-                  <span className={styles.shortLabel}>답</span>
-                  <input
-                    className={styles.shortInput}
-                    type="text"
-                    maxLength={100}
-                    value={mine}
-                    readOnly={!editable}
-                    placeholder={editable ? "여기에 적어요" : "안 적음"}
-                    onChange={(e) => onPick?.(q.id, e.target.value)}
-                  />
-                  {revealed && <span className={styles.shortKey}>정답: {q.answer}</span>}
-                </label>
-              )}
-
-              {revealed && (
-                <span className={`${styles.verdict} ${q.myCorrect ? styles.ok : styles.no}`}>
-                  {q.myCorrect ? <Check size={15} aria-hidden="true" /> : <X size={15} aria-hidden="true" />}
-                  {q.myCorrect ? (q.myAccepted ? "인정" : "정답") : "오답"} · 정답률 {q.rate}%
-                </span>
-              )}
-            </div>
-          );
-        })}
+        {cols.map((col, ci) => (
+          <div key={ci} className={styles.qCol}>
+            {col.map((q, i) => renderQ(q, ci * half + i + 1))}
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -144,7 +182,9 @@ export function ExamPaper({
 
 export function ExamPanel({ quiz }: { quiz: ExamView }) {
   const qc = useQueryClient();
-  const now = useNow();
+  const isOpen = quiz.status === "open";
+  const submitted = !!quiz.mine;
+  const canEdit = isOpen && !submitted; // 제출은 한 번만 — 낸 뒤엔 고칠 수 없음
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
     try {
       return JSON.parse(readStorage(draftKey(quiz.id)) || "{}");
@@ -154,12 +194,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
   });
   const [busy, setBusy] = useState(false);
 
-  const submitted = !!quiz.mine;
-  const closesAt = quiz.closesAt ? new Date(quiz.closesAt).getTime() : 0;
-  const isOpen = quiz.status === "open" && closesAt > now;
-  const canEdit = isOpen && !submitted;
-
-  // 응시 중 임시저장(새로고침해도 고른 답이 남게)
+  // 제출 전 임시저장(새로고침해도 고른 답이 남게)
   useEffect(() => {
     if (canEdit) writeStorage(draftKey(quiz.id), JSON.stringify(answers));
   }, [answers, canEdit, quiz.id]);
@@ -169,7 +204,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
 
   async function submit() {
     const left = quiz.questions.length - done;
-    const msg = left > 0 ? `안 푼 문항이 ${left}개 있어요. 그래도 제출할까요? 제출하면 고칠 수 없어요.` : "답안을 제출할까요? 제출하면 고칠 수 없어요.";
+    const msg = `${left > 0 ? `안 푼 문항이 ${left}개 있어요. ` : ""}제출하면 고칠 수 없어요. 제출할까요?`;
     if (!(await confirmDialog(msg, { okText: "제출" }))) return;
     setBusy(true);
     try {
@@ -188,17 +223,19 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
   if (quiz.status === "revealed") return <ExamResult quiz={quiz} />;
 
   const pick = (qid: number, v: string) => setAnswers((a) => ({ ...a, [String(qid)]: v }));
-  const urgent = isOpen && closesAt - now < 60_000;
 
   return (
     <div className="split">
       <div className="split-main">
-        <ExamPaper quiz={quiz} answers={shown} onPick={canEdit ? pick : undefined} />
+        <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={shown} onPick={canEdit ? pick : undefined} />
         {canEdit && (
           <div className={styles.paperFoot}>
             <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
               답안 제출 ({done}/{quiz.questions.length})
             </button>
+            <span className="muted" style={{ fontSize: 12 }}>
+              한 번 제출하면 고칠 수 없어요.
+            </span>
           </div>
         )}
       </div>
@@ -206,13 +243,7 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
         <Card title="답안지" tone={canEdit ? "feature" : undefined}>
           <div className={styles.sheetBody}>
             <div className={styles.sheetTop}>
-              {isOpen ? (
-                <span className={`${styles.timer} ${urgent ? styles.urgent : ""}`}>
-                  <Clock size={14} aria-hidden="true" /> 남은 시간 <b className="num">{leftText(closesAt - now)}</b>
-                </span>
-              ) : (
-                <span className={styles.timer}>마감됐어요 · 채점 중</span>
-              )}
+              <span className={`${styles.timer} ${isOpen ? "" : styles.urgent}`}>{isOpen ? "제출 받는 중" : "제출 마감 · 방송에서 채점 중"}</span>
               <b className="num">
                 {done} / {quiz.questions.length}
               </b>
@@ -235,11 +266,12 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
                 );
               })}
             </div>
-            {submitted ? (
+            {submitted && (
               <p className={`${styles.banner} ${styles.bannerOk}`}>
-                <Check size={16} aria-hidden="true" /> 제출 완료! 결과 발표를 기다려주세요.
+                <Check size={16} aria-hidden="true" /> 제출 완료! 방송에서 채점한 뒤 결과를 발표해요.
               </p>
-            ) : canEdit ? (
+            )}
+            {canEdit && (
               <>
                 <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
                   답안 제출
@@ -248,39 +280,30 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
                   한 번 제출하면 고칠 수 없어요.
                 </p>
               </>
-            ) : (
-              <p className={styles.banner}>응시 시간이 끝났어요. 이번 회차엔 제출하지 않았어요.</p>
             )}
+            {!isOpen && !submitted && <p className={styles.banner}>제출이 마감됐어요. 이번 회차엔 제출하지 않았어요.</p>}
           </div>
         </Card>
-        <ExamInfo quiz={quiz} />
+        <Card title="이번 시험" tone="quiet">
+          <div className={styles.rows}>
+            <div className={styles.row}>
+              <span>문항</span>
+              <b>{quiz.questions.length}문항 · 맞힌 개수로 순위</b>
+            </div>
+            {quiz.rewardRanks.length > 0 && (
+              <div className={styles.row}>
+                <span>보상</span>
+                <b style={{ color: "var(--c-gold)", textAlign: "right" }}>{quiz.rewardRanks.map((p, i) => `${i + 1}등 ${fmt(p)}P`).join(" · ")}</b>
+              </div>
+            )}
+            <div className={styles.row}>
+              <span>제출</span>
+              <b className="num">{quiz.participants}명</b>
+            </div>
+          </div>
+        </Card>
       </aside>
     </div>
-  );
-}
-
-function ExamInfo({ quiz }: { quiz: ExamView }) {
-  return (
-    <Card title="이번 시험" tone="quiet">
-      <div className={styles.rows}>
-        <div className={styles.row}>
-          <span>문항</span>
-          <b>
-            {quiz.questions.length}문항 · {quiz.totalPoints}점
-          </b>
-        </div>
-        {quiz.rewardRanks.length > 0 && (
-          <div className={styles.row}>
-            <span>보상</span>
-            <b style={{ color: "var(--c-gold)", textAlign: "right" }}>{quiz.rewardRanks.map((p, i) => `${i + 1}등 ${fmt(p)}P`).join(" · ")}</b>
-          </div>
-        )}
-        <div className={styles.row}>
-          <span>제출</span>
-          <b className="num">{quiz.participants}명</b>
-        </div>
-      </div>
-    </Card>
   );
 }
 
@@ -292,7 +315,8 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
   const correct = quiz.questions.filter((q) => q.myCorrect).length;
   const killer = useMemo(() => [...quiz.questions].sort((a, b) => (a.rate ?? 0) - (b.rate ?? 0))[0], [quiz.questions]);
   const rows = quiz.questions.map((q, i) => ({ q, no: i + 1 })).filter(({ q }) => !onlyWrong || !q.myCorrect);
-  const show = (q: ExamQuestion, v: string | undefined) => (!v ? "–" : q.qtype === "short" ? v : CIRCLED[Number(v) - 1] ?? v);
+  const show = (qtype: QType, v: string | undefined) => (!v ? "–" : qtype === "short" ? v : CIRCLED[Number(v) - 1] ?? v);
+  const marks = useMemo(() => Object.fromEntries(quiz.questions.map((q) => [String(q.id), q.myCorrect ?? undefined])), [quiz.questions]);
 
   return (
     <div className="split">
@@ -301,10 +325,10 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
           {mine ? (
             <div className={styles.score}>
               <div className={`${styles.scoreItem} ${styles.scoreBig}`}>
-                <span>내 점수</span>
+                <span>맞힌 문항</span>
                 <b>
-                  {mine.score ?? 0}
-                  <small> / {quiz.totalPoints}</small>
+                  {correct}
+                  <small> / {quiz.questions.length}</small>
                 </b>
               </div>
               <div className={styles.divider} />
@@ -314,14 +338,6 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
                   {mine.rank}위<small> / {quiz.participants}명</small>
                 </b>
               </div>
-              <div className={styles.divider} />
-              <div className={styles.scoreItem}>
-                <span>맞힌 문항</span>
-                <b>
-                  {correct}
-                  <small> / {quiz.questions.length}</small>
-                </b>
-              </div>
               {quiz.myReward && (
                 <p className={`${styles.banner} ${styles.bannerOk}`} style={{ marginLeft: "auto" }}>
                   <Trophy size={16} aria-hidden="true" /> {quiz.myReward.label} 보상 +{fmt(quiz.myReward.amount)}P{quiz.isTest ? " (테스트라 실제 지급 안 됨)" : ""}
@@ -329,7 +345,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
               )}
             </div>
           ) : (
-            <p className={styles.banner}>이번 회차엔 응시하지 않았어요. 정답과 순위는 아래에서 볼 수 있어요.</p>
+            <p className={styles.banner}>이번 회차엔 제출하지 않았어요. 정답과 순위는 아래에서 볼 수 있어요.</p>
           )}
         </Card>
 
@@ -362,11 +378,8 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
                   {mine ? (q.myCorrect ? "○" : "✕") : ""} {no}
                 </b>
                 <span className={styles.ellipsis}>{q.prompt.replace(/__/g, "")}</span>
-                <b style={{ color: q.myAccepted ? "var(--c-gold)" : undefined }}>
-                  {show(q, mine?.answers[String(q.id)])}
-                  {q.myAccepted ? " (인정)" : ""}
-                </b>
-                <b>{show(q, q.answer)}</b>
+                <b>{show(q.qtype, mine?.answers[String(q.id)])}</b>
+                <b>{show(q.qtype, q.answer)}</b>
                 <span className={styles.bar}>
                   <span>
                     <i style={{ width: `${q.rate ?? 0}%` }} />
@@ -378,7 +391,7 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
           </div>
         </Card>
 
-        {mine && <ExamPaper quiz={quiz} answers={mine.answers} revealed />}
+        {mine && <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={mine.answers} marks={marks} />}
       </div>
       <aside className="split-aside">
         <Card title="이번 회차 순위">
@@ -387,12 +400,12 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
               <li key={r.rank} className={r.isMe ? styles.me : ""}>
                 <b className={`${styles.rankNo} ${rankClass(r.rank)}`}>{r.rank}</b>
                 <span className={styles.rankName}>{r.name}</span>
-                <b className="num">{r.score}점</b>
+                <b className="num">{r.score}개</b>
               </li>
             ))}
           </ol>
           <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            같은 점수면 먼저 제출한 사람이 위예요.
+            맞힌 개수가 같으면 먼저 제출한 사람이 위예요.
           </p>
         </Card>
         {killer && (

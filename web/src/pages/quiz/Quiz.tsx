@@ -1,4 +1,5 @@
-// 유진고사 — 방송 중에 여는 모의고사(시험지)·OX 퀴즈. 진행 중인 회차가 있을 때만 메뉴에 뜸(nav.ts quiz).
+// 퀴즈 — 방송 중에 여는 모의고사(유진고사, 시험지)·OX 퀴즈. 진행 중인 회차가 있을 때만 메뉴에 뜸(nav.ts quiz).
+// 모의고사는 며칠씩 열어둘 수 있어서, 그 사이에 OX가 열리면 둘을 위쪽 버튼으로 오가며 봄.
 // 관리자는 "관리" 탭에서 회차를 만들고 진행함(QuizAdmin).
 import { lazy, Suspense, useState } from "react";
 import { ChevronLeft } from "lucide-react";
@@ -21,7 +22,7 @@ function QuizBody({ quiz }: { quiz: QuizView }) {
 }
 
 function QuizTags({ quiz }: { quiz: QuizView }) {
-  const label = quiz.status === "open" ? (quiz.kind === "exam" ? "응시 중" : "진행 중") : quiz.status === "closed" ? "채점 중" : "결과 발표";
+  const label = quiz.status === "open" ? (quiz.kind === "exam" ? "제출 받는 중" : "진행 중") : quiz.status === "closed" ? "채점 중" : quiz.kind === "exam" ? "결과 발표" : "종료";
   return (
     <div className={styles.tags}>
       <span className="tag">{quiz.kind === "exam" ? "모의고사" : "OX 퀴즈"}</span>
@@ -37,11 +38,12 @@ export default function Quiz() {
   const q = useQuiz();
   const [tab, setTab] = useState<Tab>("now");
   const [pastId, setPastId] = useState<number | null>(null);
+  const [pickKind, setPickKind] = useState<"exam" | "ox" | null>(null);
 
   if (!isLoggedIn) {
     return (
       <div className="page">
-        <PageHead title="유진고사" desc="방송 중에 열리는 유진 모의고사와 OX 퀴즈예요." />
+        <PageHead title="퀴즈" desc="방송 중에 열리는 유진고사(모의고사)와 OX 퀴즈예요." />
         <Card>
           <LoginNeeded>로그인하면 시험에 참여할 수 있어요.</LoginNeeded>
         </Card>
@@ -49,7 +51,8 @@ export default function Quiz() {
     );
   }
 
-  const quiz = q.data?.quiz ?? null;
+  const live = q.data?.quizzes ?? [];
+  const quiz = live.find((x) => x.kind === pickKind) ?? live[0] ?? null;
   const tabs = [
     { value: "now" as Tab, label: "지금 회차" },
     { value: "history" as Tab, label: "지난 기록" },
@@ -59,9 +62,9 @@ export default function Quiz() {
   return (
     <div className="page">
       <PageHead
-        title="유진고사"
-        desc="방송 중에 열리는 유진 모의고사와 OX 퀴즈예요. 순위권·생존자에게 포인트를 드려요."
-        actions={<PillTabs label="유진고사 보기" value={tab} options={tabs} onChange={(t) => {
+        title="퀴즈"
+        desc="방송 중에 열리는 유진고사(모의고사)와 OX 퀴즈예요. 순위권·생존자에게 포인트를 드려요."
+        actions={<PillTabs label="퀴즈 보기" value={tab} options={tabs} onChange={(t) => {
               setTab(t);
               setPastId(null);
             }} />}
@@ -72,8 +75,17 @@ export default function Quiz() {
           {q.isLoading && <span className="skeleton" style={{ height: 320 }} />}
           {!q.isLoading && !quiz && (
             <Card>
-              <EmptyState>지금 열린 유진고사가 없어요. 방송 중에 시험이나 OX 퀴즈가 열리면 메뉴에 나타나요.</EmptyState>
+              <EmptyState>지금 열린 퀴즈가 없어요. 방송 중에 유진고사나 OX 퀴즈가 열리면 메뉴에 나타나요.</EmptyState>
             </Card>
+          )}
+          {live.length > 1 && (
+            <div className="segment" role="tablist" aria-label="열린 퀴즈">
+              {live.map((x) => (
+                <button key={x.id} type="button" role="tab" aria-selected={x.id === quiz?.id} onClick={() => setPickKind(x.kind)}>
+                  {x.kind === "ox" ? "OX 퀴즈" : "유진고사"}
+                </button>
+              ))}
+            </div>
           )}
           {quiz && (
             <>
@@ -100,7 +112,7 @@ function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: num
   return (
     <Card title="내 지난 기록">
       {items.length === 0 ? (
-        <EmptyState>아직 참여한 유진고사가 없어요.</EmptyState>
+        <EmptyState>아직 참여한 퀴즈가 없어요.</EmptyState>
       ) : (
         <div>
           {items.map((h) => (
@@ -110,7 +122,7 @@ function History({ items, onOpen }: { items: QuizHistoryItem[]; onOpen: (id: num
                 {h.isTest && <span className={`tag ${styles.testTag}`} style={{ marginLeft: 6 }}>테스트</span>}
               </span>
               <span className="list-row-meta">
-                {h.kind === "exam" ? `${h.score ?? 0}점 · ${h.rank}위` : h.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}
+                {h.kind === "exam" ? `${h.score ?? 0}개 맞힘 · ${h.rank}위` : h.oxMode === "deathmatch" ? "OX 데스매치" : "OX 점수전"}
                 {h.reward ? ` · +${fmt(h.reward.amount)}P` : ""} · {shortDate(h.revealedAt)}
               </span>
             </button>

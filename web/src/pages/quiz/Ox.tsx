@@ -66,7 +66,9 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
               <span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`}>{deathmatch ? "데스매치" : "점수전"}</span>
               {cur && <span className="tag num">{cur.number}번째 문제</span>}
               <span className="muted" style={{ marginLeft: "auto", fontSize: 14 }}>
-                {deathmatch ? (
+                {quiz.participants === 0 ? (
+                  "참여 대기 중"
+                ) : deathmatch && quiz.revealedCount > 0 ? (
                   <>
                     생존 <b className="num" style={{ color: "var(--c-text)", fontSize: 17 }}>{quiz.aliveCount}</b> / {quiz.participants}명
                   </>
@@ -79,7 +81,13 @@ export function OxPanel({ quiz }: { quiz: OxView }) {
             </div>
 
             {!cur ? (
-              <EmptyState>곧 첫 문제가 나와요. 이 화면을 켜두면 문제가 바로 떠요.</EmptyState>
+              <div className={styles.waiting}>
+                <span className={styles.waitingDot} aria-hidden="true" />
+                <b>방장이 문제를 내면 여기에 바로 떠요</b>
+                <span className="muted">
+                  화면을 켜 둔 채로 기다려 주세요.{deathmatch ? " 데스매치는 첫 문제부터 참여해야 끝까지 갈 수 있어요." : ""}
+                </span>
+              </div>
             ) : (
               <>
                 <h3 className={styles.oxPrompt}>

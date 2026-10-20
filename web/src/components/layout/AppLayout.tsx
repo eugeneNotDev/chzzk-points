@@ -5,7 +5,7 @@ import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
 import { isReady, preloadPages } from "../../routes";
 import { useHasNewNotice } from "../../lib/notices";
-import { useQuizPeek } from "../../lib/quiz";
+import { usePredictionLive, useQuizPeek } from "../../lib/quiz";
 import { logout, startLogin, useAuth } from "../../lib/auth";
 import { useMe } from "../../lib/queries";
 import { useTheme } from "../../lib/theme";
@@ -28,6 +28,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
   const quizLive = !!useQuizPeek().data?.active;
+  const predictLive = !!usePredictionLive().data;
   return (
     <nav aria-label="사이트 메뉴" className={styles.nav}>
       {NAV_GROUPS.map((g, gi) => {
@@ -48,7 +49,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 <span>{item.label}</span>
                 {item.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
                 {!isReady(item.path) && <span className={styles.soon}>준비 중</span>}
-                {item.quiz && quizLive && <span className={styles.liveTag}>진행 중</span>}
+                {((item.quiz && quizLive) || (item.path === "predict.html" && predictLive)) && <span className={styles.liveTag}>진행 중</span>}
               </NavLink>
             ))}
           </div>
@@ -140,6 +141,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
   const { isAdmin } = useAuth();
   const newNotice = useHasNewNotice();
   const quizLive = !!useQuizPeek().data?.active;
+  const predictLive = !!usePredictionLive().data;
   const items = ALL_NAV_ITEMS.filter((i) => !MOBILE_TABS.includes(i.path) && (!i.adminOnly || isAdmin) && (!i.quiz || quizLive || isAdmin));
   return (
     <div className={styles.sheetBackdrop} onClick={onClose}>
@@ -152,7 +154,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
               <span className={styles.sheetIcon}>
                 <it.icon size={22} aria-hidden="true" />
                 {it.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
-                {it.quiz && quizLive && <span className={styles.newDot} aria-label="진행 중" />}
+                {((it.quiz && quizLive) || (it.path === "predict.html" && predictLive)) && <span className={styles.newDot} aria-label="진행 중" />}
               </span>
               <span>{it.label}</span>
             </NavLink>

@@ -1,9 +1,12 @@
-// 유진고사 — 관리자(유진 알파 계정). 회차 만들기 → 문항 편집 → 응시/출제 → 채점 → 결과 발표 → 보상 지급.
-// 서버: admin-quiz 함수. 테스트 회차는 보상 지급을 눌러도 포인트가 안 들어가고 "누구에게 얼마"만 남음.
+// 퀴즈(유진고사) — 관리자(유진 알파 계정). 서버: admin-quiz 함수.
+//  모의고사: 문항 만들기 → 제출 받기(제한시간 없음) → 제출 마감 → 방송에서 시험지 한 장씩 ○/✕ 채점 → 결과 발표 → 보상 지급
+//  OX: 진행 시작 → 문제 출제(대기열/즉석) → 정답 공개 → 종료 → 보상 지급
+// 테스트 회차는 보상 지급을 눌러도 포인트가 안 들어가고 "누구에게 얼마"만 남음.
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ImagePlus, Plus, Settings, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, Plus, Settings, Trash2, Wand2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
+import { Select } from "../../components/Select";
 import { Modal } from "../../components/ui";
 import { apiFetch, ApiError } from "../../lib/auth";
 import { API } from "../../lib/config";
@@ -12,7 +15,7 @@ import { fmt } from "../../lib/format";
 import { maybeCompressImage } from "../../lib/notices";
 import { ADMIN_QUIZ_ERRORS, type QType, type QuizStatus } from "../../lib/quiz";
 import { supabase } from "../../lib/supabase";
-import { leftText } from "./Exam";
+import { ExamPaper, leftText } from "./Exam";
 import { useNow } from "./useNow";
 import styles from "./Quiz.module.css";
 
@@ -24,10 +27,8 @@ type QuizRow = {
   status: QuizStatus;
   is_test: boolean;
   ox_mode: "score" | "deathmatch" | null;
-  time_limit_sec: number;
   reward_ranks: number[];
   reward_survivor: number;
-  closes_at: string | null;
   rewarded_at: string | null;
 };
 type QuestionRow = {
@@ -38,22 +39,16 @@ type QuestionRow = {
   image_url: string | null;
   choices: string[];
   answer: string;
-  points: number;
-  grading: "auto" | "manual";
   asked_at: string | null;
   revealed_at: string | null;
 };
+type Sheet = { id: number; name: string; submittedAt: string; answers: Record<string, string>; marks: Record<string, boolean>; correct: number; marked: number; total: number };
 type Payout = { channelId: string; channelName: string; amount: number; label: string };
 type Detail = {
   quiz: QuizRow;
   questions: QuestionRow[];
   payouts: Payout[];
-  exam?: {
-    submissions: number;
-    pending: number;
-    ranking: { rank: number; name: string; score: number; correct: number }[];
-    shortGroups: { questionId: number; groups: { norm: string; display: string; count: number; isKey: boolean; state: "correct" | "wrong" | "pending" }[] }[];
-  };
+  exam?: { sheets: Sheet[]; unmarked: number; ranking: { rank: number; name: string; score: number; marked: number }[] };
   ox?: {
     current: { id: number; number: number; prompt: string; answer: string; closesAt: string | null; revealed: boolean; counts: { O: number; X: number } } | null;
     queue: { id: number; prompt: string; answer: string }[];
@@ -65,7 +60,14 @@ type Detail = {
 type ListItem = { id: number; kind: "exam" | "ox"; title: string; status: QuizStatus; isTest: boolean };
 
 const adminCall = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.adminQuiz, { body });
-const STATUS_LABEL: Record<QuizStatus, string> = { draft: "준비 중", open: "진행 중", closed: "마감·채점", revealed: "발표 끝" };
+const STATUS_LABEL: Record<"exam" | "ox", Record<QuizStatus, string>> = {
+  exam: { draft: "준비 중", open: "제출 받는 중", closed: "채점 중", revealed: "발표 끝" },
+  ox: { draft: "준비 중", open: "진행 중", closed: "진행 중", revealed: "종료" },
+};
+const errMsg = (e: unknown, fallback: string) => {
+  const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
+  return ADMIN_QUIZ_ERRORS[code] || fallback;
+};
 
 function useAct() {
   const qc = useQueryClient();
@@ -77,8 +79,7 @@ function useAct() {
       if (okMsg) toast(okMsg);
       return r;
     } catch (e) {
-      const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
-      toast(ADMIN_QUIZ_ERRORS[code] || "처리하지 못했어요. 다시 시도해주세요.", "error");
+      toast(errMsg(e, "처리하지 못했어요. 다시 시도해주세요."), "error");
       return null;
     } finally {
       setBusy(false);
@@ -113,25 +114,27 @@ export default function QuizAdmin() {
       const d = q.state.data;
       if (!d) return false;
       if (d.quiz.kind === "ox" && d.quiz.status === "open") return 1500;
-      return d.quiz.status === "open" || d.quiz.status === "closed" ? 4000 : false;
+      return d.quiz.status === "open" || d.quiz.status === "closed" ? 5000 : false;
     },
     queryFn: () => adminCall<Detail>({ action: "get", quizId: selId }),
   });
   const d = detail.data;
+  const options = items.map((i) => ({
+    value: String(i.id),
+    label: `${i.kind === "exam" ? "모의고사" : "OX"} · ${i.title} · ${STATUS_LABEL[i.kind][i.status]}${i.isTest ? " · 테스트" : ""}`,
+  }));
 
   return (
     <>
       <Card className={styles.admin} title="회차">
         <div className={styles.adminTop}>
-          <select className="select" style={{ flex: "1 1 260px", minWidth: 0 }} aria-label="회차 고르기" value={selId ?? ""} onChange={(e) => setSelId(Number(e.target.value))}>
-            {items.length === 0 && <option value="">아직 만든 회차가 없어요</option>}
-            {items.map((i) => (
-              <option key={i.id} value={i.id}>
-                [{i.kind === "exam" ? "모의고사" : "OX"}] {i.title} · {STATUS_LABEL[i.status]}
-                {i.isTest ? " · 테스트" : ""}
-              </option>
-            ))}
-          </select>
+          {options.length > 0 ? (
+            <Select label="회차 고르기" className={styles.grow} value={String(selId ?? options[0].value)} options={options} onChange={(v) => setSelId(Number(v))} />
+          ) : (
+            <span className="muted" style={{ flex: 1 }}>
+              아직 만든 회차가 없어요.
+            </span>
+          )}
           <button type="button" className="btn btn-sm" onClick={() => setCreateKind("exam")}>
             <Plus size={16} aria-hidden="true" /> 새 모의고사
           </button>
@@ -159,11 +162,15 @@ export default function QuizAdmin() {
 }
 
 function Steps({ quiz }: { quiz: QuizRow }) {
-  const steps = quiz.kind === "exam" ? ["문제 준비", "응시", "마감·채점", "결과 발표", "보상 지급"] : ["문제 준비", "진행", "종료", "보상 지급"];
+  const steps = quiz.kind === "exam" ? ["문제 준비", "제출 받기", "채점", "결과 발표", "보상 지급"] : ["문제 준비", "진행", "종료", "보상 지급"];
   const idx =
     quiz.kind === "exam"
-      ? quiz.rewarded_at ? 5 : { draft: 0, open: 1, closed: 2, revealed: 3 }[quiz.status] + (quiz.status === "revealed" ? 1 : 0)
-      : quiz.rewarded_at ? 4 : { draft: 0, open: 1, closed: 1, revealed: 3 }[quiz.status];
+      ? quiz.rewarded_at
+        ? 5
+        : { draft: 0, open: 1, closed: 2, revealed: 4 }[quiz.status]
+      : quiz.rewarded_at
+        ? 4
+        : { draft: 0, open: 1, closed: 1, revealed: 3 }[quiz.status];
   return (
     <ol className={styles.steps} aria-label="진행 단계">
       {steps.map((s, i) => (
@@ -221,7 +228,6 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
   const [subtitle, setSubtitle] = useState(quiz?.subtitle ?? "유진 영역");
   const [isTest, setIsTest] = useState(quiz?.is_test ?? true);
   const [oxMode, setOxMode] = useState<"score" | "deathmatch">(quiz?.ox_mode ?? "deathmatch");
-  const [minutes, setMinutes] = useState(String(Math.round((quiz?.time_limit_sec ?? 1200) / 60)));
   const [ranks, setRanks] = useState((quiz?.reward_ranks ?? [5000, 3000, 1000]).join(", "));
   const [survivor, setSurvivor] = useState(String(quiz?.reward_survivor ?? 1000));
   const paid = !!quiz?.rewarded_at;
@@ -232,7 +238,7 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
       .filter(Boolean)
       .map((s) => Number(s.replace(/[^0-9]/g, "")));
     const body: Record<string, unknown> = { title, isTest, rewardRanks, rewardSurvivor: Number(survivor) || 0 };
-    if (kind === "exam") Object.assign(body, { subtitle, timeLimitSec: Math.round(Number(minutes) * 60) });
+    if (kind === "exam") body.subtitle = subtitle;
     else body.oxMode = oxMode;
     if (quiz) {
       if (await act({ action: "update", quizId: quiz.id, ...body }, "저장했어요.")) onSaved();
@@ -264,16 +270,10 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
           <input className="input" maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         {kind === "exam" ? (
-          <div className={styles.formRow}>
-            <label className="field">
-              <span className="field-label">영역 이름(시험지 큰 글씨)</span>
-              <input className="input" maxLength={30} value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
-            </label>
-            <label className="field">
-              <span className="field-label">제한시간(분)</span>
-              <input className="input num" inputMode="numeric" value={minutes} disabled={!!quiz && quiz.status !== "draft"} onChange={(e) => setMinutes(e.target.value.replace(/[^0-9]/g, ""))} />
-            </label>
-          </div>
+          <label className="field">
+            <span className="field-label">영역 이름(시험지 큰 글씨)</span>
+            <input className="input" maxLength={30} value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
+          </label>
         ) : (
           <div className="field">
             <span className="field-label">방식</span>
@@ -308,27 +308,31 @@ function QuizSettingsModal({ kind, quiz, onClose, onSaved }: { kind: "exam" | "o
 }
 
 // ── 모의고사 ──
+type ExamTab = "questions" | "grading" | "ranking";
+
 function ExamAdmin({ d }: { d: Detail }) {
   const { act, busy } = useAct();
-  const now = useNow();
   const quiz = d.quiz;
-  const [sel, setSel] = useState<number | "new" | null>(d.questions[0]?.id ?? (quiz.status === "draft" ? "new" : null));
-  const selected = typeof sel === "number" ? d.questions.find((q) => q.id === sel) ?? null : null;
-  const closesAt = quiz.closes_at ? new Date(quiz.closes_at).getTime() : 0;
   const exam = d.exam!;
+  const [tab, setTab] = useState<ExamTab>(quiz.status === "draft" ? "questions" : "grading");
 
-  async function move(id: number, dir: -1 | 1) {
-    const ids = d.questions.map((q) => q.id);
-    const i = ids.indexOf(id);
-    const j = i + dir;
-    if (j < 0 || j >= ids.length) return;
-    [ids[i], ids[j]] = [ids[j], ids[i]];
-    await act({ action: "reorder", quizId: quiz.id, ids });
+  async function control(action: string, msg: string, confirmMsg: string) {
+    if (!(await confirmDialog(confirmMsg))) return;
+    if ((await act({ action, quizId: quiz.id }, msg)) && action === "open") setTab("grading");
   }
 
-  async function control(action: string, msg: string, confirmMsg?: string) {
-    if (confirmMsg && !(await confirmDialog(confirmMsg))) return;
-    await act({ action, quizId: quiz.id }, msg);
+  async function autoAll() {
+    if (!(await confirmDialog("모든 시험지의 아직 안 매긴 칸을 정답과 비교해서 자동으로 채울까요? 이미 ○/✕를 매긴 칸은 그대로 둬요.", { okText: "자동 채점" }))) return;
+    await act({ action: "auto-mark", quizId: quiz.id, onlyEmpty: true }, "안 매긴 칸을 자동으로 채웠어요.");
+  }
+
+  async function reveal() {
+    const msg =
+      exam.unmarked > 0
+        ? `아직 안 매긴 칸이 ${exam.unmarked}개 있어요. 안 매긴 칸은 틀린 걸로 치고 결과를 발표할까요?`
+        : "맞힌 개수로 순위를 확정하고 결과를 발표할까요? 시청자 화면에 정답이 공개돼요.";
+    if (!(await confirmDialog(msg, { okText: "결과 발표" }))) return;
+    await act({ action: "reveal", quizId: quiz.id }, "결과를 발표했어요.");
   }
 
   return (
@@ -336,103 +340,73 @@ function ExamAdmin({ d }: { d: Detail }) {
       <Card className={styles.admin} title="진행">
         <div className={styles.actions}>
           {quiz.status === "draft" && (
-            <button type="button" className="btn btn-primary" disabled={busy || d.questions.length === 0} onClick={() => control("open", "응시를 시작했어요.", `${d.questions.length}문항, 제한시간 ${Math.round(quiz.time_limit_sec / 60)}분으로 응시를 시작할까요? 시작하면 문항을 추가·삭제할 수 없어요.`)}>
-              응시 시작 ({Math.round(quiz.time_limit_sec / 60)}분)
-            </button>
+            <>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={busy || d.questions.length === 0}
+                onClick={() => control("open", "제출을 받기 시작했어요.", `${d.questions.length}문항으로 제출을 받기 시작할까요? 시작하면 문항을 추가·삭제할 수 없어요. 제한시간은 없고, 제출 마감을 누를 때까지 받아요.`)}
+              >
+                제출 받기 시작
+              </button>
+              <span className="muted">문항 {d.questions.length}개</span>
+            </>
           )}
           {quiz.status === "open" && (
             <>
-              <span className="tag tag-live num">남은 시간 {leftText(closesAt - now)}</span>
-              <span className="muted">제출 {exam.submissions}명</span>
-              <button type="button" className="btn btn-sm" disabled={busy} onClick={() => act({ action: "extend", quizId: quiz.id, minutes: 5 }, "5분 늘렸어요.")}>
-                +5분
-              </button>
-              <button type="button" className="btn btn-sm" disabled={busy} onClick={() => control("close", "응시를 마감했어요.", "지금 응시를 마감할까요?")}>
-                지금 마감
+              <span className="tag tag-live">제출 받는 중</span>
+              <span className="muted">제출 {exam.sheets.length}장</span>
+              <button type="button" className="btn" disabled={busy} onClick={() => control("close", "제출을 마감했어요. 이제 채점할 수 있어요.", "제출을 마감할까요? 마감하면 시청자가 더 내거나 고칠 수 없어요.")}>
+                제출 마감
               </button>
             </>
           )}
-          {(quiz.status === "closed" || quiz.status === "open") && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy || exam.pending > 0}
-              title={exam.pending > 0 ? "채점 안 한 단답이 있어요" : ""}
-              onClick={() => control("reveal", "결과를 발표했어요.", "점수·순위를 확정하고 결과를 발표할까요? 시청자 화면에 정답이 공개돼요.")}
-            >
-              결과 발표{exam.pending > 0 ? ` (미채점 ${exam.pending})` : ""}
-            </button>
+          {quiz.status === "closed" && (
+            <>
+              <span className="tag tag-gold">채점 중</span>
+              <span className="muted">
+                {exam.sheets.length}장 · 안 매긴 칸 {exam.unmarked}개
+              </span>
+              <button type="button" className="btn btn-sm" disabled={busy || exam.unmarked === 0} onClick={autoAll}>
+                <Wand2 size={16} aria-hidden="true" /> 안 매긴 칸 전부 자동 채점
+              </button>
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={reveal}>
+                결과 발표
+              </button>
+            </>
           )}
-          {quiz.status === "revealed" && <span className="muted">결과 발표가 끝났어요. 아래에서 보상을 지급하세요.</span>}
+          {quiz.status === "revealed" && <span className="muted">결과 발표가 끝났어요. 채점을 고치면 순위도 다시 계산돼요(보상 지급 전까지).</span>}
         </div>
       </Card>
 
-      <div className={styles.adminGrid}>
-        <Card
-          title={`문항 ${d.questions.length}`}
-          extra={
-            quiz.status === "draft" && (
-              <button type="button" className="btn btn-sm" style={{ marginLeft: "auto" }} onClick={() => setSel("new")}>
-                <Plus size={16} aria-hidden="true" /> 추가
-              </button>
-            )
-          }
-        >
-          {d.questions.length === 0 ? (
-            <EmptyState>아직 문항이 없어요.</EmptyState>
-          ) : (
-            <div className={styles.qList}>
-              {d.questions.map((q, i) => (
-                <button key={q.id} type="button" className={`${styles.qItem} ${sel === q.id ? styles.qItemOn : ""}`} onClick={() => setSel(q.id)}>
-                  <b>{i + 1}</b>
-                  <span>{q.prompt.replace(/__/g, "")}</span>
-                  <span className={`tag ${q.qtype === "short" ? "tag-gold" : q.qtype === "image" ? "tag-blue" : ""}`}>{q.qtype === "short" ? "단답" : q.qtype === "image" ? "이미지" : "객관식"}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {selected && quiz.status === "draft" && (
-            <div className={styles.actions} style={{ marginTop: 12 }}>
-              <button type="button" className="btn btn-sm" aria-label="위로" disabled={busy} onClick={() => move(selected.id, -1)}>
-                <ArrowUp size={16} aria-hidden="true" />
-              </button>
-              <button type="button" className="btn btn-sm" aria-label="아래로" disabled={busy} onClick={() => move(selected.id, 1)}>
-                <ArrowDown size={16} aria-hidden="true" />
-              </button>
-            </div>
-          )}
-        </Card>
-
-        {sel != null ? (
-          <QuestionEditor
-            key={String(sel)}
-            quiz={quiz}
-            question={selected}
-            number={selected ? d.questions.indexOf(selected) + 1 : d.questions.length + 1}
-            onSaved={(id) => setSel(id)}
-            onDeleted={() => setSel(null)}
-          />
-        ) : (
-          <Card>
-            <EmptyState>왼쪽에서 문항을 골라요.</EmptyState>
-          </Card>
-        )}
+      <div className="segment" role="tablist" aria-label="모의고사 관리">
+        <button type="button" role="tab" aria-selected={tab === "questions"} onClick={() => setTab("questions")}>
+          문항 {d.questions.length}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "grading"} disabled={quiz.status === "draft"} onClick={() => setTab("grading")}>
+          제출된 시험지 {exam.sheets.length}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "ranking"} disabled={quiz.status === "draft"} onClick={() => setTab("ranking")}>
+          순위
+        </button>
       </div>
 
-      {quiz.status !== "draft" && exam.shortGroups.length > 0 && <ShortGrading d={d} />}
-
-      {quiz.status !== "draft" && (
-        <Card className={styles.admin} title={`${quiz.status === "revealed" ? "확정" : "지금 기준"} 순위`} extra={<span className="muted" style={{ marginLeft: "auto" }}>제출 {exam.submissions}명</span>}>
+      {tab === "questions" && <QuestionsTab d={d} />}
+      {tab === "grading" && <GradingTab d={d} />}
+      {tab === "ranking" && (
+        <Card className={styles.admin} title={quiz.status === "revealed" ? "확정 순위" : "지금 기준 순위"}>
           {exam.ranking.length === 0 ? (
             <EmptyState>아직 제출한 사람이 없어요.</EmptyState>
           ) : (
             <ol className={styles.rank}>
-              {exam.ranking.slice(0, 20).map((r) => (
+              {exam.ranking.map((r) => (
                 <li key={r.rank}>
                   <b className={styles.rankNo}>{r.rank}</b>
                   <span className={styles.rankName}>{r.name}</span>
-                  <span className="muted num">{r.correct}개</span>
-                  <b className="num">{r.score}점</b>
+                  <span className="muted num" style={{ fontSize: 12 }}>
+                    {r.marked < d.questions.length ? `채점 ${r.marked}/${d.questions.length}` : "채점 끝"}
+                  </span>
+                  <b className="num">{r.score}개</b>
                 </li>
               ))}
             </ol>
@@ -443,7 +417,97 @@ function ExamAdmin({ d }: { d: Detail }) {
   );
 }
 
-function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: QuizRow; question: QuestionRow | null; number: number; onSaved: (id: number) => void; onDeleted: () => void }) {
+function QuestionsTab({ d }: { d: Detail }) {
+  const { act, busy } = useAct();
+  const quiz = d.quiz;
+  const isDraft = quiz.status === "draft";
+  const [sel, setSel] = useState<number | "new" | null>(d.questions[0]?.id ?? (isDraft ? "new" : null));
+  const selected = typeof sel === "number" ? d.questions.find((q) => q.id === sel) ?? null : null;
+
+  async function move(id: number, dir: -1 | 1) {
+    const ids = d.questions.map((q) => q.id);
+    const i = ids.indexOf(id);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    await act({ action: "reorder", quizId: quiz.id, ids });
+  }
+
+  return (
+    <div className={styles.adminGrid}>
+      <Card
+        title="문항"
+        extra={
+          isDraft && (
+            <button type="button" className="btn btn-sm" style={{ marginLeft: "auto" }} disabled={sel === "new"} onClick={() => setSel("new")}>
+              <Plus size={16} aria-hidden="true" /> 새 문항
+            </button>
+          )
+        }
+      >
+        <div className={styles.qList}>
+          {d.questions.map((q, i) => (
+            <button key={q.id} type="button" className={`${styles.qItem} ${sel === q.id ? styles.qItemOn : ""}`} onClick={() => setSel(q.id)}>
+              <b>{i + 1}</b>
+              <span>{q.prompt.replace(/__/g, "")}</span>
+              <span className={`tag ${q.qtype === "short" ? "tag-gold" : q.qtype === "image" ? "tag-blue" : ""}`}>{q.qtype === "short" ? "단답" : q.qtype === "image" ? "이미지" : "객관식"}</span>
+            </button>
+          ))}
+          {sel === "new" && (
+            <div className={`${styles.qItem} ${styles.qItemOn} ${styles.draftItem}`}>
+              <b>{d.questions.length + 1}</b>
+              <span>새 문항</span>
+              <span className="tag tag-accent">작성 중</span>
+            </div>
+          )}
+          {d.questions.length === 0 && sel !== "new" && <EmptyState>아직 문항이 없어요.</EmptyState>}
+        </div>
+        {selected && isDraft && (
+          <div className={styles.actions} style={{ marginTop: 12 }}>
+            <button type="button" className="btn btn-sm" aria-label="위로" disabled={busy} onClick={() => move(selected.id, -1)}>
+              <ArrowUp size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="btn btn-sm" aria-label="아래로" disabled={busy} onClick={() => move(selected.id, 1)}>
+              <ArrowDown size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {sel != null ? (
+        <QuestionEditor
+          key={String(sel)}
+          quiz={quiz}
+          question={selected}
+          number={selected ? d.questions.indexOf(selected) + 1 : d.questions.length + 1}
+          onSaved={(id) => setSel(id)}
+          onDeleted={() => setSel(d.questions[0]?.id ?? null)}
+          onCancelNew={() => setSel(d.questions[0]?.id ?? null)}
+        />
+      ) : (
+        <Card>
+          <EmptyState>왼쪽에서 문항을 골라요.</EmptyState>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function QuestionEditor({
+  quiz,
+  question,
+  number,
+  onSaved,
+  onDeleted,
+  onCancelNew,
+}: {
+  quiz: QuizRow;
+  question: QuestionRow | null;
+  number: number;
+  onSaved: (id: number) => void;
+  onDeleted: () => void;
+  onCancelNew: () => void;
+}) {
   const { act, busy } = useAct();
   const [qtype, setQtype] = useState<QType>(question?.qtype ?? "choice");
   const [prompt, setPrompt] = useState(question?.prompt ?? "");
@@ -451,9 +515,8 @@ function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: 
   const [texts, setTexts] = useState<string[]>(question?.qtype === "choice" ? question.choices : ["", "", "", ""]);
   const [imgs, setImgs] = useState<string[]>(question?.qtype === "image" ? question.choices : ["", "", "", ""]);
   const [answer, setAnswer] = useState(question?.answer ?? "");
-  const [points, setPoints] = useState(String(question?.points ?? 5));
-  const [grading, setGrading] = useState<"auto" | "manual">(question?.grading ?? "manual");
   const [uploading, setUploading] = useState(false);
+  const isNew = !question;
   const locked = quiz.status === "revealed";
   const typeLocked = quiz.status !== "draft";
 
@@ -468,8 +531,7 @@ function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: 
       try {
         onDone(await uploadImage(f));
       } catch (e) {
-        const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
-        toast(ADMIN_QUIZ_ERRORS[code] || "이미지를 올리지 못했어요.", "error");
+        toast(errMsg(e, "이미지를 올리지 못했어요."), "error");
       } finally {
         setUploading(false);
       }
@@ -480,8 +542,8 @@ function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: 
   async function save() {
     const choices = qtype === "choice" ? texts : qtype === "image" ? imgs : [];
     const r = await act<{ id: number }>(
-      { action: "save-question", quizId: quiz.id, question: { id: question?.id, qtype, prompt, imageUrl, choices, answer: qtype === "short" ? answer : answer || "", points: Number(points), grading } },
-      question ? "문항을 저장했어요." : "문항을 추가했어요.",
+      { action: "save-question", quizId: quiz.id, question: { id: question?.id, qtype, prompt, imageUrl, choices, answer } },
+      isNew ? `${number}번 문항을 추가했어요.` : "수정했어요.",
     );
     if (r) onSaved(r.id);
   }
@@ -492,11 +554,15 @@ function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: 
   }
 
   const choiceRadio = (k: number) => (
-    <input type="radio" name="answer" aria-label={`${k + 1}번을 정답으로`} checked={answer === String(k + 1)} onChange={() => setAnswer(String(k + 1))} style={{ width: 20, height: 20, accentColor: "var(--c-accent)" }} />
+    <input type="radio" name="answer" aria-label={`${k + 1}번을 정답으로`} checked={answer === String(k + 1)} onChange={() => setAnswer(String(k + 1))} style={{ width: 20, height: 20, accentColor: "var(--c-accent)", flex: "none" }} />
   );
 
   return (
-    <Card className={styles.admin} title={question ? `${number}번 문항 편집` : "새 문항"}>
+    <Card
+      className={styles.admin}
+      title={isNew ? `${number}번 새 문항` : `${number}번 문항 수정`}
+      extra={<span className={`tag ${isNew ? "tag-accent" : ""}`} style={{ marginLeft: "auto" }}>{isNew ? "작성 중 · 아직 추가 안 됨" : "저장된 문항"}</span>}
+    >
       <div className={styles.form}>
         <div className="segment" role="tablist" aria-label="문항 유형">
           {(["choice", "image", "short"] as const).map((t) => (
@@ -564,121 +630,156 @@ function QuestionEditor({ quiz, question, number, onSaved, onDeleted }: { quiz: 
         )}
 
         {qtype === "short" && (
-          <>
-            <label className="field">
-              <span className="field-label">기준 정답</span>
-              <input className="input" maxLength={100} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="overdose" />
-              <span className="muted" style={{ fontSize: 12 }}>
-                대소문자·띄어쓰기는 무시하고 비교해요.
-              </span>
-            </label>
-            <div className="field">
-              <span className="field-label">채점 방식</span>
-              <label className="check">
-                <input type="radio" name="grading" checked={grading === "manual"} onChange={() => setGrading("manual")} />
-                방송에서 같이 보고 내가 채점(기준 정답과 같은 답은 미리 정답 처리)
-              </label>
-              <label className="check">
-                <input type="radio" name="grading" checked={grading === "auto"} onChange={() => setGrading("auto")} />
-                기준 정답과 같으면 정답, 다르면 오답(자동)
-              </label>
-            </div>
-          </>
+          <label className="field">
+            <span className="field-label">정답(채점할 때 참고 · 자동 채점 기준)</span>
+            <input className="input" maxLength={100} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="overdose" />
+          </label>
         )}
-
-        <label className="field" style={{ maxWidth: 160 }}>
-          <span className="field-label">배점</span>
-          <input className="input num" inputMode="numeric" value={points} onChange={(e) => setPoints(e.target.value.replace(/[^0-9]/g, ""))} />
-        </label>
 
         <div className={styles.actions}>
           <button type="button" className="btn btn-primary" disabled={busy || uploading || locked} onClick={save}>
-            {question ? "저장" : "문항 추가"}
+            {isNew ? "문항 추가" : "수정 저장"}
           </button>
+          {isNew && quiz.status === "draft" && (
+            <button type="button" className="btn btn-ghost" onClick={onCancelNew}>
+              작성 취소
+            </button>
+          )}
           {question && quiz.status === "draft" && (
             <button type="button" className="btn btn-ghost" disabled={busy} onClick={remove}>
               <Trash2 size={16} aria-hidden="true" /> 삭제
             </button>
           )}
-          {typeLocked && !locked && <span className="muted" style={{ fontSize: 12 }}>응시 중엔 오타·정답만 고칠 수 있어요.</span>}
+          {typeLocked && !locked && <span className="muted" style={{ fontSize: 12 }}>제출을 받는 중엔 오타·정답만 고칠 수 있어요.</span>}
         </div>
       </div>
     </Card>
   );
 }
 
-function ShortGrading({ d }: { d: Detail }) {
+// 제출된 시험지를 한 장씩 띄워 놓고 문항마다 ○/✕ — 방송에 띄우는 화면
+function GradingTab({ d }: { d: Detail }) {
+  const qc = useQueryClient();
   const { act, busy } = useAct();
-  const [idx, setIdx] = useState(0);
-  const exam = d.exam!;
-  const list = exam.shortGroups;
-  const cur = list[Math.min(idx, list.length - 1)];
-  const q = d.questions.find((x) => x.id === cur.questionId)!;
-  const number = d.questions.indexOf(q) + 1;
-  const total = cur.groups.reduce((n, g) => n + g.count, 0);
-  const pendingHere = cur.groups.filter((g) => g.state === "pending").length;
+  const sheets = d.exam!.sheets;
+  const [sid, setSid] = useState<number | null>(sheets[0]?.id ?? null);
+  const [showKey, setShowKey] = useState(false);
+  const [local, setLocal] = useState<Record<string, boolean | null>>({});
+  const idx = Math.max(0, sheets.findIndex((s) => s.id === sid));
+  const sheet = sheets[idx];
+  const paid = !!d.quiz.rewarded_at;
 
-  const grade = (norm: string, correct: boolean | null) => act({ action: "grade", questionId: q.id, norm, correct });
+  useEffect(() => setLocal({}), [sid]);
+  useEffect(() => {
+    if (sid == null && sheets.length) setSid(sheets[0].id);
+  }, [sheets, sid]);
+
+  const marks = useMemo(() => {
+    const m: Record<string, boolean | undefined> = { ...(sheet?.marks ?? {}) };
+    for (const [k, v] of Object.entries(local)) m[k] = v === null ? undefined : v;
+    return m;
+  }, [sheet, local]);
+  const correct = d.questions.filter((q) => marks[String(q.id)] === true).length;
+  const marked = d.questions.filter((q) => marks[String(q.id)] !== undefined).length;
+
+  async function mark(qid: number, v: boolean | null) {
+    if (!sheet || paid) return;
+    setLocal((l) => ({ ...l, [String(qid)]: v }));
+    try {
+      await adminCall({ action: "mark", submissionId: sheet.id, questionId: qid, correct: v });
+    } catch (e) {
+      setLocal((l) => {
+        const n = { ...l };
+        delete n[String(qid)];
+        return n;
+      });
+      toast(errMsg(e, "채점을 저장하지 못했어요."), "error");
+    } finally {
+      qc.invalidateQueries({ queryKey: ["quiz-admin"] });
+    }
+  }
+
+  async function auto() {
+    if (!sheet) return;
+    if (marked > 0 && !(await confirmDialog("이 시험지를 정답과 비교해서 자동 채점할까요? 이미 매긴 ○/✕도 다시 매겨져요.", { okText: "자동 채점" }))) return;
+    await act({ action: "auto-mark", submissionId: sheet.id }, "자동 채점했어요.");
+    setLocal({});
+  }
+
+  if (sheets.length === 0) {
+    return (
+      <Card className={styles.admin}>
+        <EmptyState>아직 제출된 시험지가 없어요.</EmptyState>
+      </Card>
+    );
+  }
 
   return (
-    <Card
-      className={styles.admin}
-      title={`단답 채점 · ${number}번`}
-      extra={
-        <div className={styles.actions} style={{ marginLeft: "auto" }}>
-          <span className="muted" style={{ fontSize: 13 }}>
-            같은 답끼리 묶었어요 · {total}명{pendingHere ? ` · 미채점 ${pendingHere}` : ""}
-          </span>
-          {list.length > 1 && (
-            <select className="select" aria-label="단답 문항 고르기" value={idx} onChange={(e) => setIdx(Number(e.target.value))}>
-              {list.map((g, i) => {
-                const qq = d.questions.find((x) => x.id === g.questionId)!;
-                const p = g.groups.filter((x) => x.state === "pending").length;
-                return (
-                  <option key={g.questionId} value={i}>
-                    {d.questions.indexOf(qq) + 1}번{p ? ` (미채점 ${p})` : ""}
-                  </option>
-                );
-              })}
-            </select>
-          )}
-        </div>
-      }
-    >
-      <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>
-        {q.prompt.replace(/__/g, "")} · 기준 정답 <b style={{ color: "var(--c-text)" }}>{q.answer}</b>
-      </p>
-      {cur.groups.length === 0 ? (
-        <EmptyState>아직 이 문항에 답한 사람이 없어요.</EmptyState>
-      ) : (
-        <div className={styles.form} style={{ gap: 8 }}>
-          {cur.groups.map((g) => (
-            <div key={g.norm} className={styles.group} style={g.state === "correct" ? { borderColor: "color-mix(in srgb, var(--c-accent) 50%, transparent)" } : undefined}>
-              <b>{g.display}</b>
-              <span className="muted num">{g.count}명</span>
-              <span className={`${styles.groupState} ${g.state === "correct" ? styles.ok : g.state === "wrong" ? styles.no : styles.pending}`}>
-                {g.isKey && g.state === "correct" ? "기준 정답" : g.state === "correct" ? "정답 처리" : g.state === "wrong" ? "오답 처리" : "미채점"}
+    <div className={styles.adminGrid}>
+      <Card title={`시험지 ${sheets.length}장`}>
+        <div className={styles.sheetList}>
+          {sheets.map((s, i) => (
+            <button key={s.id} type="button" className={`${styles.sheetItem} ${s.id === sheet?.id ? styles.qItemOn : ""}`} onClick={() => setSid(s.id)}>
+              <span>
+                <b className="num muted" style={{ marginRight: 8 }}>
+                  {i + 1}
+                </b>
+                {s.name}
               </span>
-              <div className={styles.actions}>
-                <button type="button" className={`btn btn-sm ${g.state === "correct" ? "btn-primary" : ""}`} aria-pressed={g.state === "correct"} disabled={busy} onClick={() => grade(g.norm, true)}>
-                  ○ 정답
-                </button>
-                <button type="button" className={`btn btn-sm ${g.state === "wrong" ? "btn-danger" : ""}`} aria-pressed={g.state === "wrong"} disabled={busy} onClick={() => grade(g.norm, false)}>
-                  ✕ 오답
-                </button>
-              </div>
-            </div>
+              {s.marked === s.total ? <span className="tag tag-accent num">{s.correct}개</span> : <span className="tag num">{s.marked}/{s.total}</span>}
+            </button>
           ))}
         </div>
-      )}
-      {list.length > 1 && idx < list.length - 1 && (
-        <div className={styles.actions} style={{ marginTop: 12, justifyContent: "flex-end" }}>
-          <button type="button" className="btn" onClick={() => setIdx(idx + 1)}>
-            다음 단답 문항
-          </button>
+      </Card>
+
+      {sheet && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+          <Card className={styles.admin}>
+            <div className={styles.actions}>
+              <button type="button" className="btn btn-sm" aria-label="이전 시험지" disabled={idx === 0} onClick={() => setSid(sheets[idx - 1].id)}>
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              <b style={{ fontSize: 17 }}>{sheet.name}</b>
+              <span className="muted num" style={{ fontSize: 13 }}>
+                {idx + 1} / {sheets.length}
+              </span>
+              <button type="button" className="btn btn-sm" aria-label="다음 시험지" disabled={idx === sheets.length - 1} onClick={() => setSid(sheets[idx + 1].id)}>
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+              <span style={{ marginLeft: "auto" }} className="num">
+                맞음 <b style={{ fontSize: 18, color: "var(--c-accent)" }}>{correct}</b> / {d.questions.length}
+                <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
+                  (채점 {marked}/{d.questions.length})
+                </span>
+              </span>
+            </div>
+            <div className={styles.actions} style={{ marginTop: 12 }}>
+              <button type="button" className="btn btn-sm" disabled={busy || paid} onClick={auto}>
+                <Wand2 size={16} aria-hidden="true" /> 이 시험지 자동 채점
+              </button>
+              <label className="check" style={{ fontSize: 13 }}>
+                <input type="checkbox" checked={showKey} onChange={(e) => setShowKey(e.target.checked)} />
+                정답 표시(방송 화면에 보일 수 있어요)
+              </label>
+              {marked === d.questions.length && idx < sheets.length - 1 && (
+                <button type="button" className="btn btn-sm btn-primary" style={{ marginLeft: "auto" }} onClick={() => setSid(sheets[idx + 1].id)}>
+                  다음 시험지 <ChevronRight size={16} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </Card>
+          <ExamPaper
+            title={`${sheet.name} 님의 답안`}
+            subtitle={d.quiz.subtitle}
+            questions={d.questions.map((q) => ({ id: q.id, qtype: q.qtype, prompt: q.prompt, imageUrl: q.image_url, choices: q.choices, answer: q.answer }))}
+            answers={sheet.answers}
+            marks={marks}
+            onMark={paid ? undefined : mark}
+            showKey={showKey}
+          />
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -692,20 +793,25 @@ function OxAdmin({ d }: { d: Detail }) {
   const [answer, setAnswer] = useState<"" | "O" | "X">("");
   const [seconds, setSeconds] = useState(10);
   const cur = ox.current;
-  const pendingCur = cur && !cur.revealed;
+  const pendingCur = !!cur && !cur.revealed;
   const closesAt = cur?.closesAt ? new Date(cur.closesAt).getTime() : 0;
-  const curOpen = !!pendingCur && closesAt > now;
+  const curOpen = pendingCur && closesAt > now;
   const answered = cur ? cur.counts.O + cur.counts.X : 0;
   const alive = ox.players.filter((p) => p.alive).length;
   const deathmatch = quiz.ox_mode === "deathmatch";
+  const isOpen = quiz.status === "open";
+  const next = ox.queue[0];
+  const canAsk = isOpen && !pendingCur;
 
   async function ask(questionId?: number) {
     const body: Record<string, unknown> = { action: "ox-ask", quizId: quiz.id, seconds };
     if (questionId) body.questionId = questionId;
     else Object.assign(body, { prompt, answer });
     if (await act(body)) {
-      if (!questionId) setPrompt("");
-      setAnswer("");
+      if (!questionId) {
+        setPrompt("");
+        setAnswer("");
+      }
     }
   }
   async function addQueue() {
@@ -717,101 +823,92 @@ function OxAdmin({ d }: { d: Detail }) {
 
   return (
     <>
-      <Card className={styles.admin} title="진행" extra={<span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`} style={{ marginLeft: "auto" }}>{deathmatch ? "데스매치" : "점수전"}</span>}>
+      <Card className={styles.admin} title="OX 리모컨" extra={<span className={`tag ${deathmatch ? "tag-live" : "tag-blue"}`} style={{ marginLeft: "auto" }}>{deathmatch ? "데스매치" : "점수전"}</span>}>
         {quiz.status === "draft" && (
-          <div className={styles.actions}>
+          <div className={styles.actions} style={{ marginBottom: 16 }}>
             <button type="button" className="btn btn-primary" disabled={busy} onClick={() => act({ action: "open", quizId: quiz.id }, "OX 퀴즈를 열었어요. 시청자 메뉴에 떠요.")}>
               진행 시작
             </button>
-            <span className="muted">시작하면 메뉴에 나타나고, 아래에서 문제를 하나씩 내요.</span>
-          </div>
-        )}
-        {quiz.status === "open" && (
-          <div className={styles.oxBody} style={{ gap: 16 }}>
-            {cur ? (
-              <>
-                <div className={styles.tags}>
-                  <span className="tag num">{cur.number}번째 문제 · {cur.revealed ? "정답 공개됨" : curOpen ? "출제 중" : "마감"}</span>
-                  {curOpen && <b className="num" style={{ marginLeft: "auto", color: "var(--c-live-text)", fontSize: 20 }}>{leftText(closesAt - now)}</b>}
-                </div>
-                <h3 className={styles.oxPrompt} style={{ fontSize: 22 }}>
-                  {cur.prompt.replace(/__/g, "")}
-                </h3>
-                <div className={styles.rows}>
-                  <div className={styles.row}>
-                    <b style={{ color: "var(--c-blue)" }}>O · {cur.counts.O}명</b>
-                    <span>
-                      응답 {answered} / {deathmatch && ox.started ? `생존 ${alive}` : `참여 ${ox.players.length}`}명
-                    </span>
-                    <b style={{ color: "var(--c-amber)" }}>X · {cur.counts.X}명</b>
-                  </div>
-                  <div className={styles.split2}>
-                    <i style={{ width: answered ? `${(cur.counts.O / answered) * 100}%` : "0%" }} />
-                    <i style={{ width: answered ? `${(cur.counts.X / answered) * 100}%` : "0%" }} />
-                  </div>
-                </div>
-                {pendingCur && (
-                  <div className={styles.actions}>
-                    {curOpen && (
-                      <button type="button" className="btn" disabled={busy} onClick={() => act({ action: "ox-close", questionId: cur.id })}>
-                        지금 마감
-                      </button>
-                    )}
-                    <button type="button" className="btn" style={{ color: "var(--c-blue)" }} disabled={busy} onClick={() => act({ action: "ox-reveal", questionId: cur.id, answer: "O" })}>
-                      정답 O 공개{cur.answer === "O" ? " (미리 정한 답)" : ""}
-                    </button>
-                    <button type="button" className="btn" style={{ color: "var(--c-amber)" }} disabled={busy} onClick={() => act({ action: "ox-reveal", questionId: cur.id, answer: "X" })}>
-                      정답 X 공개{cur.answer === "X" ? " (미리 정한 답)" : ""}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      disabled={busy}
-                      onClick={async () => {
-                        if (await confirmDialog("이 문제를 취소할까요? 받은 응답은 지워지고 대기열로 돌아가요.", { danger: true, okText: "문제 취소" })) act({ action: "ox-cancel", questionId: cur.id }, "취소했어요.");
-                      }}
-                    >
-                      문제 취소
-                    </button>
-                  </div>
-                )}
-              </>
-            ) : (
-              <EmptyState>아직 낸 문제가 없어요. 아래에서 첫 문제를 내요.</EmptyState>
-            )}
+            <span className="muted">대기열에 문제를 미리 넣어두고, 시작한 뒤 하나씩 내요.</span>
           </div>
         )}
         {quiz.status === "revealed" && <p className="muted">종료된 OX 퀴즈예요. 아래에서 보상을 지급하세요.</p>}
-      </Card>
 
-      {quiz.status !== "revealed" && (
-        <div className={styles.adminGrid} style={{ gridTemplateColumns: undefined }}>
-          <Card className={styles.admin} title="문제 내기">
-            <div className={styles.form}>
-              <div className={styles.actions}>
-                <input
-                  className="input"
-                  style={{ flex: "1 1 280px", minWidth: 0 }}
-                  maxLength={200}
-                  aria-label="문제"
-                  placeholder="문제를 적고 엔터 → 바로 출제"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.nativeEvent.isComposing && prompt.trim() && quiz.status === "open" && !pendingCur) ask();
-                  }}
-                />
+        {quiz.status !== "revealed" && (
+          <div className={styles.remote}>
+            <div className={styles.panel}>
+              <div className={styles.tags}>
+                <span className={styles.panelLabel}>지금 문제</span>
+                {cur && <span className="tag num">{cur.number}번째 · {cur.revealed ? "정답 공개됨" : curOpen ? "응답 받는 중" : "마감"}</span>}
+                {curOpen && (
+                  <b className="num" style={{ marginLeft: "auto", color: "var(--c-live-text)", fontSize: 22 }}>
+                    {leftText(closesAt - now)}
+                  </b>
+                )}
               </div>
+              {cur ? (
+                <>
+                  <h3 className={styles.oxPrompt} style={{ fontSize: 22 }}>
+                    {cur.prompt.replace(/__/g, "")}
+                  </h3>
+                  <div className={styles.rows}>
+                    <div className={styles.row}>
+                      <b style={{ color: "var(--c-blue)" }}>O · {cur.counts.O}명</b>
+                      <span>
+                        응답 {answered}명{deathmatch && ox.started ? ` / 생존 ${alive}명` : ""}
+                      </span>
+                      <b style={{ color: "var(--c-amber)" }}>X · {cur.counts.X}명</b>
+                    </div>
+                    <div className={styles.split2}>
+                      <i style={{ width: answered ? `${(cur.counts.O / answered) * 100}%` : "0%" }} />
+                      <i style={{ width: answered ? `${(cur.counts.X / answered) * 100}%` : "0%" }} />
+                    </div>
+                  </div>
+                  {pendingCur && (
+                    <div className={styles.actions}>
+                      {curOpen && (
+                        <button type="button" className="btn" disabled={busy} onClick={() => act({ action: "ox-close", questionId: cur.id })}>
+                          지금 마감
+                        </button>
+                      )}
+                      <button type="button" className="btn" style={{ color: "var(--c-blue)" }} disabled={busy} onClick={() => act({ action: "ox-reveal", questionId: cur.id, answer: "O" })}>
+                        정답 O 공개{cur.answer === "O" ? " ★" : ""}
+                      </button>
+                      <button type="button" className="btn" style={{ color: "var(--c-amber)" }} disabled={busy} onClick={() => act({ action: "ox-reveal", questionId: cur.id, answer: "X" })}>
+                        정답 X 공개{cur.answer === "X" ? " ★" : ""}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled={busy}
+                        onClick={async () => {
+                          if (await confirmDialog("이 문제를 취소할까요? 받은 응답은 지워지고 대기열로 돌아가요.", { danger: true, okText: "문제 취소" })) act({ action: "ox-cancel", questionId: cur.id }, "취소했어요.");
+                        }}
+                      >
+                        문제 취소
+                      </button>
+                    </div>
+                  )}
+                  {pendingCur && (cur.answer === "O" || cur.answer === "X") && <span className="muted" style={{ fontSize: 12 }}>★ 미리 정해둔 정답</span>}
+                </>
+              ) : (
+                <p className="muted" style={{ margin: 0 }}>
+                  {isOpen ? "아직 낸 문제가 없어요. 오른쪽에서 첫 문제를 내요." : "진행을 시작하면 여기서 문제를 내요."}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.panel}>
+              <span className={styles.panelLabel}>다음 문제</span>
+              {next ? (
+                <b style={{ fontSize: 16, lineHeight: 1.5 }}>
+                  {next.prompt} <span className="muted" style={{ fontSize: 12, fontWeight: 500 }}>정답 {next.answer || "나중에"}</span>
+                </b>
+              ) : (
+                <span className="muted">대기열이 비었어요. 아래에서 바로 내거나 넣어두세요.</span>
+              )}
               <div className={styles.actions}>
-                <span className="muted" style={{ fontSize: 13 }}>정답 미리 정하기</span>
-                <div className="segment" role="tablist" aria-label="정답 미리 정하기">
-                  {(["", "O", "X"] as const).map((a) => (
-                    <button key={a || "none"} type="button" role="tab" aria-selected={answer === a} onClick={() => setAnswer(a)}>
-                      {a || "나중에"}
-                    </button>
-                  ))}
-                </div>
-                <span className="muted" style={{ fontSize: 13, marginLeft: 8 }}>제한시간</span>
+                <span className="muted" style={{ fontSize: 13 }}>제한시간</span>
                 <div className="segment" role="tablist" aria-label="제한시간">
                   {[5, 10, 20].map((s) => (
                     <button key={s} type="button" role="tab" aria-selected={seconds === s} onClick={() => setSeconds(s)}>
@@ -820,88 +917,119 @@ function OxAdmin({ d }: { d: Detail }) {
                   ))}
                 </div>
               </div>
-              <div className={styles.actions}>
-                <button type="button" className="btn btn-primary" disabled={busy || !prompt.trim() || quiz.status !== "open" || !!pendingCur} onClick={() => ask()}>
-                  바로 출제
-                </button>
-                <button type="button" className="btn" disabled={busy || !prompt.trim()} onClick={addQueue}>
-                  대기열에 추가
-                </button>
-                <span className="muted" style={{ fontSize: 12 }}>방송 딜레이를 감안해 마감은 3초 늦게 돼요.</span>
-              </div>
-              {pendingCur && <p className="muted" style={{ fontSize: 13, margin: 0 }}>지금 문제의 정답을 공개해야 다음 문제를 낼 수 있어요.</p>}
-
-              <h3 className="field-label" style={{ margin: "8px 0 0" }}>
-                대기열 {ox.queue.length}
-              </h3>
-              {ox.queue.length === 0 ? (
-                <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                  미리 넣어둔 문제가 없어요.
-                </p>
-              ) : (
-                ox.queue.map((q, i) => (
-                  <div key={q.id} className={styles.group}>
-                    <span className="muted num">{i + 1}</span>
-                    <b>{q.prompt}</b>
-                    <span className="muted" style={{ fontSize: 12 }}>
-                      정답 {q.answer || "나중에"}
-                    </span>
-                    <div className={styles.actions}>
-                      <button type="button" className="btn btn-sm" disabled={busy || quiz.status !== "open" || !!pendingCur} onClick={() => ask(q.id)}>
-                        출제
-                      </button>
-                      <button type="button" className="btn btn-sm btn-ghost" aria-label="대기열에서 삭제" disabled={busy} onClick={() => act({ action: "delete-question", questionId: q.id })}>
-                        <Trash2 size={15} aria-hidden="true" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
+              <button type="button" className="btn btn-primary btn-lg" disabled={busy || !next || !canAsk} onClick={() => next && ask(next.id)}>
+                다음 문제 출제
+              </button>
+              {isOpen && pendingCur && <span className="muted" style={{ fontSize: 12 }}>지금 문제의 정답을 공개해야 다음 문제를 낼 수 있어요.</span>}
+              {!isOpen && <span className="muted" style={{ fontSize: 12 }}>진행 시작을 눌러야 출제할 수 있어요.</span>}
+              <span className="muted" style={{ fontSize: 12 }}>방송 딜레이를 감안해 마감은 3초 늦게 돼요.</span>
             </div>
-          </Card>
-        </div>
-      )}
-
-      <Card
-        className={styles.admin}
-        title={deathmatch ? "생존자" : "순위"}
-        extra={
-          <span className="muted num" style={{ marginLeft: "auto" }}>
-            {deathmatch && ox.started ? `${alive} / ${ox.players.length}명` : `${ox.players.length}명`}
-          </span>
-        }
-      >
-        {ox.players.length === 0 ? (
-          <EmptyState>아직 응답한 사람이 없어요.</EmptyState>
-        ) : (
-          <div className={styles.players}>
-            {ox.players.map((p, i) => (
-              <div key={i} className={`${styles.player} ${deathmatch && ox.started && !p.alive ? styles.dead : ""}`}>
-                <span className={styles.dot} />
-                <span style={{ flex: 1, minWidth: 0 }}>{p.name}</span>
-                <span className="muted num" style={{ fontSize: 12 }}>
-                  {deathmatch && ox.started && !p.alive ? (p.outAt ? `Q${p.outAt} 탈락` : "미참여") : `${p.correct}개`}
-                  {pendingCur && p.answeredCurrent ? ` · ${p.answeredCurrent}` : ""}
-                </span>
-              </div>
-            ))}
           </div>
         )}
-        {quiz.status === "open" && (
-          <div className={styles.actions} style={{ marginTop: 12 }}>
-            <button
-              type="button"
-              className="btn"
-              disabled={busy}
-              onClick={async () => {
-                if (await confirmDialog(`OX 퀴즈를 종료할까요? ${deathmatch ? `지금 생존자 ${ox.started ? alive : 0}명` : "지금 순위"}로 결과가 확정돼요.`)) act({ action: "reveal", quizId: quiz.id }, "종료했어요.");
-              }}
-            >
-              종료하고 결과 확정
-            </button>
+
+        {quiz.status !== "revealed" && (
+          <div className={styles.form} style={{ marginTop: 16 }}>
+            <div className={styles.actions}>
+              <input
+                className="input"
+                style={{ flex: "1 1 320px", minWidth: 0 }}
+                maxLength={200}
+                aria-label="새 문제"
+                placeholder="새 문제 적기 — 엔터를 누르면 바로 출제"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing && prompt.trim() && canAsk) ask();
+                }}
+              />
+              <div className="segment" role="tablist" aria-label="정답 미리 정하기">
+                {(["", "O", "X"] as const).map((a) => (
+                  <button key={a || "none"} type="button" role="tab" aria-selected={answer === a} onClick={() => setAnswer(a)}>
+                    {a ? `정답 ${a}` : "정답 나중에"}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="btn" disabled={busy || !prompt.trim() || !canAsk} onClick={() => ask()}>
+                바로 출제
+              </button>
+              <button type="button" className="btn" disabled={busy || !prompt.trim()} onClick={addQueue}>
+                대기열에 추가
+              </button>
+            </div>
           </div>
         )}
       </Card>
+
+      <div className={styles.twoCol}>
+        {quiz.status !== "revealed" && (
+          <Card className={styles.admin} title={`대기열 ${ox.queue.length}`}>
+            {ox.queue.length === 0 ? (
+              <EmptyState>미리 넣어둔 문제가 없어요.</EmptyState>
+            ) : (
+              <div>
+                {ox.queue.map((q, i) => (
+                  <div key={q.id} className={`${styles.queueRow} ${i === 0 ? styles.queueNext : ""}`}>
+                    <span className="muted num" style={{ width: 18 }}>
+                      {i + 1}
+                    </span>
+                    <b>{q.prompt}</b>
+                    <span className="muted" style={{ fontSize: 12, flex: "none" }}>
+                      {q.answer ? `정답 ${q.answer}` : "정답 나중에"}
+                    </span>
+                    <button type="button" className="btn btn-sm" disabled={busy || !canAsk} onClick={() => ask(q.id)}>
+                      출제
+                    </button>
+                    <button type="button" className="btn btn-sm btn-ghost" aria-label="대기열에서 삭제" disabled={busy} onClick={() => act({ action: "delete-question", questionId: q.id })}>
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        <Card
+          className={styles.admin}
+          title={deathmatch ? "생존자" : "순위"}
+          extra={
+            <span className="muted num" style={{ marginLeft: "auto" }}>
+              {deathmatch && ox.started ? `${alive} / ${ox.players.length}명` : `${ox.players.length}명`}
+            </span>
+          }
+        >
+          {ox.players.length === 0 ? (
+            <EmptyState>아직 응답한 사람이 없어요.</EmptyState>
+          ) : (
+            <div className={styles.players}>
+              {ox.players.map((p, i) => (
+                <div key={i} className={`${styles.player} ${deathmatch && ox.started && !p.alive ? styles.dead : ""}`}>
+                  <span className={styles.dot} />
+                  <span style={{ flex: 1, minWidth: 0 }}>{p.name}</span>
+                  <span className="muted num" style={{ fontSize: 12 }}>
+                    {deathmatch && ox.started && !p.alive ? (p.outAt ? `Q${p.outAt} 탈락` : "미참여") : `${p.correct}개`}
+                    {pendingCur && p.answeredCurrent ? ` · ${p.answeredCurrent}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {isOpen && (
+            <div className={styles.actions} style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={async () => {
+                  if (await confirmDialog(`OX 퀴즈를 종료할까요? ${deathmatch ? `지금 생존자 ${ox.started ? alive : 0}명` : "지금 순위"}로 결과가 확정돼요.`, { okText: "종료" })) act({ action: "reveal", quizId: quiz.id }, "종료했어요.");
+                }}
+              >
+                종료하고 결과 확정
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

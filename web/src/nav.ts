@@ -29,7 +29,7 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   adminOnly?: boolean;
-  // 유진고사 — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임. 베타 빌드에서만 들어감(lib/quiz.ts QUIZ_ENABLED).
+  // 퀴즈(유진고사) — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임. 베타 빌드에서만 들어감(lib/quiz.ts QUIZ_ENABLED).
   quiz?: boolean;
 };
 
@@ -52,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "shop.html", label: "포인트 상점", icon: Store },
       { path: "titles.html", label: "칭호 상점", icon: Crown },
       { path: "predict.html", label: "투표", icon: ChartColumn },
-      { path: "quiz.html", label: "유진고사", icon: NotebookPen, quiz: true },
+      { path: "quiz.html", label: "퀴즈", icon: NotebookPen, quiz: true },
     ],
   },
   {
