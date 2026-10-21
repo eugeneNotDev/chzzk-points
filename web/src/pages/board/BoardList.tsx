@@ -77,7 +77,7 @@ export function BoardList({ board, page, q: search, field }: { board: BoardKind;
 
   return (
     <div className="page">
-      <PageHead title={cfg.name} desc={cfg.sub} actions={<ActivityChip />} />
+      <PageHead title={cfg.name} desc={cfg.sub} actions={board === "free" ? <ActivityChip /> : undefined} />
       {board === "review" && <ReviewBanner />}
 
       <Card flush>

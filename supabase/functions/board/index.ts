@@ -707,7 +707,7 @@ async function addComment(admin: Admin, body: any, me: string) {
   if (await tooFast(admin, "comment", me, COMMENT_COOLDOWN_MS)) return json({ error: "too_fast" }, 429);
   const { data: ins, error } = await admin.from("board_comments").insert({ post_id: postId, channel_id: me, body: text, parent_id: parentId, reply_to_id: replyToId }).select("id").single();
   if (error) throw new Error(`board_comments insert 실패: ${error.message}`);
-  const act = await grantActivity(admin, me, "comment", ins.id, text, postId, post.channel_id);
+  const act = post.board === "free" ? await grantActivity(admin, me, "comment", ins.id, text, postId, post.channel_id) : null; // 활동 보상은 자유게시판만(방송 후기는 따로 후기 보상)
   return json({ ok: true, id: ins.id, activity: act });
 }
 
