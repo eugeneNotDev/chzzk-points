@@ -87,7 +87,7 @@ async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
   if (revealed) {
     const ranked = subs.filter((s) => s.rank != null).sort((a, b) => a.rank! - b.rank!);
     const top = ranked.slice(0, 10);
-    const names = await loadNames(admin, top.map((s) => s.channel_id), false);
+    const names = await loadNames(admin, top.map((s) => s.channel_id), channelId === OWNER_CHANNEL_ID); // 관리자는 비공개여도 실제 닉네임
     ranking = top.map((s) => ({ rank: s.rank!, name: s.channel_id === channelId ? "나" : names.get(s.channel_id) ?? "비공개", score: s.score ?? 0, isMe: s.channel_id === channelId }));
   }
 
@@ -137,7 +137,7 @@ async function oxView(admin: Admin, quiz: QuizRow, channelId: string) {
   let ranking: { rank: number; name: string; correct: number; alive: boolean; isMe: boolean }[] = [];
   if (quiz.status === "revealed") {
     const top = standings.players.filter((p) => (quiz.ox_mode === "deathmatch" ? p.alive : p.correct > 0)).slice(0, 20);
-    const names = await loadNames(admin, top.map((p) => p.channelId), false);
+    const names = await loadNames(admin, top.map((p) => p.channelId), channelId === OWNER_CHANNEL_ID); // 관리자는 비공개여도 실제 닉네임
     ranking = top.map((p, i) => ({ rank: i + 1, name: p.channelId === channelId ? "나" : names.get(p.channelId) ?? "비공개", correct: p.correct, alive: p.alive, isMe: p.channelId === channelId }));
   }
 

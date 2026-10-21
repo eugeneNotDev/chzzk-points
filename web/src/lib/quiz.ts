@@ -141,6 +141,15 @@ export function useQuiz() {
   });
 
   const vs = q.data?.quizzes;
+  // OX 문제가 시간이 다 돼서 마감될 땐 DB가 안 바뀌어서(신호 없음) 마감 시각에 맞춰 한 번 다시 받음 — O/X 몇 명인지 보이게
+  const closeAt = vs?.map((v) => (v.kind === "ox" && v.status === "open" && v.current && !v.current.closed ? v.current.closesAt : null)).find(Boolean) ?? null;
+  useEffect(() => {
+    if (!closeAt) return;
+    const ms = new Date(closeAt).getTime() - Date.now() + 600;
+    if (ms < 0) return;
+    const t = setTimeout(() => qc.invalidateQueries({ queryKey: ["quiz"] }), ms);
+    return () => clearTimeout(t);
+  }, [closeAt, qc]);
   const statusSig = vs ? vs.map((v) => `${v.id}:${v.status}`).join(",") : null;
   const rewardSig = vs ? vs.map((v) => (v.myReward ? `${v.id}:${v.myReward.amount}` : "")).join(",") : null;
   const prev = useRef<{ status: string | null; reward: string | null }>({ status: null, reward: null });

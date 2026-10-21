@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
-import { apiFetch, ApiError } from "../../lib/auth";
+import { apiFetch, ApiError, useAuth } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { toast } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
@@ -239,23 +239,48 @@ function MyOx({ quiz }: { quiz: OxView }) {
 function OxResult({ quiz }: { quiz: OxView }) {
   const deathmatch = quiz.oxMode === "deathmatch";
   const me = quiz.ranking.find((r) => r.isMe);
+  const { isAdmin } = useAuth();
+  const overview = isAdmin && !quiz.me.joined;
   return (
     <div className="split">
       <div className="split-main">
         <Card tone="feature">
           <div className={styles.score}>
-            <div className={`${styles.scoreItem} ${styles.scoreBig}`}>
-              <span>{deathmatch ? "결과" : "맞힌 문제"}</span>
-              <b>{deathmatch ? (quiz.me.joined ? (me?.alive ? "최후 생존" : "탈락") : "–") : quiz.me.correct}</b>
-            </div>
-            <div className={styles.divider} />
-            <div className={styles.scoreItem}>
-              <span>맞힌 문제</span>
-              <b>
-                {quiz.me.correct}
-                <small> / {quiz.revealedCount}</small>
-              </b>
-            </div>
+            {overview ? (
+              // 관리자가 직접 안 푼 회차 — 내 결과(전부 0) 대신 회차 전체 숫자
+              <>
+                <div className={`${styles.scoreItem} ${styles.scoreBig}`}>
+                  <span>참여</span>
+                  <b>
+                    {quiz.participants}
+                    <small> 명</small>
+                  </b>
+                </div>
+                <div className={styles.divider} />
+                <div className={styles.scoreItem}>
+                  <span>{deathmatch ? "최후 생존" : "1등 맞힌 문제"}</span>
+                  <b>
+                    {deathmatch ? quiz.aliveCount : (quiz.ranking[0]?.correct ?? 0)}
+                    <small>{deathmatch ? " 명" : ` / ${quiz.revealedCount}`}</small>
+                  </b>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={`${styles.scoreItem} ${styles.scoreBig}`}>
+                  <span>{deathmatch ? "결과" : "순위"}</span>
+                  <b>{deathmatch ? (quiz.me.joined ? (me?.alive ? "최후 생존" : "탈락") : "–") : me ? `${me.rank}위` : "–"}</b>
+                </div>
+                <div className={styles.divider} />
+                <div className={styles.scoreItem}>
+                  <span>맞힌 문제</span>
+                  <b>
+                    {quiz.me.correct}
+                    <small> / {quiz.revealedCount}</small>
+                  </b>
+                </div>
+              </>
+            )}
             {quiz.myReward && (
               <p className={`${styles.banner} ${styles.bannerOk} ${styles.mlAuto}`}>
                 <Trophy size={16} aria-hidden="true" /> {quiz.myReward.label} 보상 +{fmt(quiz.myReward.amount)}P{quiz.isTest ? " (테스트라 실제 지급 안 됨)" : ""}
