@@ -5,7 +5,7 @@
 // 대기 중인 곡과 제목+가수가 같으면(대소문자·공백·기호 무시) 중복이라 막음. 틀고 나면 다시 신청 가능.
 //
 // list            {}                     → { items: [{id,title,artist,reason,requester,anonymous,createdAt,mine}], canRequest, requestedToday, isAdmin }
-// request         { title, artist, reason? } → { ok }  (로그인 필수, 차단 유저 불가. reason = 추천 사유, 선택·80자)
+// request         { title, artist, reason? } → { ok }  (로그인 필수, 차단 유저 불가. reason = 신청 사유, 선택·80자)
 // cancel          { id }                 → { ok }      (본인 대기 곡만)
 // admin-played    { id }                 → { ok }      (관리자: 틀었음 → 리스트에서 빠지고 기록으로)
 // admin-delete    { id }                 → { ok }      (관리자: 장난/중복 신청 삭제)
@@ -138,7 +138,7 @@ async function requestSong(admin: Admin, body: Record<string, unknown>, user: { 
   const artist = cleanText(body.artist, MAX_ARTIST);
   if (!title) return json({ error: "invalid_title" }, 400);
   if (!artist) return json({ error: "invalid_artist" }, 400);
-  // 추천 사유는 선택 — 비었으면 null, 줄바꿈은 공백 하나로, 80자 넘으면 거절
+  // 신청 사유는 선택 — 비었으면 null, 줄바꿈은 공백 하나로, 80자 넘으면 거절
   let reason: string | null = null;
   if (typeof body.reason === "string" && body.reason.trim()) {
     reason = cleanText(body.reason, MAX_REASON);

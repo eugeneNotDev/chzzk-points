@@ -1,5 +1,5 @@
 // 방종곡 신청 — songs 함수. 신청은 무료, 하루 1곡(한국시간 0시 초기화), 대기 중인 곡과 중복 불가.
-// 추천 사유(선택, 80자)를 같이 적을 수 있고, 리스트에선 한 줄로 보이다가 누르면 말풍선으로 펼쳐짐.
+// 신청 사유(선택, 80자)를 같이 적을 수 있고, 리스트에선 한 줄로 보이다가 누르면 말풍선으로 펼쳐짐.
 // 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기.
 import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
@@ -22,7 +22,7 @@ const ERR: Record<string, string> = {
   already_today: "오늘은 이미 신청했어요. 내일 0시에 다시 신청할 수 있어요.",
   invalid_title: "곡 제목을 입력해주세요. (최대 60자)",
   invalid_artist: "가수를 입력해주세요. (최대 40자)",
-  invalid_reason: "추천 사유는 80자까지 쓸 수 있어요.",
+  invalid_reason: "신청 사유는 80자까지 쓸 수 있어요.",
   banned: "이용이 제한된 계정이에요.",
   unauthorized: "로그인이 필요해요.",
   not_found: "이미 처리된 곡이에요. 새로고침해 주세요.",
@@ -192,8 +192,8 @@ export default function Songs() {
               className={`input ${styles.reason}`}
               maxLength={80}
               rows={2}
-              placeholder="추천 사유 (선택)"
-              aria-label="추천 사유"
+              placeholder="신청 사유 (선택)"
+              aria-label="신청 사유"
               disabled={!canType}
               value={reason}
               onChange={(e) => setReason(e.target.value.replace(/\n/g, " "))}
@@ -209,7 +209,7 @@ export default function Songs() {
           <li>한 사람당 하루 1곡 (한국시간 0시 초기화)</li>
           <li>이미 리스트에 있는 곡은 중복 신청 불가</li>
           <li>방종 때 순서대로 틀어드려요</li>
-          <li>추천 사유는 신청 리스트에 같이 보여요</li>
+          <li>신청 사유는 신청 리스트에 같이 보여요</li>
         </ul>
       </section>
       </aside>
@@ -238,7 +238,7 @@ export default function Songs() {
             const mine = it.mine && !s.isAdmin;
             const isOpen = !!it.reason && open.has(it.id);
             return (
-              <li key={it.id} className={`${styles.entry} ${i === 0 ? styles.first : ""} ${it.reason ? styles.hasReason : ""}`}>
+              <li key={it.id} className={`${styles.entry} ${i === 0 ? styles.first : ""} ${mine ? styles.mine : ""} ${it.reason ? styles.hasReason : ""}`}>
               <div
                 className={styles.item}
                 onClick={(e) => {
@@ -255,10 +255,14 @@ export default function Songs() {
                     {mine && <span className="tag tag-accent">내 신청</span>}
                     {i === 0 && <span className="tag tag-gold">다음 곡</span>}
                   </div>
-                  {it.reason && !isOpen && (
-                    <div className={styles.reasonLine}>
-                      <Quote size={12} aria-hidden="true" />
-                      <span>{it.reason}</span>
+                  {it.reason && (
+                    <div className={`${styles.fold1} ${!isOpen ? styles.shown : ""}`} aria-hidden={isOpen}>
+                      <div className={styles.foldIn}>
+                        <div className={styles.reasonLine}>
+                          <Quote size={12} aria-hidden="true" />
+                          <span>{it.reason}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -288,15 +292,19 @@ export default function Songs() {
                   </div>
                 )}
                 {it.reason && (
-                  <button type="button" className={`${styles.fold} ${isOpen ? styles.foldOpen : ""}`} onClick={() => toggle(it.id)} aria-expanded={isOpen} aria-label={isOpen ? "추천 사유 접기" : "추천 사유 펼치기"}>
+                  <button type="button" className={`${styles.fold} ${isOpen ? styles.foldOpen : ""}`} onClick={() => toggle(it.id)} aria-expanded={isOpen} aria-label={isOpen ? "신청 사유 접기" : "신청 사유 펼치기"}>
                     <ChevronDown size={16} aria-hidden="true" />
                   </button>
                 )}
               </div>
-              {isOpen && (
-                <div className={styles.bubble}>
-                  <Quote size={14} aria-hidden="true" />
-                  <p>{it.reason}</p>
+              {it.reason && (
+                <div className={`${styles.fold1} ${styles.bubbleWrap} ${isOpen ? styles.shown : ""}`} aria-hidden={!isOpen}>
+                  <div className={styles.foldIn}>
+                    <div className={styles.bubble}>
+                      <Quote size={14} aria-hidden="true" />
+                      <p>{it.reason}</p>
+                    </div>
+                  </div>
                 </div>
               )}
               </li>
