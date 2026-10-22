@@ -194,3 +194,12 @@ export function histStats(row: number[] | undefined, fallback: Stats): Stats {
   if (!row || row.length < 6) return fallback;
   return { health: row[1], intel: row[2], charm: row[3], happy: row[4], talent: row[5] };
 }
+
+// 한국어 조사(서버 josa.ts와 같은 규칙): 받침 있으면 을/으로, 없으면 를/로
+export function josa(w: string, j: "을" | "로" | "와" | "가") {
+  const ch = w.charCodeAt(w.length - 1);
+  const jong = ch >= 0xac00 && ch <= 0xd7a3 ? (ch - 0xac00) % 28 : 0;
+  if (j === "로") return w + (jong !== 0 && jong !== 8 ? "으로" : "로");
+  const pair = { 을: ["을", "를"], 와: ["과", "와"], 가: ["이", "가"] }[j];
+  return w + (jong !== 0 ? pair[0] : pair[1]);
+}

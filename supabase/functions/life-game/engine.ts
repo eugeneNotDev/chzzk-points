@@ -8,6 +8,8 @@ import {
 import {
   DAILY, DISEASES, FOCUSES, FORKS, HOUSES, ITEMS, JOBS, MODS, NAMES, SPECIALS, FUNDS,
 } from "./content.ts";
+import { josa } from "./josa.ts";
+export { josa };
 
 // ── 콘텐츠 모양 ──
 export type Text = string | ((c: Ctx) => string);
@@ -51,7 +53,7 @@ export type Daily = {
   rare?: boolean;
   hint?: string;
 };
-export type Focus = { id: string; name: string; stage: number; s: Partial<Stats>; side?: Partial<Stats>; hint: string; money?: number };
+export type Focus = { id: string; name: string; stage: number; min?: number; s: Partial<Stats>; side?: Partial<Stats>; hint: string; money?: number };
 export type Job = {
   id: string;
   name: string;
@@ -115,6 +117,7 @@ export type Special = { id: string; title: string; text: string; hint: string; p
 export type Disease = { id: string; name: string; sev: number; cost: number; a: number };
 
 // ── 작은 도구 ──
+
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 export const fmtMoney = (m: number) => {
   const neg = m < 0;
@@ -256,15 +259,20 @@ export class Ctx {
   // 글 안의 {p} {f} {c} {mom} {dad} {pet} {job} 바꾸기
   fmt(t: Text): string {
     const raw = typeof t === "function" ? t(this) : t;
-    return raw
-      .replace(/\{p\}/g, this.partner()?.name ?? "연인")
-      .replace(/\{f\}/g, this.person("friend")?.name ?? "친구")
-      .replace(/\{c\}/g, this.folks("child").slice(-1)[0]?.name ?? "아이")
-      .replace(/\{c1\}/g, this.folks("child")[0]?.name ?? "아이")
-      .replace(/\{pet\}/g, this.person("pet")?.name ?? "강아지")
-      .replace(/\{job\}/g, this.jobName() ?? "일")
-      .replace(/\{mom\}/g, "엄마")
-      .replace(/\{dad\}/g, "아빠");
+    const names: Record<string, string> = {
+      p: this.partner()?.name ?? "연인",
+      f: this.person("friend")?.name ?? "친구",
+      c: this.folks("child").slice(-1)[0]?.name ?? "아이",
+      c1: this.folks("child")[0]?.name ?? "아이",
+      pet: this.person("pet")?.name ?? "강아지",
+      job: this.jobName() ?? "일",
+      mom: "엄마",
+      dad: "아빠",
+    };
+    // {p}와 → "서연과"/"지우와"처럼 이름 받침에 맞춰 조사를 바꿈
+    return raw.replace(/\{(p|f|c1|c|pet|job|mom|dad)\}(이라고|라고|이랑|으로|와|과|이|가|은|는|을|를|랑|로|아|야)?/g, (_, k: string, j?: string) =>
+      j ? josa(names[k], j) : names[k]
+    );
   }
   log(k: Kind, t: Text, extra: Partial<Entry> = {}) {
     const e: Entry = { age: this.s.age, k, t: this.fmt(t), ...extra };
@@ -517,20 +525,20 @@ function parents(c: Ctx) {
   // 아이 나이 마디
   for (const k of c.folks("child")) {
     const ka = s.age - k.born;
-    if (ka === 1) c.log("people", `${k.name}가 첫걸음마를 뗐다.`, { d: c.stat({ happy: 2 }) });
-    if (ka === 8) c.log("people", `${k.name}가 초등학교에 입학했다.`, { d: c.stat({ happy: 2 }) });
-    if (ka === 20) c.log("people", `${k.name}가 성인이 됐다.`, { d: c.stat({ happy: 2 }) });
+    if (ka === 1) c.log("people", `${josa(k.name, "가")} 첫걸음마를 뗐다.`, { d: c.stat({ happy: 2 }) });
+    if (ka === 8) c.log("people", `${josa(k.name, "가")} 초등학교에 입학했다.`, { d: c.stat({ happy: 2 }) });
+    if (ka === 20) c.log("people", `${josa(k.name, "가")} 성인이 됐다.`, { d: c.stat({ happy: 2 }) });
   }
   const pet = c.person("pet");
   if (pet && s.age - pet.born >= 12 && c.chance(0.3)) {
     pet.alive = false;
-    c.log("people", `${pet.name}가 무지개다리를 건넜다.`, { d: c.stat({ happy: -6 }), hl: true });
+    c.log("people", `${josa(pet.name, "가")} 무지개다리를 건넜다.`, { d: c.stat({ happy: -6 }), hl: true });
   }
   // 연인과 너무 멀어지면 헤어짐
   const pt = c.person("partner");
   if (pt && pt.bond < 15) {
     c.drop(pt);
-    c.log("people", `${pt.name}와 헤어졌다.`, { d: c.stat({ happy: -5 }) });
+    c.log("people", `${josa(pt.name, "와")} 헤어졌다.`, { d: c.stat({ happy: -5 }) });
   }
 }
 
@@ -612,7 +620,7 @@ function sickness(c: Ctx) {
   const d = c.pick(list);
   const early = c.has("checkup");
   s.sick = { id: d.id, name: d.name, sev: Math.max(1, d.sev - (early ? 1 : 0)), since: s.age };
-  c.log("sick", early ? `건강검진 덕분에 ${d.name}을(를) 일찍 발견했다.` : `몸이 이상해서 병원에 갔더니 ${d.name}(이)라고 한다.`, {
+  c.log("sick", early ? `건강검진 덕분에 ${josa(d.name, "을")} 일찍 발견했다.` : `몸이 이상해서 병원에 갔더니 ${josa(d.name, "이라고")} 한다.`, {
     d: c.stat({ happy: -4 }),
     hl: true,
   });
@@ -785,7 +793,7 @@ export function choose(s: State, log: Entry[], key: string, rng: () => number = 
 export function setFocus(s: State, id: string) {
   const f = FOCUSES.find((x) => x.id === id && x.stage === stageOf(s.age + 1));
   const g = f ?? FOCUSES.find((x) => x.id === id && x.stage === stageOf(s.age));
-  if (!g) return { error: "bad_focus" };
+  if (!g || (g.min && s.age + 1 < g.min)) return { error: "bad_focus" };
   s.focus = g.id;
   return {};
 }
@@ -874,7 +882,7 @@ function finish(c: Ctx) {
     title, mod: mod?.text ?? null, modId: mod?.id ?? null, job: jobName, jobId, cause: s.dead.cause, causeText, age: a,
     specialId: sp?.id ?? null, specialText: sp?.text ?? null, mourners, netWorth: netWorth(s), earned: s.earned, peak: s.peak,
   };
-  const how = s.dead.cause === "accident" ? `${a}세, 갑작스러운 사고로 생을 마감했다.` : s.dead.cause === "sick" ? `${a}세, ${causeText}(으)로 생을 마감했다.` : `${a}세, 편안히 눈을 감았다.`;
+  const how = s.dead.cause === "accident" ? `${a}세, 갑작스러운 사고로 생을 마감했다.` : s.dead.cause === "sick" ? `${a}세, ${josa(causeText, "로")} 생을 마감했다.` : `${a}세, 편안히 눈을 감았다.`;
   c.log("end", how, { hl: true });
   c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${fans > 50 ? " 네루들이 보낸 꽃이 복도를 가득 채웠다." : ""}`);
 }

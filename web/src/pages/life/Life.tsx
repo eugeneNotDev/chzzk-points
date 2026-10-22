@@ -16,7 +16,7 @@ import { fmt } from "../../lib/format";
 import { LoadError } from "../../components/LoadError";
 import {
   STAGES, STATS, TIER_LABEL, advanceLife, buyLife, chooseLife, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage,
-  resetLifeTest, startLife, statChips, useLifeDex, useLifeLobby, won,
+  josa, resetLifeTest, startLife, statChips, useLifeDex, useLifeLobby, won,
   type DexEntry, type Lobby, type LogEntry, type Pending, type PendingOpt, type Person, type Roll, type Run, type Stats,
 } from "../../lib/life";
 import styles from "./Life.module.css";
@@ -654,7 +654,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   }
   async function onBuy(itemId: string, pay: "cash" | "points", name: string, price: number) {
     if (busy || fetching) return;
-    if (pay === "points" && !run.isTest && !(await confirmDialog(`${name}을(를) ${fmt(price)}P로 사줄까요?`))) return;
+    if (pay === "points" && !run.isTest && !(await confirmDialog(`${josa(name, "을")} ${fmt(price)}P로 사줄까요?`))) return;
     setBusy(true);
     setErr(null);
     try {
@@ -1275,7 +1275,7 @@ function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; on
         <section className={`${styles.endCard} ${special ? styles.endSpecial : ""}`}>
           <Orbit className={styles.endOrbit} />
           <span className={styles.endPre}>
-            {e.age}세, {e.cause === "accident" ? "갑작스러운 사고로" : e.cause === "sick" ? `${e.causeText}(으)로` : "편안히"} 생을 마친 유진은
+            {e.age}세, {e.cause === "accident" ? "갑작스러운 사고로" : e.cause === "sick" ? josa(e.causeText, "로") : "편안히"} 생을 마친 유진은
           </span>
           {special && <span className={styles.chipGold}>특수 엔딩</span>}
           {!special && e.mod && e.modId !== "ordinary" && <span className={styles.endMod}>{e.mod}</span>}

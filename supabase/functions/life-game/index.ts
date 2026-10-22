@@ -75,7 +75,7 @@ function view(r: Row, from: number, itemLimit: number) {
     army: s.army,
     focus: s.focus,
     focusName: focusNow?.name ?? null,
-    focuses: FOCUSES.filter((f) => f.stage === nextStage).map((f) => ({ id: f.id, name: f.name, hint: f.hint })),
+    focuses: FOCUSES.filter((f) => f.stage === nextStage && (!f.min || s.age + 1 >= f.min)).map((f) => ({ id: f.id, name: f.name, hint: f.hint })),
     people: s.people.filter((p) => p.alive || p.role === "mom" || p.role === "dad").map((p) => ({
       id: p.id, role: p.role, name: p.name, age: s.age - p.born, bond: p.bond, alive: p.alive,
     })),

@@ -1,5 +1,6 @@
 // 유진 키우기 v3 콘텐츠 — 집·초점·직업·상점·일상 이벤트·갈림길·병·엔딩. 돈은 만원 단위.
 // 글 안의 {p}=연인/배우자, {f}=친구, {c}=막내 아이, {pet}=반려동물, {job}=지금 직업 이름.
+import { josa } from "./josa.ts";
 import type { Ctx, Daily, Disease, Focus, Fork, Fx, House, Item, Job, Mod, Opt, Out, Special, Text } from "./engine.ts";
 import { STAT_LABEL, type Stats, type StatKey, type Tier } from "./types.ts";
 
@@ -51,7 +52,7 @@ export const FOCUSES: Focus[] = [
   { id: "friends", name: "친구", stage: 1, s: { charm: 2 }, side: { intel: -1 }, hint: "매력 ↑ · 지능 조금 ↓" },
   { id: "hobby", name: "예체능", stage: 1, s: { talent: 2 }, hint: "끼 ↑" },
   { id: "rest", name: "쉬엄쉬엄", stage: 1, s: { happy: 2 }, hint: "행복 ↑" },
-  { id: "parttime", name: "알바", stage: 1, s: { charm: 1 }, side: { intel: -1 }, money: 250, hint: "돈 ↑(15세부터) · 지능 조금 ↓" },
+  { id: "parttime", name: "알바", stage: 1, min: 15, s: { charm: 1 }, side: { intel: -1 }, money: 250, hint: "돈 ↑ · 지능 조금 ↓" },
   { id: "work", name: "일·저축", stage: 2, s: {}, side: { happy: -1, health: -1 }, hint: "월급·승진 ↑ · 행복·건강 조금 ↓" },
   { id: "selfdev", name: "자기계발", stage: 2, s: { intel: 2 }, side: { happy: -1 }, hint: "지능 ↑ · 행복 조금 ↓" },
   { id: "exercise", name: "운동", stage: 2, s: { health: 2 }, hint: "건강 ↑" },
@@ -339,7 +340,7 @@ const think = (id: string, age: number, q: string, a: [string, string, string]):
   id, a: [age, age + 2], mile: true, kind: "think", tag: "생각 남기기", t: q,
   opts: a.map((x) => pick(x, R("유진은 그렇게 생각하기로 했다.", fx({ happy: 1 })))),
 });
-const focusOpts = (stage: number): Opt[] => FOCUSES.filter((f) => f.stage === stage).map((f) =>
+const focusOpts = (stage: number): Opt[] => FOCUSES.filter((f) => f.stage === stage && !f.min).map((f) =>
   pick(f.name, R(`'${f.name}' 위주로 지내기로 했다.`, { fn: (c) => (c.s.focus = f.id) }), { hint: f.hint })
 );
 const tuitionFx = (edu: "local" | "inseoul" | "top", years = 4, med = false): Fx => ({
@@ -372,7 +373,7 @@ const jobOpts = (c: Ctx): Opt[] => {
     bonus,
     hint: `${STAT_LABEL[j.roll]} 주사위 · ${j.dc} 이상 합격`,
     judge: (cc: Ctx, r) => r.total >= j.dc
-      ? R(`${j.name}(으)로 일하게 됐다!`, { s: { happy: 4 }, fn: (x) => { x.hire(j.id, r.tier === "great" ? 1.15 : 1); if (j.creator) x.s.fame = Math.max(x.s.fame, 3); } }, true)
+      ? R(`${josa(j.name, "로")} 일하게 됐다!`, { s: { happy: 4 }, fn: (x) => { x.hire(j.id, r.tier === "great" ? 1.15 : 1); if (j.creator) x.s.fame = Math.max(x.s.fame, 3); } }, true)
       : R(`${j.name} 도전은 실패했다. 다음 기회를 노리기로 했다.`, { s: { happy: -3 }, fn: (x) => { x.quit("취준생"); x.add("jobless"); } }),
   }));
   opts.push(pick("일단 알바부터 한다", R("편의점 야간 알바를 시작했다.", { fn: (x) => x.hire("alba") }), { arg: "alba", hint: "확실하지만 월급이 적어요" }));
@@ -411,7 +412,7 @@ export const FORKS: Fork[] = [
         good: R("예술고에 합격했다!", fx({ talent: 6, happy: 3 }, 0, { add: ["art_school"], fn: (c) => (c.s.school = "예고생") }), true),
         bad: R("예고 입시에 떨어졌다. 인문계로 갔다.", fx({ happy: -4 }, 0, { fn: (c) => (c.s.school = "고등학생") })),
       }, { hint: "끼 주사위 · 9 이상이면 좋음", if: (c) => c.st("talent") >= 45 }),
-      pick("특성화고(일찍 취업)", R("특성화고에 들어갔다. 자격증부터 땄다.", fx({ intel: 1 }, 0, { add: ["vocational", "cert"], fn: (c) => { c.s.school = "특성화고생"; c.s.edu = "high"; c.s.until = 19; } })), { hint: "수능 없이 바로 취업" }),
+      pick("특성화고에 간다", R("특성화고에 들어갔다. 자격증부터 땄다.", fx({ intel: 1 }, 0, { add: ["vocational", "cert"], fn: (c) => { c.s.school = "특성화고생"; c.s.edu = "high"; c.s.until = 19; } })), { hint: "수능 없이 졸업하고 바로 취업" }),
       pick("자퇴하고 방송에 올인", R("학교를 그만두고 방송에 모든 걸 걸었다.", fx({ talent: 4, happy: 2 }, 0, { add: ["dropout", "broadcast", "no_uni"], fn: (c) => { c.s.school = "자퇴생"; c.s.edu = "none"; c.s.until = c.age; } })), {
         hint: "끼 ↑ · 위험한 길", if: (c) => c.has("mic") || c.has("broadcast"),
       }),
@@ -527,7 +528,7 @@ export const FORKS: Fork[] = [
     ],
   },
   {
-    id: "sick_again", a: [0, 120], rep: 4, w: 15, tag: "건강", t: (c) => `${c.s.sick?.name ?? "병"}이(가) 다시 말썽이다.`,
+    id: "sick_again", a: [0, 120], rep: 4, w: 15, tag: "건강", t: (c) => `${josa(c.s.sick?.name ?? "병", "이")} 다시 말썽이다.`,
     if: (c) => !!c.s.sick && c.s.sick.since < c.age,
     opts: [
       dice("다시 치료받는다", "health", {
@@ -892,7 +893,7 @@ export const FORKS: Fork[] = [
     ],
   },
   {
-    id: "chaebol_heir", a: [30, 55], tag: "가족", t: "회장님(아빠)이 회사를 물려받을 생각이 있냐고 물으신다.", if: (c) => c.s.house === "rich" && !!c.person("dad") && c.s.job !== "ceo",
+    id: "chaebol_heir", a: [30, 55], tag: "가족", t: "회장님인 아빠가 회사를 물려받을 생각이 있냐고 물으셨다.", if: (c) => c.s.house === "rich" && !!c.person("dad") && c.s.job !== "ceo",
     opts: [
       dice("물려받겠다고 한다", "intel", {
         good: R("후계자로 인정받았다. 회장 자리에 올랐다.", fx({ happy: 3 }, 0, { fn: (c) => c.hire("ceo") }), true),
@@ -1154,7 +1155,7 @@ export const FORKS: Fork[] = [
   {
     id: "retire_free", a: [60, 88], rep: 5, tag: "인생", t: "이제 일을 내려놓을 때가 된 것 같다.", if: (c) => !!c.s.job && !JOBS.find((j) => j.id === c.s.job)?.retire,
     opts: [
-      pick("은퇴한다", R("마지막 방송(영업)을 마쳤다. 고마운 사람이 많았다.", fx({ happy: 5 }, 0, { fn: retireFn }), true)),
+      pick("은퇴한다", R((c) => (JOBS.find((j) => j.id === c.s.job)?.biz ? "마지막으로 가게 셔터를 내렸다. 단골들이 꽃을 들고 왔다." : "마지막 방송을 마쳤다. 고마운 사람이 많았다."), fx({ happy: 5 }, 0, { fn: retireFn }), true)),
       pick("아직 할 수 있다", R("조금만 더 해보기로 했다.", fx({ health: -1, happy: 1 }))),
     ],
   },
