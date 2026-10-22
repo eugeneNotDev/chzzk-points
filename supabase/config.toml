@@ -57,3 +57,6 @@ verify_jwt = false
 
 [functions.admin-quiz]
 verify_jwt = false
+
+[functions.life-game]
+verify_jwt = false

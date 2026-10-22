@@ -3,6 +3,7 @@
 // path는 기존 사이트 주소(xxx.html)와 똑같이 둬서 교체 후에도 즐겨찾기·링크가 그대로 동작함.
 // 실제 화면이 있는지는 routes.ts에 등록됐는지로 판단(없으면 "준비 중").
 import { QUIZ_ENABLED } from "./lib/quiz";
+import { LIFE_ENABLED } from "./lib/life";
 import {
   CalendarDays,
   ChartColumn,
@@ -17,6 +18,7 @@ import {
   NotebookPen,
   MessageSquare,
   Music,
+  Sprout,
   ShieldCheck,
   Star,
   Store,
@@ -31,6 +33,8 @@ export type NavItem = {
   adminOnly?: boolean;
   // 퀴즈(유진고사) — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임. 베타 빌드에서만 들어감(lib/quiz.ts QUIZ_ENABLED).
   quiz?: boolean;
+  // 유진 키우기 — 테스트 중이라 베타 빌드에서만, 관리자에게만 보임(lib/life.ts LIFE_ENABLED)
+  life?: boolean;
 };
 
 export type NavGroup = { title: string | null; items: NavItem[] };
@@ -62,6 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: "roulette.html", label: "룰렛", icon: Disc3 },
       { path: "rps.html", label: "가위바위보", icon: Hand },
       { path: "oddeven.html", label: "홀짝", icon: Dices },
+      { path: "life.html", label: "유진 키우기", icon: Sprout, adminOnly: true, life: true },
     ],
   },
   {
@@ -88,6 +93,12 @@ export const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 if (!QUIZ_ENABLED) {
   for (const g of NAV_GROUPS) g.items = g.items.filter((i) => !i.quiz);
   ALL_NAV_ITEMS.splice(0, ALL_NAV_ITEMS.length, ...ALL_NAV_ITEMS.filter((i) => !i.quiz));
+}
+
+// 실제 사이트 빌드에선 유진 키우기도 메뉴·주소에서 뺌
+if (!LIFE_ENABLED) {
+  for (const g of NAV_GROUPS) g.items = g.items.filter((i) => !i.life);
+  ALL_NAV_ITEMS.splice(0, ALL_NAV_ITEMS.length, ...ALL_NAV_ITEMS.filter((i) => !i.life));
 }
 
 // 모바일 하단 탭바 — 자주 쓰는 4개 + 더보기

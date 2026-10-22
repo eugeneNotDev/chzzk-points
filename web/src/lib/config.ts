@@ -18,6 +18,7 @@ export const API = {
   broadcastStatus: `${FUNCTIONS_BASE_URL}/broadcast-status`,
   board: `${FUNCTIONS_BASE_URL}/board`,
   freeBox: `${FUNCTIONS_BASE_URL}/free-box`,
+  life: `${FUNCTIONS_BASE_URL}/life-game`,
   notices: `${FUNCTIONS_BASE_URL}/notices`,
   attendance: `${FUNCTIONS_BASE_URL}/attendance-check`,
   streamCode: `${FUNCTIONS_BASE_URL}/stream-code`,

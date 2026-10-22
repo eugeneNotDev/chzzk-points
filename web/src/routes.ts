@@ -3,6 +3,7 @@
 // 미리 받아둠(preloadPages) — 메뉴를 옮길 때 "불러오는 중"이 깜빡이지 않고 바로 넘어가게.
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import { QUIZ_ENABLED } from "./lib/quiz";
+import { LIFE_ENABLED } from "./lib/life";
 
 type Loader = () => Promise<{ default: ComponentType }>;
 const LOADERS: Record<string, Loader> = {
@@ -20,6 +21,8 @@ const LOADERS: Record<string, Loader> = {
   "roulette.html": () => import("./pages/games/Roulette"),
   "rps.html": () => import("./pages/games/Rps"),
   "oddeven.html": () => import("./pages/games/OddEven"),
+  // 유진 키우기 — 베타 빌드에서만(lib/life.ts LIFE_ENABLED)
+  ...(LIFE_ENABLED ? { "life.html": () => import("./pages/life/Life") } : {}),
   "board-free.html": () => import("./pages/board/Board").then((m) => ({ default: m.FreeBoard })),
   "board-review.html": () => import("./pages/board/Board").then((m) => ({ default: m.ReviewBoard })),
   "songs.html": () => import("./pages/songs/Songs"),
