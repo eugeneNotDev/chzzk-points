@@ -1,4 +1,5 @@
-// 유진 키우기 — 서버(life-game 함수) 응답 타입과 호출. 인생 진행은 전부 서버가 하고, 화면은 받은 기록을 보여주기만 함.
+// 유진 키우기 v3 — 서버(life-game 함수) 응답 타입과 호출. 인생 진행·결과는 전부 서버가 정하고, 화면은 받은 기록을 보여주기만 함.
+// 돈은 전부 "만원" 단위 정수(1 = 1만원). 포인트로 살 땐 1만원 = 1P.
 import { useQuery } from "@tanstack/react-query";
 import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
@@ -7,42 +8,34 @@ import { apiFetch, useAuth } from "./auth";
 // DB의 life_settings.is_open도 true로 바꾸면 시청자 누구나 플레이(그 전엔 서버가 주인 계정만 허용).
 export const LIFE_ENABLED: boolean = import.meta.env.MODE !== "live";
 
-export type StatKey = "health" | "intel" | "charm" | "wealth" | "happy" | "talent";
+export type StatKey = "health" | "intel" | "charm" | "happy" | "talent";
 export type Stats = Record<StatKey, number>;
 
 export const STATS: { key: StatKey; label: string; color: string }[] = [
   { key: "health", label: "건강", color: "var(--c-accent)" },
   { key: "intel", label: "지능", color: "var(--c-blue)" },
   { key: "charm", label: "매력", color: "var(--c-pink)" },
-  { key: "wealth", label: "재산", color: "var(--c-gold)" },
   { key: "happy", label: "행복", color: "var(--c-amber)" },
   { key: "talent", label: "끼", color: "#c9a7ff" },
 ];
 
-export type LogEntry = {
-  age: number;
-  kind: "life" | "daily" | "rare" | "choice" | "job" | "item" | "plan" | "end";
-  text: string;
-  delta: string;
-  d?: Partial<Stats>; // 이 기록으로 바뀐 능력치
-  st?: Stats; // 이 기록 직후 능력치
-  hl: boolean;
-};
-// kind: plan = 5년 계획(집중) 고르기 / event = 갈림길
-export type Pending = { kind?: "plan" | "event"; id: string; text: string; choices: { key: string; text: string; hint: string; cur?: boolean }[] };
+export type Tier = "great" | "good" | "normal" | "bad" | "terrible";
+export type Roll = { dice: [number, number]; mod: number; total: number; tier: Tier; stat: StatKey | null };
+export const TIER_LABEL: Record<Tier, string> = { great: "대성공", good: "성공", normal: "보통", bad: "실패", terrible: "대실패" };
+
+export type Kind = "life" | "day" | "rare" | "fork" | "pick" | "job" | "money" | "people" | "buy" | "think" | "sick" | "end" | "school";
+export type LogEntry = { age: number; k: Kind; t: string; d?: Partial<Stats>; m?: number; roll?: Roll; hl?: boolean };
+
+export type PendingOpt = { key: string; text: string; hint?: string; cost?: number; roll?: StatKey | null; mod?: number; off?: string };
+export type Pending = { id: string; kind: "fork" | "mile" | "think" | "focus"; tag?: string; text: string; opts: PendingOpt[] };
+
+export type Person = { id: number; role: "mom" | "dad" | "friend" | "partner" | "spouse" | "child" | "pet"; name: string; age: number; bond: number; alive: boolean };
+export type Asset = { id: string; name: string; value: number; kind: "home" | "car" | "thing"; age: number };
+export type ShopItem = { id: string; name: string; cat: string; price: number; hint: string; child: boolean; off: string | null; cashOk: boolean };
+
 export type Ending = {
-  title: string;
-  age: number;
-  cause: string;
-  modifierId: string | null;
-  modifier: string | null;
-  jobId: string;
-  job: string;
-  finaleId: string | null;
-  finale: string;
-  specialId: string | null;
-  specialText: string | null;
-  moments: LogEntry[];
+  title: string; mod: string | null; modId: string | null; job: string; jobId: string; cause: "old" | "sick" | "accident"; causeText: string;
+  age: number; specialId: string | null; specialText: string | null; mourners: number; netWorth: number; earned: number; peak: number;
 };
 
 export type Run = {
@@ -54,25 +47,37 @@ export type Run = {
   status: "playing" | "ended";
   age: number;
   stats: Stats;
+  money: { cash: number; invest: number; fund: string; debt: number; assets: Asset[]; net: number; earned: number; peak: number; income: number; expense: number; ret: number };
   job: string | null;
   jobName: string | null;
-  focus: string | null;
+  salary: number;
+  school: string;
+  edu: string;
+  fame: number;
+  biz: number;
+  army: number;
+  focus: string;
   focusName: string | null;
-  // 해마다 능력치 [나이, 건강, 지능, 매력, 재산, 행복, 끼]
-  history: number[][];
-  itemsUsed: number;
-  spent: number;
+  focuses: { id: string; name: string; hint: string }[];
+  people: Person[];
+  sick: { id: string; name: string; sev: number; since: number } | null;
+  luck: number;
+  pending: Pending | null;
+  // 해마다 [나이, 건강, 지능, 매력, 행복, 끼, 순자산(만원), 올해의 운]
+  hist: number[][];
+  thoughts: { age: number; q: string; a: string }[];
+  shop: ShopItem[];
+  pointsUsed: number;
+  pointsLimit: number;
+  jobs: { id: string; name: string; age: number }[];
+  ending: Ending | null;
   logFrom: number;
   log: LogEntry[];
   logCount: number;
-  pending: Pending | null;
-  ending: Ending | null;
-  jobHistory: { id: string; name: string; age: number }[];
-  diary: { age: number; text: string }[] | null;
 };
 
-export type House = { id: string; name: string; price: number; bonus: Partial<Stats> };
-export type Item = { id: string; name: string; price: number; effects: Partial<Stats> };
+export type House = { id: string; name: string; price: number; bonus: Partial<Stats>; allowance: number; inherit: number; tuition: number };
+export type Fund = { id: string; name: string; hint: string };
 
 export type Lobby = {
   isOpen: boolean;
@@ -84,7 +89,7 @@ export type Lobby = {
   myRuns: number;
   balance: number;
   houses: House[];
-  items: Item[];
+  funds: Fund[];
   playing: Run | null;
   last: { id: number; title: string; worldNo: number | null } | null;
   dex: { got: number; total: number };
@@ -116,12 +121,16 @@ export function useLifeDex(enabled: boolean) {
   });
 }
 
+const post = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.life, { body });
 export const fetchRun = (id: number) => apiFetch<Run>(`${API.life}?view=run&id=${id}`);
-export const startLife = (house: string) => apiFetch<{ run: Run; balance: number }>(API.life, { body: { action: "start", house } });
-export const chooseLife = (runId: number, key: string, from: number) => apiFetch<{ run: Run }>(API.life, { body: { action: "choose", runId, key, from } });
-export const applyLifeItem = (runId: number, item: string, from: number) =>
-  apiFetch<{ run: Run; balance: number }>(API.life, { body: { action: "item", runId, item, from } });
-export const resetLifeTest = () => apiFetch<{ deletedRuns: number }>(API.life, { body: { action: "reset" } });
+export const startLife = (house: string) => post<{ run: Run; balance: number }>({ action: "start", house });
+export const advanceLife = (runId: number, from: number, years: number) => post<{ run: Run }>({ action: "advance", runId, from, years });
+export const chooseLife = (runId: number, key: string, from: number) => post<{ run: Run; roll: Roll | null }>({ action: "choose", runId, key, from });
+export const focusLife = (runId: number, focus: string, from: number) => post<{ run: Run }>({ action: "focus", runId, focus, from });
+export const fundLife = (runId: number, fund: string, from: number) => post<{ run: Run }>({ action: "fund", runId, fund, from });
+export const buyLife = (runId: number, item: string, pay: "cash" | "points", from: number) =>
+  post<{ run: Run; balance?: number }>({ action: "buy", runId, item, pay, from });
+export const resetLifeTest = () => post<{ deletedRuns: number }>({ action: "reset" });
 
 export const LIFE_ERRORS: Record<string, string> = {
   not_open: "아직 준비 중이에요.",
@@ -130,12 +139,16 @@ export const LIFE_ERRORS: Record<string, string> = {
   in_progress: "이미 키우고 있는 유진이 있어요.",
   daily_limit: "오늘은 더 키울 수 없어요. 내일 다시 만나요.",
   insufficient_balance: "포인트가 부족해요.",
-  no_pending: "이미 선택한 갈림길이에요.",
+  no_pending: "이미 고른 선택이에요.",
   bad_choice: "선택지를 찾지 못했어요.",
-  bad_item: "아이템을 찾지 못했어요.",
+  bad_item: "지금은 살 수 없는 물건이에요.",
   not_playing: "이미 끝난 인생이에요.",
-  item_limit: "이번 판의 보호자 아이템을 다 썼어요.",
+  item_limit: "이번 판에 포인트로 살 수 있는 횟수를 다 썼어요.",
   too_fast: "너무 빨라요. 잠깐만 기다려 주세요.",
+  cant_afford: "유진의 돈이 모자라요.",
+  points_only: "어릴 땐 보호자가 포인트로만 사줄 수 있어요.",
+  busy: "다른 창에서 진행 중이에요. 새로고침해 주세요.",
+  too_young: "15세부터 돈을 굴릴 수 있어요.",
 };
 
 export function lifeErrorText(e: unknown) {
@@ -143,7 +156,19 @@ export function lifeErrorText(e: unknown) {
   return (code && LIFE_ERRORS[code]) || "잠시 후 다시 시도해 주세요.";
 }
 
-// "재산 +25 · 지능 +5" 처럼 보정값을 칩으로 보여줄 때
+// 만원 단위 → "1억 2,300만원"
+export function won(m: number, short = false) {
+  const neg = m < 0;
+  const v = Math.abs(Math.round(m));
+  const eok = Math.floor(v / 10000);
+  const man = v % 10000;
+  let s: string;
+  if (eok > 0 && short) s = `${(v / 10000).toFixed(v >= 100000 ? 0 : 1).replace(/\.0$/, "")}억`;
+  else if (eok > 0) s = man ? `${eok.toLocaleString("ko-KR")}억 ${man.toLocaleString("ko-KR")}만원` : `${eok.toLocaleString("ko-KR")}억원`;
+  else s = short ? `${man.toLocaleString("ko-KR")}만` : `${man.toLocaleString("ko-KR")}만원`;
+  return (neg ? "-" : "") + s;
+}
+
 export function statChips(d: Partial<Stats> | null | undefined) {
   return STATS.filter((s) => d && typeof d[s.key] === "number" && d[s.key] !== 0).map((s) => ({
     label: `${s.label} ${d![s.key]! > 0 ? "+" : "−"}${Math.abs(d![s.key]!)}`,
@@ -153,15 +178,15 @@ export function statChips(d: Partial<Stats> | null | undefined) {
 
 export function lifeStage(age: number) {
   if (age < 8) return 0;
-  if (age < 20) return 1;
+  if (age < 19) return 1;
   if (age < 40) return 2;
   if (age < 65) return 3;
   return 4;
 }
-export const STAGES = ["유년", "청소년", "청년", "중년", "노년"];
+export const STAGES = ["유년", "학생", "청년", "중년", "노년"];
 
-// history 한 줄 → 능력치
+// hist 한 줄 → 능력치
 export function histStats(row: number[] | undefined, fallback: Stats): Stats {
-  if (!row || row.length < 7) return fallback;
-  return { health: row[1], intel: row[2], charm: row[3], wealth: row[4], happy: row[5], talent: row[6] };
+  if (!row || row.length < 6) return fallback;
+  return { health: row[1], intel: row[2], charm: row[3], happy: row[4], talent: row[5] };
 }
