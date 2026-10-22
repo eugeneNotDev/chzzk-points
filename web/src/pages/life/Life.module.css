@@ -913,6 +913,8 @@
 
 /* 올해 카드 */
 .year {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--r-xl);
   padding: 16px 18px 18px;
   background:
@@ -2391,4 +2393,17 @@
   from {
     transform: scaleX(0);
   }
+}
+
+/* 올해 카드 위쪽: 한 해가 흘러가는 막대 */
+.yearBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--c-accent);
+  opacity: 0.55;
+  transform-origin: left;
+  animation: contFill linear both;
 }

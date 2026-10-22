@@ -424,9 +424,15 @@ function HouseIcon({ tier }: { tier: number }) {
 }
 
 /* ── 진행 ── */
-// 한 해 보여주는 시간: 기록 한 줄마다 ENTRY_MS, 한 해가 끝나고 머무는 시간 HOLD_MS(배속으로 나눔). "skip"은 다음 결정까지 빨리 감기
-const ENTRY_MS = 1900;
-const HOLD_MS = 2800;
+// 한 해를 보여주는 시간(1배속). 평균 수명(약 77세)·결정 50번 기준으로 한 인생이 30분쯤 걸리게 맞춤.
+// 그해 기록은 앞쪽 70% 동안 고르게 나눠서 하나씩 보여주고, 나머지 시간은 머묾. 배속으로 나눔. "skip"은 다음 결정까지 빨리 감기
+const YEAR_MS = 13000;
+const SPEEDS = [
+  { k: 1, label: "1x", hint: "한 인생 약 30분" },
+  { k: 2, label: "2x", hint: "약 15분" },
+  { k: 4, label: "4x", hint: "약 8분" },
+  { k: 8, label: "8x", hint: "약 4분" },
+];
 const RESULT_MS = 7000; // 선택 결과를 보여주고 저절로 넘어가기까지
 
 const KIND_ICON: Record<LogEntry["k"], LucideIcon> = {
@@ -486,7 +492,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const fresh = initial.hist.length <= 4; // 막 태어난 판은 처음부터 보여줌
   const [cur, setCur] = useState(() => (fresh ? 0 : Math.max(0, initial.hist.length - 1)));
   const [shown, setShown] = useState(() => (fresh ? 0 : 999));
-  const revealedAt = useRef(Date.now());
+  const yearStart = useRef(Date.now()); // 지금 보여주는 해가 시작된 시각(멈춘 시간만큼 뒤로 밀림)
   const [snap, setSnap] = useState<Run>(initial); // 화면이 따라잡은 시점의 상태(돈·사람·직업 등)
   const [speed, setSpeed] = useState<number>(1);
   const [skip, setSkip] = useState(false);
@@ -510,7 +516,8 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const drained = ci >= last && nShown >= yearEntries.length;
   const stats = histStats(row, run.stats);
   const prevStats = ci > 0 ? histStats(rows[ci - 1], stats) : null;
-  const k = skip ? 12 : speed;
+  const k = skip ? 40 : speed;
+  const yearMs = YEAR_MS / k;
   const ended = run.status === "ended";
   const pending = drained && !ended && !rolling ? run.pending : null;
 
@@ -521,25 +528,34 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
 
   // 한 줄씩 보여주기 → 한 해 넘기기
   const halt = paused || shopOpen;
+  const stopped = halt || !!rolling;
+  // 멈춰 있던 시간만큼 이번 해 시작 시각을 뒤로 밀어서, 다시 움직이면 멈춘 자리부터 이어감
+  const stoppedAt = useRef<number | null>(null);
   useEffect(() => {
-    if (halt || rolling) return;
-    if (nShown < yearEntries.length) {
-      const t = setTimeout(() => {
-        setShown(nShown + 1);
-        if (nShown + 1 >= yearEntries.length) revealedAt.current = Date.now();
-      }, ENTRY_MS / k);
+    if (stopped) stoppedAt.current = Date.now();
+    else if (stoppedAt.current !== null) {
+      yearStart.current += Date.now() - stoppedAt.current;
+      stoppedAt.current = null;
+    }
+  }, [stopped]);
+  useEffect(() => {
+    if (stopped) return;
+    const n = yearEntries.length;
+    const gap = Math.min(4500 / k, (yearMs * 0.7) / Math.max(1, n));
+    if (nShown < n) {
+      const due = yearStart.current + 500 / k + nShown * gap;
+      const t = setTimeout(() => setShown(nShown + 1), Math.max(0, due - Date.now()));
       return () => clearTimeout(t);
     }
     if (ci < last) {
-      const wait = Math.max(0, HOLD_MS / k - (Date.now() - revealedAt.current));
       const t = setTimeout(() => {
         setCur(ci + 1);
         setShown(0);
-        revealedAt.current = Date.now();
-      }, wait);
+        yearStart.current = Date.now();
+      }, Math.max(0, yearStart.current + yearMs - Date.now()));
       return () => clearTimeout(t);
     }
-  }, [halt, rolling, nShown, yearEntries.length, ci, last, k]);
+  }, [stopped, nShown, yearEntries.length, ci, last, k, yearMs]);
 
   function merge(next: Run) {
     setLog((c) => c.slice(0, next.logFrom).concat(next.log));
@@ -551,7 +567,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     if (!drained || halt || rolling || ended || run.pending || fetching || busy || err) return;
     let alive = true;
     setFetching(true);
-    const years = skip ? 3 : speed >= 4 ? 2 : 1;
+    const years = skip ? 3 : speed >= 8 ? 3 : speed >= 4 ? 2 : 1;
     const go = async () => {
       try {
         const r = runRef.current;
@@ -628,8 +644,8 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     setRolling(null);
     // 결과 줄은 결과 창에서 이미 봤으니 바로 펼침
     setShown(999);
-    revealedAt.current = Date.now();
-  }, []);
+    yearStart.current = Date.now() - yearMs * 0.6;
+  }, [yearMs]);
 
   async function onFocus(id: string) {
     if (fetching || busy) {
@@ -686,7 +702,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     // 상점을 열면 그 해를 다 보여주고 멈춤
     setCur(last);
     setShown(999);
-    revealedAt.current = Date.now();
+    yearStart.current = Date.now() - yearMs * 0.6;
     setShopOpen(true);
   }
 
@@ -721,9 +737,9 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
         </div>
         <div className={styles.controls}>
           <div className={styles.speed} role="group" aria-label="진행 속도">
-            {[1, 2, 4].map((s) => (
-              <button key={s} type="button" className={`num ${speed === s && !skip ? styles.speedOn : ""}`} onClick={() => { setSpeed(s); setSkip(false); }} aria-pressed={speed === s && !skip}>
-                {s}x
+            {SPEEDS.map((sp) => (
+              <button key={sp.k} type="button" title={sp.hint} className={`num ${speed === sp.k && !skip ? styles.speedOn : ""}`} onClick={() => { setSpeed(sp.k); setSkip(false); }} aria-pressed={speed === sp.k && !skip}>
+                {sp.label}
               </button>
             ))}
           </div>
@@ -772,6 +788,14 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       {/* 가운데: 올해 이야기·선택·지난 기록 */}
       <main className={styles.center2}>
         <section className={`${styles.year} ${skip ? styles.yearSkip : ""}`} aria-live="polite">
+          {!pending && !ended && (
+            <span
+              key={`${age}-${k}`}
+              className={styles.yearBar}
+              style={{ animationDuration: `${yearMs}ms`, animationPlayState: stopped ? "paused" : "running" }}
+              aria-hidden="true"
+            />
+          )}
           <div className={styles.yearHead}>
             <span>
               <b className="num">{age}</b>세의 유진
