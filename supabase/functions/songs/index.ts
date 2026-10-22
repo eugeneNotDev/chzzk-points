@@ -4,7 +4,7 @@
 // 신청은 무료(포인트 없음). 한 사람당 하루 1곡(한국시간 날짜) — 취소·삭제돼도 그날 기회는 다시 안 생김.
 // 대기 중인 곡과 제목+가수가 같으면(대소문자·공백·기호 무시) 중복이라 막음. 틀고 나면 다시 신청 가능.
 //
-// list            {}                     → { items: [{id,title,artist,reason,requester,createdAt,mine}], canRequest, requestedToday, isAdmin }
+// list            {}                     → { items: [{id,title,artist,reason,requester,anonymous,createdAt,mine}], canRequest, requestedToday, isAdmin }
 // request         { title, artist, reason? } → { ok }  (로그인 필수, 차단 유저 불가. reason = 추천 사유, 선택·80자)
 // cancel          { id }                 → { ok }      (본인 대기 곡만)
 // admin-played    { id }                 → { ok }      (관리자: 틀었음 → 리스트에서 빠지고 기록으로)
@@ -107,15 +107,29 @@ async function list(admin: Admin, me: string | null, isAdmin: boolean) {
     requestedToday = (count ?? 0) > 0;
   }
 
-  const items = (data ?? []).map((r) => ({
-    id: r.id,
-    title: r.title,
-    artist: r.artist,
-    reason: r.reason ?? null,
-    requester: r.requester_name,
-    createdAt: r.created_at,
-    mine: me !== null && r.channel_id === me,
-  }));
+  // 마이페이지에서 이름 비공개(is_public=false)로 둔 사람은 "익명"으로 보냄 — 본인과 관리자만 진짜 이름이 보임.
+  const ids = [...new Set((data ?? []).map((r) => r.channel_id))];
+  const publicIds = new Set<string>();
+  if (ids.length) {
+    const { data: us, error: uErr } = await admin.from("users").select("channel_id, is_public").in("channel_id", ids);
+    if (uErr) throw new Error(`users 조회 실패: ${uErr.message}`);
+    for (const u of us ?? []) if (u.is_public) publicIds.add(u.channel_id);
+  }
+
+  const items = (data ?? []).map((r) => {
+    const mine = me !== null && r.channel_id === me;
+    const hidden = !publicIds.has(r.channel_id);
+    return {
+      id: r.id,
+      title: r.title,
+      artist: r.artist,
+      reason: r.reason ?? null,
+      requester: hidden && !mine && !isAdmin ? null : r.requester_name,
+      anonymous: hidden,
+      createdAt: r.created_at,
+      mine,
+    };
+  });
   return json({ items, canRequest: me !== null && !requestedToday, requestedToday, isAdmin, loggedIn: me !== null });
 }
 

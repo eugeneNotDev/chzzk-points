@@ -238,7 +238,7 @@ export default function Songs() {
             const mine = it.mine && !s.isAdmin;
             const isOpen = !!it.reason && open.has(it.id);
             return (
-              <li key={it.id} className={`${styles.entry} ${i === 0 ? styles.first : ""} ${mine ? styles.mine : ""} ${it.reason ? styles.hasReason : ""}`}>
+              <li key={it.id} className={`${styles.entry} ${i === 0 ? styles.first : ""} ${it.reason ? styles.hasReason : ""}`}>
               <div
                 className={styles.item}
                 onClick={(e) => {
@@ -266,7 +266,10 @@ export default function Songs() {
                   <div className={styles.nm}>{it.requester || "알 수 없음"}</div>
                   <div className={styles.tm}>{ago(it.createdAt)}</div>
                   {mine && (
-                    <ArmedButton className={styles.cancel} label="신청 취소" armedLabel="정말 취소? (오늘 재신청 불가)" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")} />
+                    <ArmedButton className={styles.cancel} armedLabel="한 번 더 누르면 취소" title="취소하면 오늘은 다시 신청할 수 없어요" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")}>
+                      <X size={12} aria-hidden="true" />
+                      신청 취소
+                    </ArmedButton>
                   )}
                 </div>
                 {s.isAdmin && (
@@ -282,12 +285,10 @@ export default function Songs() {
                     </ArmedButton>
                   </div>
                 )}
-                {it.reason ? (
+                {it.reason && (
                   <button type="button" className={`${styles.fold} ${isOpen ? styles.foldOpen : ""}`} onClick={() => toggle(it.id)} aria-expanded={isOpen} aria-label={isOpen ? "추천 사유 접기" : "추천 사유 펼치기"}>
                     <ChevronDown size={16} aria-hidden="true" />
                   </button>
-                ) : (
-                  <span className={styles.foldSpace} aria-hidden="true" />
                 )}
               </div>
               {isOpen && (
