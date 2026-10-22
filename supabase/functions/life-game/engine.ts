@@ -79,8 +79,21 @@ export type Item = {
   hint: string;
   if?: (c: Ctx) => boolean;
   once?: boolean;
+  cool?: number; // 다시 살 수 있을 때까지 걸리는 해(기본 1 = 한 해에 한 번)
   child?: boolean; // 15세 전 보호자 지원(포인트로만)
 };
+
+// 상점 물건을 지금 살 수 없는 이유(이미 있음 / 쿨타임)
+function buyBlock(s: State, it: Item): string | null {
+  if (it.once && s.flags.includes("own_" + it.id)) return "이미 있어요";
+  const last = s.seen["buy:" + it.id];
+  const cool = it.cool ?? 1;
+  if (last !== undefined && s.age - last < cool) {
+    const left = cool - (s.age - last);
+    return cool === 1 ? "올해는 이미 샀어요" : `${left}년 뒤에 다시 살 수 있어요`;
+  }
+  return null;
+}
 export type House = {
   id: HouseId;
   name: string;
@@ -367,7 +380,7 @@ function jobIncome(c: Ctx): number {
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
     if (r.tier === "great") c.log("job", s.fame >= 60 ? "영상 하나가 터져서 구독자가 확 늘었다." : "방송이 입소문을 타기 시작했다.", { roll: r, hl: true });
     else if (r.tier === "terrible") c.log("job", "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r, d: c.stat({ happy: -5 }) });
-    if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '양'으로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
+    if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
     if (before < 70 && s.fame >= 70) c.log("job", "구독자 100만을 넘었다. 은색 버튼… 아니 금색 버튼이 왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
     // 아직 작은 방송인은 알바를 병행해서 최소한은 범
     return Math.max(s.fame < 30 ? 1300 : 0, Math.round((150 + s.fame * s.fame * 2.6) * j.creator * (0.6 + c.rnd() * 0.8)));
@@ -782,10 +795,9 @@ export function shopList(s: State) {
   const c = new Ctx(s);
   return ITEMS.filter((it) => s.age >= it.a[0] && s.age <= it.a[1] && (!it.if || it.if(c))).map((it) => {
     const price = typeof it.price === "function" ? it.price(c) : it.price;
-    const owned = it.once && s.flags.includes("own_" + it.id);
     return {
       id: it.id, name: it.name, cat: it.cat, price, hint: it.hint, child: !!it.child,
-      off: owned ? "이미 있어요" : null as string | null,
+      off: buyBlock(s, it),
       cashOk: !it.child && s.age >= 15 && s.cash + s.invest >= price,
     };
   });
@@ -795,7 +807,7 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   const c = new Ctx(s);
   const it = ITEMS.find((x) => x.id === id);
   if (!it || s.age < it.a[0] || s.age > it.a[1] || (it.if && !it.if(c))) return { error: "bad_item" };
-  if (it.once && c.has("own_" + it.id)) return { error: "bad_item" };
+  if (buyBlock(s, it)) return { error: "bought" };
   if (s.pending && s.pending.kind !== "fork" && s.pending.kind !== "mile") return { error: "bad_item" };
   const price = typeof it.price === "function" ? it.price(c) : it.price;
   if (pay === "cash") {
@@ -808,6 +820,7 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
     }
   }
   if (it.once) c.add("own_" + it.id);
+  s.seen["buy:" + it.id] = s.age;
   const e = c.apply(it.fx, "buy", it.t);
   if (e) {
     e.m = pay === "cash" ? -price : undefined;
@@ -851,7 +864,7 @@ function finish(c: Ctx) {
   };
   const how = s.dead.cause === "accident" ? `${a}세, 갑작스러운 사고로 생을 마감했다.` : s.dead.cause === "sick" ? `${a}세, ${causeText}(으)로 생을 마감했다.` : `${a}세, 편안히 눈을 감았다.`;
   c.log("end", how, { hl: true });
-  c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${fans > 50 ? " 양들이 보낸 꽃이 복도를 가득 채웠다." : ""}`);
+  c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${fans > 50 ? " 네루들이 보낸 꽃이 복도를 가득 채웠다." : ""}`);
 }
 
 // 처음 출발할 때 2세 기질 마디까지 바로 진행

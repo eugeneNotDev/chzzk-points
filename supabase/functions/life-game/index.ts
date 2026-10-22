@@ -23,7 +23,7 @@ import type { Entry, HouseId, State, Stats } from "./types.ts";
 const KNOWN_ERRORS = new Set([
   "not_open", "bad_house", "user_not_found", "in_progress", "daily_limit", "insufficient_balance", "no_pending", "bad_choice",
   "bad_item", "not_playing", "item_limit", "too_fast", "cant_afford", "points_only", "busy", "bad_focus", "bad_fund", "too_young",
-  "has_pending",
+  "has_pending", "bought",
 ]);
 
 function json(body: unknown, status: number) {

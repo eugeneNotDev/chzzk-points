@@ -149,6 +149,7 @@ export const LIFE_ERRORS: Record<string, string> = {
   points_only: "어릴 땐 보호자가 포인트로만 사줄 수 있어요.",
   busy: "다른 창에서 진행 중이에요. 새로고침해 주세요.",
   too_young: "15세부터 돈을 굴릴 수 있어요.",
+  bought: "지금은 다시 살 수 없어요.",
 };
 
 export function lifeErrorText(e: unknown) {

@@ -112,12 +112,12 @@ export const ITEMS: Item[] = [
   { id: "camp", name: "여름 캠프", cat: "보호자 지원", a: [8, 14], price: 80, t: "여름 캠프에서 친구를 잔뜩 사귀었다.", fx: fx({ charm: 3, happy: 3 }), hint: "매력·행복 ↑", child: true },
   { id: "doctor_kid", name: "큰 병원 진료", cat: "보호자 지원", a: [0, 14], price: 200, t: "보호자 손에 이끌려 큰 병원에 다녀왔다.", fx: fx({ health: 10 }, 0, { fn: (c) => (c.s.sick = null) }), hint: "건강 ↑ · 병 치료", child: true },
 
-  { id: "phone", name: "최신 스마트폰", cat: "물건", a: [15, 95], price: 150, t: "최신 스마트폰을 샀다.", fx: fx({ happy: 3, charm: 1 }), hint: "행복 ↑" },
+  { id: "phone", cool: 3, name: "최신 스마트폰", cat: "물건", a: [15, 95], price: 150, t: "최신 스마트폰을 샀다.", fx: fx({ happy: 3, charm: 1 }), hint: "행복 ↑" },
   { id: "pc", name: "게이밍 PC", cat: "물건", a: [15, 80], price: 250, t: "게이밍 PC를 맞췄다. 팬 소리가 비행기 같다.", fx: fx({ happy: 4 }, 0, { add: ["game"] }), hint: "행복 ↑ · 게임", once: true },
   { id: "mic", name: "방송 장비 세트", cat: "물건", a: [15, 90], price: 300, t: "방송 장비를 장만했다. 첫 방송 버튼 앞에서 한참 망설였다.", fx: fx({ talent: 3 }, 0, { add: ["mic", "broadcast"] }), hint: "끼 ↑ · 방송 가능", once: true },
   { id: "guitar", name: "통기타", cat: "물건", a: [12, 90], price: 60, t: "통기타를 샀다. 손가락이 아프다.", fx: fx({ talent: 2 }, 0, { add: ["music"] }), hint: "끼 ↑ · 음악", once: true },
   { id: "books", name: "책 한 무더기", cat: "물건", a: [10, 100], price: 20, t: "책을 한 무더기 사서 읽었다.", fx: fx({ intel: 2 }, 0, { add: ["bookworm"] }), hint: "지능 ↑" },
-  { id: "watch", name: "명품 시계", cat: "물건", a: [22, 95], price: 1200, t: "명품 시계를 샀다. 자꾸 손목을 보게 된다.", fx: fx({ charm: 4, happy: 2 }), hint: "매력·행복 ↑" },
+  { id: "watch", cool: 10, name: "명품 시계", cat: "물건", a: [22, 95], price: 1200, t: "명품 시계를 샀다. 자꾸 손목을 보게 된다.", fx: fx({ charm: 4, happy: 2 }), hint: "매력·행복 ↑" },
   { id: "car", name: "자동차", cat: "물건", a: [20, 85], price: 3500, t: "새 차를 뽑았다.", fx: fx({ happy: 5 }, 0, { fn: (c) => c.s.assets.push({ id: "car", name: "자동차", value: 3000, kind: "car", age: c.age }) }), hint: "행복 ↑ · 유지비", if: (c) => !c.s.assets.some((a) => a.kind === "car") },
   {
     id: "home", name: "아파트 계약금(20%)", cat: "집", a: [26, 90], price: (c) => Math.round(homePrice(c) * 0.2), hint: "나머지 80%는 대출 · 월세 없음",
@@ -126,14 +126,14 @@ export const ITEMS: Item[] = [
     if: (c) => !c.s.assets.some((a) => a.kind === "home"),
   },
   { id: "tutor_teen", name: "수능 과외 1년", cat: "공부", a: [15, 19], price: 500, t: "수능 과외를 받았다.", fx: fx({ intel: 5, happy: -1 }, 0, { add: ["tutored"] }), hint: "지능 ↑ · 수능 주사위 +1" },
-  { id: "cert", name: "자격증 학원", cat: "공부", a: [18, 65], price: 300, t: "자격증 학원에 등록했다.", fx: fx({ intel: 4 }, 0, { add: ["cert"] }), hint: "지능 ↑ · 취업 주사위 +1" },
+  { id: "cert", cool: 2, name: "자격증 학원", cat: "공부", a: [18, 65], price: 300, t: "자격증 학원에 등록했다.", fx: fx({ intel: 4 }, 0, { add: ["cert"] }), hint: "지능 ↑ · 취업 주사위 +1" },
   { id: "gym", name: "헬스장 1년", cat: "건강", a: [16, 95], price: 80, t: "헬스장을 1년 끊었다. 이번엔 진짜 간다.", fx: fx({ health: 4 }), hint: "건강 ↑" },
   { id: "checkup", name: "종합 건강검진", cat: "건강", a: [25, 100], price: 50, t: "종합 건강검진을 받았다.", fx: fx({ health: 1 }, 0, { add: ["checkup"] }), hint: "올해 병을 일찍 발견" },
   { id: "insurance", name: "건강보험 가입", cat: "건강", a: [20, 70], price: 150, t: "건강보험에 가입했다. 해마다 보험료가 나간다.", fx: fx({}, 0, { add: ["insurance"] }), hint: "치료비 70% 보장", once: true },
   { id: "hospital", name: "큰 병원 진료", cat: "건강", a: [15, 100], price: 300, t: "큰 병원에서 제대로 진료를 받았다.", fx: fx({ health: 8 }, 0, { fn: (c) => { if (c.s.sick) c.s.sick.sev = Math.max(0, c.s.sick.sev - 1); if (c.s.sick && c.s.sick.sev === 0) c.s.sick = null; } }), hint: "건강 ↑ · 병 완화" },
-  { id: "skin", name: "피부과 관리", cat: "건강", a: [18, 90], price: 200, t: "피부과 관리를 받았다. 거울 보는 시간이 늘었다.", fx: fx({ charm: 3 }), hint: "매력 ↑" },
+  { id: "skin", cool: 2, name: "피부과 관리", cat: "건강", a: [18, 90], price: 200, t: "피부과 관리를 받았다. 거울 보는 시간이 늘었다.", fx: fx({ charm: 3 }), hint: "매력 ↑" },
   { id: "trip_kr", name: "국내 여행", cat: "경험", a: [15, 100], price: 50, t: "훌쩍 국내 여행을 다녀왔다.", fx: fx({ happy: 4 }), hint: "행복 ↑" },
-  { id: "trip_world", name: "해외여행", cat: "경험", a: [18, 95], price: 400, t: "해외여행을 다녀왔다. 시차 적응에 사흘이 걸렸다.", fx: fx({ happy: 8, charm: 1 }, 0, { add: ["travel"] }), hint: "행복 ↑↑" },
+  { id: "trip_world", cool: 2, name: "해외여행", cat: "경험", a: [18, 95], price: 400, t: "해외여행을 다녀왔다. 시차 적응에 사흘이 걸렸다.", fx: fx({ happy: 8, charm: 1 }, 0, { add: ["travel"] }), hint: "행복 ↑↑" },
   { id: "concert", name: "콘서트 티켓", cat: "경험", a: [12, 95], price: 15, t: "좋아하는 가수 콘서트에 다녀왔다. 목이 쉬었다.", fx: fx({ happy: 3 }), hint: "행복 ↑" },
   { id: "pet", name: "반려견 입양", cat: "가족", a: [10, 85], price: 50, t: "{pet}를 입양했다. 집에 온 첫날부터 소파를 차지했다.", fx: fx({ happy: 6 }, 0, { fn: (c) => { c.meet("pet", 80); } }), hint: "행복 ↑", if: (c) => !c.person("pet") },
   { id: "gift_parents", name: "부모님 용돈", cat: "가족", a: [20, 80], price: 300, t: "부모님께 두둑하게 용돈을 드렸다.", fx: giveParents, hint: "부모님 사이 ↑", if: anyParent },
@@ -258,7 +258,7 @@ export const DAILY: Daily[] = [
   D("smartphone_lesson", [65, 92], "손주에게 스마트폰 쓰는 법을 배웠다.", fx({ intel: 2, happy: 2 }), { if: (c) => c.has("grandkid") }),
   D("long_cold", [70, 100], "감기가 한 달이나 갔다.", fx({ health: -3 }), { rep: 3, w: 4, tone: -1 }),
   D("memoir", [68, 100], "자서전을 쓰기 시작했다.", fx({ intel: 2, happy: 2 })),
-  D("old_stream", [65, 100], "은퇴했지만 가끔 방송을 켠다. 양들은 아직 남아 있다.", fx({ happy: 5 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber"), w: 15 }),
+  D("old_stream", [65, 100], "은퇴했지만 가끔 방송을 켠다. 네루들은 아직 남아 있다.", fx({ happy: 5 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber"), w: 15 }),
   D("hometown", [60, 95], "어릴 적 살던 동네에 가봤다. 놀이터는 그대로였다.", fx({ happy: 3 })),
   D("80th", [80, 80], "팔순 잔치를 했다. 가족들이 다 모였다.", fx({ happy: 5 }), { w: 40 }),
   D("lost_friend", [70, 98], "{f}를 먼저 떠나보냈다.", fx({ happy: -6 }, 0, { fn: (c) => { const f = c.person("friend"); if (f) f.alive = false; } }), { if: (c) => !!c.person("friend"), tone: -1 }),
@@ -269,7 +269,7 @@ export const DAILY: Daily[] = [
   D("fall", [72, 100], "빙판길에서 넘어져 한동안 깁스를 했다.", fx({ health: -5, happy: -2 }), { tone: -1 }),
   // 늑대
   D("wolf1", [12, 25], "늑대 탈을 쓴 꿈을 꿨다. 이상하게 익숙했다.", fx({}, 0, { add: ["wolf_dream1"] }), { w: 1 }),
-  D("wolf2", [16, 35], "또 늑대 꿈을 꿨다. 이번엔 누군가 '양'이라고 불렀다.", fx({}, 0, { add: ["wolf_dream2"] }), { w: 2, if: (c) => c.has("wolf_dream1") }),
+  D("wolf2", [16, 35], "또 늑대 꿈을 꿨다. 이번엔 누군가 '네루'라고 불렀다.", fx({}, 0, { add: ["wolf_dream2"] }), { w: 2, if: (c) => c.has("wolf_dream1") }),
 
   // 희귀(도감)
   R1("lottery", [20, 90], "복권 1등에 당첨됐다!!", fx({ happy: 10 }, 100000), "아주 가끔 하늘에서 돈이 떨어지면…", { w: 0.5 }),
@@ -1219,7 +1219,7 @@ export const MODS: Mod[] = [
 // ── 특수 엔딩 ──
 export const SPECIALS: Special[] = [
   { id: "wolf", title: "아무도 몰랐던 늑대 유진", text: "평생 사람인 척 살았지만, 마지막 보름달 아래서 유진은 원래 모습으로 돌아갔어요.", hint: "늑대 꿈을 끝까지 따라가면…", pr: 100, if: (c) => c.has("wolf_dream3") },
-  { id: "true_vtuber", title: "진짜 버튜버가 된 유진", text: "양들과 함께한 방송이 평생의 자랑이 됐어요.", hint: "방송을 놓지 않고 팬들에게 이름을 붙여주면…", pr: 80, if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && c.has("yangs") && c.s.fame >= 55 },
+  { id: "true_vtuber", title: "진짜 버튜버가 된 유진", text: "네루들과 함께한 방송이 평생의 자랑이 됐어요.", hint: "방송을 놓지 않고 팬들에게 이름을 붙여주면…", pr: 80, if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && c.has("yangs") && c.s.fame >= 55 },
   { id: "centenarian", title: "백 살 유진", text: "한 세기를 꽉 채워 살았어요. 생일 케이크 초가 모자랐어요.", hint: "아주아주 오래 살면…", pr: 75, if: (c) => c.age >= 100 },
   { id: "prodigal", title: "재벌가의 탕아 유진", text: "모든 걸 가지고 태어났지만, 모든 걸 잃고 떠났어요.", hint: "모든 걸 가지고 태어나 모든 걸 잃으면…", pr: 70, if: (c) => c.s.house === "rich" && c.net() < 0 },
   { id: "rags_riches", title: "단칸방에서 빌딩까지 올라간 유진", text: "단칸방 창문으로 보던 빌딩이 결국 유진의 것이 됐어요.", hint: "가장 낮은 곳에서 가장 높은 곳으로 가면…", pr: 70, if: (c) => c.s.house === "poor" && c.net() >= 300000 },

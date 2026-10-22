@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ArrowRight, Baby, BookOpen, Briefcase, Check, Coins, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dog,
   Flower2, GitFork, GraduationCap, Heart, HeartPulse, Lock, LogIn, MessageCircle, Pause, Play, RotateCcw, ShoppingBag,
-  SkipForward, Sparkles, Sprout, Star, Stethoscope, Target, TrendingDown, TrendingUp, Trophy, UserRound, Users, Wallet,
+  SkipForward, Sparkles, X, Sprout, Star, Stethoscope, Target, TrendingDown, TrendingUp, Trophy, UserRound, Users, Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { startLogin, useAuth } from "../../lib/auth";
@@ -425,8 +425,8 @@ function HouseIcon({ tier }: { tier: number }) {
 
 /* ── 진행 ── */
 // 한 해 보여주는 시간: 기록 한 줄마다 ENTRY_MS, 한 해가 끝나고 머무는 시간 HOLD_MS(배속으로 나눔). "skip"은 다음 결정까지 빨리 감기
-const ENTRY_MS = 950;
-const HOLD_MS = 1250;
+const ENTRY_MS = 1500;
+const HOLD_MS = 2100;
 
 const KIND_ICON: Record<LogEntry["k"], LucideIcon> = {
   life: Sprout, day: Sparkles, rare: Star, fork: GitFork, pick: GitFork, job: Briefcase, money: Coins, people: Users, buy: ShoppingBag,
@@ -489,6 +489,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const [speed, setSpeed] = useState<number>(1);
   const [skip, setSkip] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [rolling, setRolling] = useState<Rolling | null>(null);
@@ -517,8 +518,9 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   }, [drained, run]);
 
   // 한 줄씩 보여주기 → 한 해 넘기기
+  const halt = paused || shopOpen;
   useEffect(() => {
-    if (paused || rolling) return;
+    if (halt || rolling) return;
     if (nShown < yearEntries.length) {
       const t = setTimeout(() => {
         setShown(nShown + 1);
@@ -535,7 +537,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       }, wait);
       return () => clearTimeout(t);
     }
-  }, [paused, rolling, nShown, yearEntries.length, ci, last, k]);
+  }, [halt, rolling, nShown, yearEntries.length, ci, last, k]);
 
   function merge(next: Run) {
     setLog((c) => c.slice(0, next.logFrom).concat(next.log));
@@ -544,7 +546,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
 
   // 다 보여줬고 결정도 없으면 다음 해 받아오기
   useEffect(() => {
-    if (!drained || paused || rolling || ended || run.pending || fetching || busy || err) return;
+    if (!drained || halt || rolling || ended || run.pending || fetching || busy || err) return;
     let alive = true;
     setFetching(true);
     const years = skip ? 3 : speed >= 4 ? 2 : 1;
@@ -571,7 +573,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       setFetching(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drained, paused, rolling, ended, run.pending, busy, err]);
+  }, [drained, halt, rolling, ended, run.pending, busy, err]);
 
   // 결정이 나오면 빨리 감기 끝
   useEffect(() => {
@@ -673,7 +675,14 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const timeline = useMemo(() => log.filter((e) => e.age < age && e.k !== "pick").slice(-80).reverse(), [log, age]);
   const visibleNow = yearEntries.slice(0, nShown);
   const luck = row[7] ?? 3;
-  const canShop = drained && !rolling && !ended;
+  const canShop = ci >= last && !rolling && !ended && !fetching;
+  function openShop() {
+    // 상점을 열면 그 해를 다 보여주고 멈춤
+    setCur(last);
+    setShown(999);
+    revealedAt.current = Date.now();
+    setShopOpen(true);
+  }
 
   return (
     <div className={styles.play}>
@@ -842,7 +851,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
 
         <PeopleCard people={view.people} />
 
-        <ShopCard run={view} lobby={lobby} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onFund={onFund} />
+        <ShopCard run={view} lobby={lobby} busy={busy || fetching} onOpen={openShop} onFund={onFund} />
 
         <button type="button" className="btn btn-ghost btn-sm" onClick={onExit}>
           <ArrowLeft size={14} aria-hidden="true" />
@@ -850,6 +859,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
         </button>
       </aside>
       <Feed items={timeline} className={styles.feedArea} />
+      {shopOpen && <ShopModal run={run} lobby={lobby} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onClose={() => setShopOpen(false)} />}
     </div>
   );
 }
@@ -993,54 +1003,31 @@ function PeopleCard({ people }: { people: Person[] }) {
   );
 }
 
-function ShopCard({ run, lobby, canShop, busy, onBuy, onFund }: {
-  run: Run; lobby: Lobby; canShop: boolean; busy: boolean;
-  onBuy: (id: string, pay: "cash" | "points", name: string, price: number) => void; onFund: (id: string) => void;
+function ShopCard({ run, lobby, busy, onOpen, onFund }: {
+  run: Run; lobby: Lobby; busy: boolean; onOpen: () => void; onFund: (id: string) => void;
 }) {
-  const cats = useMemo(() => [...new Set(run.shop.map((s) => s.cat))], [run.shop]);
-  const [cat, setCat] = useState<string | null>(null);
-  const curCat = cat && cats.includes(cat) ? cat : cats[0];
-  const items = run.shop.filter((s) => s.cat === curCat);
   const ptsLeft = run.pointsLimit - run.pointsUsed;
-  const cash = run.money.cash + run.money.invest;
+  const kid = run.age < 15;
+  const ready = run.shop.filter((s) => !s.off).length;
   return (
     <section className={styles.card}>
       <div className={styles.cardHead}>
-        <h3>{run.age < 15 ? "보호자 지원" : "돈쓰기"}</h3>
+        <h3>{kid ? "보호자 지원" : "돈쓰기"}</h3>
         <span className={styles.muted}>
           포인트 <b className="num">{ptsLeft}</b>/{run.pointsLimit}번
         </span>
       </div>
-      {!canShop && <p className={styles.shopNote}>한 해가 다 지나가거나 결정할 때 살 수 있어요. 일시정지해도 돼요.</p>}
-      <div className={styles.catTabs}>
-        {cats.map((c) => (
-          <button key={c} type="button" className={c === curCat ? styles.catOn : ""} onClick={() => setCat(c)}>
-            {c}
-          </button>
-        ))}
-      </div>
-      <ul className={styles.shopList}>
-        {items.map((it) => (
-          <li key={it.id}>
-            <div className={styles.shopInfo}>
-              <b>{it.name}</b>
-              <span>{it.hint}</span>
-            </div>
-            <div className={styles.shopBtns}>
-              {!it.child && run.age >= 15 && (
-                <button type="button" className={styles.buyBtn} disabled={!canShop || busy || !!it.off || cash < it.price} onClick={() => onBuy(it.id, "cash", it.name, it.price)}>
-                  {won(it.price)}
-                </button>
-              )}
-              <button type="button" className={`${styles.buyBtn} ${styles.buyPts}`} disabled={!canShop || busy || !!it.off || ptsLeft <= 0 || (!run.isTest && lobby.balance < it.price)} onClick={() => onBuy(it.id, "points", it.name, it.price)}>
-                {run.isTest ? "0" : fmt(it.price)}P
-              </button>
-            </div>
-            {it.off && <span className={styles.shopOff}>{it.off}</span>}
-          </li>
-        ))}
-      </ul>
-      {run.age >= 15 && (
+      <button type="button" className={styles.shopOpen} onClick={onOpen}>
+        <ShoppingBag size={18} aria-hidden="true" />
+        <span>
+          <b>{kid ? "보호자가 사주기" : "상점 열기"}</b>
+          <small>
+            {kid ? "포인트로만 살 수 있어요" : `보유 ${won(run.money.cash + run.money.invest)}`} · 살 수 있는 것 {ready}개
+          </small>
+        </span>
+        <ArrowRight size={16} aria-hidden="true" />
+      </button>
+      {!kid && (
         <div className={styles.fund}>
           <span className={styles.fundLabel}>여유자금 굴리기</span>
           <div className={styles.fundBtns}>
@@ -1054,6 +1041,76 @@ function ShopCard({ run, lobby, canShop, busy, onBuy, onFund }: {
         </div>
       )}
     </section>
+  );
+}
+
+function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
+  run: Run; lobby: Lobby; canShop: boolean; busy: boolean;
+  onBuy: (id: string, pay: "cash" | "points", name: string, price: number) => void; onClose: () => void;
+}) {
+  const cats = useMemo(() => [...new Set(run.shop.map((s) => s.cat))], [run.shop]);
+  const [cat, setCat] = useState<string | null>(null);
+  const curCat = cat && cats.includes(cat) ? cat : cats[0];
+  const items = run.shop.filter((s) => s.cat === curCat);
+  const ptsLeft = run.pointsLimit - run.pointsUsed;
+  const cash = run.money.cash + run.money.invest;
+  const kid = run.age < 15;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  return (
+    <div className={styles.modalBack} onClick={onClose}>
+      <div className={styles.modal} role="dialog" aria-modal="true" aria-label="돈쓰기" onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHead}>
+          <div>
+            <h3>{kid ? "보호자 지원" : "돈쓰기"}</h3>
+            <span className={styles.muted}>
+              {run.age}세 · {kid ? "포인트로만" : <>보유 <b className="num">{won(cash)}</b></>} · 포인트 <b className="num">{ptsLeft}</b>/{run.pointsLimit}번
+              {!run.isTest && <> · 내 포인트 <b className="num">{fmt(lobby.balance)}P</b></>}
+            </span>
+          </div>
+          <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="닫기">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className={styles.catTabs}>
+          {cats.map((c) => (
+            <button key={c} type="button" className={c === curCat ? styles.catOn : ""} onClick={() => setCat(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <ul className={styles.shopGrid}>
+          {items.map((it) => (
+            <li key={it.id} className={it.off ? styles.shopDim : ""}>
+              <div className={styles.shopInfo}>
+                <b>{it.name}</b>
+                <span>{it.hint}</span>
+                {it.off && <span className={styles.shopOff}>{it.off}</span>}
+              </div>
+              <div className={styles.shopBtns}>
+                {!it.child && !kid && (
+                  <button type="button" className={styles.buyBtn} disabled={!canShop || busy || !!it.off || cash < it.price} onClick={() => onBuy(it.id, "cash", it.name, it.price)}>
+                    {won(it.price)}
+                  </button>
+                )}
+                <button type="button" className={`${styles.buyBtn} ${styles.buyPts}`} disabled={!canShop || busy || !!it.off || ptsLeft <= 0 || (!run.isTest && lobby.balance < it.price)} onClick={() => onBuy(it.id, "points", it.name, it.price)}>
+                  {run.isTest ? "0" : fmt(it.price)}P
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className={styles.fine}>상점이 열려 있는 동안은 시간이 멈춰요 · 1만원 = 1P</p>
+      </div>
+    </div>
   );
 }
 
