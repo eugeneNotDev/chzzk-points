@@ -84,6 +84,8 @@ export type State = {
   school: string; // 지금 상태 글(예: "고등학생", "취준생")
   score: string | null; // 수능 결과
   until: number; // 학교가 끝나는 나이
+  rank?: number; // 지금 직업 안에서의 등급(0부터)
+  rankSince?: number; // 그 등급이 된 나이
   fame: number; // 방송·창작 인지도 0~100
   biz: number; // 가게 경기 0~100
   army: number; // 남은 군 복무 해

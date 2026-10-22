@@ -16,7 +16,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-import { advance, buy, choose, netWorth, setFocus, setFund, shopList, stageOf, startRun } from "./engine.ts";
+import { advance, buy, choose, jobTitle, netWorth, setFocus, setFund, shopList, stageOf, startRun } from "./engine.ts";
 import { DAILY, FOCUSES, FUNDS, HOUSES, ITEMS, JOBS, MODS, SPECIALS } from "./content.ts";
 import type { Entry, HouseId, State, Stats } from "./types.ts";
 
@@ -66,7 +66,7 @@ function view(r: Row, from: number, itemLimit: number) {
       income: s.income, expense: s.expense, ret: s.ret,
     },
     job: s.job,
-    jobName: JOBS.find((j) => j.id === s.job)?.name ?? null,
+    jobName: jobTitle(s),
     salary: s.salary,
     school: s.school,
     edu: s.edu,

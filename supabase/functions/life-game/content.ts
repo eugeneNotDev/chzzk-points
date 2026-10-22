@@ -68,30 +68,30 @@ export const FOCUSES: Focus[] = [
 // ── 직업 ──
 const eduRank = (c: Ctx) => ({ none: 0, high: 1, local: 2, inseoul: 3, top: 4, grad: 5 })[c.s.edu];
 export const JOBS: Job[] = [
-  { id: "alba", name: "편의점 알바", cat: "직장", hint: "누구나 한 번쯤은…", req: (c) => c.age >= 17, roll: "charm", dc: 4, pay: 1600, growth: 0.01, cap: 2200 },
-  { id: "delivery", name: "배달 기사", cat: "직장", hint: "돈이 급하면…", req: (c) => c.age >= 19, roll: "health", dc: 5, pay: 3200, growth: 0.01, cap: 4200, fy: { health: -1 } },
-  { id: "office", name: "회사원", cat: "직장", hint: "평범하게 공부하면…", req: (c) => eduRank(c) >= 2 || c.st("intel") >= 55, roll: "intel", dc: 7, pay: 3600, growth: 0.04, cap: 9000, retire: 60, fy: { happy: -1 } },
-  { id: "bigcorp", name: "대기업 직원", cat: "직장", hint: "좋은 대학을 나오면…", req: (c) => eduRank(c) >= 3, roll: "intel", dc: 10, pay: 5200, growth: 0.05, cap: 15000, retire: 58, fy: { happy: -1, health: -1 } },
-  { id: "civil", name: "공무원", cat: "직장", hint: "안정을 원하면…", req: (c) => c.st("intel") >= 45, roll: "intel", dc: 10, pay: 3100, growth: 0.035, cap: 7500, retire: 62 },
-  { id: "teacher", name: "선생님", cat: "직장", hint: "대학을 나와서 아이들을 좋아하면…", req: (c) => eduRank(c) >= 2, roll: "intel", dc: 10, pay: 3300, growth: 0.03, cap: 8000, retire: 62, fy: { charm: 1 } },
-  { id: "dev", name: "개발자", cat: "직장", hint: "게임도 좋아하고 머리도 좋으면…", req: (c) => c.st("intel") >= 55 && (c.has("game") || c.has("own_pc") || eduRank(c) >= 2), roll: "intel", dc: 9, pay: 4500, growth: 0.05, cap: 14000, retire: 55, fy: { health: -1 } },
-  { id: "chef", name: "요리사", cat: "직장", hint: "요리에 눈을 뜨면…", req: (c) => c.has("cook"), roll: "talent", dc: 7, pay: 2800, growth: 0.03, cap: 6500, retire: 65 },
-  { id: "doctor", name: "의사", cat: "전문직", hint: "의대에 가면…", req: (c) => c.has("med") && !c.has("in_college"), roll: "intel", dc: 8, pay: 7000, growth: 0.08, cap: 30000, retire: 70 },
-  { id: "lawyer", name: "변호사", cat: "전문직", hint: "명문대에서 공부를 아주 잘하면…", req: (c) => eduRank(c) >= 4 && c.st("intel") >= 70, roll: "intel", dc: 12, pay: 7000, growth: 0.06, cap: 25000, retire: 70, fy: { happy: -1 } },
-  { id: "professor", name: "교수", cat: "전문직", hint: "대학원까지 가면…", req: (c) => c.s.edu === "grad", roll: "intel", dc: 11, pay: 6000, growth: 0.03, cap: 12000, retire: 65, fy: { intel: 1 } },
-  { id: "athlete", name: "운동선수", cat: "전문직", hint: "운동을 잘하고 튼튼하면…", req: (c) => c.has("sporty") && c.st("health") >= 65 && c.age <= 26, roll: "health", dc: 10, pay: 5000, growth: 0.08, cap: 20000, retire: 35 },
-  { id: "illustrator", name: "일러스트레이터", cat: "방송·예술", hint: "공책에 낙서를 많이 하면…", req: (c) => c.has("artsy"), roll: "talent", dc: 8, pay: 2400, growth: 0.05, cap: 8000 },
-  { id: "voice", name: "성우", cat: "방송·예술", hint: "끼와 매력이 둘 다 있으면…", req: (c) => c.st("talent") >= 55 && c.st("charm") >= 45, roll: "talent", dc: 10, pay: 3000, growth: 0.05, cap: 9000 },
-  { id: "vtuber", name: "버튜버", cat: "방송·예술", hint: "방송을 꿈꾸게 되면…", req: (c) => c.has("broadcast"), roll: "talent", dc: 6, pay: 0, creator: 1 },
-  { id: "streamer", name: "게임 스트리머", cat: "방송·예술", hint: "게임을 너무 좋아하면…", req: (c) => c.has("game") && c.has("broadcast"), roll: "charm", dc: 7, pay: 0, creator: 0.85 },
-  { id: "singer", name: "가수", cat: "방송·예술", hint: "음악을 놓지 않으면…", req: (c) => c.has("music") && c.st("talent") >= 55, roll: "talent", dc: 10, pay: 0, creator: 1.1 },
-  { id: "idol", name: "아이돌", cat: "방송·예술", hint: "연습생이 되면…", req: (c) => c.has("trainee") && c.age <= 25, roll: "charm", dc: 10, pay: 0, creator: 1.5, retire: 34 },
-  { id: "writer", name: "웹소설 작가", cat: "방송·예술", hint: "책을 많이 읽으면…", req: (c) => c.has("bookworm") && c.st("intel") >= 45, roll: "intel", dc: 8, pay: 0, creator: 0.7 },
-  { id: "gukbap", name: "국밥집 사장", cat: "자영업", hint: "요리를 좋아하고 가게를 차리면…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true },
-  { id: "cafe", name: "카페 사장", cat: "자영업", hint: "여유 있게 가게를 차리면…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true },
-  { id: "chicken", name: "치킨집 사장", cat: "자영업", hint: "누구나 한 번은 꿈꾸는…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true },
-  { id: "farmer", name: "귀농 농부", cat: "자영업", hint: "도시가 지칠 때쯤…", req: () => false, roll: "health", dc: 0, pay: 2000, growth: 0.01, cap: 3000, fy: { health: 1, happy: 1 } },
-  { id: "ceo", name: "재벌 회장", cat: "자영업", hint: "재벌가에서 회사를 물려받으면…", req: () => false, roll: "intel", dc: 0, pay: 15000, growth: 0.04, cap: 40000, fy: { happy: -1 } },
+  { id: "alba", name: "편의점 알바", cat: "직장", hint: "누구나 한 번쯤은…", req: (c) => c.age >= 17, roll: "charm", dc: 4, pay: 1600, growth: 0.01, cap: 2200 , ranks: ["편의점 알바생", "고참 알바생", "편의점 매니저"] },
+  { id: "delivery", name: "배달 기사", cat: "직장", hint: "돈이 급하면…", req: (c) => c.age >= 19, roll: "health", dc: 5, pay: 3200, growth: 0.01, cap: 4200, fy: { health: -1 } , ranks: ["초보 배달 기사", "배달 기사", "베테랑 배달 기사", "배달의 신"] },
+  { id: "office", name: "회사원", cat: "직장", hint: "평범하게 공부하면…", req: (c) => eduRank(c) >= 2 || c.st("intel") >= 55, roll: "intel", dc: 7, pay: 3600, growth: 0.04, cap: 9000, retire: 60, fy: { happy: -1 } , ranks: ["인턴", "사원", "대리", "과장", "차장", "부장", "임원"] },
+  { id: "bigcorp", name: "대기업 직원", cat: "직장", hint: "좋은 대학을 나오면…", req: (c) => eduRank(c) >= 3, roll: "intel", dc: 10, pay: 5200, growth: 0.05, cap: 15000, retire: 58, fy: { happy: -1, health: -1 } , ranks: ["대기업 신입사원", "대기업 대리", "대기업 과장", "대기업 차장", "대기업 부장", "대기업 상무", "대기업 사장"] },
+  { id: "civil", name: "공무원", cat: "직장", hint: "안정을 원하면…", req: (c) => c.st("intel") >= 45, roll: "intel", dc: 10, pay: 3100, growth: 0.035, cap: 7500, retire: 62 , ranks: ["9급 공무원", "7급 공무원", "6급 주무관", "5급 사무관", "4급 서기관", "3급 국장"] },
+  { id: "teacher", name: "선생님", cat: "직장", hint: "대학을 나와서 아이들을 좋아하면…", req: (c) => eduRank(c) >= 2, roll: "intel", dc: 10, pay: 3300, growth: 0.03, cap: 8000, retire: 62, fy: { charm: 1 } , ranks: ["기간제 교사", "정교사", "부장 교사", "교감 선생님", "교장 선생님"] },
+  { id: "dev", name: "개발자", cat: "직장", hint: "게임도 좋아하고 머리도 좋으면…", req: (c) => c.st("intel") >= 55 && (c.has("game") || c.has("own_pc") || eduRank(c) >= 2), roll: "intel", dc: 9, pay: 4500, growth: 0.05, cap: 14000, retire: 55, fy: { health: -1 } , ranks: ["주니어 개발자", "개발자", "시니어 개발자", "테크 리드", "CTO"] },
+  { id: "chef", name: "요리사", cat: "직장", hint: "요리에 눈을 뜨면…", req: (c) => c.has("cook"), roll: "talent", dc: 7, pay: 2800, growth: 0.03, cap: 6500, retire: 65 , ranks: ["막내 요리사", "라인 쿡", "부주방장", "수석 셰프", "스타 셰프"] },
+  { id: "doctor", name: "의사", cat: "전문직", hint: "의대에 가면…", req: (c) => c.has("med") && !c.has("in_college"), roll: "intel", dc: 8, pay: 7000, growth: 0.08, cap: 30000, retire: 70 , ranks: ["인턴 의사", "레지던트", "전문의", "의대 교수", "병원장"] },
+  { id: "lawyer", name: "변호사", cat: "전문직", hint: "명문대에서 공부를 아주 잘하면…", req: (c) => eduRank(c) >= 4 && c.st("intel") >= 70, roll: "intel", dc: 12, pay: 7000, growth: 0.06, cap: 25000, retire: 70, fy: { happy: -1 } , ranks: ["신입 변호사", "어소시에이트 변호사", "파트너 변호사", "대표 변호사"] },
+  { id: "professor", name: "교수", cat: "전문직", hint: "대학원까지 가면…", req: (c) => c.s.edu === "grad", roll: "intel", dc: 11, pay: 6000, growth: 0.03, cap: 12000, retire: 65, fy: { intel: 1 } , ranks: ["시간강사", "조교수", "부교수", "정교수", "총장"] },
+  { id: "athlete", name: "운동선수", cat: "전문직", hint: "운동을 잘하고 튼튼하면…", req: (c) => c.has("sporty") && c.st("health") >= 65 && c.age <= 26, roll: "health", dc: 10, pay: 5000, growth: 0.08, cap: 20000, retire: 35 , ranks: ["2군 선수", "1군 선수", "주전 선수", "국가대표", "레전드 선수"] },
+  { id: "illustrator", name: "일러스트레이터", cat: "방송·예술", hint: "공책에 낙서를 많이 하면…", req: (c) => c.has("artsy"), roll: "talent", dc: 8, pay: 2400, growth: 0.05, cap: 8000 , ranks: ["습작 일러스트레이터", "프리랜서 일러스트레이터", "인기 일러스트레이터", "스타 일러스트레이터"] },
+  { id: "voice", name: "성우", cat: "방송·예술", hint: "끼와 매력이 둘 다 있으면…", req: (c) => c.st("talent") >= 55 && c.st("charm") >= 45, roll: "talent", dc: 10, pay: 3000, growth: 0.05, cap: 9000 , ranks: ["신인 성우", "조연 성우", "주연 성우", "국민 성우"] },
+  { id: "vtuber", name: "버튜버", cat: "방송·예술", hint: "방송을 꿈꾸게 되면…", req: (c) => c.has("broadcast"), roll: "talent", dc: 6, pay: 0, creator: 1 , ranks: ["갓 데뷔한 버튜버", "하꼬 버튜버", "중소 버튜버", "중견 버튜버", "대형 버튜버", "레전드 버튜버"], rankAt: [0, 8, 22, 40, 62, 85] },
+  { id: "streamer", name: "게임 스트리머", cat: "방송·예술", hint: "게임을 너무 좋아하면…", req: (c) => c.has("game") && c.has("broadcast"), roll: "charm", dc: 7, pay: 0, creator: 0.85 , ranks: ["하꼬 스트리머", "중소 스트리머", "중견 스트리머", "대형 스트리머", "탑 스트리머"], rankAt: [0, 15, 35, 60, 85] },
+  { id: "singer", name: "가수", cat: "방송·예술", hint: "음악을 놓지 않으면…", req: (c) => c.has("music") && c.st("talent") >= 55, roll: "talent", dc: 10, pay: 0, creator: 1.1 , ranks: ["무명 가수", "인디 가수", "라이징 가수", "인기 가수", "국민 가수"], rankAt: [0, 15, 35, 60, 85] },
+  { id: "idol", name: "아이돌", cat: "방송·예술", hint: "연습생이 되면…", req: (c) => c.has("trainee") && c.age <= 25, roll: "charm", dc: 10, pay: 0, creator: 1.5, retire: 34 , ranks: ["데뷔조 아이돌", "신인 아이돌", "라이징 아이돌", "인기 아이돌", "월드스타"], rankAt: [0, 10, 30, 55, 80] },
+  { id: "writer", name: "웹소설 작가", cat: "방송·예술", hint: "책을 많이 읽으면…", req: (c) => c.has("bookworm") && c.st("intel") >= 45, roll: "intel", dc: 8, pay: 0, creator: 0.7 , ranks: ["무료연재 작가", "유료연재 작가", "인기 작가", "베스트셀러 작가", "대작가"], rankAt: [0, 15, 35, 60, 85] },
+  { id: "gukbap", name: "국밥집 사장", cat: "자영업", hint: "요리를 좋아하고 가게를 차리면…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true , ranks: ["동네 국밥집 사장", "맛집 국밥집 사장", "국밥 체인 대표", "국밥 프랜차이즈 회장"], rankAt: [0, 58, 80, 95] },
+  { id: "cafe", name: "카페 사장", cat: "자영업", hint: "여유 있게 가게를 차리면…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true , ranks: ["동네 카페 사장", "핫플 카페 사장", "카페 체인 대표", "카페 프랜차이즈 회장"], rankAt: [0, 58, 80, 95] },
+  { id: "chicken", name: "치킨집 사장", cat: "자영업", hint: "누구나 한 번은 꿈꾸는…", req: () => false, roll: "intel", dc: 0, pay: 0, biz: true , ranks: ["동네 치킨집 사장", "맛집 치킨집 사장", "치킨 체인 대표", "치킨 브랜드 회장"], rankAt: [0, 58, 80, 95] },
+  { id: "farmer", name: "귀농 농부", cat: "자영업", hint: "도시가 지칠 때쯤…", req: () => false, roll: "health", dc: 0, pay: 2000, growth: 0.01, cap: 3000, fy: { health: 1, happy: 1 } , ranks: ["초보 농부", "베테랑 농부", "스마트팜 대표"] },
+  { id: "ceo", name: "재벌 회장", cat: "자영업", hint: "재벌가에서 회사를 물려받으면…", req: () => false, roll: "intel", dc: 0, pay: 15000, growth: 0.04, cap: 40000, fy: { happy: -1 } , ranks: ["재벌 후계자", "재벌 부회장", "재벌 회장"] },
 ];
 
 // ── 상점(돈쓰기) — 15세 전은 보호자가 포인트로만 ──
@@ -940,14 +940,14 @@ export const FORKS: Fork[] = [
 
   // ── 일·돈 ──
   {
-    id: "promo", a: [28, 58], rep: 4, w: 14, tag: "일", t: "승진 심사가 다가왔다.", if: salaried,
+    id: "promo", a: [28, 58], rep: 4, w: 14, tag: "일", t: "승진 심사가 다가왔다.", if: (c) => salaried(c) && (c.s.rank ?? 0) < (JOBS.find((j) => j.id === c.s.job)?.ranks?.length ?? 1) - 1,
     opts: [
       dice("밤새 준비한다", "intel", {
-        great: R("특진했다! 연봉이 크게 올랐다.", fx({ happy: 6, health: -1 }, 0, { fn: (c) => (c.s.salary = Math.round(c.s.salary * 1.25)) }), true),
-        good: R("승진했다.", fx({ happy: 4, health: -1 }, 0, { fn: (c) => (c.s.salary = Math.round(c.s.salary * 1.12)) })),
+        great: R("특진 심사를 통과했다!", fx({ happy: 2, health: -1 }, 0, { fn: (c) => { if (!c.promote(2)) c.s.salary = Math.round(c.s.salary * 1.2); } }), true),
+        good: R("심사를 통과했다.", fx({ health: -1 }, 0, { fn: (c) => { if (!c.promote(1)) c.s.salary = Math.round(c.s.salary * 1.1); } })),
         bad: R("이번에도 누락됐다.", fx({ happy: -4, health: -1 })),
       }, { bonus: (c) => (c.s.focus === "work" ? 2 : 0) }),
-      pick("될 대로 되라", R("결과를 기다렸다.", fx({}, 0, { fn: (c) => { if (c.chance(0.3)) c.s.salary = Math.round(c.s.salary * 1.08); } }))),
+      pick("될 대로 되라", R("결과를 기다렸다.", fx({}, 0, { fn: (c) => { if (c.chance(0.3)) c.promote(1); } }))),
     ],
   },
   {

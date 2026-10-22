@@ -69,7 +69,16 @@ export type Job = {
   biz?: boolean; // 가게(경기)로 버는 직업
   retire?: number; // 이 나이 즈음 자연스럽게 그만둠
   fy?: Partial<Stats>; // 일하는 동안 해마다 조금씩
+  ranks?: string[]; // 같은 직업 안의 등급 이름(하꼬 버튜버 → 대형 버튜버 …)
+  rankAt?: number[]; // 인지도(방송)·경기(가게)로 오르는 직업이면 등급마다 필요한 값
 };
+
+// 지금 직업의 등급 이름(등급이 없으면 직업 이름)
+export function jobTitle(s: State): string | null {
+  const j = JOBS.find((x) => x.id === s.job);
+  if (!j) return null;
+  return j.ranks ? j.ranks[Math.min(s.rank ?? 0, j.ranks.length - 1)] : j.name;
+}
 export type Item = {
   id: string;
   name: string;
@@ -243,8 +252,11 @@ export class Ctx {
     this.s.job = j.id;
     this.s.jobSince = this.s.age;
     this.s.salary = Math.round(j.pay * payMul);
-    this.s.school = j.name;
-    this.s.jobs.push({ id: j.id, name: j.name, age: this.s.age });
+    this.s.rank = 0;
+    this.s.rankSince = this.s.age;
+    const title = jobTitle(this.s) ?? j.name;
+    this.s.school = title;
+    this.s.jobs.push({ id: j.id, name: title, age: this.s.age });
     this.add("worked");
     this.del("jobless");
   }
@@ -253,8 +265,29 @@ export class Ctx {
     this.s.salary = 0;
     this.s.school = label;
   }
+  // 등급 올리기(월급쟁이는 월급도 오름). 올랐으면 새 등급 이름을 돌려줌
+  promote(n = 1, why: "promo" | "fame" | "biz" = "promo"): string | null {
+    const j = JOBS.find((x) => x.id === this.s.job);
+    if (!j?.ranks) return null;
+    const before = this.s.rank ?? 0;
+    const after = Math.min(j.ranks.length - 1, before + n);
+    if (after <= before) return null;
+    this.s.rank = after;
+    this.s.rankSince = this.s.age;
+    if (why === "promo") this.s.salary = Math.round(this.s.salary * Math.pow(1.12, after - before));
+    const title = j.ranks[after];
+    this.s.school = title;
+    this.s.jobs.push({ id: j.id, name: title, age: this.s.age });
+    const msg = why === "fame"
+      ? `인기가 오르면서 어엿한 ${josa(title, "가")} 됐다!`
+      : why === "biz"
+      ? `가게가 커져서 이제 ${josa(title, "라고")} 불린다!`
+      : `승진했다! 이제 ${josa(title, "이다")}.`;
+    this.log("job", msg, { hl: true, d: this.stat({ happy: 4 }) });
+    return title;
+  }
   jobName() {
-    return JOBS.find((x) => x.id === this.s.job)?.name ?? null;
+    return jobTitle(this.s);
   }
   // 글 안의 {p} {f} {c} {mom} {dad} {pet} {job} 바꾸기
   fmt(t: Text): string {
@@ -393,10 +426,11 @@ function jobIncome(c: Ctx): number {
     const dF = { great: 12, good: 5, normal: 1, bad: -3, terrible: -9 }[r.tier];
     const before = s.fame;
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
-    if (r.tier === "great") c.log("job", s.fame >= 60 ? "영상 하나가 터져서 구독자가 확 늘었다." : "방송이 입소문을 타기 시작했다.", { roll: r, hl: true });
+    if (r.tier === "great") c.log("job", s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다.", { roll: r, hl: true });
     else if (r.tier === "terrible") c.log("job", "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r, d: c.stat({ happy: -5 }) });
     if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
-    if (before < 70 && s.fame >= 70) c.log("job", "구독자 100만을 넘었다. 은색 버튼… 아니 금색 버튼이 왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
+    if (before < 70 && s.fame >= 70) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
+    rankByValue(c, j, s.fame, "fame");
     // 아직 작은 방송인은 알바를 병행해서 최소한은 범
     return Math.max(s.fame < 30 ? 1300 : 0, Math.round((150 + s.fame * s.fame * 2.6) * j.creator * (0.6 + c.rnd() * 0.8)));
   }
@@ -405,12 +439,26 @@ function jobIncome(c: Ctx): number {
     s.biz = clamp(Math.round(s.biz + { great: 14, good: 6, normal: 0, bad: -6, terrible: -15 }[r.tier] + (40 - s.biz) * 0.1), 0, 100);
     if (r.tier === "great") c.log("job", "가게 앞에 줄이 생겼다.", { roll: r, hl: true });
     if (r.tier === "terrible") c.log("job", "근처에 같은 가게가 세 곳이나 생겼다.", { roll: r });
+    rankByValue(c, j, s.biz, "biz");
     return Math.round((s.biz - 28) * 75);
   }
-  // 월급쟁이: 해마다 오르고, 일 집중이면 더
+  // 월급쟁이: 해마다 오르고, 일 집중이면 더. 한 등급에 4년 넘게 있으면 가끔 승진
+  if (j.ranks && s.age - (s.rankSince ?? s.jobSince) >= 4 && c.chance(0.14 + (s.focus === "work" ? 0.12 : 0) + statMod(s.stats.intel) * 0.02)) c.promote(1);
   const g = (j.growth ?? 0.03) + (s.focus === "work" ? 0.02 : 0);
-  s.salary = Math.min(j.cap ?? 99999, Math.round(s.salary * (1 + g)));
+  const cap = (j.cap ?? 99999) * (1 + 0.15 * (s.rank ?? 0));
+  s.salary = Math.min(Math.round(cap), Math.round(s.salary * (1 + g)));
   return s.salary;
+}
+
+// 인지도·경기 값으로 오르는 직업의 등급(내려가진 않음)
+function rankByValue(c: Ctx, j: Job, v: number, why: "fame" | "biz") {
+  if (!j.ranks || !j.rankAt) return;
+  let target = 0;
+  j.rankAt.forEach((need, i) => {
+    if (v >= need) target = i;
+  });
+  const cur = c.s.rank ?? 0;
+  if (target > cur) c.promote(target - cur, why);
 }
 
 function livingCost(c: Ctx) {
@@ -872,7 +920,7 @@ function finish(c: Ctx) {
   const mod = MODS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;
   const sp = SPECIALS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;
   const jobId = s.job ?? s.jobs[s.jobs.length - 1]?.id ?? (s.age < 20 ? "student" : "jobless");
-  const jobName = JOBS.find((j) => j.id === jobId)?.name ?? (s.age < 20 ? "학생" : "백수");
+  const jobName = jobTitle(s) ?? s.jobs[s.jobs.length - 1]?.name ?? (s.age < 20 ? "학생" : "백수");
   const family = s.people.filter((p) => p.alive && p.role !== "pet").length;
   const friends = s.people.filter((p) => p.role === "friend").length * 3;
   const fans = Math.round(s.fame * s.fame * 0.5);
