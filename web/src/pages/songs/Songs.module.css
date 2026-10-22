@@ -510,32 +510,10 @@
     transition: none;
   }
 }
-/* 내 신청 — 줄 전체를 은은한 초록 카드로 (시안 A). 안쪽 여백을 줄여서 번호·제목 위치는 다른 줄과 같게 */
-.list li.mine {
-  margin: 6px 10px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--c-accent) 7%, transparent);
-}
-.list li.mine,
-.list li.mine + li {
-  border-top-color: transparent;
-}
-.mine > .item {
-  padding-left: 8px;
-  padding-right: 8px;
-  border-radius: 12px;
-}
-.hasReason.mine:hover {
-  background: color-mix(in srgb, var(--c-accent) 10%, transparent);
-}
+/* 내 신청 — 번호칸만 초록빛으로 */
 .mine .no {
   background: color-mix(in srgb, var(--c-accent) 18%, transparent);
   color: var(--c-accent);
-}
-.mine .bubble {
-  margin-left: 52px;
-  background: color-mix(in srgb, var(--c-accent) 6%, var(--c-surface-2));
-  border-color: color-mix(in srgb, var(--c-accent) 22%, transparent);
 }
 /* X 버튼(삭제·신청 취소) 호버 */
 .del {
@@ -553,16 +531,6 @@
   background: color-mix(in srgb, var(--c-danger) 16%, transparent);
 }
 @media (max-width: 720px) {
-  .list li.mine {
-    margin: 6px 8px;
-  }
-  .mine > .item {
-    padding-left: 6px;
-    padding-right: 6px;
-  }
-  .mine .bubble {
-    margin-left: 46px;
-  }
 }
 .entry.first.hasReason:hover {
   background:
@@ -585,8 +553,30 @@
   background: var(--c-accent);
   color: var(--c-accent-ink);
 }
-.foldSpace {
-  flex: none;
-  width: 28px;
-  height: 28px;
+/* 사유 있는 줄 — 펼칠 때 한 줄 미리보기가 접히면서 제목이 아래로 밀리던 문제:
+   위쪽 기준으로 붙여서 제목 위치를 고정하고, 나머지는 접힌 상태에서 가운데로 보이게 여백으로 맞춤 */
+.hasReason > .item {
+  align-items: flex-start;
+}
+.hasReason > .item > .no {
+  margin-top: 8px;
+}
+.hasReason > .item > .by {
+  margin-top: 4px;
+}
+.hasReason > .item > .adminBtns,
+.hasReason > .item > .cancelX {
+  margin-top: 6px;
+}
+.hasReason > .item > .fold {
+  margin-top: 9px;
+}
+@media (max-width: 720px) {
+  .hasReason > .item > .by,
+  .hasReason > .item > .adminBtns,
+  .hasReason > .item > .cancelX,
+  .hasReason > .item > .fold {
+    margin-top: 0;
+    align-self: center;
+  }
 }
