@@ -6,7 +6,7 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 1480px;
+  max-width: 1800px;
   margin: 0 auto;
 }
 .center {
@@ -580,6 +580,7 @@
   }
   .rail {
     display: flex;
+    align-items: stretch;
     position: sticky;
     top: 80px;
     max-height: calc(100vh - 96px);
@@ -2359,4 +2360,35 @@
   border-radius: 5px;
   margin-right: 6px;
   vertical-align: 1px;
+}
+
+/* 아주 넓은 화면: 양옆 칸을 넓혀서 빈 공간을 줄임 */
+@container (min-width: 1500px) {
+  .play {
+    grid-template-columns: 340px minmax(0, 1fr) 400px;
+  }
+  .focusGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 계속하기 버튼 아래 남은 시간 막대(다 차면 저절로 넘어감) */
+.contBtn {
+  position: relative;
+  overflow: hidden;
+}
+.contBar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: color-mix(in srgb, var(--c-accent-ink) 45%, transparent);
+  transform-origin: left;
+  animation: contFill linear both;
+}
+@keyframes contFill {
+  from {
+    transform: scaleX(0);
+  }
 }

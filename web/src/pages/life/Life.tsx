@@ -2,7 +2,7 @@
 // 화면 흐름: 로비 → 태어날 집 고르기(포인트) → 진행(해마다 이야기·주사위 갈림길·올해의 초점·사람·돈쓰기) → 인생 리포트, 그리고 도감.
 // 인생 진행·결과는 전부 서버(life-game)가 정하고, 화면은 받은 기록을 속도에 맞춰 한 해씩 보여주기만 함.
 // 넓은 화면에선 3단(상태·돈 / 올해 이야기·선택 / 초점·사람·쇼핑), 좁아지면 2단 → 1단으로 쌓임(컨테이너 폭 기준).
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ArrowRight, Baby, BookOpen, Briefcase, Check, Coins, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dog,
@@ -425,8 +425,9 @@ function HouseIcon({ tier }: { tier: number }) {
 
 /* ── 진행 ── */
 // 한 해 보여주는 시간: 기록 한 줄마다 ENTRY_MS, 한 해가 끝나고 머무는 시간 HOLD_MS(배속으로 나눔). "skip"은 다음 결정까지 빨리 감기
-const ENTRY_MS = 1500;
-const HOLD_MS = 2100;
+const ENTRY_MS = 1900;
+const HOLD_MS = 2800;
+const RESULT_MS = 7000; // 선택 결과를 보여주고 저절로 넘어가기까지
 
 const KIND_ICON: Record<LogEntry["k"], LucideIcon> = {
   life: Sprout, day: Sparkles, rare: Star, fork: GitFork, pick: GitFork, job: Briefcase, money: Coins, people: Users, buy: ShoppingBag,
@@ -475,7 +476,8 @@ function EntryIcon({ k }: { k: LogEntry["k"] }) {
   );
 }
 
-type Rolling = { opt: PendingOpt; text: string; phase: "ready" | "rolling" | "done"; roll?: Roll | null; result?: LogEntry | null; t0?: number };
+// 선택 결과 창: 주사위 선택이면 던지기 → 결과, 그냥 선택이면 바로 결과(plain)
+type Rolling = { opt: PendingOpt; text: string; phase: "ready" | "rolling" | "done"; roll?: Roll | null; result?: LogEntry | null; t0?: number; plain?: boolean };
 
 function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial: Run; onReport: (r: Run) => void; onExit: () => void }) {
   const qc = useQueryClient();
@@ -588,9 +590,13 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     }
     setBusy(true);
     setErr(null);
+    const text = run.pending?.text ?? "";
     try {
       const res = await chooseLife(run.id, o.key, log.length);
       merge(res.run);
+      // 결과를 선택했던 자리에서 바로 보여줌(아래로 안 내려가도 되게)
+      const result = res.run.log.find((e) => e.k !== "pick") ?? null;
+      setRolling({ opt: o, text, phase: "done", roll: null, result, plain: true });
     } catch (e) {
       setErr(lifeErrorText(e));
     } finally {
@@ -618,12 +624,12 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       setBusy(false);
     }
   }
-  function closeRoll() {
+  const closeRoll = useCallback(() => {
     setRolling(null);
-    // 결과 줄은 주사위 창에서 이미 봤으니 바로 펼침
+    // 결과 줄은 결과 창에서 이미 봤으니 바로 펼침
     setShown(999);
     revealedAt.current = Date.now();
-  }
+  }, []);
 
   async function onFocus(id: string) {
     if (fetching || busy) {
@@ -1172,9 +1178,33 @@ function DicePanel({ rolling, onThrow, onClose }: { rolling: Rolling; onThrow: (
     const t = setInterval(() => setFaces([1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)]), 70);
     return () => clearInterval(t);
   }, [rolling.phase]);
+  // 결과가 나오면 잠깐 보여주고 저절로 계속(버튼으로 바로 넘어갈 수도 있음)
+  useEffect(() => {
+    if (rolling.phase !== "done") return;
+    const t = setTimeout(onClose, RESULT_MS);
+    return () => clearTimeout(t);
+  }, [rolling.phase, onClose]);
   const r = rolling.phase === "done" ? rolling.roll : null;
   const show: [number, number] = r ? r.dice : faces;
   const mod = rolling.opt.mod ?? 0;
+  if (rolling.plain) {
+    return (
+      <section className={styles.dicePanel}>
+        <span className={styles.diceQ}>{rolling.text}</span>
+        <b className={styles.diceOpt}>{rolling.opt.text}</b>
+        {rolling.result && (
+          <div className={styles.diceResult}>
+            <p>{rolling.result.t}</p>
+            <DeltaChips d={rolling.result.d} m={rolling.result.m} />
+          </div>
+        )}
+        <button type="button" className={`btn btn-primary btn-lg ${styles.contBtn}`} onClick={onClose}>
+          계속하기
+          <span className={styles.contBar} style={{ animationDuration: `${RESULT_MS}ms` }} aria-hidden="true" />
+        </button>
+      </section>
+    );
+  }
   return (
     <section className={`${styles.dicePanel} ${r ? styles[`t_${r.tier}`] : ""}`}>
       <span className={styles.diceQ}>{rolling.text}</span>
@@ -1209,8 +1239,9 @@ function DicePanel({ rolling, onThrow, onClose }: { rolling: Rolling; onThrow: (
               <DeltaChips d={rolling.result.d} m={rolling.result.m} />
             </div>
           )}
-          <button type="button" className="btn btn-primary btn-lg" onClick={onClose}>
+          <button type="button" className={`btn btn-primary btn-lg ${styles.contBtn}`} onClick={onClose}>
             계속하기
+            <span className={styles.contBar} style={{ animationDuration: `${RESULT_MS}ms` }} aria-hidden="true" />
           </button>
         </>
       )}
