@@ -124,7 +124,7 @@ async function list(admin: Admin, me: string | null, isAdmin: boolean) {
       title: r.title,
       artist: r.artist,
       reason: r.reason ?? null,
-      requester: hidden && !mine && !isAdmin ? null : r.requester_name,
+      requester: hidden && !mine && !isAdmin ? "익명" : r.requester_name,
       anonymous: hidden,
       createdAt: r.created_at,
       mine,

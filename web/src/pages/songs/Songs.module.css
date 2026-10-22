@@ -292,9 +292,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 24px;
-  margin-top: 6px;
-  padding: 0 9px;
+  flex: none;
+  height: 28px;
+  padding: 0 11px;
   border: 1px solid var(--c-border-strong);
   border-radius: 999px;
   background: none;
@@ -402,7 +402,8 @@
     align-items: center;
   }
   .cancel {
-    margin-top: 0;
+    height: 26px;
+    margin-left: auto;
   }
   .adminBtns {
     margin-left: auto;
@@ -442,4 +443,13 @@
   padding: 0 7px;
   line-height: 1;
   justify-content: center;
+}
+/* 이름 비공개 신청자 — 다른 사람에겐 "익명", 본인·관리자에겐 이름 옆에 (익명) */
+.anon {
+  color: var(--c-text-3);
+  font-weight: 500;
+}
+.anonMark {
+  color: var(--c-text-4);
+  font-weight: 500;
 }

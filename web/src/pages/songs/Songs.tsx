@@ -13,7 +13,7 @@ import { API } from "../../lib/config";
 import styles from "./Songs.module.css";
 import { SkeletonList } from "../../components/Skeleton";
 
-type Song = { id: number; title: string; artist: string; reason: string | null; requester: string | null; createdAt: string; mine: boolean };
+type Song = { id: number; title: string; artist: string; reason: string | null; requester: string | null; anonymous?: boolean; createdAt: string; mine: boolean };
 type SongList = { items: Song[]; canRequest: boolean; requestedToday: boolean; isAdmin: boolean; loggedIn: boolean };
 type HistItem = { id: number; title: string; artist: string; reason: string | null; requester: string | null; playedAt: string };
 
@@ -263,15 +263,18 @@ export default function Songs() {
                   )}
                 </div>
                 <div className={styles.by}>
-                  <div className={styles.nm}>{it.requester || "알 수 없음"}</div>
+                  <div className={`${styles.nm} ${it.requester === "익명" ? styles.anon : ""}`} title={it.anonymous && it.requester !== "익명" ? "이름 비공개 — 다른 사람에겐 익명으로 보여요" : undefined}>
+                    {it.requester || "익명"}
+                    {it.anonymous && it.requester && it.requester !== "익명" && <span className={styles.anonMark}> (익명)</span>}
+                  </div>
                   <div className={styles.tm}>{ago(it.createdAt)}</div>
-                  {mine && (
-                    <ArmedButton className={styles.cancel} armedLabel="한 번 더 누르면 취소" title="취소하면 오늘은 다시 신청할 수 없어요" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")}>
-                      <X size={12} aria-hidden="true" />
-                      신청 취소
-                    </ArmedButton>
-                  )}
                 </div>
+                {mine && (
+                  <ArmedButton className={styles.cancel} armedLabel="한 번 더 누르면 취소" title="취소하면 오늘은 다시 신청할 수 없어요" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")}>
+                    <X size={12} aria-hidden="true" />
+                    신청 취소
+                  </ArmedButton>
+                )}
                 {s.isAdmin && (
                   <div className={styles.adminBtns}>
                     <PlayedButton
