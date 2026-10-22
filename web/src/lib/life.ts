@@ -31,7 +31,10 @@ export type Pending = { id: string; kind: "fork" | "mile" | "think" | "focus"; t
 
 export type Person = { id: number; role: "mom" | "dad" | "friend" | "partner" | "spouse" | "child" | "pet"; name: string; age: number; bond: number; alive: boolean };
 export type Asset = { id: string; name: string; value: number; kind: "home" | "car" | "thing"; age: number };
-export type ShopItem = { id: string; name: string; cat: string; price: number; hint: string; child: boolean; off: string | null; cashOk: boolean };
+export type ShopItem = {
+  id: string; name: string; cat: string; price: number; hint: string; child: boolean; off: string | null; cashOk: boolean;
+  lv: number | null; maxLv: number | null; cur: string | null; // 업그레이드식 장비면 지금 등급·최고 등급·지금 가진 것
+};
 
 export type Ending = {
   title: string; mod: string | null; modId: string | null; job: string; jobId: string; cause: "old" | "sick" | "accident"; causeText: string;

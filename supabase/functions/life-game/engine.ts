@@ -80,11 +80,18 @@ export type Item = {
   if?: (c: Ctx) => boolean;
   once?: boolean;
   cool?: number; // 다시 살 수 있을 때까지 걸리는 해(기본 1 = 한 해에 한 번)
+  tiers?: { name: string; price: number; t: string; fx?: Fx; hint: string }[]; // 업그레이드식 장비
   child?: boolean; // 15세 전 보호자 지원(포인트로만)
 };
 
 // 상점 물건을 지금 살 수 없는 이유(이미 있음 / 쿨타임)
+function gearOf(s: State, it: Item) {
+  const lv = s.seen["lv:" + it.id] ?? 0;
+  return { lv, next: it.tiers ? it.tiers[lv] ?? null : null, cur: it.tiers && lv > 0 ? it.tiers[lv - 1] : null };
+}
+
 function buyBlock(s: State, it: Item): string | null {
+  if (it.tiers && !gearOf(s, it).next) return "최고 등급이에요";
   if (it.once && s.flags.includes("own_" + it.id)) return "이미 있어요";
   const last = s.seen["buy:" + it.id];
   const cool = it.cool ?? 1;
@@ -794,9 +801,12 @@ export function setFund(s: State, id: string) {
 export function shopList(s: State) {
   const c = new Ctx(s);
   return ITEMS.filter((it) => s.age >= it.a[0] && s.age <= it.a[1] && (!it.if || it.if(c))).map((it) => {
-    const price = typeof it.price === "function" ? it.price(c) : it.price;
+    const tr = gearOf(s, it);
+    const show = tr.next ?? tr.cur;
+    const price = show ? show.price : typeof it.price === "function" ? it.price(c) : it.price;
     return {
-      id: it.id, name: it.name, cat: it.cat, price, hint: it.hint, child: !!it.child,
+      id: it.id, name: show ? show.name : it.name, cat: it.cat, price, hint: show ? show.hint : it.hint, child: !!it.child,
+      lv: it.tiers ? tr.lv : null, maxLv: it.tiers ? it.tiers.length : null, cur: tr.cur?.name ?? null,
       off: buyBlock(s, it),
       cashOk: !it.child && s.age >= 15 && s.cash + s.invest >= price,
     };
@@ -809,7 +819,8 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   if (!it || s.age < it.a[0] || s.age > it.a[1] || (it.if && !it.if(c))) return { error: "bad_item" };
   if (buyBlock(s, it)) return { error: "bought" };
   if (s.pending && s.pending.kind !== "fork" && s.pending.kind !== "mile") return { error: "bad_item" };
-  const price = typeof it.price === "function" ? it.price(c) : it.price;
+  const tr = gearOf(s, it);
+  const price = tr.next ? tr.next.price : typeof it.price === "function" ? it.price(c) : it.price;
   if (pay === "cash") {
     if (it.child || s.age < 15) return { error: "points_only" };
     if (s.cash + s.invest < price) return { error: "cant_afford" };
@@ -821,7 +832,8 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   }
   if (it.once) c.add("own_" + it.id);
   s.seen["buy:" + it.id] = s.age;
-  const e = c.apply(it.fx, "buy", it.t);
+  if (tr.next) s.seen["lv:" + it.id] = tr.lv + 1;
+  const e = tr.next ? c.apply(tr.next.fx, "buy", tr.next.t) : c.apply(it.fx, "buy", it.t);
   if (e) {
     e.m = pay === "cash" ? -price : undefined;
     if (!e.m) delete e.m;

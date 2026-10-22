@@ -101,6 +101,10 @@ const giveParents: Fx = {
     c.bond(c.person("dad"), 10);
   },
 };
+function setCar(c: Ctx, name: string, value: number) {
+  c.s.assets = c.s.assets.filter((a) => a.kind !== "car");
+  c.s.assets.push({ id: "car", name, value, kind: "car", age: c.age });
+}
 export const ITEMS: Item[] = [
   { id: "toy", name: "장난감 세트", cat: "보호자 지원", a: [0, 9], price: 50, t: "새 장난감을 받았다. 하루 종일 가지고 놀았다.", fx: fx({ happy: 4 }), hint: "행복 ↑", child: true },
   { id: "picturebook", name: "그림책 전집", cat: "보호자 지원", a: [1, 8], price: 30, t: "그림책 전집이 생겼다.", fx: fx({ intel: 3 }), hint: "지능 ↑", child: true },
@@ -112,13 +116,56 @@ export const ITEMS: Item[] = [
   { id: "camp", name: "여름 캠프", cat: "보호자 지원", a: [8, 14], price: 80, t: "여름 캠프에서 친구를 잔뜩 사귀었다.", fx: fx({ charm: 3, happy: 3 }), hint: "매력·행복 ↑", child: true },
   { id: "doctor_kid", name: "큰 병원 진료", cat: "보호자 지원", a: [0, 14], price: 200, t: "보호자 손에 이끌려 큰 병원에 다녀왔다.", fx: fx({ health: 10 }, 0, { fn: (c) => (c.s.sick = null) }), hint: "건강 ↑ · 병 치료", child: true },
 
-  { id: "phone", cool: 3, name: "최신 스마트폰", cat: "물건", a: [15, 95], price: 150, t: "최신 스마트폰을 샀다.", fx: fx({ happy: 3, charm: 1 }), hint: "행복 ↑" },
-  { id: "pc", name: "게이밍 PC", cat: "물건", a: [15, 80], price: 250, t: "게이밍 PC를 맞췄다. 팬 소리가 비행기 같다.", fx: fx({ happy: 4 }, 0, { add: ["game"] }), hint: "행복 ↑ · 게임", once: true },
-  { id: "mic", name: "방송 장비 세트", cat: "물건", a: [15, 90], price: 300, t: "방송 장비를 장만했다. 첫 방송 버튼 앞에서 한참 망설였다.", fx: fx({ talent: 3 }, 0, { add: ["mic", "broadcast"] }), hint: "끼 ↑ · 방송 가능", once: true },
-  { id: "guitar", name: "통기타", cat: "물건", a: [12, 90], price: 60, t: "통기타를 샀다. 손가락이 아프다.", fx: fx({ talent: 2 }, 0, { add: ["music"] }), hint: "끼 ↑ · 음악", once: true },
+  // 장비는 업그레이드식 — 살 때마다 다음 등급으로(최고 등급이면 끝)
+  {
+    id: "phone", cool: 2, name: "스마트폰", cat: "물건", a: [12, 95], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "중고 스마트폰", price: 40, t: "중고 스마트폰이 생겼다. 액정에 금이 하나 있다.", fx: fx({ happy: 2 }), hint: "행복 ↑" },
+      { name: "최신 스마트폰", price: 150, t: "최신 스마트폰으로 바꿨다.", fx: fx({ happy: 3, charm: 1 }), hint: "행복·매력 ↑" },
+      { name: "폴더블 폰", price: 250, t: "폴더블 폰으로 바꿨다. 괜히 접었다 폈다 한다.", fx: fx({ happy: 3, charm: 2 }), hint: "행복·매력 ↑" },
+    ],
+  },
+  {
+    id: "pc", cool: 2, name: "컴퓨터", cat: "물건", a: [12, 85], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "보급형 PC", price: 100, t: "보급형 PC를 장만했다. 게임은 옵션을 낮춰야 돌아간다.", fx: fx({ happy: 2, intel: 1 }, 0, { add: ["game", "own_pc"] }), hint: "행복 ↑ · 게임" },
+      { name: "게이밍 PC", price: 250, t: "게이밍 PC로 업그레이드했다. 팬 소리가 비행기 같다.", fx: fx({ happy: 4 }, 0, { add: ["game", "own_pc"] }), hint: "행복 ↑" },
+      { name: "하이엔드 PC", price: 600, t: "하이엔드 PC를 맞췄다. 방 온도가 2도 올랐다.", fx: fx({ happy: 4, talent: 1 }, 0, { add: ["game", "own_pc"] }), hint: "행복·끼 ↑" },
+    ],
+  },
+  {
+    id: "mic", cool: 1, name: "방송 장비", cat: "물건", a: [13, 90], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "입문용 마이크", price: 40, t: "입문용 마이크를 샀다. 자기 목소리가 낯설다.", fx: fx({ talent: 2 }, 0, { add: ["mic"] }), hint: "끼 ↑" },
+      { name: "방송 장비 세트", price: 300, t: "방송 장비를 장만했다. 첫 방송 버튼 앞에서 한참 망설였다.", fx: fx({ talent: 3 }, 0, { add: ["mic", "broadcast"] }), hint: "끼 ↑ · 방송 가능" },
+      { name: "스튜디오 장비", price: 1200, t: "방을 스튜디오처럼 꾸몄다. 방음재가 벽을 덮었다.", fx: fx({ talent: 3, happy: 2 }, 0, { add: ["mic", "broadcast"], fn: (c) => { if (c.s.fame > 0) c.s.fame = Math.min(100, c.s.fame + 5); } }), hint: "끼 ↑ · 방송 인지도 ↑" },
+    ],
+  },
+  {
+    id: "guitar", cool: 2, name: "악기", cat: "물건", a: [12, 90], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "통기타", price: 60, t: "통기타를 샀다. 손가락이 아프다.", fx: fx({ talent: 2 }, 0, { add: ["music"] }), hint: "끼 ↑ · 음악" },
+      { name: "일렉 기타", price: 200, t: "일렉 기타를 샀다. 이웃이 벽을 두드렸다.", fx: fx({ talent: 3, happy: 1 }, 0, { add: ["music"] }), hint: "끼 ↑" },
+      { name: "홈레코딩 장비", price: 500, t: "홈레코딩 장비를 들였다. 자작곡을 녹음하기 시작했다.", fx: fx({ talent: 3, happy: 2 }, 0, { add: ["music"] }), hint: "끼·행복 ↑" },
+    ],
+  },
+  {
+    id: "watch", cool: 5, name: "시계", cat: "물건", a: [18, 95], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "패션 시계", price: 30, t: "패션 시계를 샀다.", fx: fx({ charm: 1 }), hint: "매력 ↑" },
+      { name: "명품 시계", price: 1200, t: "명품 시계를 샀다. 자꾸 손목을 보게 된다.", fx: fx({ charm: 3, happy: 2 }), hint: "매력·행복 ↑" },
+      { name: "한정판 시계", price: 5000, t: "한정판 시계를 손에 넣었다. 모임에서 다들 손목만 봤다.", fx: fx({ charm: 3, happy: 2 }), hint: "매력·행복 ↑" },
+    ],
+  },
+  {
+    id: "car", cool: 3, name: "자동차", cat: "물건", a: [20, 85], price: 0, t: "", hint: "",
+    tiers: [
+      { name: "중고차", price: 1000, t: "중고차를 샀다. 가끔 시동이 한 번에 안 걸린다.", fx: fx({ happy: 3 }, 0, { fn: (c) => setCar(c, "중고차", 800) }), hint: "행복 ↑ · 유지비" },
+      { name: "새 차", price: 3500, t: "새 차로 바꿨다.", fx: fx({ happy: 4 }, 0, { fn: (c) => setCar(c, "새 차", 3000) }), hint: "행복 ↑ · 유지비" },
+      { name: "외제차", price: 9000, t: "외제차를 뽑았다. 주차할 때마다 손이 떨린다.", fx: fx({ happy: 4, charm: 2 }, 0, { fn: (c) => setCar(c, "외제차", 8000) }), hint: "행복·매력 ↑ · 유지비" },
+    ],
+  },
   { id: "books", name: "책 한 무더기", cat: "물건", a: [10, 100], price: 20, t: "책을 한 무더기 사서 읽었다.", fx: fx({ intel: 2 }, 0, { add: ["bookworm"] }), hint: "지능 ↑" },
-  { id: "watch", cool: 10, name: "명품 시계", cat: "물건", a: [22, 95], price: 1200, t: "명품 시계를 샀다. 자꾸 손목을 보게 된다.", fx: fx({ charm: 4, happy: 2 }), hint: "매력·행복 ↑" },
-  { id: "car", name: "자동차", cat: "물건", a: [20, 85], price: 3500, t: "새 차를 뽑았다.", fx: fx({ happy: 5 }, 0, { fn: (c) => c.s.assets.push({ id: "car", name: "자동차", value: 3000, kind: "car", age: c.age }) }), hint: "행복 ↑ · 유지비", if: (c) => !c.s.assets.some((a) => a.kind === "car") },
   {
     id: "home", name: "아파트 계약금(20%)", cat: "집", a: [26, 90], price: (c) => Math.round(homePrice(c) * 0.2), hint: "나머지 80%는 대출 · 월세 없음",
     t: (c) => `${Math.round(homePrice(c) / 10000)}억짜리 아파트를 샀다. 대출도 생겼다.`,

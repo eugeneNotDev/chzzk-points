@@ -2327,3 +2327,36 @@
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
   }
 }
+
+.tierRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--c-text-3);
+  margin-bottom: 2px;
+}
+.tierDots {
+  display: inline-flex;
+  gap: 3px;
+}
+.tierDots i {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--c-surface-3);
+}
+.tierDots .tierOn {
+  background: var(--c-gold);
+}
+.upTag {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--c-gold);
+  background: var(--c-gold-soft);
+  padding: 2px 5px;
+  border-radius: 5px;
+  margin-right: 6px;
+  vertical-align: 1px;
+}

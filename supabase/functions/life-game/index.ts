@@ -287,9 +287,10 @@ Deno.serve(async (req: Request) => {
       if (res.error) return fail(res.error);
       if (pay === "points") {
         const it = ITEMS.find((x) => x.id === itemId)!;
+        const itName = shopList(s).find((x) => x.id === itemId)?.name ?? it.name;
         s.pointsUsed = r.points_used + 1;
         const { data, error } = await admin.rpc("life_pay", {
-          p_channel_id: me, p_life_id: r.id, p_ver: ver, p_amount: res.points ?? 0, p_reason: it.name, p_state: s, p_log: r.log,
+          p_channel_id: me, p_life_id: r.id, p_ver: ver, p_amount: res.points ?? 0, p_reason: itName, p_state: s, p_log: r.log,
         });
         if (error) throw new Error(`life_pay 실패: ${error.message}`);
         if (data?.error) return fail(data.error);

@@ -1091,7 +1091,20 @@ function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
           {items.map((it) => (
             <li key={it.id} className={it.off ? styles.shopDim : ""}>
               <div className={styles.shopInfo}>
-                <b>{it.name}</b>
+                {it.maxLv !== null && (
+                  <span className={styles.tierRow}>
+                    <span className={styles.tierDots} aria-label={`${it.lv}/${it.maxLv}단계`}>
+                      {Array.from({ length: it.maxLv }, (_, i) => (
+                        <i key={i} className={i < (it.lv ?? 0) ? styles.tierOn : ""} />
+                      ))}
+                    </span>
+                    {it.cur ? `지금: ${it.cur}` : "아직 없음"}
+                  </span>
+                )}
+                <b>
+                  {it.maxLv !== null && it.cur && !it.off?.startsWith("최고") && <em className={styles.upTag}>업그레이드</em>}
+                  {it.name}
+                </b>
                 <span>{it.hint}</span>
                 {it.off && <span className={styles.shopOff}>{it.off}</span>}
               </div>
