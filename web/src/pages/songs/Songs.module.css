@@ -197,9 +197,12 @@
 .foldOpen {
   transform: rotate(180deg);
 }
-/* 펼친 사유 — 번호 칸 오른쪽부터 줄 끝까지 꽉 차고, 글 길이에 맞춰 높이가 늘어남 */
+/* 펼친 사유 — 글 길이에 맞춰 폭이 줄고 늘어남(짧으면 글만큼, 길면 줄 끝까지 차고 높이가 늘어남) */
 .bubble {
   display: flex;
+  width: fit-content;
+  max-width: calc(100% - 80px);
+  box-sizing: border-box;
   gap: 8px;
   align-items: flex-start;
   margin: -2px 18px 14px 62px;
@@ -392,6 +395,7 @@
   }
   .bubble {
     margin: -2px 14px 12px 54px;
+    max-width: calc(100% - 68px);
   }
 }
 /* 넓은 화면 옆 칸 안에선 입력칸을 한 줄씩 */
@@ -399,4 +403,22 @@
   .form {
     grid-template-columns: 1fr;
   }
+}
+
+/* 신청 리스트: 가수를 제목 옆에 작게 붙임(시안 B) */
+.title .t {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.artistInline {
+  flex: 0 10 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--c-text-3);
+  font-size: 13.5px;
+}
+.entry .reasonLine {
+  margin-top: 4px;
 }

@@ -248,12 +248,13 @@ export default function Songs() {
               >
                 <span className={`${styles.no} num`}>{i + 1}</span>
                 <div className={styles.main}>
+                  {/* 시안 B: 곡 제목 · 가수를 한 줄에, 그 아래 사유 한 줄 */}
                   <div className={styles.title}>
                     <span className={styles.t}>{it.title}</span>
+                    <span className={styles.artistInline}>· {it.artist}</span>
                     {mine && <span className="tag tag-accent">내 신청</span>}
                     {i === 0 && <span className="tag tag-gold">다음 곡</span>}
                   </div>
-                  <div className={styles.artist}>{it.artist}</div>
                   {it.reason && !isOpen && (
                     <div className={styles.reasonLine}>
                       <Quote size={12} aria-hidden="true" />
