@@ -421,7 +421,10 @@
   min-width: 0;
 }
 .artistInline {
-  flex: 0 10 auto;
+  /* 칸이 모자라면 제목이 먼저(거의 전부) 줄어서 ... — 짧은 가수명은 안 잘림.
+     가수명이 길면 최대 40%까지만 차지하고 그 안에서 ... */
+  flex: 0 0 auto;
+  max-width: 40%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -565,4 +568,25 @@
   background:
     linear-gradient(90deg, var(--c-gold-soft), transparent 60%),
     color-mix(in srgb, var(--c-hover) 70%, transparent);
+}
+/* 관리자 "틀었음" — 글자 없이 체크 네모 버튼(X 버튼과 같은 크기)으로 줄여서 제목 칸을 넓힘 */
+.played {
+  justify-content: center;
+  width: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--c-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+  color: var(--c-accent);
+  transition:
+    color var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out);
+}
+.played:hover:not(:disabled) {
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+}
+.foldSpace {
+  flex: none;
+  width: 28px;
+  height: 28px;
 }

@@ -296,6 +296,8 @@ export default function Songs() {
                     <ChevronDown size={16} aria-hidden="true" />
                   </button>
                 )}
+                {/* 버튼이 있는 줄(관리자·내 신청)은 화살표 자리를 비워 버튼 위치를 다른 줄과 맞춤 */}
+                {!it.reason && (s.isAdmin || mine) && <span className={styles.foldSpace} aria-hidden="true" />}
               </div>
               {it.reason && (
                 <div className={`${styles.fold1} ${styles.bubbleWrap} ${isOpen ? styles.shown : ""}`} aria-hidden={!isOpen}>
@@ -327,14 +329,15 @@ function PlayedButton({ onClick }: { onClick: () => Promise<void> }) {
       type="button"
       className={styles.played}
       disabled={busy}
+      title="틀었음 (리스트에서 빼고 기록으로)"
+      aria-label="틀었음"
       onClick={async () => {
         setBusy(true);
         await onClick().catch(() => undefined);
         setBusy(false);
       }}
     >
-      <Check size={16} strokeWidth={3} aria-hidden="true" />
-      틀었음
+      <Check size={17} strokeWidth={3} aria-hidden="true" />
     </button>
   );
 }
