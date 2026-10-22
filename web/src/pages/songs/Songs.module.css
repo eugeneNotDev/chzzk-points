@@ -56,8 +56,33 @@
 }
 .form {
   display: grid;
-  grid-template-columns: 1.4fr 1fr auto;
+  grid-template-columns: 1.4fr 1fr;
   gap: 8px;
+}
+.form > button,
+.reasonBox {
+  grid-column: 1 / -1;
+}
+.reasonBox {
+  position: relative;
+}
+.reason {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 64px;
+  padding-bottom: 22px;
+  resize: none;
+  line-height: 1.5;
+  font: inherit;
+}
+.count {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--c-text-4);
+  pointer-events: none;
 }
 .msgOk,
 .msgErr {
@@ -111,11 +136,99 @@
   gap: 14px;
   padding: 12px 18px;
 }
+.entry.first,
 .item.first {
   background: linear-gradient(90deg, var(--c-gold-soft), transparent 60%);
 }
+.entry.mine,
 .item.mine {
   box-shadow: inset 3px 0 0 var(--c-accent);
+}
+/* 사유가 있는 곡은 줄 전체를 눌러 펼침 */
+.hasReason > .item {
+  cursor: pointer;
+}
+.hasReason > .item:hover {
+  background: color-mix(in srgb, var(--c-hover) 70%, transparent);
+}
+.reasonLine {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  color: var(--c-text-2);
+  font-size: 12.5px;
+  min-width: 0;
+}
+.reasonLine svg {
+  flex: none;
+  color: var(--c-accent);
+}
+.reasonLine span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reasonWrap span {
+  white-space: normal;
+}
+.fold,
+.foldSpace {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.fold {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--c-text-3);
+  cursor: pointer;
+  transition:
+    transform var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out);
+}
+.fold:hover {
+  background: var(--c-hover);
+  color: var(--c-text);
+}
+.foldOpen {
+  transform: rotate(180deg);
+}
+/* 펼친 사유 — 번호 칸 오른쪽부터 줄 끝까지 꽉 차고, 글 길이에 맞춰 높이가 늘어남 */
+.bubble {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: -2px 18px 14px 62px;
+  padding: 11px 14px;
+  border-radius: 4px 14px 14px 14px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  animation: bubbleIn 0.22s var(--ease-out) both;
+}
+.bubble svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--c-accent);
+}
+.bubble p {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--c-text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
 }
 .no {
   flex: none;
@@ -276,6 +389,9 @@
   }
   .adminBtns {
     margin-left: auto;
+  }
+  .bubble {
+    margin: -2px 14px 12px 54px;
   }
 }
 /* 넓은 화면 옆 칸 안에선 입력칸을 한 줄씩 */

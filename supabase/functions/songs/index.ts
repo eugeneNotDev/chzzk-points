@@ -4,12 +4,12 @@
 // 신청은 무료(포인트 없음). 한 사람당 하루 1곡(한국시간 날짜) — 취소·삭제돼도 그날 기회는 다시 안 생김.
 // 대기 중인 곡과 제목+가수가 같으면(대소문자·공백·기호 무시) 중복이라 막음. 틀고 나면 다시 신청 가능.
 //
-// list            {}                     → { items: [{id,title,artist,requester,createdAt,mine}], canRequest, requestedToday, isAdmin }
-// request         { title, artist }      → { ok }      (로그인 필수, 차단 유저 불가)
+// list            {}                     → { items: [{id,title,artist,reason,requester,createdAt,mine}], canRequest, requestedToday, isAdmin }
+// request         { title, artist, reason? } → { ok }  (로그인 필수, 차단 유저 불가. reason = 추천 사유, 선택·80자)
 // cancel          { id }                 → { ok }      (본인 대기 곡만)
 // admin-played    { id }                 → { ok }      (관리자: 틀었음 → 리스트에서 빠지고 기록으로)
 // admin-delete    { id }                 → { ok }      (관리자: 장난/중복 신청 삭제)
-// admin-history   { q?, page? }          → { items: [{id,title,artist,requester,playedAt}], hasMore }
+// admin-history   { q?, page? }          → { items: [{id,title,artist,reason,requester,playedAt}], hasMore }
 // admin-restore   { id }                 → { ok }      (관리자: 잘못 누른 "틀었음" 되돌리기 → 다시 대기)
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 409 duplicate|already_today
 
@@ -20,6 +20,7 @@ import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const MAX_TITLE = 60;
 const MAX_ARTIST = 40;
+const MAX_REASON = 80;
 const HISTORY_PAGE = 20;
 
 function json(body: unknown, status = 200) {
@@ -90,7 +91,7 @@ Deno.serve(async (req: Request) => {
 async function list(admin: Admin, me: string | null, isAdmin: boolean) {
   const { data, error } = await admin
     .from("song_requests")
-    .select("id, channel_id, title, artist, requester_name, created_at")
+    .select("id, channel_id, title, artist, reason, requester_name, created_at")
     .eq("status", "pending")
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
@@ -110,6 +111,7 @@ async function list(admin: Admin, me: string | null, isAdmin: boolean) {
     id: r.id,
     title: r.title,
     artist: r.artist,
+    reason: r.reason ?? null,
     requester: r.requester_name,
     createdAt: r.created_at,
     mine: me !== null && r.channel_id === me,
@@ -122,6 +124,12 @@ async function requestSong(admin: Admin, body: Record<string, unknown>, user: { 
   const artist = cleanText(body.artist, MAX_ARTIST);
   if (!title) return json({ error: "invalid_title" }, 400);
   if (!artist) return json({ error: "invalid_artist" }, 400);
+  // 추천 사유는 선택 — 비었으면 null, 줄바꿈은 공백 하나로, 80자 넘으면 거절
+  let reason: string | null = null;
+  if (typeof body.reason === "string" && body.reason.trim()) {
+    reason = cleanText(body.reason, MAX_REASON);
+    if (!reason) return json({ error: "invalid_reason" }, 400);
+  }
   const key = normKey(title, artist);
   if (key === "|" || key.startsWith("|") || key.endsWith("|")) return json({ error: "invalid_title" }, 400);
 
@@ -141,6 +149,7 @@ async function requestSong(admin: Admin, body: Record<string, unknown>, user: { 
     requester_name: user.channel_name,
     title,
     artist,
+    reason,
     norm_key: key,
     request_day: day,
   });
@@ -225,7 +234,7 @@ async function history(admin: Admin, body: Record<string, unknown>) {
 
   let query = admin
     .from("song_requests")
-    .select("id, title, artist, requester_name, closed_at")
+    .select("id, title, artist, reason, requester_name, closed_at")
     .eq("status", "played");
   if (q) query = query.or(`title.ilike.*${q}*,artist.ilike.*${q}*,requester_name.ilike.*${q}*`);
   const from = (page - 1) * HISTORY_PAGE;
@@ -240,6 +249,7 @@ async function history(admin: Admin, body: Record<string, unknown>) {
     id: r.id,
     title: r.title,
     artist: r.artist,
+    reason: r.reason ?? null,
     requester: r.requester_name,
     playedAt: r.closed_at,
   }));

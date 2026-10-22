@@ -1,10 +1,11 @@
 // 방종곡 신청 — songs 함수. 신청은 무료, 하루 1곡(한국시간 0시 초기화), 대기 중인 곡과 중복 불가.
+// 추천 사유(선택, 80자)를 같이 적을 수 있고, 리스트에선 한 줄로 보이다가 누르면 말풍선으로 펼쳐짐.
 // 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기.
 import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Headphones, Music2, Search, X } from "lucide-react";
+import { Check, ChevronDown, Headphones, Music2, Quote, Search, X } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { PageHead } from "../../components/ui";
 import { ApiError, apiFetch, startLogin, useAuth } from "../../lib/auth";
@@ -12,15 +13,16 @@ import { API } from "../../lib/config";
 import styles from "./Songs.module.css";
 import { SkeletonList } from "../../components/Skeleton";
 
-type Song = { id: number; title: string; artist: string; requester: string | null; createdAt: string; mine: boolean };
+type Song = { id: number; title: string; artist: string; reason: string | null; requester: string | null; createdAt: string; mine: boolean };
 type SongList = { items: Song[]; canRequest: boolean; requestedToday: boolean; isAdmin: boolean; loggedIn: boolean };
-type HistItem = { id: number; title: string; artist: string; requester: string | null; playedAt: string };
+type HistItem = { id: number; title: string; artist: string; reason: string | null; requester: string | null; playedAt: string };
 
 const ERR: Record<string, string> = {
   duplicate: "이미 리스트에 있는 곡이에요.",
   already_today: "오늘은 이미 신청했어요. 내일 0시에 다시 신청할 수 있어요.",
   invalid_title: "곡 제목을 입력해주세요. (최대 60자)",
   invalid_artist: "가수를 입력해주세요. (최대 40자)",
+  invalid_reason: "추천 사유는 80자까지 쓸 수 있어요.",
   banned: "이용이 제한된 계정이에요.",
   unauthorized: "로그인이 필요해요.",
   not_found: "이미 처리된 곡이에요. 새로고침해 주세요.",
@@ -96,6 +98,15 @@ export default function Songs() {
   const s = q.data;
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [reason, setReason] = useState("");
+  const [open, setOpen] = useState<Set<number>>(() => new Set());
+  const toggle = (id: number) =>
+    setOpen((o) => {
+      const n = new Set(o);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok?: boolean } | null>(null);
 
@@ -122,9 +133,10 @@ export default function Songs() {
     setBusy(true);
     setMsg(null);
     try {
-      await call({ action: "request", title: t, artist: a });
+      await call({ action: "request", title: t, artist: a, reason: reason.trim() || undefined });
       setTitle("");
       setArtist("");
+      setReason("");
       setMsg({ text: "신청했어요! 방종 때 틀어드릴게요 🎵", ok: true });
     } catch (er) {
       setMsg({ text: errText(er) });
@@ -175,6 +187,19 @@ export default function Songs() {
         <form className={styles.form} onSubmit={submit} autoComplete="off">
           <input className="input" maxLength={60} placeholder="곡 제목" aria-label="곡 제목" disabled={!canType} value={title} onChange={(e) => setTitle(e.target.value)} />
           <input className="input" maxLength={40} placeholder="가수" aria-label="가수" disabled={!canType} value={artist} onChange={(e) => setArtist(e.target.value)} />
+          <div className={styles.reasonBox}>
+            <textarea
+              className={`input ${styles.reason}`}
+              maxLength={80}
+              rows={2}
+              placeholder="추천 사유 (선택)"
+              aria-label="추천 사유"
+              disabled={!canType}
+              value={reason}
+              onChange={(e) => setReason(e.target.value.replace(/\n/g, " "))}
+            />
+            <span className={`num ${styles.count}`}>{reason.length}/80</span>
+          </div>
           <button type="submit" className="btn btn-primary" disabled={isLoggedIn && (!canType || busy)}>
             {btnLabel}
           </button>
@@ -184,6 +209,7 @@ export default function Songs() {
           <li>한 사람당 하루 1곡 (한국시간 0시 초기화)</li>
           <li>이미 리스트에 있는 곡은 중복 신청 불가</li>
           <li>방종 때 순서대로 틀어드려요</li>
+          <li>추천 사유는 신청 리스트에 같이 보여요</li>
         </ul>
       </section>
       </aside>
@@ -210,8 +236,16 @@ export default function Songs() {
         <ol className={styles.list}>
           {s?.items.map((it, i) => {
             const mine = it.mine && !s.isAdmin;
+            const isOpen = !!it.reason && open.has(it.id);
             return (
-              <li key={it.id} className={`${styles.item} ${i === 0 ? styles.first : ""} ${mine ? styles.mine : ""}`}>
+              <li key={it.id} className={`${styles.entry} ${i === 0 ? styles.first : ""} ${mine ? styles.mine : ""} ${it.reason ? styles.hasReason : ""}`}>
+              <div
+                className={styles.item}
+                onClick={(e) => {
+                  // 버튼(틀었음·삭제·취소)을 누른 건 펼치기로 치지 않음
+                  if (it.reason && !(e.target as HTMLElement).closest("button")) toggle(it.id);
+                }}
+              >
                 <span className={`${styles.no} num`}>{i + 1}</span>
                 <div className={styles.main}>
                   <div className={styles.title}>
@@ -220,6 +254,12 @@ export default function Songs() {
                     {i === 0 && <span className="tag tag-gold">다음 곡</span>}
                   </div>
                   <div className={styles.artist}>{it.artist}</div>
+                  {it.reason && !isOpen && (
+                    <div className={styles.reasonLine}>
+                      <Quote size={12} aria-hidden="true" />
+                      <span>{it.reason}</span>
+                    </div>
+                  )}
                 </div>
                 <div className={styles.by}>
                   <div className={styles.nm}>{it.requester || "알 수 없음"}</div>
@@ -241,6 +281,20 @@ export default function Songs() {
                     </ArmedButton>
                   </div>
                 )}
+                {it.reason ? (
+                  <button type="button" className={`${styles.fold} ${isOpen ? styles.foldOpen : ""}`} onClick={() => toggle(it.id)} aria-expanded={isOpen} aria-label={isOpen ? "추천 사유 접기" : "추천 사유 펼치기"}>
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </button>
+                ) : (
+                  <span className={styles.foldSpace} aria-hidden="true" />
+                )}
+              </div>
+              {isOpen && (
+                <div className={styles.bubble}>
+                  <Quote size={14} aria-hidden="true" />
+                  <p>{it.reason}</p>
+                </div>
+              )}
               </li>
             );
           })}
@@ -323,6 +377,12 @@ function History() {
                 <span className={styles.t}>{it.title}</span>
               </div>
               <div className={styles.artist}>{it.artist}</div>
+              {it.reason && (
+                <div className={`${styles.reasonLine} ${styles.reasonWrap}`}>
+                  <Quote size={12} aria-hidden="true" />
+                  <span>{it.reason}</span>
+                </div>
+              )}
             </div>
             <div className={styles.by}>
               <div className={styles.nm}>{it.requester || "알 수 없음"}</div>
