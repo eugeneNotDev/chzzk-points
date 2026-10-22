@@ -200,7 +200,7 @@
   box-sizing: border-box;
   gap: 8px;
   align-items: flex-start;
-  margin: -2px 18px 14px 62px;
+  margin: -8px 18px 14px 62px;
   padding: 11px 14px;
   border-radius: 4px 14px 14px 14px;
   background: var(--c-surface-2);
@@ -409,7 +409,7 @@
     margin-left: auto;
   }
   .bubble {
-    margin: -2px 14px 12px 54px;
+    margin: -6px 14px 12px 54px;
     max-width: calc(100% - 68px);
   }
 }
@@ -452,4 +452,13 @@
 .anonMark {
   color: var(--c-text-4);
   font-weight: 500;
+}
+/* 본인 신청 취소 — 관리자 삭제 버튼과 같은 X 네모 버튼 */
+.cancelX {
+  flex: none;
+}
+@media (max-width: 720px) {
+  .cancelX {
+    margin-left: auto;
+  }
 }

@@ -270,9 +270,8 @@ export default function Songs() {
                   <div className={styles.tm}>{ago(it.createdAt)}</div>
                 </div>
                 {mine && (
-                  <ArmedButton className={styles.cancel} armedLabel="한 번 더 누르면 취소" title="취소하면 오늘은 다시 신청할 수 없어요" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")}>
-                    <X size={12} aria-hidden="true" />
-                    신청 취소
+                  <ArmedButton className={`${styles.del} ${styles.cancelX}`} armedLabel="취소?" title="신청 취소 (취소하면 오늘은 다시 신청할 수 없어요)" aria-label="신청 취소" onConfirm={() => act({ action: "cancel", id: it.id }, "신청을 취소했어요.")}>
+                    <X size={16} aria-hidden="true" />
                   </ArmedButton>
                 )}
                 {s.isAdmin && (
