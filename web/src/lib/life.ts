@@ -19,8 +19,17 @@ export const STATS: { key: StatKey; label: string; color: string }[] = [
   { key: "talent", label: "끼", color: "#c9a7ff" },
 ];
 
-export type LogEntry = { age: number; kind: "life" | "daily" | "rare" | "choice" | "job" | "item" | "end"; text: string; delta: string; hl: boolean };
-export type Pending = { id: string; text: string; choices: { key: string; text: string; hint: string }[] };
+export type LogEntry = {
+  age: number;
+  kind: "life" | "daily" | "rare" | "choice" | "job" | "item" | "plan" | "end";
+  text: string;
+  delta: string;
+  d?: Partial<Stats>; // 이 기록으로 바뀐 능력치
+  st?: Stats; // 이 기록 직후 능력치
+  hl: boolean;
+};
+// kind: plan = 5년 계획(집중) 고르기 / event = 갈림길
+export type Pending = { kind?: "plan" | "event"; id: string; text: string; choices: { key: string; text: string; hint: string; cur?: boolean }[] };
 export type Ending = {
   title: string;
   age: number;
@@ -47,6 +56,10 @@ export type Run = {
   stats: Stats;
   job: string | null;
   jobName: string | null;
+  focus: string | null;
+  focusName: string | null;
+  // 해마다 능력치 [나이, 건강, 지능, 매력, 재산, 행복, 끼]
+  history: number[][];
   itemsUsed: number;
   spent: number;
   logFrom: number;
@@ -146,3 +159,9 @@ export function lifeStage(age: number) {
   return 4;
 }
 export const STAGES = ["유년", "청소년", "청년", "중년", "노년"];
+
+// history 한 줄 → 능력치
+export function histStats(row: number[] | undefined, fallback: Stats): Stats {
+  if (!row || row.length < 7) return fallback;
+  return { health: row[1], intel: row[2], charm: row[3], wealth: row[4], happy: row[5], talent: row[6] };
+}

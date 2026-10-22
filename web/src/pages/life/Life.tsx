@@ -1,16 +1,20 @@
 // 유진 키우기 — 평행세계의 유진을 키우는 텍스트 인생 게임(테스트 버전, 베타 빌드 전용).
-// 화면 흐름: 로비 → 태어날 집 고르기(포인트) → 진행(갈림길 선택·보호자 아이템) → 인생 리포트, 그리고 도감.
+// 화면 흐름: 로비 → 태어날 집 고르기(포인트) → 진행(5년 계획·갈림길 선택·보호자 아이템) → 인생 리포트, 그리고 도감.
 // 인생 진행·결과는 전부 서버(life-game → DB life_*)가 정하고, 화면은 받은 기록을 속도에 맞춰 한 줄씩 보여주기만 함.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, BookOpen, Check, FastForward, GitFork, Lock, LogIn, Pause, Play, RotateCcw, Trophy } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, BookOpen, Briefcase, Check, Coffee, Dumbbell, FastForward, Flower2, Footprints, Gift, GitFork,
+  GraduationCap, HandHeart, Heart, House, Lightbulb, Lock, LogIn, Mic, Music, Palette, Pause, Play, RotateCcw, Sparkles,
+  Sprout, Star, Sun, Target, Trophy, Users, type LucideIcon,
+} from "lucide-react";
 import { startLogin, useAuth } from "../../lib/auth";
 import { confirmDialog } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import { LoadError } from "../../components/LoadError";
 import {
-  STAGES, STATS, applyLifeItem, chooseLife, fetchRun, lifeErrorText, lifeStage, resetLifeTest, startLife, statChips,
-  useLifeDex, useLifeLobby, type DexEntry, type Lobby, type LogEntry, type Run, type Stats,
+  STAGES, STATS, applyLifeItem, chooseLife, fetchRun, histStats, lifeErrorText, lifeStage, resetLifeTest, startLife, statChips,
+  useLifeDex, useLifeLobby, type DexEntry, type Lobby, type LogEntry, type Run, type StatKey, type Stats,
 } from "../../lib/life";
 import styles from "./Life.module.css";
 
@@ -363,54 +367,93 @@ function HouseIcon({ tier }: { tier: number }) {
 }
 
 /* ── 진행 ── */
-const SPEED_MS: Record<number, number> = { 1: 900, 2: 450, 4: 160 };
+// 한 해씩 넘기며 보여줌(서버가 준 해마다 능력치 history 기준). 일이 있었던 해는 조금 더 오래 머묾.
+const SPEED_MS: Record<number, number> = { 1: 800, 2: 400, 4: 150 };
+
+const KIND_ICON: Record<LogEntry["kind"], LucideIcon> = {
+  life: Sprout, daily: Sparkles, rare: Star, choice: GitFork, job: Briefcase, item: Gift, plan: Target, end: Flower2,
+};
+const FOCUS_ICON: Record<string, LucideIcon> = {
+  play: Sun, read: BookOpen, outside: Footprints, art: Palette, study: GraduationCap, sports: Dumbbell, friends: Users,
+  hobby: Music, rest: Coffee, work: Briefcase, exercise: Dumbbell, love: Heart, selfdev: Lightbulb, create: Mic,
+  walk: Footprints, hobby_old: Flower2, family: House, volunteer: HandHeart, choir: Music,
+};
+
+function DeltaChips({ d }: { d?: Partial<Stats> }) {
+  if (!d) return null;
+  const list = STATS.filter((s) => typeof d[s.key] === "number" && d[s.key] !== 0);
+  if (list.length === 0) return null;
+  return (
+    <span className={styles.dchips}>
+      {list.map((s) => {
+        const v = d[s.key]!;
+        return (
+          <span key={s.key} className={`${styles.dchip} ${v > 0 ? styles.dUp : styles.dDown}`}>
+            {s.label} {v > 0 ? `+${v}` : `−${Math.abs(v)}`}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+function EntryIcon({ kind }: { kind: LogEntry["kind"] }) {
+  const Icon = KIND_ICON[kind] ?? Sparkles;
+  return (
+    <span className={`${styles.kindIcon} ${styles[`k_${kind}`] ?? ""}`} aria-hidden="true">
+      <Icon size={16} />
+    </span>
+  );
+}
 
 function PlayView({ lobby, initial, onReport }: { lobby: Lobby; initial: Run; onReport: (r: Run) => void }) {
   const qc = useQueryClient();
   const [run, setRun] = useState<Run>(initial);
   const [log, setLog] = useState<LogEntry[]>(initial.log);
-  const [shown, setShown] = useState(initial.logFrom === 0 && initial.status === "playing" && initial.log.length > 0 ? 1 : initial.log.length);
-  const [speed, setSpeed] = useState(2);
+  // 새로 시작한 판은 처음부터, 이어 하는 판은 마지막 해부터 보여줌
+  const [yi, setYi] = useState(() => Math.max(0, (initial.history?.length ?? 1) - 1));
+  const [speed, setSpeed] = useState(1);
   const [paused, setPaused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [viewStats, setViewStats] = useState<Stats>(initial.stats);
-  const [prevStats, setPrevStats] = useState<Stats | null>(null);
   const feed = useRef<HTMLOListElement>(null);
 
-  const drained = shown >= log.length;
+  const rows = run.history && run.history.length > 0 ? run.history : [[run.age]];
+  const last = rows.length - 1;
+  const cur = Math.min(yi, last);
+  const drained = yi >= last;
+  const age = rows[cur]?.[0] ?? run.age;
+  const stats = drained ? run.stats : histStats(rows[cur], run.stats);
+  const prevStats = cur > 0 ? histStats(rows[cur - 1], stats) : null;
 
-  // 기록을 속도에 맞춰 한 줄씩
+  const visible = drained ? log : log.filter((e) => e.age <= age);
+  const thisYear = visible.filter((e) => e.age === age);
+  const before = visible.filter((e) => e.age < age);
+
   useEffect(() => {
     if (drained || paused) return;
-    const t = setTimeout(() => setShown((n) => n + 1), SPEED_MS[speed]);
+    const nextAge = rows[cur + 1]?.[0];
+    const busyYear = log.some((e) => e.age === nextAge);
+    const t = setTimeout(() => setYi((n) => n + 1), SPEED_MS[speed] * (busyYear ? 1.5 : 1));
     return () => clearTimeout(t);
-  }, [shown, drained, paused, speed]);
-
-  // 다 보여주면 능력치를 최신으로(바뀐 만큼 +/− 표시)
-  useEffect(() => {
-    if (!drained) return;
-    setViewStats((cur) => {
-      if (JSON.stringify(cur) !== JSON.stringify(run.stats)) setPrevStats(cur);
-      return run.stats;
-    });
-  }, [drained, run.stats]);
+  }, [yi, drained, paused, speed, cur, rows, log]);
 
   useEffect(() => {
     const el = feed.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [shown]);
+  }, [before.length]);
 
-  const age = log[Math.max(0, shown - 1)]?.age ?? 0;
   const stage = lifeStage(age);
   const ended = run.status === "ended";
   const itemsLeft = lobby.itemLimit - run.itemsUsed;
+  const pending = drained && !ended ? run.pending : null;
+  const isPlan = pending?.kind === "plan";
+  const FocusIcon = run.focus ? (FOCUS_ICON[run.focus] ?? Target) : Target;
 
   function merge(next: Run) {
-    setLog((cur) => cur.slice(0, next.logFrom).concat(next.log));
+    setLog((c) => c.slice(0, next.logFrom).concat(next.log));
     setRun(next);
   }
-
   async function choose(key: string) {
     setBusy(true);
     setErr(null);
@@ -439,17 +482,15 @@ function PlayView({ lobby, initial, onReport }: { lobby: Lobby; initial: Run; on
     }
   }
 
-  const visible = log.slice(0, shown);
-
   return (
     <>
       <div className={styles.playHead}>
         <div className={styles.ageBox}>
-          <span>
-            {worldLabel(run)} 유진{run.jobName ? ` · ${run.jobName}` : ""}
-          </span>
+          <span>{worldLabel(run)} 유진</span>
           <b>
-            <span className="num">{age}</span>
+            <span className="num" key={age}>
+              {age}
+            </span>
             <small>세</small>
           </b>
         </div>
@@ -463,9 +504,28 @@ function PlayView({ lobby, initial, onReport }: { lobby: Lobby; initial: Run; on
         <button type="button" className={styles.iconBtn} onClick={() => setPaused((p) => !p)} aria-label={paused ? "계속" : "일시정지"} disabled={drained}>
           {paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
         </button>
-        <button type="button" className={styles.iconBtn} onClick={() => setShown(log.length)} aria-label="건너뛰기" disabled={drained}>
+        <button type="button" className={styles.iconBtn} onClick={() => setYi(last)} aria-label="건너뛰기" disabled={drained}>
           <FastForward size={15} aria-hidden="true" />
         </button>
+      </div>
+
+      <div className={styles.statusRow}>
+        <span className={styles.statusChip}>
+          <House size={13} aria-hidden="true" />
+          {run.houseName}
+        </span>
+        {run.jobName && (
+          <span className={styles.statusChip}>
+            <Briefcase size={13} aria-hidden="true" />
+            {run.jobName}
+          </span>
+        )}
+        {run.focusName && (
+          <span className={`${styles.statusChip} ${styles.statusFocus}`}>
+            <FocusIcon size={13} aria-hidden="true" />
+            {run.focusName} 집중
+          </span>
+        )}
       </div>
 
       <div className={styles.stages}>
@@ -484,47 +544,93 @@ function PlayView({ lobby, initial, onReport }: { lobby: Lobby; initial: Run; on
       </div>
 
       <section className={styles.card}>
-        <StatGrid stats={viewStats} prev={drained ? prevStats : null} />
+        <StatGrid stats={stats} prev={prevStats} />
       </section>
 
-      <ol className={styles.feed} ref={feed} aria-live="polite">
-        {visible.map((e, i) => {
-          const last = i === visible.length - 1;
-          return (
-            <li key={i} className={`${styles.entry} ${last ? styles.entryNow : ""} ${e.kind === "rare" ? styles.entryRare : ""}`}>
+      <section className={styles.spot} aria-live="polite">
+        <div className={styles.spotHead}>
+          <span className="num">{age}세</span>의 유진
+        </div>
+        {thisYear.length === 0 ? (
+          <p className={styles.spotQuiet}>별일 없이 한 해가 지나갔다.</p>
+        ) : (
+          <ul className={styles.spotList}>
+            {thisYear.map((e, i) => (
+              <li key={`${age}-${i}`} className={`${styles.spotItem} ${e.kind === "rare" ? styles.spotRare : ""}`}>
+                <EntryIcon kind={e.kind} />
+                <div>
+                  {e.kind === "rare" && <span className={styles.rareTag}>희귀 이벤트</span>}
+                  <p>{e.text}</p>
+                  <DeltaChips d={e.d} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {before.length > 0 && (
+        <ol className={styles.feed} ref={feed}>
+          {before.map((e, i) => (
+            <li key={i} className={`${styles.entry} ${e.kind === "rare" ? styles.entryRare : ""}`}>
               <span className={styles.dot} aria-hidden="true" />
               <div>
                 <div className={styles.entryMeta}>
                   <span className="num">{e.age}세</span>
                   {e.kind === "rare" && <span className={styles.rareTag}>희귀</span>}
-                  {e.delta && <span className={styles.delta}>{e.delta}</span>}
+                  <DeltaChips d={e.d} />
                 </div>
                 <p>{e.text}</p>
               </div>
             </li>
-          );
-        })}
-      </ol>
+          ))}
+        </ol>
+      )}
 
-      {drained && run.pending && !ended && (
+      {pending && (
         <section className={styles.sheet}>
           <div className={styles.sheetHead}>
-            <span className={styles.forkTag}>
-              <GitFork size={12} aria-hidden="true" />
-              갈림길
-            </span>
+            {isPlan ? (
+              <span className={`${styles.forkTag} ${styles.planTag}`}>
+                <Target size={12} aria-hidden="true" />
+                {age === 0 ? "키우는 방향" : "5년 계획"}
+              </span>
+            ) : (
+              <span className={styles.forkTag}>
+                <GitFork size={12} aria-hidden="true" />
+                갈림길
+              </span>
+            )}
             <span className={styles.muted}>{age}세 · 보호자의 선택</span>
           </div>
-          <p className={styles.sheetText}>{run.pending.text}</p>
-          <div className={styles.choices}>
-            {run.pending.choices.map((c) => (
-              <button key={c.key} type="button" className={styles.choice} onClick={() => choose(c.key)} disabled={busy}>
-                <span className={`num ${styles.choiceKey}`}>{c.key}</span>
-                <span className={styles.choiceText}>{c.text}</span>
-                <span className={styles.choiceHint}>{c.hint}</span>
-              </button>
-            ))}
-          </div>
+          <p className={styles.sheetText}>{pending.text}</p>
+          {isPlan ? (
+            <div className={styles.planGrid}>
+              {pending.choices.map((c) => {
+                const Icon = FOCUS_ICON[c.key] ?? Target;
+                return (
+                  <button key={c.key} type="button" className={`${styles.planCard} ${c.cur ? styles.planCur : ""}`} onClick={() => choose(c.key)} disabled={busy}>
+                    <span className={styles.planIcon} aria-hidden="true">
+                      <Icon size={18} />
+                    </span>
+                    <b>{c.text}</b>
+                    <span>{c.hint}</span>
+                    {c.cur && <em>지금 계획</em>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.choices}>
+              {pending.choices.map((c) => (
+                <button key={c.key} type="button" className={styles.choice} onClick={() => choose(c.key)} disabled={busy}>
+                  <span className={`num ${styles.choiceKey}`}>{c.key}</span>
+                  <span className={styles.choiceText}>{c.text}</span>
+                  <span className={styles.choiceHint}>{c.hint}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className={styles.items}>
             <span className={styles.muted}>
               보호자 아이템 <b className="num">{itemsLeft}</b>/{lobby.itemLimit}
@@ -546,8 +652,51 @@ function PlayView({ lobby, initial, onReport }: { lobby: Lobby; initial: Run; on
           <ArrowRight size={16} aria-hidden="true" />
         </button>
       )}
-      {drained && !run.pending && !ended && <p className={styles.center}>다음 해로 넘어가는 중…</p>}
     </>
+  );
+}
+
+// 리포트의 인생 그래프 — 해마다 능력치(history)에서 행복·재산·건강을 선으로
+const GRAPH_LINES: { idx: number; key: StatKey }[] = [
+  { idx: 5, key: "happy" },
+  { idx: 4, key: "wealth" },
+  { idx: 1, key: "health" },
+];
+function LifeGraph({ rows }: { rows: number[][] }) {
+  if (rows.length < 2) return null;
+  const W = 320;
+  const H = 120;
+  const maxAge = Math.max(1, rows[rows.length - 1][0]);
+  const pts = (idx: number) => rows.map((r) => `${((r[0] / maxAge) * W).toFixed(1)},${(H - (r[idx] / 100) * H).toFixed(1)}`).join(" ");
+  const ticks = [0, Math.round(maxAge / 4), Math.round(maxAge / 2), Math.round((maxAge * 3) / 4), maxAge];
+  return (
+    <section className={styles.card}>
+      <div className={styles.graphHead}>
+        <h3 className={styles.cardTitle}>인생 그래프</h3>
+        {GRAPH_LINES.map((l) => {
+          const s = STATS.find((x) => x.key === l.key)!;
+          return (
+            <span key={l.key} className={styles.legend}>
+              <i style={{ background: s.color }} />
+              {s.label}
+            </span>
+          );
+        })}
+      </div>
+      <svg className={styles.graph} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="나이에 따른 행복, 재산, 건강 변화">
+        <line x1="0" y1={H / 2} x2={W} y2={H / 2} className={styles.gridLine} />
+        {GRAPH_LINES.map((l) => (
+          <polyline key={l.key} points={pts(l.idx)} fill="none" stroke={STATS.find((x) => x.key === l.key)!.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        ))}
+      </svg>
+      <div className={styles.graphAxis}>
+        {ticks.map((t, i) => (
+          <span key={i} className="num">
+            {t}
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -613,6 +762,8 @@ function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; on
           </ol>
         </section>
       )}
+
+      <LifeGraph rows={run.history ?? []} />
 
       <section className={styles.card}>
         <h3 className={styles.cardTitle}>마지막 능력치</h3>

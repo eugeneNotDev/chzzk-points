@@ -134,7 +134,7 @@ events = [
     E('d_shop_hit', 'daily', 28, 75, '가게 앞에 줄이 생겼다.', S(wealth=6, happy=3), cond={"job": ["gukbap", "chef", "cafe"]}, weight=10),
     # 노년
     E('d_grandkid', 'daily', 55, 90, '손주가 태어났다.', S(happy=6), cond={"flags": ["kid"]}, weight=12),
-    E('d_walk', 'daily', 60, 100, '매일 아침 동네 한 바퀴를 걸었다.', S(health=2, happy=1), once=False, weight=6),
+    E('d_walk', 'daily', 60, 100, '매일 아침 동네 한 바퀴를 걸었다.', S(health=2, happy=1), once=False, weight=3),
     E('d_reunion', 'daily', 60, 90, '어릴 적 친구와 다시 만나 밤새 웃었다.', S(happy=6), cond={"flags": ["friend"]}),
     E('d_memory', 'daily', 70, 100, '오래된 일기장을 꺼내 읽었다.', S(happy=3), diary='생각보다 괜찮은 인생이었다.'),
     # 늑대
@@ -209,6 +209,137 @@ events = [
       hint='늑대의 기억을 되찾으면…'),
 ]
 
+
+# ── 2차 추가 이벤트 ──
+FX = lambda *ids: {"anyflags": ["focus_" + i for i in ids]}
+events += [
+    # 어린 시절 갈림길
+    E('c_kinder_dream', 'crossroad', 5, 7, '유치원에서 장래희망을 물어봤다.', weight=20, choices=[
+        {"key": "A", "text": "가수라고 한다", "hint": "끼 ↑", "result": "유진은 가수가 되고 싶다고 했다.", "effects": S(talent=3)},
+        {"key": "B", "text": "의사라고 한다", "hint": "지능 ↑", "result": "유진은 의사가 되고 싶다고 했다.", "effects": S(intel=3)},
+        {"key": "C", "text": "늑대라고 한다", "hint": "???", "result": "선생님이 한참 웃었다.", "effects": S(happy=3, charm=1)},
+    ]),
+    E('c_pet', 'crossroad', 6, 12, '강아지를 키우고 싶다고 조른다.', cond={"noflags": ["pet"]}, weight=15, choices=[
+        {"key": "A", "text": "키우게 해준다", "hint": "행복 ↑ 재산 ↓", "result": "작은 강아지가 식구가 됐다.", "effects": SA(add=["pet"], happy=5, wealth=-2)},
+        {"key": "B", "text": "안 된다고 한다", "hint": "행복 ↓", "result": "유진은 밤새 삐졌다.", "effects": S(happy=-3)},
+    ]),
+    E('c_academy', 'crossroad', 9, 12, '친구들이 다 학원에 다닌다고 한다.', weight=18, choices=[
+        {"key": "A", "text": "학원에 보낸다", "hint": "지능 ↑ 행복 ↓", "result": "학원 가방이 무거워졌다.", "effects": S(intel=4, happy=-2, wealth=-2)},
+        {"key": "B", "text": "실컷 놀게 둔다", "hint": "행복 ↑ 매력 ↑", "result": "해 질 때까지 놀이터에 있었다.", "effects": S(happy=4, charm=1)},
+    ]),
+    E('c_phone', 'crossroad', 10, 13, '스마트폰을 사달라고 한다.', weight=15, choices=[
+        {"key": "A", "text": "사준다", "hint": "행복 ↑ 지능 ↓", "result": "게임 앱이 열 개가 됐다.", "effects": SA(add=["game"], happy=3, intel=-1)},
+        {"key": "B", "text": "아직 이르다", "hint": "지능 ↑ 행복 ↓", "result": "대신 책을 한 권 더 읽었다.", "effects": S(intel=2, happy=-2)},
+    ]),
+    E('c_club', 'crossroad', 13, 16, '동아리를 골라야 한다.', weight=20, choices=[
+        {"key": "A", "text": "방송부", "hint": "끼 ↑", "result": "점심시간 교내 방송을 맡았다.", "effects": SA(add=["mic"], talent=3)},
+        {"key": "B", "text": "축구부", "hint": "건강 ↑", "result": "매일 운동장을 뛰었다.", "effects": SA(add=["sporty"], health=3)},
+        {"key": "C", "text": "독서부", "hint": "지능 ↑", "result": "책 냄새가 좋아졌다.", "effects": SA(add=["bookworm"], intel=3)},
+    ]),
+    # 어른·노년 갈림길
+    E('c_scout', 'crossroad', 27, 50, '다른 회사에서 스카우트 제안이 왔다.', cond={"job": ["office", "programmer", "civil", "chef", "voice_actor"]}, weight=12, choices=[
+        {"key": "A", "text": "옮긴다", "hint": "재산 ↑ 행복 ↓", "result": "연봉이 올랐다. 일도 늘었다.", "effects": S(wealth=6, happy=-2)},
+        {"key": "B", "text": "남는다", "hint": "행복 ↑", "result": "익숙한 자리가 편했다.", "effects": S(happy=3)},
+    ]),
+    E('c_parents', 'crossroad', 40, 60, '부모님을 모시고 살지 고민 중이다.', weight=12, choices=[
+        {"key": "A", "text": "모시고 산다", "hint": "행복 ↑ 재산 ↓", "result": "집이 다시 북적거렸다.", "effects": SA(add=["filial"], happy=3, wealth=-4)},
+        {"key": "B", "text": "근처로 이사한다", "hint": "행복 ↑", "result": "주말마다 반찬을 들고 찾아갔다.", "effects": S(happy=2, wealth=-1)},
+    ]),
+    E('c_grandkid_care', 'crossroad', 58, 75, '자식이 손주를 봐달라고 한다.', cond={"flags": ["kid"]}, weight=15, choices=[
+        {"key": "A", "text": "봐준다", "hint": "행복 ↑ 건강 ↓", "result": "손주 덕에 하루가 짧아졌다.", "effects": S(happy=5, health=-2)},
+        {"key": "B", "text": "내 인생도 있다고 한다", "hint": "건강 ↑", "result": "대신 용돈을 두둑이 보냈다.", "effects": S(health=2, wealth=-3)},
+    ]),
+    E('c_will', 'crossroad', 76, 92, '유언장을 쓸까 고민 중이다.', weight=12, choices=[
+        {"key": "A", "text": "쓴다", "hint": "마음 정리", "result": "하고 싶은 말을 꾹꾹 눌러 적었다.", "effects": S(happy=2), "diary": "고마운 사람이 생각보다 많았다."},
+        {"key": "B", "text": "아직 멀었다", "hint": "행복 ↑", "result": "아직 할 게 많다며 웃었다.", "effects": S(happy=3)},
+    ]),
+    # 집중(5년 계획)과 연결된 이벤트
+    E('f_toddler_book', 'daily', 1, 7, '그림책을 통째로 외워서 읽는 척을 했다.', S(intel=3, happy=1), cond=FX('read')),
+    E('f_toddler_run', 'daily', 2, 7, '놀이터 미끄럼틀을 거꾸로 올라갔다.', S(health=3), cond=FX('outside')),
+    E('f_toddler_song', 'daily', 2, 7, '동요를 개사해서 하루 종일 불렀다.', S(talent=3, happy=1), cond=FX('art')),
+    E('f_toddler_play', 'daily', 1, 7, '진흙탕에서 놀다 와서 혼났다. 그래도 즐거웠다.', S(happy=3), cond=FX('play')),
+    E('f_olympiad', 'daily', 10, 18, '교내 경시대회에서 상을 받았다.', S(intel=3, happy=2), cond=FX('study')),
+    E('f_scholarship', 'daily', 15, 24, '장학금을 받았다.', S(wealth=4, intel=2), cond=FX('study', 'selfdev')),
+    E('f_allnighter', 'daily', 13, 19, '시험 기간에 밤을 새웠다.', S(intel=2, health=-2), cond=FX('study'), once=False, weight=6),
+    E('f_relay', 'daily', 8, 19, '운동회 대표 선수로 뽑혔다.', S(health=3, charm=2), cond=FX('sports')),
+    E('f_teen_injury', 'daily', 10, 19, '운동하다 발목을 삐었다.', S(health=-3), cond=FX('sports', 'exercise'), once=False, weight=4),
+    E('f_teen_party', 'daily', 10, 19, '친구들과 노래방에서 목이 쉴 때까지 놀았다.', S(happy=3, charm=1), cond=FX('friends'), once=False, weight=5),
+    E('f_teen_popular', 'daily', 12, 19, '반에서 인기투표 1등을 했다.', S(charm=4, happy=2), cond=FX('friends')),
+    E('f_contest', 'daily', 12, 50, '작은 대회에서 입상했다.', S(talent=4, happy=2), cond=FX('hobby', 'create')),
+    E('f_busking', 'daily', 15, 40, '길거리 공연을 해봤다. 지나가던 사람이 박수를 쳐줬다.', SA(add=["music"], talent=3, charm=2), cond=FX('hobby', 'create')),
+    E('f_teen_free', 'daily', 8, 19, '하고 싶은 걸 하며 방학을 보냈다.', S(happy=4), cond=FX('rest'), once=False, weight=5),
+    E('f_marathon', 'daily', 20, 65, '마라톤 하프 코스를 완주했다.', S(health=3, happy=3), cond=FX('exercise')),
+    E('f_gym_pr', 'daily', 20, 65, '헬스장에서 개인 기록을 깼다.', S(health=2, charm=1), cond=FX('exercise'), once=False, weight=4),
+    E('f_blind_date', 'daily', 20, 45, '소개팅을 했다. 대화가 잘 통했다.', SA(add=["love"], happy=4), cond={"anyflags": ["focus_love"], "noflags": ["love"]}, weight=15),
+    E('f_friends_trip', 'daily', 20, 60, '오랜 친구들과 여행을 갔다.', SA(add=["friend"], happy=5, wealth=-2), cond=FX('love'), once=False, weight=4),
+    E('f_certificate', 'daily', 20, 60, '자격증 시험에 합격했다.', S(intel=3, wealth=2), cond=FX('selfdev'), once=False, weight=5),
+    E('f_language', 'daily', 20, 60, '외국어를 배우기 시작했다.', SA(add=["language"], intel=3), cond=FX('selfdev')),
+    E('f_promotion', 'daily', 26, 62, '승진했다.', S(wealth=6, happy=2), cond={"anyflags": ["focus_work"], "nojob": ["student"]}, once=False, weight=5),
+    E('f_burnout', 'daily', 25, 60, '번아웃이 왔다. 아무것도 하기 싫었다.', S(happy=-6, health=-3), cond=FX('work'), weight=6),
+    E('f_side_income', 'daily', 22, 60, '부업으로 쏠쏠한 돈을 벌었다.', S(wealth=4), cond=FX('work'), once=False, weight=4),
+    E('f_first_fan', 'daily', 18, 60, '처음으로 팬레터를 받았다.', SA(add=["fan"], happy=5), cond=FX('create')),
+    E('f_upload', 'daily', 18, 70, '만든 작품을 인터넷에 올렸다. 댓글이 세 개 달렸다.', S(talent=2, happy=2), cond=FX('create'), once=False, weight=5),
+    E('f_lazy_week', 'daily', 20, 64, '일주일 내내 푹 쉬었다. 몸이 가벼워졌다.', S(happy=3, health=2), cond=FX('rest'), once=False, weight=5),
+    E('f_walk_friend', 'daily', 65, 100, '산책길에서 동갑내기 친구를 사귀었다.', SA(add=["friend"], happy=4, charm=2), cond=FX('walk')),
+    E('f_mountain', 'daily', 65, 90, '동네 뒷산 정상에 올랐다.', S(health=3, happy=2), cond=FX('walk'), once=False, weight=4),
+    E('f_garden', 'daily', 60, 100, '텃밭에 상추를 심었다. 잘 자란다.', S(happy=3), cond=FX('hobby_old')),
+    E('f_painting_old', 'daily', 65, 100, '문화센터에서 수채화를 배웠다.', S(talent=2, happy=2), cond=FX('hobby_old'), once=False, weight=4),
+    E('f_family_dinner', 'daily', 60, 100, '온 가족이 모여 저녁을 먹었다.', S(happy=4), cond=FX('family'), once=False, weight=5),
+    E('f_volunteer', 'daily', 60, 95, '동네 아이들에게 책을 읽어줬다.', S(charm=3, happy=2), cond=FX('volunteer'), once=False, weight=5),
+    E('f_choir', 'daily', 60, 100, '합창단 공연에 섰다. 맨 뒷줄이었다.', S(talent=2, happy=3), cond=FX('choir'), once=False, weight=5),
+    # 중년
+    E('d_white_hair', 'daily', 38, 55, '거울을 보다 흰머리를 발견했다.', S(happy=-2)),
+    E('d_class_reunion', 'daily', 30, 60, '동창회에 나갔다. 다들 많이 변했다.', S(charm=2, happy=2)),
+    E('d_kid_school', 'daily', 33, 52, '아이가 초등학교에 입학했다.', S(happy=4, wealth=-2), cond={"flags": ["kid"]}, weight=12),
+    E('d_kid_teen', 'daily', 42, 60, '사춘기 아이와 크게 다퉜다.', S(happy=-3), cond={"flags": ["kid"]}, weight=10),
+    E('d_parent_sick', 'daily', 40, 65, '부모님이 편찮으셔서 병간호를 했다.', S(happy=-3, wealth=-3)),
+    E('d_first_car', 'daily', 24, 45, '첫 차를 샀다.', S(wealth=-5, happy=4)),
+    E('d_move', 'daily', 25, 70, '이사를 했다. 짐이 생각보다 많았다.', S(happy=1, wealth=-2), once=False, weight=3),
+    E('d_back_pain', 'daily', 38, 75, '허리가 아프기 시작했다.', S(health=-3)),
+    E('d_old_friend_call', 'daily', 30, 80, '오랜 친구에게 먼저 연락이 왔다.', S(happy=3), cond={"flags": ["friend"]}),
+    E('d_pet_goodbye', 'daily', 15, 30, '강아지와 마지막 산책을 했다.', SA(remove=["pet"], happy=-5), cond={"flags": ["pet"]}, weight=8, diary='고마웠어. 많이 보고 싶을 거야.'),
+    E('d_viral_post', 'daily', 20, 60, 'SNS에 올린 글이 소소하게 화제가 됐다.', S(charm=3, happy=2)),
+    E('d_cooking_class', 'daily', 30, 60, '요리 학원에 등록했다.', SA(add=["cook"], happy=2, wealth=-1)),
+    E('d_cold', 'daily', 20, 100, '독한 감기에 걸려 일주일을 앓았다.', S(health=-3), once=False, weight=3),
+    # 노년
+    E('d_reading_glasses', 'daily', 55, 80, '돋보기 안경을 맞췄다.', S(intel=1)),
+    E('d_smartphone_lesson', 'daily', 65, 92, '손주에게 스마트폰 쓰는 법을 배웠다.', S(intel=2, happy=2), cond={"flags": ["kid"]}),
+    E('d_late_love', 'daily', 65, 90, '노인정에서 마음 맞는 사람을 만났다.', SA(add=["love"], happy=6), cond={"noflags": ["married"]}, weight=8),
+    E('d_long_cold', 'daily', 70, 100, '감기가 한 달이나 갔다.', S(health=-4), once=False, weight=4),
+    E('d_memoir', 'daily', 68, 100, '자서전을 쓰기 시작했다.', S(intel=2, happy=2), diary='내 인생은 생각보다 재미있었다.'),
+    E('d_old_stream', 'daily', 65, 100, '은퇴했지만 가끔 방송을 켠다. 양들은 아직 남아 있다.', S(happy=5), cond={"hadjob": ["vtuber"]}, weight=15,
+      diary='오늘도 양들이 와줬다.'),
+    E('d_hometown', 'daily', 60, 95, '어릴 적 살던 동네에 가봤다. 놀이터는 그대로였다.', S(happy=3)),
+    E('d_80th', 'daily', 80, 80, '팔순 잔치를 했다.', S(happy=4), weight=30),
+    E('d_lost_friend', 'daily', 70, 98, '오랜 친구를 먼저 떠나보냈다.', S(happy=-6), cond={"flags": ["friend"]}, diary='보고 싶다.'),
+    E('d_bingo', 'daily', 65, 100, '경로당 빙고 대회에서 1등을 했다.', S(happy=3)),
+    E('d_tv_contest', 'daily', 60, 90, '노래자랑 예선에 나갔다. 땡이었다.', S(happy=2, charm=1)),
+]
+
+# ── 5년 계획(집중) ──
+FO = lambda id, name, a0, a1, yearly, side, hint, sort: dict(id=id, name=name, age_min=a0, age_max=a1, yearly=yearly, side=side, hint=hint, sort=sort)
+focuses = [
+    FO('play', '마음껏 놀기', 0, 7, {"happy": 2}, {"intel": -1}, '행복 ↑ · 지능 조금 ↓', 1),
+    FO('read', '그림책 읽어주기', 0, 7, {"intel": 2}, {}, '지능 ↑', 2),
+    FO('outside', '밖에서 뛰어놀기', 0, 7, {"health": 2}, {}, '건강 ↑', 3),
+    FO('art', '노래·그림 놀이', 0, 7, {"talent": 2}, {}, '끼 ↑', 4),
+    FO('study', '공부', 8, 19, {"intel": 2}, {"happy": -1}, '지능 ↑ · 행복 조금 ↓', 11),
+    FO('sports', '운동', 8, 19, {"health": 2}, {}, '건강 ↑', 12),
+    FO('friends', '친구', 8, 19, {"charm": 2}, {"intel": -1}, '매력 ↑ · 지능 조금 ↓', 13),
+    FO('hobby', '취미·예체능', 8, 19, {"talent": 2}, {}, '끼 ↑', 14),
+    FO('rest', '자유롭게', 8, 64, {"happy": 2}, {"wealth": -1}, '행복 ↑ · 재산 조금 ↓', 15),
+    FO('work', '일·저축', 20, 64, {"wealth": 2}, {"happy": -1, "health": -1}, '재산 ↑ · 행복·건강 조금 ↓', 21),
+    FO('exercise', '운동', 20, 64, {"health": 2}, {}, '건강 ↑', 22),
+    FO('love', '연애·사람', 20, 64, {"charm": 2, "happy": 1}, {"wealth": -1}, '매력·행복 ↑ · 재산 조금 ↓', 23),
+    FO('selfdev', '자기계발', 20, 64, {"intel": 2}, {"happy": -1}, '지능 ↑ · 행복 조금 ↓', 24),
+    FO('create', '창작·방송', 15, 100, {"talent": 2}, {"wealth": -1}, '끼 ↑ · 재산 조금 ↓', 25),
+    FO('walk', '산책', 65, 100, {"health": 2}, {}, '건강 ↑', 31),
+    FO('hobby_old', '취미 생활', 65, 100, {"happy": 2}, {}, '행복 ↑', 32),
+    FO('family', '가족과 시간', 65, 100, {"happy": 1, "charm": 1}, {}, '행복·매력 ↑', 33),
+    FO('volunteer', '봉사', 65, 100, {"charm": 2}, {}, '매력 ↑', 34),
+    FO('choir', '노래 교실', 65, 100, {"talent": 1, "happy": 1}, {}, '끼·행복 ↑', 35),
+]
+
 # ── 특수 엔딩 ──
 SP = lambda id, title, text, cond, pr, hint: dict(id=id, title=title, text=text, cond=cond, priority=pr, hint=hint)
 specials = [
@@ -222,11 +353,12 @@ specials = [
        '가장 낮은 곳에서 가장 높은 곳으로 가면…'),
 ]
 
-sql = ['-- 유진 키우기 첫 내용 묶음(초안 1차). 같은 id면 덮어씀 — 이 파일만 고쳐서 다시 적용하면 됨. (생성: gen_seed.py)']
+sql = ['-- 유진 키우기 내용 전체(같은 id면 덮어씀). tools/life-content/gen_seed.py로 생성 — 직접 고치지 말고 생성기를 고칠 것.']
 sql.append(upsert('life_jobs', ['id', 'name', 'category', 'cond', 'age_min', 'weight', 'yearly', 'hint'], jobs))
 sql.append(upsert('life_modifiers', ['id', 'text', 'cond', 'priority', 'hint'], mods))
 sql.append(upsert('life_finales', ['id', 'text', 'cond', 'priority'], fins))
 sql.append(upsert('life_events', ['id', 'kind', 'age_min', 'age_max', 'cond', 'weight', 'once', 'text', 'effects', 'choices', 'diary', 'hint'], events))
 sql.append(upsert('life_special_endings', ['id', 'title', 'text', 'cond', 'priority', 'hint'], specials))
+sql.append(upsert('life_focuses', ['id', 'name', 'age_min', 'age_max', 'yearly', 'side', 'hint', 'sort'], focuses))
 open(sys.argv[1] if len(sys.argv) > 1 else 'life_content.sql', 'w').write('\n\n'.join(sql) + '\n')
-print(len(jobs), len(mods), len(fins), len(events), len(specials))
+print(len(jobs), len(mods), len(fins), len(events), len(specials), len(focuses))
