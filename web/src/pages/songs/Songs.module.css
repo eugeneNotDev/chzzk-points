@@ -512,7 +512,6 @@
   margin: 6px 10px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--c-accent) 7%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 28%, transparent);
 }
 .list li.mine,
 .list li.mine + li {
