@@ -514,6 +514,15 @@ function parents(c: Ctx) {
   }
 }
 
+// 학교 이름표(직업·군대·특별한 학교가 없을 때만)
+function schoolLabel(c: Ctx) {
+  const s = c.s;
+  if (s.job || s.army > 0) return;
+  if (s.age === 3) s.school = "유치원생";
+  if (s.age === 8) s.school = "초등학생";
+  if (s.age === 14) s.school = "중학생";
+}
+
 function armyYear(c: Ctx) {
   const s = c.s;
   if (s.army <= 0) return false;
@@ -661,6 +670,7 @@ export function stepYear(c: Ctx) {
   const s = c.s;
   s.age++;
   s.luck = c.int(1, 6);
+  schoolLabel(c);
   const inArmy = armyYear(c);
   if (!inArmy) focusYear(c);
   drift(c);

@@ -540,19 +540,8 @@
 .rail {
   grid-area: rail;
 }
-.feedMob {
+.feedArea {
   grid-area: feed;
-}
-.feedDesk {
-  display: none;
-}
-@container (min-width: 760px) {
-  .feedMob {
-    display: none;
-  }
-  .feedDesk {
-    display: block;
-  }
 }
 .side,
 .center2,
@@ -562,21 +551,40 @@
   gap: 12px;
   min-width: 0;
 }
+/* 2단: 왼쪽은 상태·돈만(짧게, 따라 내려옴), 오른쪽에 올해 → 선택 → 초점·사람·쇼핑 → 지난 이야기 */
 @container (min-width: 760px) {
   .play {
-    grid-template-columns: 290px minmax(0, 1fr);
-    grid-template-areas: "head head" "side center" "rail center";
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "head head" "side center" "side rail" "side feed";
   }
-}
-@container (min-width: 1180px) {
-  .play {
-    grid-template-columns: 300px minmax(0, 1fr) 330px;
-    grid-template-areas: "head head head" "side center rail";
-  }
-  .side,
-  .rail {
+  .side {
     position: sticky;
     top: 80px;
+  }
+  .rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .rail > :nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+}
+/* 3단: 오른쪽에 초점·사람·쇼핑(따로 스크롤) */
+@container (min-width: 1180px) {
+  .play {
+    grid-template-columns: 290px minmax(0, 1fr) 330px;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "head head head" "side center rail" "side feed rail";
+  }
+  .rail {
+    display: flex;
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 }
 

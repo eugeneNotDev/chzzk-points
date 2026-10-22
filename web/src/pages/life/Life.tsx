@@ -551,7 +551,12 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     const go = async () => {
       try {
         const r = runRef.current;
-        if (wantFocus && wantFocus !== r.focus) await focusLife(r.id, wantFocus, log.length).then((res) => alive && merge(res.run));
+        // 바꿔 둔 초점이 있으면 먼저 보냄(나이대가 바뀌어 못 쓰는 초점이면 그냥 버림)
+        if (wantFocus && wantFocus !== r.focus) {
+          const ok = r.focuses.some((f) => f.id === wantFocus);
+          setWantFocus(null);
+          if (ok) await focusLife(r.id, wantFocus, log.length).then((res) => alive && merge(res.run)).catch(() => {});
+        }
         const res = await advanceLife(r.id, log.length, years);
         if (alive) merge(res.run);
       } catch (e) {
@@ -619,14 +624,17 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   }
 
   async function onFocus(id: string) {
-    setWantFocus(id);
-    if (fetching || busy) return; // 다음 해 받아올 때 같이 보냄
+    if (fetching || busy) {
+      setWantFocus(id); // 다음 해 받아올 때 같이 보냄
+      return;
+    }
+    setWantFocus(null);
     try {
       const res = await focusLife(run.id, id, log.length);
       merge(res.run);
       setSnap(res.run);
-    } catch (e) {
-      setErr(lifeErrorText(e));
+    } catch {
+      // 초점 바꾸기 실패는 조용히 넘김(진행은 계속)
     }
   }
   async function onFund(id: string) {
@@ -810,7 +818,6 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
           </section>
         )}
 
-        <Feed items={timeline} className={styles.feedDesk} />
       </main>
 
       {/* 오른쪽: 초점·사람·돈쓰기 */}
@@ -842,7 +849,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
           로비로 (진행 상황은 저장돼요)
         </button>
       </aside>
-      <Feed items={timeline} className={styles.feedMob} />
+      <Feed items={timeline} className={styles.feedArea} />
     </div>
   );
 }
