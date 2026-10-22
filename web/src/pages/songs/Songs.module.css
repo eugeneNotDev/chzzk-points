@@ -144,7 +144,8 @@
 .hasReason > .item {
   cursor: pointer;
 }
-.hasReason > .item:hover {
+/* 호버는 줄 전체(펼친 말풍선 포함)에 — 위쪽 줄만 칠해지지 않게 */
+.hasReason:hover {
   background: color-mix(in srgb, var(--c-hover) 70%, transparent);
 }
 .reasonLine {
@@ -522,9 +523,6 @@
   padding-right: 8px;
   border-radius: 12px;
 }
-.hasReason.mine > .item:hover {
-  background: none;
-}
 .hasReason.mine:hover {
   background: color-mix(in srgb, var(--c-accent) 10%, transparent);
 }
@@ -563,4 +561,9 @@
   .mine .bubble {
     margin-left: 46px;
   }
+}
+.entry.first.hasReason:hover {
+  background:
+    linear-gradient(90deg, var(--c-gold-soft), transparent 60%),
+    color-mix(in srgb, var(--c-hover) 70%, transparent);
 }

@@ -229,8 +229,8 @@ function BoardPreview() {
           <span className={styles.rowTitle}>
             {p.title}
             {p.hasImages && <ImageIcon size={14} className={styles.inlineIcon} aria-label="사진 있음" />}
-            {isBoardPostNew(p) && <span className={styles.newDot}>N</span>}
             {p.commentCount > 0 && <span className={`${styles.cc} num`}>[{p.commentCount}]</span>}
+            {isBoardPostNew(p) && <span className={styles.newDot}>N</span>}
           </span>
           <span className={styles.rowAuthor}>{p.author}</span>
           <span className={styles.rowMeta}>{relTime(p.createdAt)}</span>
