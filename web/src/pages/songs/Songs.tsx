@@ -220,7 +220,8 @@ export default function Songs() {
           <div className={styles.adminBar}>
             <span className="tag tag-blue">관리자</span>
             <span>
-              방종 때 틀고 나서 <b>틀었음</b>을 누르면 리스트에서 빠지고 아래 기록으로 가요
+              방종 때 틀고 나서 <span className={`${styles.keyIco} ${styles.keyOk}`}><Check size={11} strokeWidth={3} aria-label="체크" /></span>를 누르면 리스트에서 빠지고 아래 기록으로 가요 ·{" "}
+              <span className={styles.keyIco}><X size={11} strokeWidth={3} aria-label="엑스" /></span>는 신청 삭제
             </span>
           </div>
         )}

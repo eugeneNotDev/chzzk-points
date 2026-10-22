@@ -460,23 +460,27 @@
     margin-left: auto;
   }
 }
-/* 접기·펼치기 — 높이를 grid 0fr↔1fr로 부드럽게, 안쪽은 살짝 떠오르며 나타남 */
+/* 접기·펼치기 — 높이를 grid 0fr↔1fr로 부드럽게, 안쪽은 살짝 떠오르며 나타남.
+   미리보기 접힘·말풍선 펼침·제목 이동이 전부 같은 속도·곡선으로 움직여야 중간에 뚝 끊기지 않음 */
+.entry {
+  --fold-t: 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
 .fold1 {
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
   transition:
-    grid-template-rows 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    grid-template-rows var(--fold-t),
     opacity 0.2s ease,
-    margin-top 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    margin-top var(--fold-t);
 }
 .fold1.shown {
   grid-template-rows: 1fr;
   opacity: 1;
   transition:
-    grid-template-rows 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.26s ease 0.06s,
-    margin-top 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    grid-template-rows var(--fold-t),
+    opacity 0.24s ease 0.08s,
+    margin-top var(--fold-t);
 }
 .foldIn {
   min-height: 0;
@@ -487,14 +491,14 @@
 }
 .bubbleWrap .bubble {
   transform: translateY(-6px) scale(0.97);
-  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--fold-t);
 }
 .bubbleWrap.shown .bubble {
   transform: none;
 }
 .fold {
   transition:
-    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    transform var(--fold-t),
     background-color var(--dur) var(--ease-out);
 }
 @media (max-width: 720px) {
@@ -553,30 +557,29 @@
   background: var(--c-accent);
   color: var(--c-accent-ink);
 }
-/* 사유 있는 줄 — 펼칠 때 한 줄 미리보기가 접히면서 제목이 아래로 밀리던 문제:
-   위쪽 기준으로 붙여서 제목 위치를 고정하고, 나머지는 접힌 상태에서 가운데로 보이게 여백으로 맞춤 */
-.hasReason > .item {
-  align-items: flex-start;
+/* 관리자 안내문 안의 작은 버튼 아이콘(✓·✕) — 실제 버튼과 같은 색 */
+.keyIco {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 1px;
+  border-radius: 5px;
+  border: 1px solid var(--c-border-strong);
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  vertical-align: -4px;
 }
-.hasReason > .item > .no {
-  margin-top: 8px;
+.keyOk {
+  border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--c-accent) 14%, transparent);
+  color: var(--c-accent);
 }
-.hasReason > .item > .by {
-  margin-top: 4px;
-}
-.hasReason > .item > .adminBtns,
-.hasReason > .item > .cancelX {
-  margin-top: 6px;
-}
-.hasReason > .item > .fold {
-  margin-top: 9px;
-}
-@media (max-width: 720px) {
-  .hasReason > .item > .by,
-  .hasReason > .item > .adminBtns,
-  .hasReason > .item > .cancelX,
-  .hasReason > .item > .fold {
-    margin-top: 0;
-    align-self: center;
-  }
+/* 사유 있는 줄의 제목 칸 높이를 접힌 상태(제목+미리보기 두 줄) 그대로 유지하고 안에서 가운데 정렬 —
+   미리보기가 접히는 만큼 제목이 같은 속도로 번호칸 가운데까지 내려옴(오른쪽 신청자 칸 높이에 걸려 멈췄다 뚝 떨어지던 문제) */
+.hasReason .main {
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
