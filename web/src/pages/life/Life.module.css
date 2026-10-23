@@ -1982,8 +1982,13 @@
   font-size: 11px;
   color: var(--c-text-3);
 }
+/* 숫자 칸과 글자 칸(태어난 집)의 높이·기준선을 같게 — 같은 줄 높이 안에서 아래쪽 정렬 */
 .quad b {
-  font-size: 16px;
+  display: flex;
+  align-items: flex-end;
+  min-height: 30px;
+  line-height: 30px;
+  font-size: 19px;
   font-weight: 800;
   word-break: keep-all;
 }
