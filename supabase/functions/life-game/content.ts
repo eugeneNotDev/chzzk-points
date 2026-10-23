@@ -2,7 +2,7 @@
 // 글 안의 {p}=연인/배우자, {f}=친구, {c}=막내 아이, {pet}=반려동물, {job}=지금 직업 이름.
 import { josa } from "./josa.ts";
 import type { Ctx, Daily, Disease, Focus, Fork, Fx, House, Item, Job, Mod, Opt, Out, Special, Text } from "./engine.ts";
-import { STAT_LABEL, type Stats, type StatKey, type Tier } from "./types.ts";
+import { STAT_LABEL, badDebt, type Stats, type StatKey, type Tier } from "./types.ts";
 
 // ── 짧게 쓰기 위한 도구 ──
 const fx = (s: Partial<Stats> = {}, m?: number, more: Partial<Fx> = {}): Fx => ({ s, m, ...more });
@@ -28,7 +28,7 @@ const kidsAt = (c: Ctx, a: number, b: number) => c.folks("child").filter((k) => 
 // ── 태어난 집 ──
 export const HOUSES: House[] = [
   { id: "poor", name: "단칸방", allowance: 20, tuition: 0, support: 0, inherit: 0, momBond: 60 },
-  { id: "normal", name: "평범한 가정", allowance: 60, tuition: 0.5, support: 1500, inherit: 15000, momBond: 60 },
+  { id: "normal", name: "평범한 가정", allowance: 100, tuition: 0.75, support: 3000, inherit: 25000, momBond: 68 },
   { id: "comfy", name: "여유 있는 집", allowance: 150, tuition: 1, support: 6000, inherit: 70000, momBond: 58 },
   { id: "rich", name: "재벌가", allowance: 700, tuition: 1, support: 30000, inherit: 300000, momBond: 48 },
 ];
@@ -246,6 +246,8 @@ export const DAILY: Daily[] = [
   D("school_trip", [16, 18], "수학여행에서 밤새 베개 싸움을 했다.", fx({ happy: 4, charm: 1 })),
   D("detention", [12, 18], "수업 시간에 졸다가 벌 청소를 했다.", fx({ happy: -1 }), { tone: -1 }),
   D("allowance_saved", [10, 19], "용돈을 모아 저금통을 깼다.", fx({}, 30), { tone: 1 }),
+  D("family_camp", [5, 17], "주말에 온 가족이 캠핑을 갔다. 별이 쏟아지는 밤이었다.", fx({ happy: 3, health: 1 }), { if: (c) => c.s.house === "normal" && anyParent(c), rep: 3, w: 25, tone: 1 }),
+  D("family_dinner", [8, 30], "엄마 아빠랑 저녁을 먹다가 고민을 털어놨다. 마음이 한결 가벼워졌다.", fx({ happy: 3, charm: 1 }), { if: (c) => c.s.house === "normal" && anyParent(c), rep: 4, w: 20, tone: 1 }),
   D("lost_wallet", [12, 30], "지갑을 잃어버렸다.", fx({ happy: -2 }, -10), { tone: -1, rep: 10 }),
   D("first_game_win", [10, 20], "온라인 게임 랭킹 100위 안에 들었다.", fx({ happy: 3, intel: -1 }, 0, { add: ["game"] }), { if: (c) => c.has("game") }),
   // 대학·청년
@@ -357,21 +359,39 @@ const tuitionFx = (edu: "local" | "inseoul" | "top", years = 4, med = false): Fx
   },
 });
 const meetPartner = (bond = 50): Fx => ({ fn: (c) => { if (!c.partner()) c.meet("partner", bond); } });
+// 같은 상태면 늘 같은 값이 나오는 난수(결정을 띄울 때와 고를 때 선택지가 똑같아야 해서 Math.random을 못 씀)
+const stateSeed = (c: Ctx) => {
+  let h = (c.age * 2654435761 + c.s.pid * 40503 + c.s.jobs.length * 9176 + c.s.house.length * 131) >>> 0;
+  return () => {
+    h = (h + 0x6d2b79f5) >>> 0;
+    let t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
 const jobOpts = (c: Ctx): Opt[] => {
-  const list = JOBS.filter((j) => j.dc > 0 && j.req(c));
-  // 맞을 것 같은 순서(능력치 여유가 큰 순)로 4개까지 + 알바
-  // 붙을 확률 × 연봉이 큰 순서로 4개
-  const scored = list.filter((j) => j.id !== "alba").map((j) => {
-    const need = j.dc - Math.max(-3, Math.min(5, Math.round((c.st(j.roll) - 50) / 10)));
-    return { j, ev: passP(need) * (j.creator ? 2500 : j.pay) };
-  }).sort((a, b) => b.ev - a.ev).slice(0, 4).map((x) => x.j);
+  const list = JOBS.filter((j) => j.dc > 0 && j.id !== "alba" && j.req(c));
+  const need = (j: Job) => j.dc - Math.max(-3, Math.min(5, Math.round((c.st(j.roll) - 50) / 10)));
+  // 붙을 직업 2개: 붙을 확률 × 연봉이 큰 순
+  const safe = list.map((j) => ({ j, ev: passP(need(j)) * (j.creator ? 2500 : j.pay) }))
+    .sort((a, b) => b.ev - a.ev).slice(0, 2).map((x) => x.j);
+  // 도전할 직업 2개: 하나는 남은 것 중 합격선이 제일 높은 것(변호사·교수·아이돌 같은 길이 꼭 보이게),
+  // 하나는 나머지 중 해마다 다르게 하나
+  const rnd = stateSeed(c);
+  const rest = list.filter((j) => !safe.includes(j)).map((j) => ({ j, r: rnd() })).sort((a, b) => b.j.dc - a.j.dc || a.r - b.r);
+  const challenge = rest.slice(0, 1).concat(rest.slice(1).sort((a, b) => a.r - b.r).slice(0, 1)).map((x) => x.j);
+  const scored = [...safe.map((j) => ({ j, tag: "붙을 만해요" })), ...challenge.map((j) => ({ j, tag: "도전" }))];
+  // 버튜버는 이 게임의 상징이라 조건만 되면 늘 선택지에 넣음
+  const vt = list.find((j) => j.id === "vtuber");
+  if (vt && !scored.some((x) => x.j === vt)) scored.push({ j: vt, tag: "도전" });
   const bonus = (cc: Ctx) => (cc.has("cert") ? 1 : 0) + (cc.s.focus === "selfdev" ? 1 : 0);
-  const opts: Opt[] = scored.map((j) => ({
-    t: `${j.name}에 도전`,
+  const opts: Opt[] = scored.map(({ j, tag }) => ({
+    t: tag === "도전" ? `${j.name}에 도전` : `${j.name}에 지원`,
     arg: j.id,
     roll: j.roll,
     bonus,
-    hint: `${STAT_LABEL[j.roll]} 주사위 · ${j.dc} 이상 합격`,
+    hint: `${tag} · ${STAT_LABEL[j.roll]} 주사위 · ${j.dc} 이상 합격`,
     judge: (cc: Ctx, r) => r.total >= j.dc
       ? R(`${josa(j.name, "로")} 일하게 됐다!`, { s: { happy: 4 }, fn: (x) => { x.hire(j.id, r.tier === "great" ? 1.15 : 1); if (j.creator) x.s.fame = Math.max(x.s.fame, 3); } }, true)
       : R(`${j.name} 도전은 실패했다. 다음 기회를 노리기로 했다.`, { s: { happy: -3 }, fn: (x) => { x.quit("취준생"); x.add("jobless"); } }),
@@ -475,10 +495,11 @@ export const FORKS: Fork[] = [
   },
   {
     id: "bankrupt", a: [20, 100], mile: true, rep: 5, tag: "돈", t: "빚이 감당할 수 없을 만큼 불어났다.",
-    if: (c) => c.s.debt >= 10000 && c.s.debt > Math.max(1000, c.s.income) * 5,
+    // 집 대출은 집값만큼 빼고 봄 — 아파트를 샀다고 파산 마디가 뜨거나, 집 대출까지 탕감받지 않게
+    if: (c) => { const b = badDebt(c.s); return b >= 10000 && b > Math.max(1000, c.s.income) * 5; },
     opts: [
-      pick("개인회생을 신청한다", R("개인회생을 신청했다. 빚의 상당 부분을 탕감받았다.", fx({ happy: -6 }, 0, { add: ["bankrupt"], fn: (c) => (c.s.debt = Math.round(c.s.debt * 0.25)) }), true)),
-      pick("어떻게든 갚아본다", R("투잡을 뛰기 시작했다.", fx({ health: -4, happy: -3 }, 0, { fn: (c) => (c.s.debt = Math.round(c.s.debt * 0.9)) }))),
+      pick("개인회생을 신청한다", R("개인회생을 신청했다. 빚의 상당 부분을 탕감받았다.", fx({ happy: -6 }, 0, { add: ["bankrupt"], fn: (c) => (c.s.debt -= Math.round(badDebt(c.s) * 0.75)) }), true)),
+      pick("어떻게든 갚아본다", R("투잡을 뛰기 시작했다.", fx({ health: -4, happy: -3 }, 0, { fn: (c) => (c.s.debt -= Math.round(badDebt(c.s) * 0.1)) }))),
     ],
   },
   { id: "adult_focus", a: [19, 23], mile: true, kind: "focus", tag: "인생 마디", t: "어엿한 어른이 됐다. 앞으로 어디에 힘을 쏟을까?", opts: focusOpts(2) },
@@ -784,7 +805,7 @@ export const FORKS: Fork[] = [
         great: R("쌍둥이가 태어났다!", fx({ happy: 10 }, 0, { fn: (c) => { c.meet("child", 90); c.meet("child", 90); } }), true),
         good: R("{c}가 태어났다. 작은 손이 손가락을 꽉 잡았다.", fx({ happy: 8 }, 0, { fn: (c) => { c.meet("child", 90); } }), true),
         bad: R("아직 소식이 없다.", fx({ happy: -2 })),
-      }),
+      }, { bonus: () => 2 }),
       pick("둘이서 살자", R("둘이서 오순도순 살기로 했다.", fx({ happy: 1 }, 0, { add: ["nokids"] }))),
       pick("나중에", R("조금 더 생각해 보기로 했다.", fx({}))),
     ],

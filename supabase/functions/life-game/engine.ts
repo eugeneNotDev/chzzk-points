@@ -1,7 +1,7 @@
 // 유진 키우기 v3 엔진 — 한 해씩 인생을 굴림. Deno/Node 어디서나 돌도록 외부 의존 없음(시뮬레이션 스크립트도 이걸 그대로 씀).
 // 콘텐츠(이벤트·갈림길·직업·상점·엔딩)는 content.ts. 돈은 전부 만원 단위.
 import {
-  STAT_KEYS, STAT_LABEL,
+  STAT_KEYS, STAT_LABEL, badDebt,
   type Entry, type Ending, type Fund, type HouseId, type Kind, type Pending, type PendingOpt, type Person, type Role, type Roll,
   type State, type StatKey, type Stats, type Tier,
 } from "./types.ts";
@@ -547,7 +547,8 @@ function economy(c: Ctx) {
     }
   }
   // 빚이 너무 많으면
-  if (s.debt > 3000 && s.debt > (s.income + 1) * 4 && c.chance(0.5)) c.stat({ happy: -2, health: -1 });
+  const bd = badDebt(s);
+  if (bd > 3000 && bd > (s.income + 1) * 4 && c.chance(0.5)) c.stat({ happy: -2, health: -1 });
   s.peak = Math.max(s.peak, netWorth(s));
 }
 
@@ -680,7 +681,8 @@ function deathCheck(c: Ctx): boolean {
   const a = s.age;
   const h = s.stats.health;
   if (h <= 0) {
-    s.dead = { cause: s.sick && s.sick.sev >= 2 ? "sick" : "old", age: a };
+    // 건강이 바닥나서 떠남 — 60세 전이면 "노환"이 아니라 건강 악화로
+    s.dead = { cause: (s.sick && s.sick.sev >= 2) || a < 60 ? "sick" : "old", age: a };
     return true;
   }
   const base = a < 40 ? 0.0004 : a < 50 ? 0.0012 : a < 60 ? 0.003 : a < 70 ? 0.007 : a < 80 ? 0.02 : a < 90 ? 0.065 : a < 100 ? 0.16 : 0.35;
@@ -915,7 +917,7 @@ function finish(c: Ctx) {
   const causeText = s.dead.cause === "accident"
     ? "갑작스러운 사고"
     : s.dead.cause === "sick"
-    ? (s.sick ? s.sick.name : "오랜 병")
+    ? (s.sick ? s.sick.name : a < 60 ? "건강 악화" : "오랜 병")
     : a >= 95 ? "천수를 누리고" : "노환";
   const mod = MODS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;
   const sp = SPECIALS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;

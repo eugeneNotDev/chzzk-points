@@ -103,3 +103,9 @@ export type State = {
   dead: { cause: "old" | "sick" | "accident"; age: number } | null;
   ending: Ending | null;
 };
+
+// 집 담보대출을 뺀 빚 — 집값만큼은 갚을 수 있는 빚으로 봄(파산 판정·빚 스트레스에 씀)
+export function badDebt(s: State) {
+  const home = s.assets.reduce((a, x) => a + (x.kind === "home" ? x.value : 0), 0);
+  return Math.max(0, s.debt - home);
+}

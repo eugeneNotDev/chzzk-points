@@ -153,6 +153,9 @@ export const LIFE_ERRORS: Record<string, string> = {
   busy: "다른 창에서 진행 중이에요. 새로고침해 주세요.",
   too_young: "15세부터 돈을 굴릴 수 있어요.",
   bought: "지금은 다시 살 수 없어요.",
+  bad_focus: "지금 나이에는 고를 수 없는 초점이에요.",
+  bad_fund: "돈을 굴릴 곳을 찾지 못했어요.",
+  has_pending: "먼저 지금 결정을 골라 주세요.",
 };
 
 export function lifeErrorText(e: unknown) {
