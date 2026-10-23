@@ -694,6 +694,9 @@ function sickness(c: Ctx) {
   return d;
 }
 
+const SUDDEN_ILL = ["급성 심근경색", "뇌출혈", "급성 대동맥 박리"];
+const ACCIDENTS = ["교통사고", "등산 중 실족 사고", "출장길 사고", "빙판길 낙상 사고"];
+
 function deathCheck(c: Ctx): boolean {
   const s = c.s;
   const a = s.age;
@@ -704,14 +707,18 @@ function deathCheck(c: Ctx): boolean {
     return true;
   }
   const base = a < 40 ? 0.0004 : a < 50 ? 0.0012 : a < 60 ? 0.003 : a < 70 ? 0.007 : a < 80 ? 0.02 : a < 90 ? 0.065 : a < 100 ? 0.16 : 0.35;
-  const mult = h >= 60 ? 0.6 : h >= 40 ? 1 : h >= 25 ? 1.7 : 3;
+  const mult = h >= 80 ? 0.4 : h >= 60 ? 0.6 : h >= 40 ? 1 : h >= 25 ? 1.7 : 3;
   const sickAdd = s.sick && s.sick.sev >= 3 ? (s.sick.sev - 2) * 0.03 : 0;
   if (c.chance(base * mult + sickAdd)) {
-    s.dead = { cause: s.sick && s.sick.sev >= 3 ? "sick" : a < 60 ? "accident" : "old", age: a };
+    if (s.sick && s.sick.sev >= 3) s.dead = { cause: "sick", age: a };
+    else if (a >= 75) s.dead = { cause: "old", age: a };
+    // 75세 전 갑작스러운 죽음은 "노환"이 아니라 구체적인 사인으로
+    else if (c.chance(0.55)) s.dead = { cause: "sick", age: a, why: c.pick(SUDDEN_ILL) };
+    else s.dead = { cause: "accident", age: a, why: c.pick(ACCIDENTS) };
     return true;
   }
   if (a >= 12 && a <= 80 && c.chance(0.0005)) {
-    s.dead = { cause: "accident", age: a };
+    s.dead = { cause: "accident", age: a, why: c.pick(ACCIDENTS) };
     return true;
   }
   return false;
@@ -965,7 +972,7 @@ function finish(c: Ctx) {
   if (!s.dead) return;
   s.pending = null;
   const a = s.dead.age;
-  const causeText = s.dead.cause === "accident"
+  const causeText = s.dead.why ? s.dead.why : s.dead.cause === "accident"
     ? "갑작스러운 사고"
     : s.dead.cause === "sick"
     ? (s.sick ? s.sick.name : a < 60 ? "건강 악화" : "오랜 병")
@@ -983,8 +990,14 @@ function finish(c: Ctx) {
     title, mod: mod?.text ?? null, modId: mod?.id ?? null, job: jobName, jobId, cause: s.dead.cause, causeText, age: a,
     specialId: sp?.id ?? null, specialText: sp?.text ?? null, mourners, netWorth: netWorth(s), earned: s.earned, peak: s.peak,
   };
-  const how = s.dead.cause === "accident" ? `${a}세, 갑작스러운 사고로 생을 마감했다.` : s.dead.cause === "sick" ? `${a}세, ${josa(causeText, "로")} 생을 마감했다.` : `${a}세, 편안히 눈을 감았다.`;
+  const how = s.dead.cause === "accident"
+    ? `${a}세, ${josa(causeText, "로")} 갑작스럽게 생을 마감했다.`
+    : s.dead.cause === "sick"
+    ? `${a}세, ${josa(causeText, "로")} 생을 마감했다.`
+    : `${a}세, 편안히 눈을 감았다.`;
   c.log("end", how, { hl: true });
+  // 건강하던 사람이 갑자기 떠났으면 한 줄 더(뜬금없게 느껴지지 않게)
+  if (s.dead.why && s.stats.health >= 60) c.log("end", "누구보다 건강했던 사람이라, 다들 한동안 믿기 힘들어했다.");
   c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${fans > 50 ? " 네루들이 보낸 꽃이 복도를 가득 채웠다." : ""}`);
 }
 

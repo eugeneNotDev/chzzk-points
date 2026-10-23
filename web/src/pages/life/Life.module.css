@@ -1001,7 +1001,6 @@
   padding: 12px 10px;
   border-radius: var(--r-lg);
   background: var(--c-accent-soft);
-  box-shadow: inset 3px 0 0 var(--c-accent);
 }
 .yearHl p {
   color: var(--c-text);
@@ -1013,7 +1012,6 @@
   padding: 12px 10px;
   border-radius: var(--r-lg);
   background: var(--c-gold-soft);
-  box-shadow: inset 3px 0 0 var(--c-gold);
 }
 
 /* 방송 카드 */
@@ -2558,86 +2556,6 @@
   gap: 8px;
 }
 
-/* ── 방송 투표(시청자 카드) ── */
-.voteCard {
-  margin-bottom: 16px;
-  padding: 16px;
-  border-radius: var(--r-xl);
-  background: var(--c-surface);
-  border: 1.5px solid color-mix(in srgb, var(--c-pink) 45%, var(--c-border));
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-pink) 10%, transparent);
-}
-.voteHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 13px;
-}
-.voteLive {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--c-pink-soft);
-  color: var(--c-pink);
-  font-weight: 800;
-  font-size: 12px;
-}
-.voteText {
-  margin: 12px 0;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1.45;
-  word-break: keep-all;
-}
-.voteOpts {
-  display: grid;
-  gap: 8px;
-}
-.voteOpt {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 10px 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--c-border);
-  background: var(--c-surface-2);
-  text-align: left;
-  overflow: hidden;
-  font-weight: 700;
-}
-.voteOpt > * {
-  position: relative;
-}
-.voteFill {
-  position: absolute !important;
-  inset: 0 auto 0 0;
-  background: color-mix(in srgb, var(--c-pink) 14%, transparent);
-  transition: width 0.4s var(--ease-out);
-}
-.voteMine {
-  border-color: var(--c-pink);
-  color: var(--c-pink);
-}
-.voteOptText {
-  flex: 1;
-  word-break: keep-all;
-}
-.votePct {
-  font-size: 13px;
-  color: var(--c-text-3);
-}
-.voteFine {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--c-text-3);
-}
-
 /* ── 방송 모드(주인 리모컨) ── */
 .liveOnBtn {
   background: var(--c-pink-soft) !important;
@@ -2979,4 +2897,46 @@
 .liveEnd p {
   font-size: clamp(18px, 1.8vw, 26px);
   color: var(--c-text-2);
+}
+
+/* 방송 화면: 마감한 투표 결과 */
+.liveTally {
+  display: grid;
+  gap: 0.8vh;
+  margin-top: 0.6vh;
+}
+.liveTally > div {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0.9vh 1vw;
+  border-radius: 12px;
+  background: var(--c-surface);
+  overflow: hidden;
+  font-size: clamp(14px, 1.3vw, 20px);
+  font-weight: 700;
+  color: var(--c-text-2);
+}
+.liveTally > div > * {
+  position: relative;
+}
+.liveTally > div > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--c-text) 8%, transparent);
+}
+.liveTally .liveTallyWin {
+  color: var(--c-text);
+  font-weight: 900;
+}
+.liveTally .liveTallyWin > i {
+  background: color-mix(in srgb, var(--c-accent) 28%, transparent);
+}
+.liveTally span,
+.liveTally b {
+  font-size: inherit;
+  color: inherit;
+  font-weight: inherit;
 }

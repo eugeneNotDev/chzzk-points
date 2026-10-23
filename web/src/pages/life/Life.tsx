@@ -15,12 +15,13 @@ import { confirmDialog } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import { LoadError } from "../../components/LoadError";
 import {
-  STAGES, STATS, TIER_LABEL, advanceLife, buyLife, castVote, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage,
+  STAGES, STATS, TIER_LABEL, advanceLife, buyLife, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage,
   josa, openVote, resetLifeTest, setLive, startLife, statChips, useLifeDex, useLifeLobby, useLifeVote, won,
-  type Broadcast, type VoteState, type DexEntry, type Lobby, type LogEntry, type Pending, type PendingOpt, type Person, type Roll, type Run, type Stats,
+  type Broadcast, type DexEntry, type Lobby, type LogEntry, type Pending, type PendingOpt, type Person, type Roll, type Run, type Stats,
 } from "../../lib/life";
 import styles from "./Life.module.css";
 import { shareOrSave } from "./shareCard";
+import { LifeVoteCard } from "./LifeVoteCard";
 const LiveScreen = lazy(() => import("./LiveScreen"));
 
 type Screen = { name: "lobby" } | { name: "birth" } | { name: "play"; run: Run } | { name: "report"; run: Run } | { name: "dex" };
@@ -51,7 +52,7 @@ export default function Life() {
       </Suspense>
     );
   }
-  const voteCard = vote.data?.open && !(isAdmin && screen.name === "play") ? <VoteCard v={vote.data} onVoted={() => vote.refetch()} /> : null;
+  const voteCard = vote.data?.open && !(isAdmin && screen.name === "play") ? <LifeVoteCard /> : null;
 
   if (!isLoggedIn) {
     return (
@@ -87,55 +88,6 @@ export default function Life() {
       {screen.name === "report" && <ReportView run={screen.run} onAgain={backToLobby} onDex={() => go({ name: "dex" })} />}
       {screen.name === "dex" && <DexView onBack={backToLobby} />}
     </div>
-  );
-}
-
-/* ── 방송 투표(시청자) ── */
-function VoteCard({ v, onVoted }: { v: VoteState; onVoted: () => void }) {
-  const [busy, setBusy] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  async function pick(key: string) {
-    setBusy(key);
-    setErr(null);
-    try {
-      await castVote(key);
-      onVoted();
-    } catch (e) {
-      setErr(lifeErrorText(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-  return (
-    <section className={styles.voteCard} aria-live="polite">
-      <div className={styles.voteHead}>
-        <span className={styles.voteLive}>
-          <Vote size={14} aria-hidden="true" />
-          방송 투표 중
-        </span>
-        <span className={styles.muted}>
-          {v.age}세 유진{v.jobName ? ` · ${v.jobName}` : ""} · <b className="num">{v.total}</b>표
-        </span>
-      </div>
-      <p className={styles.voteText}>{v.text}</p>
-      <div className={styles.voteOpts}>
-        {v.opts.map((o) => {
-          const n = v.counts[o.key] ?? 0;
-          const pct = v.total ? Math.round((n / v.total) * 100) : 0;
-          const mine = v.myKey === o.key;
-          return (
-            <button key={o.key} type="button" className={`${styles.voteOpt} ${mine ? styles.voteMine : ""}`} onClick={() => pick(o.key)} disabled={!!busy} aria-pressed={mine}>
-              {v.myKey && <i className={styles.voteFill} style={{ width: `${pct}%` }} aria-hidden="true" />}
-              <span className={`num ${styles.choiceKey}`}>{o.key}</span>
-              <span className={styles.voteOptText}>{o.text}</span>
-              {v.myKey && <span className={`num ${styles.votePct}`}>{pct}%</span>}
-              {mine && <Check size={16} aria-hidden="true" />}
-            </button>
-          );
-        })}
-      </div>
-      <p className={styles.voteFine}>{err ?? (v.myKey ? "마감 전까지 다른 선택지로 바꿀 수 있어요" : "유진이 마감하면 가장 많이 나온 선택지로 진행돼요")}</p>
-    </section>
   );
 }
 
@@ -1553,7 +1505,10 @@ function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; on
   const e = run.ending;
   if (!e) return <p className={styles.center}>아직 끝나지 않은 인생이에요.</p>;
   const special = !!e.specialId;
-  const moments = run.log.filter((x) => x.hl && x.k !== "end").slice(0, 14);
+  // 결정적 순간: 너무 많으면 어릴 때 몇 개 + 나이 들어서 몇 개, 마지막엔 떠나는 장면(사인)까지
+  const hls = run.log.filter((x) => x.hl && x.k !== "end");
+  const death = run.log.find((x) => x.k === "end");
+  const moments = [...(hls.length > 13 ? [...hls.slice(0, 5), ...hls.slice(-8)] : hls), ...(death ? [death] : [])];
   const family = run.people.filter((p) => p.role !== "mom" && p.role !== "dad");
   return (
     <div className={styles.report}>
@@ -1562,7 +1517,7 @@ function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; on
         <section className={`${styles.endCard} ${special ? styles.endSpecial : ""}`}>
           <Orbit className={styles.endOrbit} />
           <span className={styles.endPre}>
-            {e.age}세, {e.cause === "accident" ? "갑작스러운 사고로" : e.cause === "sick" ? josa(e.causeText, "로") : "편안히"} 생을 마친 유진은
+            {e.age}세, {e.cause === "old" ? "편안히" : josa(e.causeText, "로")} 생을 마친 유진은
           </span>
           {special && <span className={styles.chipGold}>특수 엔딩</span>}
           {!special && e.mod && e.modId !== "ordinary" && <span className={styles.endMod}>{e.mod}</span>}

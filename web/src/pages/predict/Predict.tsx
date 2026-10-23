@@ -15,6 +15,7 @@ import { PredictAdmin } from "./PredictAdmin";
 import styles from "./Predict.module.css";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 import { LoadError } from "../../components/LoadError";
+import { LifeVoteCard } from "../life/LifeVoteCard";
 
 export type PredictionOption = { id: number; label: string; totalAmount: number; percent: number; multiplier: number };
 export type Prediction = {
@@ -148,6 +149,8 @@ export default function Predict() {
 
       <div className="split">
       <div className="split-main">
+      {/* 유진 키우기 방송 투표 — 유진이 방송에서 투표를 열었을 때만 뜸 */}
+      <LifeVoteCard />
       {isAdmin && <PredictAdmin />}
 
       <Card title={heading} tone={p && !hidden && isOpen ? "feature" : undefined}>

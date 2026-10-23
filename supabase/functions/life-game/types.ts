@@ -103,7 +103,7 @@ export type State = {
   pointsUsed: number;
   donated?: number; // 이번 판에서 포인트로 후원한 합계(P)
   show?: string; // 버튜버의 주력 컨텐츠(content.ts SHOWS)
-  dead: { cause: "old" | "sick" | "accident"; age: number } | null;
+  dead: { cause: "old" | "sick" | "accident"; age: number; why?: string } | null; // why: 구체적인 사인(급성 심근경색, 교통사고 …)
   ending: Ending | null;
 };
 

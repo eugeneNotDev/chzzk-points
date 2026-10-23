@@ -81,7 +81,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
   ctx.fillText(`${run.houseName}에서 태어남`, X, 176);
 
   // 마무리 문장
-  const how = e.cause === "accident" ? "갑작스러운 사고로" : e.cause === "sick" ? josa(e.causeText, "로") : "편안히";
+  const how = e.cause === "old" ? "편안히" : josa(e.causeText, "로");
   ctx.fillStyle = C.sub;
   ctx.font = font(38, 700);
   ctx.fillText(`${e.age}세, ${how} 생을 마친 유진은`, X, 300);
