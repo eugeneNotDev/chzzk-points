@@ -259,6 +259,8 @@ export class Ctx {
     this.s.jobSince = this.s.age;
     this.s.salary = Math.round(j.pay * payMul);
     this.s.rank = 0;
+    // 인지도로 오르는 직업(방송·창작)은 이미 쌓인 인지도에 맞는 등급에서 시작(다른 방송을 하다 옮긴 경우)
+    if (j.creator && j.ranks && j.rankAt) j.rankAt.forEach((need, i) => { if (this.s.fame >= need) this.s.rank = i; });
     this.s.rankSince = this.s.age;
     const title = jobTitle(this.s) ?? j.name;
     this.s.school = title;
@@ -469,6 +471,12 @@ function rankByValue(c: Ctx, j: Job, v: number, why: "fame" | "biz") {
   });
   const cur = c.s.rank ?? 0;
   if (target > cur) c.promote(target - cur, why);
+}
+
+// 이벤트·갈림길·물건으로 인지도가 오른 그 자리에서 등급도 맞춤(연말까지 안 기다리게)
+function syncRank(c: Ctx) {
+  const j = JOBS.find((x) => x.id === c.s.job);
+  if (j?.creator) rankByValue(c, j, c.s.fame, "fame");
 }
 
 function livingCost(c: Ctx) {
@@ -773,6 +781,7 @@ export function stepYear(c: Ctx) {
     finish(c);
     return;
   }
+  syncRank(c);
   if (d) {
     // 병이 생긴 해에는 치료 갈림길이 바로 뜸
     const f = FORKS.find((x) => x.id === "sick_treat")!;
@@ -836,6 +845,7 @@ export function choose(s: State, log: Entry[], key: string, rng: () => number = 
     if (e && po.cost) e.m = (e.m ?? 0) - po.cost;
   }
   if (p.kind === "think") s.thoughts.push({ age: s.age, q: p.text, a: po.text });
+  syncRank(c);
   // 결정 직후 바로 이어지는 마디(예: 청혼 → 결혼식)
   if (!s.pending && !s.dead) {
     const next = FORKS.find((x) => x.now && x.id !== p.id && eligible(c, x));
@@ -909,6 +919,7 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
     if (!e.m) delete e.m;
     if (pay === "points") e.t += ` (보호자가 ${price.toLocaleString("ko-KR")}P로 사줬다)`;
   }
+  syncRank(c);
   // 상점에서 산 것 때문에 지금 결정의 선택지 상태(돈 부족 등)가 바뀔 수 있음
   if (s.pending) {
     const f = FORKS.find((x) => x.id === s.pending!.id);
