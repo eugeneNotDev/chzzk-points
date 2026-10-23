@@ -114,7 +114,7 @@ export const JOBS: Job[] = [
   { id: "dev", name: "개발자", cat: "직장", hint: "게임도 좋아하고 머리도 좋으면…", req: (c) => c.st("intel") >= 55 && (c.has("game") || c.has("own_pc") || eduRank(c) >= 2), roll: "intel", dc: 9, pay: 4500, growth: 0.05, cap: 14000, retire: 55, fy: { health: -1 } , ranks: ["주니어 개발자", "개발자", "시니어 개발자", "테크 리드", "CTO"] },
   { id: "chef", name: "요리사", cat: "직장", hint: "요리에 눈을 뜨면…", req: (c) => c.has("cook"), roll: "talent", dc: 7, pay: 2800, growth: 0.03, cap: 6500, retire: 65 , ranks: ["막내 요리사", "라인 쿡", "부주방장", "수석 셰프", "스타 셰프"] },
   { id: "doctor", name: "의사", cat: "전문직", hint: "의대에 가면…", req: (c) => c.has("med") && !c.has("in_college"), roll: "intel", dc: 8, pay: 7000, growth: 0.08, cap: 30000, retire: 70 , ranks: ["인턴 의사", "레지던트", "전문의", "의대 교수", "병원장"] },
-  { id: "lawyer", name: "변호사", cat: "전문직", hint: "명문대에서 공부를 아주 잘하면…", req: (c) => eduRank(c) >= 4 && c.st("intel") >= 70, roll: "intel", dc: 12, pay: 7000, growth: 0.06, cap: 25000, retire: 70, fy: { happy: -1 } , ranks: ["신입 변호사", "어소시에이트 변호사", "파트너 변호사", "대표 변호사"] },
+  { id: "lawyer", name: "변호사", cat: "전문직", hint: "명문대에서 공부를 아주 잘하면…", req: (c) => (eduRank(c) >= 4 && c.st("intel") >= 70) || (c.has("lawschool") && !c.has("in_college")), roll: "intel", dc: 12, pay: 7000, growth: 0.06, cap: 25000, retire: 70, fy: { happy: -1 } , ranks: ["신입 변호사", "어소시에이트 변호사", "파트너 변호사", "대표 변호사"] },
   { id: "professor", name: "교수", cat: "전문직", hint: "대학원까지 가면…", req: (c) => c.s.edu === "grad", roll: "intel", dc: 11, pay: 6000, growth: 0.03, cap: 12000, retire: 65, fy: { intel: 1 } , ranks: ["시간강사", "조교수", "부교수", "정교수", "총장"] },
   { id: "athlete", name: "운동선수", cat: "전문직", hint: "운동을 잘하고 튼튼하면…", req: (c) => c.has("sporty") && c.st("health") >= 65 && c.age <= 26, roll: "health", dc: 10, pay: 5000, growth: 0.08, cap: 20000, retire: 35 , ranks: ["2군 선수", "1군 선수", "주전 선수", "국가대표", "레전드 선수"] },
   { id: "illustrator", name: "일러스트레이터", cat: "방송·예술", hint: "공책에 낙서를 많이 하면…", req: (c) => c.has("artsy"), roll: "talent", dc: 8, pay: 2400, growth: 0.05, cap: 8000 , ranks: ["습작 일러스트레이터", "프리랜서 일러스트레이터", "인기 일러스트레이터", "스타 일러스트레이터"] },
@@ -365,6 +365,19 @@ export const DAILY: Daily[] = [
   D("walk", [60, 100], "매일 아침 동네 한 바퀴를 걸었다.", fx({ health: 2, happy: 1 }), { rep: 4, w: 4 }),
   D("garden", [60, 100], "텃밭에 상추를 심었다. 잘 자란다.", fx({ happy: 3 })),
   D("fall", [72, 100], "빙판길에서 넘어져 한동안 깁스를 했다.", fx({ health: -5, happy: -2 }), { tone: -1 }),
+  // 노년 — 가족을 꾸린 판은 손주·자식 장면으로 보상
+  D("grandkid_visit", [58, 100], "{c1}가 손주를 데리고 놀러 왔다. 집이 하루 종일 시끌벅적했다.", fx({ happy: 5 }), { if: (c) => c.has("grandkid"), rep: 3, w: 18, tone: 1 }),
+  D("kid_call", [55, 100], "{c}에게서 '밥은 챙겨 먹냐'는 전화가 왔다. 언제 이렇게 컸나 싶다.", fx({ happy: 3 }), { if: (c) => kidsAt(c, 25, 80).length > 0, rep: 3, w: 15, tone: 1 }),
+  D("kid_massage", [65, 100], "{c}가 안마의자를 사 왔다. 매일 저녁 그 위에서 존다.", fx({ happy: 4, health: 1 }), { if: (c) => kidsAt(c, 30, 80).length > 0, w: 12, tone: 1 }),
+  D("grandkid_drawing", [62, 100], "손주가 할아버지 얼굴을 그려줬다. 어째선지 늑대처럼 생겼다.", fx({ happy: 5 }), { if: (c) => c.has("grandkid"), w: 12, tone: 1 }),
+  D("spouse_walk", [62, 100], "{p}와 손을 잡고 공원을 걸었다. 말이 없어도 편했다.", fx({ happy: 3 }), { if: (c) => !!c.person("spouse"), rep: 3, w: 15, tone: 1 }),
+  D("gold_wedding", [70, 100], "{p}와 금혼식을 올렸다. 50년 전 사진을 꺼내 보며 한참 웃었다.", fx({ happy: 8 }), { if: (c) => { const sp = c.person("spouse"); return !!sp && c.age - sp.since >= 50; }, w: 60, tone: 1 }),
+  D("old_friend_talk", [62, 95], "{f}와 옛날 이야기를 하다 보니 해가 졌다.", fx({ happy: 3 }), { if: (c) => !!c.person("friend"), rep: 4, w: 12 }),
+  D("glasses", [60, 80], "돋보기 없이는 글씨가 안 보이기 시작했다.", fx({ intel: -1 }), { w: 8 }),
+  D("photo_album", [65, 100], "옛날 사진첩을 꺼내 봤다. 다들 참 젊었다.", fx({ happy: 2 }), { w: 8 }),
+  D("class_reunion_old", [70, 95], "초등학교 동창 모임에 나갔다. 절반은 못 알아봤다.", fx({ happy: 2 }), { w: 8 }),
+  D("quiet_house", [70, 100], "집이 너무 조용하다. 라디오를 켜두고 잠들었다.", fx({ happy: -2 }), { if: (c) => !c.person("spouse") && c.folks("child").length === 0, rep: 6, w: 6, tone: -1 }),
+  D("old_neru_letter", [60, 100], "옛날 방송을 기억하는 네루가 손편지를 보내왔다. 글씨가 많이 떨렸다.", fx({ happy: 6 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && c.has("yangs") && !creatorJob(c), w: 20, tone: 1 }),
   // 늑대
   D("wolf1", [12, 25], "늑대 탈을 쓴 꿈을 꿨다. 이상하게 익숙했다.", fx({}, 0, { add: ["wolf_dream1"] }), { w: 1 }),
   D("wolf1_vt", [14, 60], "늑대 아바타로 방송한 날 밤, 늑대 탈을 쓴 꿈을 꿨다. 이상하게 익숙했다.", fx({}, 0, { add: ["wolf_dream1"] }), { w: 10, if: (c) => c.has("vt_wolf") && !c.has("wolf_dream1") }),
@@ -397,6 +410,11 @@ const think = (id: string, age: number, q: string, a: [string, string, string]):
 const focusOpts = (stage: number): Opt[] => FOCUSES.filter((f) => f.stage === stage && !f.min).map((f) =>
   pick(f.name, R(`'${f.name}' 위주로 지내기로 했다.`, { fn: (c) => (c.s.focus = f.id) }), { hint: f.hint })
 );
+const tuitionOf = (c: Ctx) => HOUSES.find((h) => h.id === c.s.house)?.tuition ?? 0;
+// 늦깎이 루트 주사위 보정: 자기계발 집중·자격증
+const lateBonus = (c: Ctx) => (c.s.focus === "selfdev" ? 1 : 0) + (c.has("cert") ? 1 : 0);
+// "회사원이었단다" / "의사였단다"
+const wasJob = (name: string) => { const ch = name.charCodeAt(name.length - 1); const has = ch >= 0xac00 && ch <= 0xd7a3 && (ch - 0xac00) % 28 !== 0; return name + (has ? "이었단다" : "였단다"); };
 const tuitionFx = (edu: "local" | "inseoul" | "top", years = 4, med = false): Fx => ({
   fn: (c) => {
     const h = HOUSES.find((x) => x.id === c.s.house)!;
@@ -499,7 +517,7 @@ export const FORKS: Fork[] = [
         good: R("기대 이상으로 잘 봤다.", fx({ happy: 4 }, 0, { fn: (c) => (c.s.score = "inseoul") })),
         normal: R("평소만큼 봤다.", fx({}, 0, { fn: (c) => (c.s.score = "local") })),
         bad: R("시험을 망쳤다. 집에 오는 길이 길었다.", fx({ happy: -5 }, 0, { fn: (c) => (c.s.score = "low") })),
-      }, { bonus: (c) => (c.has("tutored") ? 1 : 0) + (c.has("retry") ? 1 : 0) + (c.s.focus === "study" ? 1 : 0), hint: "지능 주사위 · 과외·재수·공부 집중이면 +1" }),
+      }, { bonus: (c) => (c.has("tutored") ? 1 : 0) + (c.has("retry") ? 1 : 0) + (c.s.focus === "study" ? 2 : 0), hint: "지능 주사위 · 공부 집중 +2 · 과외·재수 +1" }),
       pick("수능은 포기하고 다른 길", R("수능 대신 다른 길을 찾기로 했다.", fx({ happy: 1 }, 0, { add: ["no_uni"], fn: (c) => (c.s.edu = "high") }))),
     ],
   },
@@ -528,14 +546,14 @@ export const FORKS: Fork[] = [
     ],
   },
   {
-    id: "grad", a: [22, 32], mile: true, tag: "인생 마디", t: (c) => (c.has("med") ? "의대를 졸업하고 국가고시까지 붙었다." : "대학을 졸업했다. 학사모를 던졌다."),
+    id: "grad", a: [22, 45], mile: true, rep: 1, tag: "인생 마디", t: (c) => (c.has("med") ? "의대를 졸업하고 국가고시까지 붙었다." : c.has("lawschool") ? "로스쿨을 마치고 변호사 시험에 붙었다." : "대학을 졸업했다. 학사모를 던졌다."),
     if: (c) => inCollege(c) && c.age >= c.s.until && c.s.army === 0,
     opts: [
       pick("바로 취업 준비", R("졸업장을 들고 사회로 나섰다.", fx({ happy: 3 }, 0, { del: ["in_college"], fn: (c) => (c.s.school = "취준생") }))),
       dice("대학원에 간다", "intel", {
-        good: R("대학원에 들어갔다. 2년만 더…", fx({ intel: 4 }, 0, { del: ["in_college"], fn: (c) => { c.s.edu = "grad"; c.s.until = c.age + 2; c.s.school = "대학원생"; } })),
+        good: R("대학원에 들어갔다. 2년만 더…", fx({ intel: 4 }, 0, { del: ["in_college"], fn: (c) => { c.s.edu = "grad"; c.s.until = c.age + 2; c.s.school = "대학원생"; c.s.debt += Math.round(1500 * (1 - tuitionOf(c))); } })),
         bad: R("대학원 입시에 떨어졌다. 취업 준비를 하기로 했다.", fx({ happy: -3 }, 0, { del: ["in_college"], fn: (c) => (c.s.school = "취준생") })),
-      }, { cost: 1500, if: (c) => !c.has("med") && c.s.edu !== "grad" }),
+      }, { hint: "지능 주사위 · 등록금은 학자금 대출", if: (c) => !c.has("med") && !c.has("lawschool") && c.s.edu !== "grad" }),
     ],
   },
   {
@@ -720,7 +738,19 @@ export const FORKS: Fork[] = [
     ],
   },
   {
-    id: "audition", a: [13, 19], tag: "꿈", t: "길에서 연예기획사 명함을 받았다. 오디션을 보러 오라고 한다.",
+    id: "audition_fest", a: [15, 18], mile: true, tag: "꿈", t: "학교 축제 무대가 끝나자 연예기획사 사람이 찾아왔다. 오디션을 보러 오라고 한다.",
+    if: (c) => c.st("charm") >= 62 && c.st("talent") >= 55 && !c.has("trainee") && c.s.seen["audition"] === undefined,
+    opts: [
+      dice("오디션을 본다", "charm", {
+        great: R("그 자리에서 연습생 계약을 했다!", fx({ charm: 3, talent: 3, happy: 5 }, 0, { add: ["trainee"] }), true),
+        good: R("연습생이 됐다. 새벽까지 춤 연습이다.", fx({ talent: 3, health: -1 }, 0, { add: ["trainee"] })),
+        bad: R("떨어졌다. 그래도 좋은 경험이었다.", fx({ happy: -2, charm: 1 })),
+      }, { bonus: (c) => statModOf(c, "talent") }),
+      pick("공부가 먼저다", R("명함은 서랍 속에 들어갔다.", fx({}))),
+    ],
+  },
+  {
+    id: "audition", a: [13, 19], rep: 3, w: 14, tag: "꿈", t: "길에서 연예기획사 명함을 받았다. 오디션을 보러 오라고 한다.",
     opts: [
       dice("오디션을 본다", "charm", {
         great: R("그 자리에서 연습생 계약을 했다!", fx({ charm: 3, talent: 3, happy: 5 }, 0, { add: ["trainee"] }), true),
@@ -1180,6 +1210,95 @@ export const FORKS: Fork[] = [
       dono(300, R("마지막 후원에 유진이 끝내 목이 메었다. '진짜 마지막까지 고마워요.'", fx({ happy: 6 }, 0, { del: ["vt_farewell"] }))),
       dono(500, R("마지막 방송의 마지막 후원. 유진이 한참 동안 아무 말도 못 했다. 그 장면은 오래도록 회자됐다.", fx({ happy: 8 }, 0, { del: ["vt_farewell"] }), true)),
       pick("채팅으로 인사만 한다", R("'수고했어요' 채팅이 화면을 가득 채웠다.", fx({ happy: 3 }, 0, { del: ["vt_farewell"] }))),
+    ],
+  },
+  // ── 늦깎이 전문직 루트(수능을 놓쳐도 노리면 닿게) ──
+  {
+    id: "med_late", a: [22, 32], w: 20, tag: "공부", t: "의학전문대학원에 도전해볼까? 다시 4년을 공부해야 한다.",
+    if: (c) => eduRank(c) >= 2 && c.st("intel") >= 62 && !c.has("med") && !inCollege(c) && c.s.army === 0,
+    opts: [
+      dice("도전한다", "intel", {
+        good: R("의학전문대학원에 합격했다! 다시 학생이 됐다.", { s: { happy: 5 }, fn: (c) => { c.quit("의대생"); tuitionFx("top", 4, true).fn!(c); } }, true),
+        bad: R("의학전문대학원 시험에 떨어졌다.", fx({ happy: -3 })),
+      }, { bonus: lateBonus, hint: "지능 주사위 · 자기계발 집중·자격증이면 +1" }),
+      pick("지금 하던 걸 계속한다", R("의사의 꿈은 접어두기로 했다.", fx({}))),
+    ],
+  },
+  {
+    id: "law_school", a: [22, 34], w: 20, tag: "공부", t: "로스쿨에 도전해볼까? 3년 동안 법전과 씨름해야 한다.",
+    if: (c) => eduRank(c) >= 2 && c.st("intel") >= 60 && !c.has("lawschool") && !c.has("med") && !inCollege(c) && c.s.army === 0 && c.s.job !== "lawyer",
+    opts: [
+      dice("도전한다", "intel", {
+        good: R("로스쿨에 합격했다. 법전이 베개보다 두꺼웠다.", fx({ intel: 2, happy: 3 }, 0, { add: ["lawschool", "in_college"], fn: (c) => { c.quit("로스쿨생"); c.s.until = c.age + 3; c.s.debt += Math.round(2400 * (1 - tuitionOf(c))); } }), true),
+        bad: R("로스쿨 입시에 떨어졌다.", fx({ happy: -3 })),
+      }, { bonus: lateBonus, hint: "지능 주사위 · 등록금은 학자금 대출" }),
+      pick("지금 하던 걸 계속한다", R("법조인의 꿈은 접어두기로 했다.", fx({}))),
+    ],
+  },
+  {
+    id: "late_grad", a: [25, 45], w: 15, tag: "공부", t: "공부를 더 하고 싶다는 생각이 든다. 대학원에 가볼까?",
+    if: (c) => eduRank(c) >= 2 && c.s.edu !== "grad" && c.st("intel") >= 58 && !c.has("med") && !inCollege(c) && c.s.army === 0,
+    opts: [
+      dice("대학원에 간다", "intel", {
+        good: R("대학원에 합격했다. 다시 연구실 생활이다.", fx({ intel: 4 }, 0, { fn: (c) => { c.quit("대학원생"); c.s.edu = "grad"; c.s.until = c.age + 2; c.s.debt += Math.round(1500 * (1 - tuitionOf(c))); } }), true),
+        bad: R("대학원 입시에 떨어졌다.", fx({ happy: -2 })),
+      }, { bonus: lateBonus, hint: "지능 주사위 · 등록금은 학자금 대출" }),
+      pick("지금도 충분하다", R("공부는 취미로 하기로 했다.", fx({ happy: 1 }))),
+    ],
+  },
+  {
+    id: "idol_debut", a: [16, 24], mile: true, tag: "꿈", t: "연습생 생활 끝에 데뷔 평가 날이 왔다.",
+    if: (c) => c.has("trainee") && !c.s.job,
+    opts: [
+      dice("무대에 오른다", "charm", {
+        great: R("데뷔조 센터로 확정됐다! 데뷔 무대부터 화제가 됐다.", fx({ happy: 8 }, 0, { fn: (c) => { c.hire("idol"); c.s.fame = Math.max(c.s.fame, 20); } }), true),
+        good: R("데뷔조에 들었다. 드디어 데뷔다.", fx({ happy: 6 }, 0, { fn: (c) => { c.hire("idol"); c.s.fame = Math.max(c.s.fame, 8); } }), true),
+        bad: R("데뷔조에서 떨어졌다. 그래도 아직 기회는 있다.", fx({ happy: -4 })),
+      }, { bonus: (c) => statModOf(c, "talent"), hint: "매력 주사위 · 끼가 높으면 보정" }),
+      pick("연습생을 그만둔다", R("연습실 문을 마지막으로 닫았다.", fx({ happy: -1 }, 0, { del: ["trainee"] }))),
+    ],
+  },
+  // ── 노년 갈림길 ──
+  {
+    id: "old_trip", a: [65, 88], rep: 6, tag: "노년", t: "기운이 남아 있을 때 여행을 가볼까?",
+    opts: [
+      pick("가족이랑 다 같이 간다", R("온 가족이 함께 바닷가 여행을 갔다. 손주가 모래성을 쌓았다.", fx({ happy: 7 }, 0, { fn: (c) => { for (const k of c.folks("child")) c.bond(k, 4); c.bond(c.person("spouse"), 4); } }), true), { cost: 500, if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
+      dice("혼자 배낭을 멘다", "health", {
+        good: R("혼자 기차를 타고 전국을 돌았다. 젊어진 기분이었다.", fx({ happy: 7, health: 1 })),
+        bad: R("여행 사흘째에 몸살이 나서 돌아왔다.", fx({ health: -3, happy: 1 })),
+      }, { cost: 300 }),
+      pick("집이 최고다", R("여행은 TV로 보기로 했다.", fx({ happy: 1 }))),
+    ],
+  },
+  {
+    id: "old_learn", a: [65, 85], tag: "노년", t: "새로운 걸 하나 배워볼까?",
+    opts: [
+      pick("그림을 배운다", R("복지관 그림 교실에 다녔다. 첫 작품은 냉장고에 붙었다.", fx({ talent: 3, happy: 3 })), { cost: 100 }),
+      pick("컴퓨터를 배운다", R("컴퓨터 교실에 다녔다. 이제 영상 통화도 혼자 건다.", fx({ intel: 3, happy: 2 })), { cost: 100 }),
+      pick("춤을 배운다", R("복지관 댄스 교실에 다녔다. 무릎이 좀 아프지만 신난다.", fx({ health: 2, charm: 2, happy: 2 })), { cost: 100 }),
+      pick("배우긴 뭘 배워", R("늘 하던 대로 지냈다.", fx({}))),
+    ],
+  },
+  {
+    id: "grandkid_dream", a: [65, 95], kind: "think", tag: "생각 남기기", t: "손주가 묻는다. 할아버지는 어릴 때 꿈이 뭐였어?",
+    if: (c) => c.has("grandkid"),
+    opts: [
+      pick("늑대였지", R("손주가 깔깔 웃었다. 진짜인데.", fx({ happy: 3 }))),
+      pick("지금 너 같은 아이였지", R("손주가 무슨 뜻이냐며 고개를 갸웃했다.", fx({ happy: 3 }))),
+      pick((c) => (c.s.jobs.length ? wasJob(c.s.jobs[c.s.jobs.length - 1].name) : "그냥 행복하게 사는 거였지"), R("손주가 고개를 끄덕였다.", fx({ happy: 2 }))),
+    ],
+  },
+  {
+    id: "bucket_list", a: [75, 95], tag: "노년", t: "버킷리스트 마지막 줄이 아직 비어 있다.",
+    opts: [
+      dice("스카이다이빙을 한다", "health", {
+        great: R("하늘에서 소리를 질렀다. 인생 최고의 1분이었다.", fx({ happy: 10 }), true),
+        good: R("무사히 착지했다. 다리가 후들거렸지만 웃음이 멈추지 않았다.", fx({ happy: 7 })),
+        bad: R("착지하다 발목을 삐었다. 그래도 후회는 없다.", fx({ health: -5, happy: 3 })),
+      }, { cost: 100 }),
+      pick("가족사진을 찍는다", R("온 가족이 사진관에 모였다. 액자가 거실 한가운데 걸렸다.", fx({ happy: 6 })), { if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
+      pick("옛 친구에게 편지를 쓴다", R("수십 년 만에 쓴 편지에 답장이 왔다.", fx({ happy: 5 }))),
+      pick("그냥 비워 둔다", R("빈칸도 나쁘지 않다.", fx({ happy: 1 }))),
     ],
   },
   {

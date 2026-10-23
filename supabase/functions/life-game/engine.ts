@@ -745,7 +745,7 @@ function nextDecision(c: Ctx): Pending | null {
       return makePending(c, f);
     }
   }
-  const p = s.age < 3 ? 0 : s.age < 8 ? 0.4 : s.age < 65 ? 0.6 : 0.5;
+  const p = s.age < 3 ? 0 : s.age < 8 ? 0.4 : 0.6;
   if (!c.chance(p)) return null;
   const f = pickWeighted(c, FORKS.filter((x) => !x.mile && eligible(c, x)));
   if (!f) return null;
