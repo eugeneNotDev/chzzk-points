@@ -37,6 +37,7 @@ export type PendingOpt = {
   mod?: number; // 그 주사위 보정
   off?: string; // 못 고르는 이유(돈 부족 등)
   arg?: string;
+  pts?: number; // 포인트로 후원하는 선택이면 그 금액(P)
 };
 export type Pending = { id: string; kind: "fork" | "mile" | "think" | "focus"; tag?: string; text: string; opts: PendingOpt[] };
 
@@ -100,6 +101,8 @@ export type State = {
   hist: number[][]; // [나이, 건강, 지능, 매력, 행복, 끼, 순자산]
   thoughts: { age: number; q: string; a: string }[];
   pointsUsed: number;
+  donated?: number; // 이번 판에서 포인트로 후원한 합계(P)
+  show?: string; // 버튜버의 주력 컨텐츠(content.ts SHOWS)
   dead: { cause: "old" | "sick" | "accident"; age: number } | null;
   ending: Ending | null;
 };

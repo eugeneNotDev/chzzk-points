@@ -1,7 +1,7 @@
 // 유진 키우기 v3 콘텐츠 — 집·초점·직업·상점·일상 이벤트·갈림길·병·엔딩. 돈은 만원 단위.
 // 글 안의 {p}=연인/배우자, {f}=친구, {c}=막내 아이, {pet}=반려동물, {job}=지금 직업 이름.
 import { josa } from "./josa.ts";
-import type { Ctx, Daily, Disease, Focus, Fork, Fx, House, Item, Job, Mod, Opt, Out, Special, Text } from "./engine.ts";
+import type { Ctx, Daily, Disease, Focus, Fork, Fx, House, Item, Job, Mod, Opt, Out, Show, Special, Text } from "./engine.ts";
 import { STAT_LABEL, badDebt, type Stats, type StatKey, type Tier } from "./types.ts";
 
 // ── 짧게 쓰기 위한 도구 ──
@@ -20,6 +20,43 @@ const salaried = (c: Ctx) => {
   return !!j && !j.creator && !j.biz;
 };
 const creatorJob = (c: Ctx) => !!JOBS.find((x) => x.id === c.s.job)?.creator;
+
+// ── 버튜버 루트(스트리머 유진 알파 팬게임 요소) ──
+const vtJob = (c: Ctx) => c.s.job === "vtuber";
+// 팬 이름(네루)을 정하기 전엔 그냥 "시청자"
+const neru = (c: Ctx) => (c.has("yangs") ? "네루" : "시청자");
+const fameUp = (n: number) => (c: Ctx) => { c.s.fame = Math.max(0, Math.min(100, c.s.fame + n)); };
+// 실제 유진 생일(11월 22일, 한국 시간)에 플레이하면 열리는 이벤트용
+const isBirthday = () => { const d = new Date(Date.now() + 9 * 3600 * 1000); return d.getUTCMonth() === 10 && d.getUTCDate() === 22; };
+// 포인트 후원 선택지(100/300/500P) — 차감은 서버가 함. 돌려받는 건 없음
+const dono = (pts: number, res: Out, hint?: string): Opt => ({ t: `${pts}P 후원하기`, pts, res, hint: hint ?? "포인트 후원" });
+
+export const SHOWS: Show[] = [
+  {
+    id: "game", name: "게임 방송", hint: "끼 주사위 · 무난하게", stat: "talent",
+    great: "아무도 못 깬 보스를 한 번에 잡았다. 클립이 사방에 퍼졌다.",
+    bad: "보스한테 열두 번 죽었다. 채팅창이 '유능 알파'로 도배됐다.", badFx: { s: { happy: -3 }, add: ["yuneung_mock"] },
+    dF: { great: 12, good: 5, normal: 1, bad: -3, terrible: -5 },
+  },
+  {
+    id: "chat", name: "저챗", hint: "매력 주사위 · 말발이 중요", stat: "charm",
+    great: "저챗에서 한 말이 명언 짤로 돌았다.",
+    bad: "저챗에서 한 말이 와전돼서 한동안 시끄러웠다.", badFx: { s: { happy: -5 }, add: ["vt_down"] },
+    dF: { great: 11, good: 5, normal: 2, bad: -2, terrible: -9 },
+  },
+  {
+    id: "song", name: "노래 방송", hint: "끼 주사위 −1 · 망해도 웃기면 그만", stat: "talent", bonus: -1,
+    great: "노래 방송 도중 기적처럼 음정이 맞았다. 네루들이 녹음 버튼을 눌렀다.",
+    bad: "노래 방송에서 음이탈이 났다. 그 클립이 역대 조회수 1위를 찍었다.", badFx: { s: { happy: -1 } },
+    dF: { great: 15, good: 3, normal: 0, bad: -2, terrible: 7 },
+  },
+  {
+    id: "radio", name: "미스테리 라디오", hint: "지능 주사위 · 크게 망하진 않음", stat: "intel",
+    great: "미스테리 라디오 사연이 소름 돋는다며 커뮤니티에 퍼졌다.",
+    bad: "미스테리 라디오 도중 정전이 됐다. 진짜 미스테리였다.", badFx: { s: { happy: -2 } },
+    dF: { great: 9, good: 4, normal: 2, bad: -1, terrible: -4 },
+  },
+];
 const bizJob = (c: Ctx) => !!JOBS.find((x) => x.id === c.s.job)?.biz;
 const inCollege = (c: Ctx) => c.has("in_college");
 const homePrice = (c: Ctx) => Math.round(45000 * Math.pow(1.025, Math.max(0, c.age - 30)) / 100) * 100;
@@ -309,6 +346,16 @@ export const DAILY: Daily[] = [
   D("long_cold", [70, 100], "감기가 한 달이나 갔다.", fx({ health: -3 }), { rep: 3, w: 4, tone: -1 }),
   D("memoir", [68, 100], "자서전을 쓰기 시작했다.", fx({ intel: 2, happy: 2 })),
   D("old_stream", [65, 100], "은퇴했지만 가끔 방송을 켠다. 네루들은 아직 남아 있다.", fx({ happy: 5 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber"), w: 15 }),
+  // 버튜버 루트 — 방송 단골 밈
+  D("vt_7pm", [14, 100], (c) => `오늘도 저녁 7시, 방송 켜짐 알림이 울렸다. ${neru(c)}들이 하나둘 모였다.`, fx({ happy: 2 }), { if: vtJob, rep: 3, tone: 1 }),
+  D("vt_sight", [14, 100], "눈앞에 있는 열쇠를 10분 동안 못 찾았다. 클립 제목은 '시야 이슈'.", fx({ happy: -1 }, 0, { fn: fameUp(2) }), { if: (c) => vtJob(c) && c.s.show === "game", rep: 5, w: 16 }),
+  D("vt_yuneung", [14, 100], "쉬운 퍼즐 앞에서 30분을 헤맸다. 채팅창이 '유능 알파'로 도배됐다.", fx({ happy: -1 }, 0, { add: ["yuneung_mock"], fn: fameUp(1) }), { if: vtJob, rep: 7, w: 12 }),
+  D("vt_grandpa", [22, 100], "요즘 유행어를 못 알아들었다. 채팅창에 '할아버지'가 줄줄이 올라왔다.", fx({ happy: 1 }, 0, { add: ["halabeoji"] }), { if: vtJob, rep: 7, w: 14 }),
+  D("vt_babo", [14, 100], "시청자 퀴즈 방송에서 자기가 낸 문제를 자기가 틀렸다. 채팅창: 바보 바보 바보", fx({ happy: 2 }, 0, { fn: fameUp(1) }), { if: vtJob, rep: 8, w: 14 }),
+  D("vt_baji", [14, 100], "합방 상대가 아직도 '바지 알파'라고 부른다. 이제는 정이 들었다.", fx({ happy: 2 }), { if: (c) => vtJob(c) && c.has("baji"), rep: 5, w: 18 }),
+  D("vt_yang", [14, 100], (c) => `${neru(c)} 한 명이 양 인형을 보내줬다. 방송 화면 구석에 자리를 잡았다.`, fx({ happy: 4 }, 0, { add: ["yang_doll"] }), { if: (c) => vtJob(c) && c.s.fame >= 15 && !c.has("yang_doll"), w: 25, tone: 1 }),
+  D("vt_howl", [14, 100], (c) => `방송 끝인사로 늑대 울음소리를 냈다. ${neru(c)}들이 채팅으로 따라 울었다.`, fx({ happy: 3, charm: 1 }), { if: (c) => vtJob(c) && c.has("vt_wolf"), rep: 5, w: 16, tone: 1 }),
+  D("bday_real", [1, 120], "생일 케이크 촛불을 후 불었다. 어디선가 네루들의 축하 채팅이 쏟아지는 것 같았다.", fx({ happy: 5 }), { if: () => isBirthday(), rep: 15, w: 60, tone: 1 }),
   D("hometown", [60, 95], "어릴 적 살던 동네에 가봤다. 놀이터는 그대로였다.", fx({ happy: 3 })),
   D("80th", [80, 80], "팔순 잔치를 했다. 가족들이 다 모였다.", fx({ happy: 5 }), { w: 40 }),
   D("lost_friend", [70, 98], "{f}를 먼저 떠나보냈다.", fx({ happy: -6 }, 0, { fn: (c) => { const f = c.person("friend"); if (f) f.alive = false; } }), { if: (c) => !!c.person("friend"), tone: -1 }),
@@ -324,6 +371,8 @@ export const DAILY: Daily[] = [
   // 희귀(도감)
   R1("lottery", [20, 90], "복권 1등에 당첨됐다!!", fx({ happy: 10 }, 100000), "아주 가끔 하늘에서 돈이 떨어지면…", { w: 0.5 }),
   R1("ufo", [10, 85], "밤하늘에서 이상한 빛을 봤다. 아무도 믿어주지 않았다.", fx({ happy: 2 }), "밤하늘을 올려다보면…"),
+  R1("vt_raid", [16, 100], "대형 방송인이 레이드를 왔다. 처음 보는 닉네임들이 그날부터 단골이 됐다.", fx({ happy: 6 }, 0, { fn: fameUp(12) }), "버튜버로 방송을 하다 보면 언젠가…", { if: vtJob }),
+  R1("bday_miracle", [1, 120], "생일 촛불을 끄자 어디선가 늑대 울음과 양 울음이 함께 들렸다.", fx({ happy: 10, talent: 3 }), "유진의 생일에 키우면…", { if: () => isBirthday(), w: 200 }),
   R1("viral", [18, 60], "올린 영상이 하룻밤 사이에 백만 조회수를 찍었다.", fx({ charm: 8 }, 300, { add: ["fame"], fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 20)) }), "끼를 세상에 보여주면…", { if: (c) => c.has("mic") || c.has("music") || c.has("artsy") }),
   R1("celeb", [15, 70], "길에서 유명 연예인과 부딪혔다. 사인은 못 받았다.", fx({ happy: 3 }), "번화가를 걷다 보면…"),
   R1("twin", [15, 80], "자신과 똑같이 생긴 사람을 봤다. 다른 평행세계의 유진일까?", fx({ happy: 1 }, 0, { add: ["met_twin"] }), "평행세계가 겹치는 순간이 있다면…"),
@@ -1006,8 +1055,8 @@ export const FORKS: Fork[] = [
     id: "vtuber_offer", a: [19, 40], tag: "꿈", t: "버추얼 소속사에서 데뷔 제안이 들어왔다.", if: (c) => c.has("broadcast") && c.s.job !== "vtuber",
     opts: [
       dice("데뷔한다", "talent", {
-        great: R("늑대 귀가 달린 아바타로 데뷔했다. 데뷔 방송부터 동접 천 명!", fx({ happy: 6 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 25); } }), true),
-        good: R("늑대 귀가 달린 아바타로 데뷔했다.", fx({ happy: 4 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 10); } }), true),
+        great: R("버추얼 아바타로 데뷔했다. 데뷔 방송부터 동접 천 명!", fx({ happy: 6 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 25); } }), true),
+        good: R("버추얼 아바타로 데뷔했다.", fx({ happy: 4 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 10); } }), true),
         bad: R("데뷔는 했지만 시청자가 다섯 명이었다.", fx({ happy: 1 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 2); } })),
       }),
       pick("거절한다", R("방송은 추억으로 남기기로 했다.", fx({ happy: -2 }))),
@@ -1029,7 +1078,7 @@ export const FORKS: Fork[] = [
     opts: [
       dice("사과 방송을 한다", "charm", {
         good: R("진심이 전해졌다. 오히려 팬이 늘었다.", fx({ charm: 2 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 3)) })),
-        bad: R("사과문이 또 논란이 됐다.", fx({ happy: -6 }, 0, { fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 12)) })),
+        bad: R("사과문이 또 논란이 됐다.", fx({ happy: -6 }, 0, { add: ["vt_down"], fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 12)) })),
       }),
       pick("잠시 쉰다", R("한 달 동안 방송을 쉬었다.", fx({ happy: -2, health: 2 }, 0, { fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 6)) }))),
     ],
@@ -1039,6 +1088,74 @@ export const FORKS: Fork[] = [
     opts: [
       pick("방송에서 읽어준다", R("편지를 읽다가 목이 메었다.", fx({ charm: 3, happy: 4 }, 0, { add: ["yangs"] }))),
       pick("혼자 몰래 읽는다", R("편지를 지갑에 넣고 다녔다.", fx({ happy: 5 }))),
+    ],
+  },
+  // ── 버튜버 루트 ──
+  {
+    id: "vt_concept", a: [14, 100], mile: true, now: true, tag: "데뷔", t: "버튜버 데뷔를 앞두고 있다. 어떤 모습으로 첫인사를 할까?",
+    if: vtJob,
+    opts: [
+      pick("늑대 컨셉으로 간다", R("늑대 귀와 꼬리를 단 아바타로 첫인사를 했다. '아우~' 소리가 생각보다 잘 나왔다.", fx({ talent: 2, happy: 3 }, 0, { add: ["vt_wolf"] }), true), { hint: "늑대 전용 이벤트" }),
+      pick("팀에 들어가서 데뷔한다", R("팀 합동 데뷔 방송. 잔뜩 긴장한 채 '팀의 바지 사장, 바지 알파입니다!'라고 인사해버렸다. 그날부터 별명은 바지 알파.", fx({ charm: 2, happy: 2 }, 0, { add: ["vt_team", "baji"], fn: fameUp(4) }), true), { hint: "인지도 조금 ↑ · 별명이 생겨요" }),
+      pick("나답게 간다", R("특별한 컨셉 없이 평소 말투 그대로 첫 방송을 켰다.", fx({ happy: 4, charm: 1 }, 0, { add: ["vt_plain"] })), { hint: "행복 ↑" }),
+    ],
+  },
+  {
+    id: "vt_show", a: [14, 100], mile: true, rep: 8, tag: "방송",
+    t: (c) => (c.s.show ? "방송 개편 시즌이다. 주력 컨텐츠를 바꿔볼까?" : "이제 주력 컨텐츠를 정할 때다. 어떤 방송을 메인으로 할까?"),
+    if: (c) => vtJob(c) && c.s.seen["vt_concept"] !== undefined && c.age > c.s.seen["vt_concept"],
+    opts: SHOWS.map((sh) => pick(sh.name, R(`앞으로는 ${sh.name} 위주로 방송하기로 했다.`, { fn: (c) => (c.s.show = sh.id) }), { hint: sh.hint })),
+  },
+  {
+    id: "vt_first_dono", a: [14, 100], mile: true, tag: "첫 후원", t: "갓 데뷔한 유진의 방송. 아직 후원 알림이 한 번도 울린 적이 없다. 첫 후원을 해줄까?",
+    if: (c) => vtJob(c) && c.s.seen["vt_concept"] !== undefined && c.age > c.s.seen["vt_concept"],
+    opts: [
+      dono(100, R("후원 알림이 처음으로 울렸다. 유진이 '어? 어?' 하다가 의자에서 떨어질 뻔했다.", fx({ happy: 5 }, 0, { add: ["first_dono"], fn: fameUp(3) }), true)),
+      dono(300, R("첫 후원 알림에 유진이 한참 말을 잇지 못했다. 다시보기로 세 번이나 돌려 봤다.", fx({ happy: 7, charm: 1 }, 0, { add: ["first_dono"], fn: fameUp(6) }), true)),
+      dono(500, R("첫 후원부터 500P! 유진이 방송이 끝날 때까지 그 닉네임을 불렀다.", fx({ happy: 9, charm: 2 }, 0, { add: ["first_dono"], fn: fameUp(10) }), true)),
+      pick("지켜보기만 한다", R("며칠 뒤 다른 시청자가 첫 후원을 했다. 유진이 소리를 질렀다.", fx({ happy: 3 }, 0, { fn: fameUp(1) }))),
+    ],
+  },
+  {
+    id: "vt_birthday", a: [15, 100], rep: 3, w: 40, tag: "생일 방송", t: (c) => `${c.age}번째 생일 방송. 채팅창이 축하 메시지로 가득하다.`,
+    if: (c) => vtJob(c) && c.s.fame >= 5,
+    opts: [
+      dono(100, R("축하 후원 알림이 울렸다. 유진이 케이크 앞에서 수줍게 웃었다.", fx({ happy: 4 }, 0, { fn: fameUp(2) }))),
+      dono(300, R("축하 후원이 이어졌다. 유진이 '내년에도 같이 해요'라고 약속했다.", fx({ happy: 6, charm: 1 }, 0, { fn: fameUp(4) }))),
+      dono(500, R("통 큰 축하 후원에 유진이 촛불을 끄다 말고 울컥했다. 레전드 생일 방송으로 남았다.", fx({ happy: 8, charm: 2 }, 0, { fn: fameUp(6) }), true)),
+      pick("축하 채팅만 친다", R("축하 채팅을 하나하나 읽어주느라 방송이 한 시간 늘어났다.", fx({ happy: 3 }))),
+    ],
+  },
+  {
+    id: "vt_cheer", a: [14, 100], mile: true, rep: 2, tag: "응원", t: "요즘 유진의 방송에 힘이 없다. 끝인사 목소리가 유난히 작았다.",
+    if: (c) => vtJob(c) && c.has("vt_down"),
+    opts: [
+      dono(100, R("응원 후원 알림에 유진이 잠깐 말을 멈췄다. '…고마워요.'", fx({ happy: 6, health: 1 }, 0, { del: ["vt_down"] }))),
+      dono(300, R("응원 후원이 이어지자 유진의 목소리에 다시 힘이 들어갔다.", fx({ happy: 9, health: 2 }, 0, { del: ["vt_down"], fn: fameUp(2) }))),
+      dono(500, R("큰 응원 후원에 유진이 결국 웃음을 터뜨렸다. 그날 방송은 평소보다 한 시간 더 길었다.", fx({ happy: 12, health: 3, charm: 1 }, 0, { del: ["vt_down"], fn: fameUp(4) }), true)),
+      pick("채팅으로 응원만 보낸다", R("응원 채팅을 보며 유진은 조금씩 힘을 냈다.", fx({ happy: 3 }, 0, { del: ["vt_down"] }))),
+    ],
+  },
+  {
+    id: "vt_million", a: [14, 100], mile: true, tag: "축하 방송", t: "팔로워 100만 축하 방송! 네루들이 전부 모였다.",
+    if: (c) => vtJob(c) && c.has("gold_button"),
+    opts: [
+      dono(100, R("축하 후원 알림 사이로 유진이 연신 고개를 숙였다.", fx({ happy: 5, charm: 1 }))),
+      dono(300, R("후원 알림이 끊이지 않았다. 유진이 '이게 다 네루 덕분'이라고 몇 번이나 말했다.", fx({ happy: 7, charm: 2 }, 0, { fn: fameUp(2) }))),
+      dono(500, R("축하 후원이 쏟아져서 알림이 30분 동안 멈추지 않았다.", fx({ happy: 9, charm: 3 }, 0, { fn: fameUp(3) }), true)),
+      pick("축하 채팅만 친다", R("채팅창이 축하 메시지로 꽉 찼다.", fx({ happy: 4 }))),
+    ],
+  },
+  {
+    id: "vt_comeback", a: [14, 100], rep: 4, w: 30, tag: "방송", t: "'유능 알파' 소리를 들은 지도 오래다. 오늘은 진짜 실력을 보여줄 차례.",
+    if: (c) => vtJob(c) && c.has("yuneung_mock") && !c.has("yuneung_real"),
+    opts: [
+      dice("정면 승부한다", "talent", {
+        great: R("노데스 클리어! 처음으로 채팅창의 '유능 알파'가 진심이었다.", fx({ happy: 8, talent: 2 }, 0, { add: ["yuneung_real"], fn: fameUp(10) }), true),
+        good: R("끝내 깼다. 채팅창에 '유능 알파(진짜)'가 올라왔다.", fx({ happy: 5 }, 0, { add: ["yuneung_real"], fn: fameUp(5) })),
+        bad: R("또 죽었다. '유능 알파'가 다시 도배됐다.", fx({ happy: -2 }, 0, { fn: fameUp(1) })),
+      }),
+      pick("오늘은 저챗이나 하자", R("게임은 다음에 하기로 했다.", fx({ happy: 1 }))),
     ],
   },
   {
@@ -1263,6 +1380,7 @@ function statModOf(c: Ctx, k: StatKey) {
 // ── 엔딩 수식어(높은 pr부터) ──
 const kids = (c: Ctx) => c.s.people.filter((p) => p.role === "child").length;
 export const MODS: Mod[] = [
+  { id: "yuneung", text: "진짜로 유능했던", hint: "'유능 알파' 소리를 실력으로 뒤집으면…", pr: 33, if: (c) => c.has("yuneung_real") },
   { id: "billion", text: "100억을 모은", hint: "재산을 아주 크게 모으면…", pr: 40, if: (c) => c.net() >= 1000000 },
   { id: "debt", text: "빚에 쫓기던", hint: "빚이 산더미처럼 쌓이면…", pr: 35, if: (c) => c.s.debt >= 20000 && c.net() < 0 },
   { id: "rich_lonely", text: "돈은 많지만 외로운", hint: "돈은 넘치는데 곁에 아무도 없으면…", pr: 32, if: (c) => c.net() >= 100000 && !c.person("spouse") && c.folks("friend").length === 0 },
@@ -1287,6 +1405,9 @@ export const MODS: Mod[] = [
 
 // ── 특수 엔딩 ──
 export const SPECIALS: Special[] = [
+  { id: "neru_raised", title: "네루가 키운 버튜버 유진", text: "후원 알림 하나하나가 유진을 여기까지 데려왔어요. 이 세계의 유진은 그걸 한 번도 잊지 않았어요.", hint: "방송인 유진을 아낌없이 응원하면…", pr: 85, if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && (c.s.donated ?? 0) >= 1000 },
+  { id: "baji_boss", title: "바지 사장에서 진짜 사장이 된 유진", text: "'바지 사장' 소리를 듣던 그 유진이 결국 진짜 사장님이 됐어요.", hint: "바지 사장이라는 별명이 생긴 뒤 진짜 가게를 차리면…", pr: 78, if: (c) => c.has("baji") && c.s.jobs.some((j) => ["gukbap", "cafe", "chicken", "ceo"].includes(j.id)) },
+  { id: "grandpa_vt", title: "진짜 할아버지가 된 할아버지 유진", text: "'할아버지' 소리를 듣던 방송인은 정말 할아버지가 될 때까지 방송을 켰어요.", hint: "'할아버지' 소리를 들으면서도 끝까지 방송을 하면…", pr: 77, if: (c) => c.has("halabeoji") && c.s.job === "vtuber" && c.age >= 75 },
   { id: "wolf", title: "아무도 몰랐던 늑대 유진", text: "평생 사람인 척 살았지만, 마지막 보름달 아래서 유진은 원래 모습으로 돌아갔어요.", hint: "늑대 꿈을 끝까지 따라가면…", pr: 100, if: (c) => c.has("wolf_dream3") },
   { id: "true_vtuber", title: "진짜 버튜버가 된 유진", text: "네루들과 함께한 방송이 평생의 자랑이 됐어요.", hint: "방송을 놓지 않고 팬들에게 이름을 붙여주면…", pr: 80, if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && c.has("yangs") && c.s.fame >= 55 },
   { id: "centenarian", title: "백 살 유진", text: "한 세기를 꽉 채워 살았어요. 생일 케이크 초가 모자랐어요.", hint: "아주아주 오래 살면…", pr: 75, if: (c) => c.age >= 100 },

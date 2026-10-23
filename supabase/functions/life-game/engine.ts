@@ -6,7 +6,7 @@ import {
   type State, type StatKey, type Stats, type Tier,
 } from "./types.ts";
 import {
-  DAILY, DISEASES, FOCUSES, FORKS, HOUSES, ITEMS, JOBS, MODS, NAMES, SPECIALS, FUNDS,
+  DAILY, DISEASES, FOCUSES, FORKS, HOUSES, ITEMS, JOBS, MODS, NAMES, SPECIALS, FUNDS, SHOWS,
 } from "./content.ts";
 import { josa } from "./josa.ts";
 export { josa };
@@ -26,6 +26,7 @@ export type Opt = {
   out?: Partial<Record<Tier, Out>>; // 주사위 결과
   judge?: (c: Ctx, r: Roll) => Out; // 주사위 합으로 직접 판정(취업 등)
   arg?: string; // 동적으로 만든 선택지 구분값
+  pts?: number; // 포인트 후원 금액(P) — 실제 차감은 서버(index.ts → life_donate)가 함
 };
 export type Fork = {
   id: string;
@@ -124,6 +125,11 @@ export type House = {
 export type Mod = { id: string; text: string; hint: string; pr: number; if: (c: Ctx) => boolean };
 export type Special = { id: string; title: string; text: string; hint: string; pr: number; if: (c: Ctx) => boolean };
 export type Disease = { id: string; name: string; sev: number; cost: number; a: number };
+// 버튜버 주력 컨텐츠 — 해마다 인지도 주사위를 어떤 능력치로 굴리고, 대성공·대실패 때 무슨 일이 생기는지
+export type Show = {
+  id: string; name: string; hint: string; stat: StatKey; bonus?: number; dF?: Record<Tier, number>;
+  great?: string; greatFx?: Fx; bad?: string; badFx?: Fx;
+};
 
 // ── 작은 도구 ──
 
@@ -421,13 +427,14 @@ function jobIncome(c: Ctx): number {
   if (!j) return 0;
   if (j.fy) for (const [k, v] of Object.entries(j.fy) as [StatKey, number][]) if (c.chance(0.2)) c.stat({ [k]: v });
   if (j.creator) {
-    // 인지도 주사위 — 창작 집중이면 +1
-    const r = c.roll("talent", s.focus === "create" ? 1 : 0);
-    const dF = { great: 12, good: 5, normal: 1, bad: -3, terrible: -9 }[r.tier];
+    // 인지도 주사위 — 창작 집중이면 +1. 버튜버는 주력 컨텐츠에 따라 굴리는 능력치·결과가 다름
+    const show = j.id === "vtuber" ? SHOWS.find((x) => x.id === s.show) : undefined;
+    const r = c.roll(show ? show.stat : "talent", (s.focus === "create" ? 1 : 0) + (show?.bonus ?? 0));
+    const dF = (show?.dF ?? { great: 12, good: 5, normal: 1, bad: -3, terrible: -9 })[r.tier];
     const before = s.fame;
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
-    if (r.tier === "great") c.log("job", s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다.", { roll: r, hl: true });
-    else if (r.tier === "terrible") c.log("job", "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r, d: c.stat({ happy: -5 }) });
+    if (r.tier === "great") c.apply(show?.greatFx, "job", show?.great ?? (s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다."), { roll: r, hl: true });
+    else if (r.tier === "terrible") c.apply(show?.badFx ?? { s: { happy: -5 } }, "job", show?.bad ?? "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r });
     if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
     if (before < 70 && s.fame >= 70) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
     rankByValue(c, j, s.fame, "fame");
@@ -713,6 +720,7 @@ export function makePending(c: Ctx, f: Fork): Pending {
     const roll = o.out || o.judge ? o.roll ?? null : undefined;
     const p: PendingOpt = { key, i, text: c.fmt(o.t) };
     if (o.arg) p.arg = o.arg;
+    if (o.pts) p.pts = o.pts;
     if (o.hint) p.hint = c.fmt(o.hint);
     if (cost > 0) p.cost = cost;
     if (roll !== undefined) {
@@ -784,7 +792,7 @@ export function advance(s: State, log: Entry[], maxYears: number, rng: () => num
 }
 
 // 결정 고르기 → 결과 기록(주사위 포함). 다음 해는 advance가 굴림
-export function choose(s: State, log: Entry[], key: string, rng: () => number = Math.random): { error?: string; roll?: Roll } {
+export function choose(s: State, log: Entry[], key: string, rng: () => number = Math.random): { error?: string; roll?: Roll; pts?: number } {
   if (!s.pending) return { error: "no_pending" };
   const c = new Ctx(s, rng);
   const p = s.pending;
@@ -798,6 +806,7 @@ export function choose(s: State, log: Entry[], key: string, rng: () => number = 
   if (!o) return { error: "bad_choice" };
   s.pending = null;
   c.log("pick", `${p.text} → ${po.text}`);
+  if (po.pts) s.donated = (s.donated ?? 0) + po.pts;
   if (po.cost) {
     s.cash -= po.cost;
     if (s.cash < 0) {
@@ -837,7 +846,7 @@ export function choose(s: State, log: Entry[], key: string, rng: () => number = 
   const last = s.hist[s.hist.length - 1];
   if (last && last[0] === s.age) s.hist[s.hist.length - 1] = [s.age, s.stats.health, s.stats.intel, s.stats.charm, s.stats.happy, s.stats.talent, netWorth(s), s.luck];
   log.push(...c.out);
-  return { roll };
+  return { roll, pts: po.pts };
 }
 
 export function setFocus(s: State, id: string) {

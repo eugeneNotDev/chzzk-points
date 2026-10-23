@@ -5,7 +5,7 @@
 // GET  ?view=lobby (기본) / ?view=dex / ?view=run&id=123(끝난 판 리포트)
 // POST { action: "start", house }                          → 새 판 { run, balance }
 // POST { action: "advance", runId, from, years, focus? }   → 결정이 생기거나 years만큼 진행 { run }
-// POST { action: "choose", runId, key, from }              → 결정 고르기 { run, roll }
+// POST { action: "choose", runId, key, from }              → 결정 고르기 { run, roll, balance? } (후원 선택지면 포인트 차감)
 // POST { action: "focus", runId, focus, from }             → 올해의 초점 바꾸기(다음 해부터) { run }
 // POST { action: "fund", runId, fund, from }               → 여유자금 굴리는 곳 바꾸기 { run }
 // POST { action: "buy", runId, item, pay, from }           → 상점(pay: cash | points) { run, balance }
@@ -261,8 +261,19 @@ Deno.serve(async (req: Request) => {
       return json({ run: view(r, from, st.item_limit) }, 200);
     }
     if (body.action === "choose") {
+      const ver = r.ver;
       const res = choose(s, r.log, String(body.key ?? ""));
       if (res.error) return fail(res.error);
+      // 포인트 후원 선택지면 잔액 확인·차감과 판 저장을 DB에서 한 번에(ver가 다르면 전부 취소)
+      if (res.pts) {
+        const { data, error } = await admin.rpc("life_donate", {
+          p_channel_id: me, p_life_id: r.id, p_ver: ver, p_amount: res.pts, p_state: s, p_log: r.log,
+        });
+        if (error) throw new Error(`life_donate 실패: ${error.message}`);
+        if (data?.error) return fail(data.error);
+        r.ver += 1;
+        return json({ run: view(r, from, st.item_limit), roll: res.roll ?? null, balance: data.balance }, 200);
+      }
       if (!(await save(admin, r))) return fail("busy");
       return json({ run: view(r, from, st.item_limit), roll: res.roll ?? null }, 200);
     }

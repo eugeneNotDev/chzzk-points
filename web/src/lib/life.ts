@@ -26,7 +26,7 @@ export const TIER_LABEL: Record<Tier, string> = { great: "대성공", good: "성
 export type Kind = "life" | "day" | "rare" | "fork" | "pick" | "job" | "money" | "people" | "buy" | "think" | "sick" | "end" | "school";
 export type LogEntry = { age: number; k: Kind; t: string; d?: Partial<Stats>; m?: number; roll?: Roll; hl?: boolean };
 
-export type PendingOpt = { key: string; text: string; hint?: string; cost?: number; roll?: StatKey | null; mod?: number; off?: string };
+export type PendingOpt = { key: string; text: string; hint?: string; cost?: number; roll?: StatKey | null; mod?: number; off?: string; pts?: number };
 export type Pending = { id: string; kind: "fork" | "mile" | "think" | "focus"; tag?: string; text: string; opts: PendingOpt[] };
 
 export type Person = { id: number; role: "mom" | "dad" | "friend" | "partner" | "spouse" | "child" | "pet"; name: string; age: number; bond: number; alive: boolean };
@@ -128,7 +128,7 @@ const post = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.life, { body
 export const fetchRun = (id: number) => apiFetch<Run>(`${API.life}?view=run&id=${id}`);
 export const startLife = (house: string) => post<{ run: Run; balance: number }>({ action: "start", house });
 export const advanceLife = (runId: number, from: number, years: number) => post<{ run: Run }>({ action: "advance", runId, from, years });
-export const chooseLife = (runId: number, key: string, from: number) => post<{ run: Run; roll: Roll | null }>({ action: "choose", runId, key, from });
+export const chooseLife = (runId: number, key: string, from: number) => post<{ run: Run; roll: Roll | null; balance?: number }>({ action: "choose", runId, key, from });
 export const focusLife = (runId: number, focus: string, from: number) => post<{ run: Run }>({ action: "focus", runId, focus, from });
 export const fundLife = (runId: number, fund: string, from: number) => post<{ run: Run }>({ action: "fund", runId, fund, from });
 export const buyLife = (runId: number, item: string, pay: "cash" | "points", from: number) =>

@@ -503,6 +503,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const [rolling, setRolling] = useState<Rolling | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [wantFocus, setWantFocus] = useState<string | null>(null);
+  const [balance, setBalance] = useState(lobby.balance); // 포인트 잔액(후원·포인트 구매 뒤 서버가 준 값으로 갱신)
   const runRef = useRef(run);
   runRef.current = run;
 
@@ -604,12 +605,21 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       setRolling({ opt: o, text: run.pending?.text ?? "", phase: "ready" });
       return;
     }
+    if (o.pts) {
+      if (!run.isTest && balance < o.pts) return;
+      if (!run.isTest && !(await confirmDialog(`${fmt(o.pts)}P를 후원할까요? 후원한 포인트는 돌려받을 수 없어요.`))) return;
+    }
     setBusy(true);
     setErr(null);
     const text = run.pending?.text ?? "";
     try {
       const res = await chooseLife(run.id, o.key, log.length);
       merge(res.run);
+      if (typeof res.balance === "number") setBalance(res.balance);
+      if (o.pts) {
+        qc.invalidateQueries({ queryKey: ["me"] });
+        qc.invalidateQueries({ queryKey: ["life-lobby"] });
+      }
       // 결과를 선택했던 자리에서 바로 보여줌(아래로 안 내려가도 되게)
       const result = res.run.log.find((e) => e.k !== "pick") ?? null;
       setRolling({ opt: o, text, phase: "done", roll: null, result, plain: true });
@@ -684,6 +694,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       merge(res.run);
       setSnap(res.run);
       setShown(999);
+      if (typeof res.balance === "number") setBalance(res.balance);
       if (pay === "points") qc.invalidateQueries({ queryKey: ["me"] });
     } catch (e) {
       setErr(lifeErrorText(e));
@@ -835,7 +846,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
 
         {rolling && <DicePanel rolling={rolling} onThrow={throwDice} onClose={closeRoll} />}
 
-        {pending && <DecisionSheet pending={pending} age={age} busy={busy} onPick={choose} cash={view.money.cash + view.money.invest} />}
+        {pending && <DecisionSheet pending={pending} age={age} busy={busy} onPick={choose} cash={view.money.cash + view.money.invest} points={run.isTest ? null : balance} />}
 
         {err && (
           <div className={styles.errBox}>
@@ -889,7 +900,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
         </button>
       </aside>
       <Feed items={timeline} className={styles.feedArea} />
-      {shopOpen && <ShopModal run={run} lobby={lobby} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onClose={() => setShopOpen(false)} />}
+      {shopOpen && <ShopModal run={run} balance={balance} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onClose={() => setShopOpen(false)} />}
     </div>
   );
 }
@@ -1074,8 +1085,8 @@ function ShopCard({ run, lobby, busy, onOpen, onFund }: {
   );
 }
 
-function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
-  run: Run; lobby: Lobby; canShop: boolean; busy: boolean;
+function ShopModal({ run, balance, canShop, busy, onBuy, onClose }: {
+  run: Run; balance: number; canShop: boolean; busy: boolean;
   onBuy: (id: string, pay: "cash" | "points", name: string, price: number) => void; onClose: () => void;
 }) {
   const cats = useMemo(() => [...new Set(run.shop.map((s) => s.cat))], [run.shop]);
@@ -1103,7 +1114,7 @@ function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
             <h3>{kid ? "보호자 지원" : "돈쓰기"}</h3>
             <span className={styles.muted}>
               {run.age}세 · {kid ? "포인트로만" : <>보유 <b className="num">{won(cash)}</b></>} · 포인트 <b className="num">{ptsLeft}</b>/{run.pointsLimit}번
-              {!run.isTest && <> · 내 포인트 <b className="num">{fmt(lobby.balance)}P</b></>}
+              {!run.isTest && <> · 내 포인트 <b className="num">{fmt(balance)}P</b></>}
             </span>
           </div>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="닫기">
@@ -1144,7 +1155,7 @@ function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
                     {won(it.price)}
                   </button>
                 )}
-                <button type="button" className={`${styles.buyBtn} ${styles.buyPts}`} disabled={!canShop || busy || !!it.off || ptsLeft <= 0 || (!run.isTest && lobby.balance < it.price)} onClick={() => onBuy(it.id, "points", it.name, it.price)}>
+                <button type="button" className={`${styles.buyBtn} ${styles.buyPts}`} disabled={!canShop || busy || !!it.off || ptsLeft <= 0 || (!run.isTest && balance < it.price)} onClick={() => onBuy(it.id, "points", it.name, it.price)}>
                   {run.isTest ? "0" : fmt(it.price)}P
                 </button>
               </div>
@@ -1157,7 +1168,8 @@ function ShopModal({ run, lobby, canShop, busy, onBuy, onClose }: {
   );
 }
 
-function DecisionSheet({ pending, age, busy, onPick, cash }: { pending: Pending; age: number; busy: boolean; onPick: (o: PendingOpt) => void; cash: number }) {
+// points: 포인트 잔액(테스트 판이면 null — 포인트가 안 빠짐)
+function DecisionSheet({ pending, age, busy, onPick, cash, points }: { pending: Pending; age: number; busy: boolean; onPick: (o: PendingOpt) => void; cash: number; points: number | null }) {
   const tag = pending.kind === "think" ? "생각 남기기" : pending.kind === "focus" ? "인생 마디" : pending.tag ?? "갈림길";
   return (
     <section className={`${styles.sheet} ${pending.kind === "think" ? styles.sheetThink : ""}`}>
@@ -1170,12 +1182,14 @@ function DecisionSheet({ pending, age, busy, onPick, cash }: { pending: Pending;
       </div>
       <p className={styles.sheetText}>{pending.text}</p>
       <div className={styles.choices}>
-        {pending.opts.map((o) => (
-          <button key={o.key} type="button" className={styles.choice} onClick={() => onPick(o)} disabled={busy || !!o.off}>
+        {pending.opts.map((o) => {
+          const ptsShort = !!o.pts && points !== null && points < o.pts;
+          return (
+          <button key={o.key} type="button" className={styles.choice} onClick={() => onPick(o)} disabled={busy || !!o.off || ptsShort}>
             <span className={`num ${styles.choiceKey}`}>{o.key}</span>
             <span className={styles.choiceBody}>
               <span className={styles.choiceText}>{o.text}</span>
-              {(o.hint || o.cost || o.roll !== undefined) && (
+              {(o.hint || o.cost || o.pts || o.roll !== undefined) && (
                 <span className={styles.choiceMeta}>
                   {o.roll !== undefined && (
                     <span className={styles.choiceDice}>
@@ -1185,11 +1199,17 @@ function DecisionSheet({ pending, age, busy, onPick, cash }: { pending: Pending;
                   )}
                   {o.hint && <span>{o.hint}</span>}
                   {!!o.cost && <span className={o.off ? styles.down : styles.costTag}>−{won(o.cost)}{o.off ? ` · 보유 ${won(cash)}` : ""}</span>}
+                  {!!o.pts && (
+                    <span className={ptsShort ? styles.down : styles.costTag}>
+                      {points === null ? "테스트 · 0P" : `−${fmt(o.pts)}P`}{ptsShort ? ` · 보유 ${fmt(points!)}P` : ""}
+                    </span>
+                  )}
                 </span>
               )}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
