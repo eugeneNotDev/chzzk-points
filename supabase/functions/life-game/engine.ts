@@ -920,6 +920,25 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   return { points: pay === "points" ? price : 0 };
 }
 
+// 버튜버를 한 번이라도 했으면 화면의 "방송" 카드에 보여줄 요약(아니면 null)
+export function broadcastOf(s: State) {
+  if (!s.jobs.some((j) => j.id === "vtuber")) return null;
+  const f = s.flags;
+  return {
+    active: s.job === "vtuber",
+    title: s.job === "vtuber" ? jobTitle(s) : [...s.jobs].reverse().find((j) => j.id === "vtuber")?.name ?? "버튜버",
+    concept: f.includes("vt_wolf") ? "늑대 컨셉" : f.includes("vt_team") ? "팀 데뷔" : f.includes("vt_plain") ? "나답게" : null,
+    show: SHOWS.find((x) => x.id === s.show)?.name ?? null,
+    nick: [f.includes("baji") ? "바지 알파" : null, f.includes("yuneung_real") ? "유능 알파" : f.includes("yuneung_mock") ? "무능 알파" : null].filter((x): x is string => !!x),
+    fame: s.fame,
+    fandom: f.includes("yangs") ? "네루" : null,
+    million: f.includes("gold_button"),
+    donated: s.donated ?? 0,
+    graduated: f.includes("vt_graduated"),
+    now: f.includes("vt_convert") ? jobTitle(s) : null, // 전향했으면 지금 하는 방송
+  };
+}
+
 // ── 끝 ──
 function finish(c: Ctx) {
   const s = c.s;

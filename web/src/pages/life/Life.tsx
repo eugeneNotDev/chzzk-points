@@ -2,12 +2,12 @@
 // 화면 흐름: 로비 → 태어날 집 고르기(포인트) → 진행(해마다 이야기·주사위 갈림길·올해의 초점·사람·돈쓰기) → 인생 리포트, 그리고 도감.
 // 인생 진행·결과는 전부 서버(life-game)가 정하고, 화면은 받은 기록을 속도에 맞춰 한 해씩 보여주기만 함.
 // 넓은 화면에선 3단(상태·돈 / 올해 이야기·선택 / 초점·사람·쇼핑), 좁아지면 2단 → 1단으로 쌓임(컨테이너 폭 기준).
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, ArrowRight, Baby, BookOpen, Briefcase, Check, Coins, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dog,
+  ArrowLeft, ArrowRight, Baby, BookOpen, Download, Briefcase, Check, Coins, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Dog,
   Flower2, GitFork, GraduationCap, Heart, HeartPulse, Lock, LogIn, MessageCircle, Pause, Play, RotateCcw, ShoppingBag,
-  SkipForward, Sparkles, X, Sprout, Star, Stethoscope, Target, TrendingDown, TrendingUp, Trophy, UserRound, Users, Wallet,
+  MonitorPlay, Radio, SkipForward, Vote, Sparkles, X, Sprout, Star, Stethoscope, Target, TrendingDown, TrendingUp, Trophy, UserRound, Users, Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { startLogin, useAuth } from "../../lib/auth";
@@ -15,17 +15,20 @@ import { confirmDialog } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import { LoadError } from "../../components/LoadError";
 import {
-  STAGES, STATS, TIER_LABEL, advanceLife, buyLife, chooseLife, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage,
-  josa, resetLifeTest, startLife, statChips, useLifeDex, useLifeLobby, won,
-  type DexEntry, type Lobby, type LogEntry, type Pending, type PendingOpt, type Person, type Roll, type Run, type Stats,
+  STAGES, STATS, TIER_LABEL, advanceLife, buyLife, castVote, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage,
+  josa, openVote, resetLifeTest, setLive, startLife, statChips, useLifeDex, useLifeLobby, useLifeVote, won,
+  type Broadcast, type VoteState, type DexEntry, type Lobby, type LogEntry, type Pending, type PendingOpt, type Person, type Roll, type Run, type Stats,
 } from "../../lib/life";
 import styles from "./Life.module.css";
+import { shareOrSave } from "./shareCard";
+const LiveScreen = lazy(() => import("./LiveScreen"));
 
 type Screen = { name: "lobby" } | { name: "birth" } | { name: "play"; run: Run } | { name: "report"; run: Run } | { name: "dex" };
 
 export default function Life() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isAdmin } = useAuth();
   const q = useLifeLobby();
+  const vote = useLifeVote();
   const qc = useQueryClient();
   const [screen, setScreen] = useState<Screen>({ name: "lobby" });
 
@@ -39,6 +42,16 @@ export default function Life() {
     qc.invalidateQueries({ queryKey: ["me"] });
     go({ name: "lobby" });
   };
+
+  // 방송 화면(OBS) — 진행 화면의 "방송 화면 열기"로 뜨는 창. 주인만.
+  if (isAdmin && new URLSearchParams(location.search).get("screen") === "live") {
+    return (
+      <Suspense fallback={null}>
+        <LiveScreen />
+      </Suspense>
+    );
+  }
+  const voteCard = vote.data?.open && !(isAdmin && screen.name === "play") ? <VoteCard v={vote.data} onVoted={() => vote.refetch()} /> : null;
 
   if (!isLoggedIn) {
     return (
@@ -57,7 +70,8 @@ export default function Life() {
     const notOpen = (q.error as { body?: { error?: string } })?.body?.error === "not_open";
     return (
       <div className={styles.page}>
-        {notOpen ? <p className={styles.center}>아직 준비 중이에요.</p> : <LoadError what="유진 키우기" onRetry={() => q.refetch()} />}
+        {voteCard}
+        {notOpen ? !voteCard && <p className={styles.center}>아직 준비 중이에요.</p> : <LoadError what="유진 키우기" onRetry={() => q.refetch()} />}
       </div>
     );
   }
@@ -66,12 +80,62 @@ export default function Life() {
   return (
     <div className={styles.page}>
       {lobby?.isTest && <div className={styles.testBar}>테스트 모드 · 본인만 보여요 · 포인트가 차감되지 않아요</div>}
+      {voteCard}
       {screen.name === "lobby" && <LobbyView lobby={lobby} onStart={() => go({ name: "birth" })} onResume={(run) => go({ name: "play", run })} onReport={(run) => go({ name: "report", run })} onDex={() => go({ name: "dex" })} />}
       {screen.name === "birth" && lobby && <BirthView lobby={lobby} onBack={() => go({ name: "lobby" })} onStarted={(run) => go({ name: "play", run })} />}
       {screen.name === "play" && lobby && <PlayView key={screen.run.id} lobby={lobby} initial={screen.run} onReport={(run) => go({ name: "report", run })} onExit={backToLobby} />}
       {screen.name === "report" && <ReportView run={screen.run} onAgain={backToLobby} onDex={() => go({ name: "dex" })} />}
       {screen.name === "dex" && <DexView onBack={backToLobby} />}
     </div>
+  );
+}
+
+/* ── 방송 투표(시청자) ── */
+function VoteCard({ v, onVoted }: { v: VoteState; onVoted: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  async function pick(key: string) {
+    setBusy(key);
+    setErr(null);
+    try {
+      await castVote(key);
+      onVoted();
+    } catch (e) {
+      setErr(lifeErrorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+  return (
+    <section className={styles.voteCard} aria-live="polite">
+      <div className={styles.voteHead}>
+        <span className={styles.voteLive}>
+          <Vote size={14} aria-hidden="true" />
+          방송 투표 중
+        </span>
+        <span className={styles.muted}>
+          {v.age}세 유진{v.jobName ? ` · ${v.jobName}` : ""} · <b className="num">{v.total}</b>표
+        </span>
+      </div>
+      <p className={styles.voteText}>{v.text}</p>
+      <div className={styles.voteOpts}>
+        {v.opts.map((o) => {
+          const n = v.counts[o.key] ?? 0;
+          const pct = v.total ? Math.round((n / v.total) * 100) : 0;
+          const mine = v.myKey === o.key;
+          return (
+            <button key={o.key} type="button" className={`${styles.voteOpt} ${mine ? styles.voteMine : ""}`} onClick={() => pick(o.key)} disabled={!!busy} aria-pressed={mine}>
+              {v.myKey && <i className={styles.voteFill} style={{ width: `${pct}%` }} aria-hidden="true" />}
+              <span className={`num ${styles.choiceKey}`}>{o.key}</span>
+              <span className={styles.voteOptText}>{o.text}</span>
+              {v.myKey && <span className={`num ${styles.votePct}`}>{pct}%</span>}
+              {mine && <Check size={16} aria-hidden="true" />}
+            </button>
+          );
+        })}
+      </div>
+      <p className={styles.voteFine}>{err ?? (v.myKey ? "마감 전까지 다른 선택지로 바꿀 수 있어요" : "유진이 마감하면 가장 많이 나온 선택지로 진행돼요")}</p>
+    </section>
   );
 }
 
@@ -504,6 +568,11 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   const [err, setErr] = useState<string | null>(null);
   const [wantFocus, setWantFocus] = useState<string | null>(null);
   const [balance, setBalance] = useState(lobby.balance); // 포인트 잔액(후원·포인트 구매 뒤 서버가 준 값으로 갱신)
+  // 방송 모드(주인만): 이 판의 갈림길을 시청자 투표로
+  const { isAdmin } = useAuth();
+  const [liveOn, setLiveOn] = useState(lobby.liveId === initial.id);
+  const liveVote = useLifeVote(liveOn);
+  const [voteBusy, setVoteBusy] = useState(false);
   const runRef = useRef(run);
   runRef.current = run;
 
@@ -703,6 +772,47 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
     }
   }
 
+  async function toggleLive() {
+    try {
+      await setLive(liveOn ? null : run.id);
+      setLiveOn(!liveOn);
+      qc.invalidateQueries({ queryKey: ["life-lobby"] });
+      liveVote.refetch();
+    } catch (e) {
+      setErr(lifeErrorText(e));
+    }
+  }
+  async function startVote() {
+    setVoteBusy(true);
+    setErr(null);
+    try {
+      await openVote();
+      await liveVote.refetch();
+    } catch (e) {
+      setErr(lifeErrorText(e));
+    } finally {
+      setVoteBusy(false);
+    }
+  }
+  async function endVote() {
+    const p = run.pending;
+    if (!p) return;
+    setVoteBusy(true);
+    setErr(null);
+    try {
+      const res = await closeVote(log.length);
+      merge(res.run);
+      const opt = p.opts.find((o) => o.key === res.winner) ?? p.opts[0];
+      const result = res.roll ? res.run.log.find((e) => e.roll) ?? null : res.run.log.find((e) => e.k !== "pick") ?? null;
+      setRolling({ opt, text: `${p.text} · 투표 ${res.counts[res.winner] ?? 0}/${res.total}표`, phase: "done", roll: res.roll, result, plain: !res.roll });
+      liveVote.refetch();
+    } catch (e) {
+      setErr(lifeErrorText(e));
+    } finally {
+      setVoteBusy(false);
+    }
+  }
+
   const stage = lifeStage(age);
   const view = snap;
   const timeline = useMemo(() => log.filter((e) => e.age < age && e.k !== "pick").slice(-80).reverse(), [log, age]);
@@ -761,6 +871,19 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
             <SkipForward size={15} aria-hidden="true" />
             다음 결정까지
           </button>
+          {isAdmin && !ended && (
+            <>
+              <button type="button" className={`${styles.skipBtn} ${liveOn ? styles.liveOnBtn : ""}`} onClick={toggleLive} aria-pressed={liveOn} title="이 판의 갈림길을 시청자 투표로 정해요">
+                <Radio size={15} aria-hidden="true" />
+                {liveOn ? "방송 모드 켜짐" : "방송 모드"}
+              </button>
+              {liveOn && (
+                <button type="button" className={styles.iconBtn} onClick={() => window.open(`${import.meta.env.BASE_URL}life.html?screen=live`, "life-live", "width=1280,height=720")} aria-label="방송 화면 열기" title="방송 화면 열기(OBS용)">
+                  <MonitorPlay size={16} aria-hidden="true" />
+                </button>
+              )}
+            </>
+          )}
         </div>
       </header>
 
@@ -784,7 +907,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
                 {view.sick.name}
               </span>
             )}
-            {view.fame > 0 && (
+            {view.fame > 0 && !view.broadcast?.active && (
               <span className={styles.statusChip}>
                 <Star size={13} aria-hidden="true" />
                 인지도 <b className="num">{view.fame}</b>
@@ -793,6 +916,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
           </div>
           <StatGrid stats={stats} prev={prevStats} />
         </section>
+        {view.broadcast && <BroadcastCard b={view.broadcast} />}
         <MoneyCard run={view} net={row[6] ?? view.money.net} rows={rows.slice(0, ci + 1)} />
       </aside>
 
@@ -827,7 +951,7 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
                     {e.t.split(" → ").slice(-1)[0]}
                   </li>
                 ) : (
-                  <li key={`${age}-${i}`} className={`${styles.yearItem} ${e.k === "rare" ? styles.yearRare : ""} ${e.hl ? styles.yearHl : ""}`}>
+                  <li key={`${age}-${i}`} className={`${styles.yearItem} ${e.k === "rare" ? styles.yearRare : ""} ${e.hl && e.k !== "rare" ? styles.yearHl : ""}`}>
                     <EntryIcon k={e.k} />
                     <div>
                       {e.k === "rare" && <span className={styles.rareTag}>희귀 이벤트</span>}
@@ -846,7 +970,12 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
 
         {rolling && <DicePanel rolling={rolling} onThrow={throwDice} onClose={closeRoll} />}
 
-        {pending && <DecisionSheet pending={pending} age={age} busy={busy} onPick={choose} cash={view.money.cash + view.money.invest} points={run.isTest ? null : balance} />}
+        {pending && (
+          <DecisionSheet
+            pending={pending} age={age} busy={busy || voteBusy} onPick={choose} cash={view.money.cash + view.money.invest} points={run.isTest ? null : balance}
+            live={liveOn ? { open: !!liveVote.data?.open, counts: liveVote.data?.counts ?? {}, total: liveVote.data?.total ?? 0, onOpen: startVote, onClose: endVote } : null}
+          />
+        )}
 
         {err && (
           <div className={styles.errBox}>
@@ -902,6 +1031,54 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
       <Feed items={timeline} className={styles.feedArea} />
       {shopOpen && <ShopModal run={run} balance={balance} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onClose={() => setShopOpen(false)} />}
     </div>
+  );
+}
+
+// 방송 카드 — 버튜버 루트(진엔딩 루트)의 상태를 한눈에
+const FAME_STEPS: [number, string][] = [[0, "하꼬"], [30, "고정 시청자"], [55, "인기 방송인"], [70, "팔로워 100만"], [90, "레전드"]];
+function BroadcastCard({ b }: { b: Broadcast }) {
+  const step = [...FAME_STEPS].reverse().find(([v]) => b.fame >= v)?.[1] ?? "하꼬";
+  return (
+    <section className={`${styles.card} ${styles.bcCard} ${b.active ? styles.bcLive : ""}`}>
+      <div className={styles.cardHead}>
+        <h3>
+          <Radio size={15} aria-hidden="true" />
+          방송
+        </h3>
+        <span className={b.active ? styles.bcOn : styles.muted}>{b.active ? "방송 중" : b.now ? "전향" : b.graduated ? "졸업" : "쉬는 중"}</span>
+      </div>
+      <p className={styles.bcTitle}>{b.now ?? b.title}</p>
+      {b.now && <p className={styles.bcSub}>예전엔 {b.title}</p>}
+      <div className={styles.bcFame}>
+        <div className={styles.bcFameTop}>
+          <span>인지도 · {step}</span>
+          <b className="num">{b.fame}</b>
+        </div>
+        <div className={styles.bcBar}>
+          <i style={{ width: `${Math.max(2, b.fame)}%` }} />
+        </div>
+      </div>
+      <div className={styles.bcChips}>
+        {b.concept && <span>{b.concept}</span>}
+        {b.show && <span>주력 · {b.show}</span>}
+        {b.nick.map((n) => (
+          <span key={n} className={styles.bcNick}>
+            별명 · {n}
+          </span>
+        ))}
+        {b.million && <span className={styles.bcGold}>100만 달성</span>}
+      </div>
+      <dl className={styles.bcRows}>
+        <div>
+          <dt>팬 이름</dt>
+          <dd>{b.fandom ? "네루" : "아직 없어요"}</dd>
+        </div>
+        <div>
+          <dt>내가 후원한 포인트</dt>
+          <dd className="num">{fmt(b.donated)}P</dd>
+        </div>
+      </dl>
+    </section>
   );
 }
 
@@ -1169,7 +1346,8 @@ function ShopModal({ run, balance, canShop, busy, onBuy, onClose }: {
 }
 
 // points: 포인트 잔액(테스트 판이면 null — 포인트가 안 빠짐)
-function DecisionSheet({ pending, age, busy, onPick, cash, points }: { pending: Pending; age: number; busy: boolean; onPick: (o: PendingOpt) => void; cash: number; points: number | null }) {
+type LiveBar = { open: boolean; counts: Record<string, number>; total: number; onOpen: () => void; onClose: () => void };
+function DecisionSheet({ pending, age, busy, onPick, cash, points, live }: { pending: Pending; age: number; busy: boolean; onPick: (o: PendingOpt) => void; cash: number; points: number | null; live?: LiveBar | null }) {
   const tag = pending.kind === "think" ? "생각 남기기" : pending.kind === "focus" ? "인생 마디" : pending.tag ?? "갈림길";
   return (
     <section className={`${styles.sheet} ${pending.kind === "think" ? styles.sheetThink : ""}`}>
@@ -1187,6 +1365,7 @@ function DecisionSheet({ pending, age, busy, onPick, cash, points }: { pending: 
           return (
           <button key={o.key} type="button" className={styles.choice} onClick={() => onPick(o)} disabled={busy || !!o.off || ptsShort}>
             <span className={`num ${styles.choiceKey}`}>{o.key}</span>
+            {live?.open && !o.pts && <span className={`num ${styles.voteCount}`}>{live.counts[o.key] ?? 0}표</span>}
             <span className={styles.choiceBody}>
               <span className={styles.choiceText}>{o.text}</span>
               {(o.hint || o.cost || o.pts || o.roll !== undefined) && (
@@ -1211,6 +1390,27 @@ function DecisionSheet({ pending, age, busy, onPick, cash, points }: { pending: 
           );
         })}
       </div>
+      {live && (
+        <div className={styles.liveBar}>
+          {live.open ? (
+            <>
+              <span>
+                <Vote size={14} aria-hidden="true" /> 시청자 투표 중 · <b className="num">{live.total}</b>표
+              </span>
+              <button type="button" className="btn btn-primary" onClick={live.onClose} disabled={busy}>
+                투표 마감하고 진행
+              </button>
+            </>
+          ) : (
+            <>
+              <span>선택지를 직접 누르거나 시청자 투표를 열 수 있어요</span>
+              <button type="button" className="btn" onClick={live.onOpen} disabled={busy}>
+                <Vote size={15} aria-hidden="true" /> 시청자 투표 열기
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -1338,6 +1538,7 @@ function LifeGraph({ rows }: { rows: number[][] }) {
 }
 
 function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; onDex: () => void }) {
+  const [saving, setSaving] = useState(false);
   const e = run.ending;
   if (!e) return <p className={styles.center}>아직 끝나지 않은 인생이에요.</p>;
   const special = !!e.specialId;
@@ -1446,6 +1647,22 @@ function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => void; on
             <p>{letterLine(run)}</p>
           </div>
         </div>
+        <button
+          type="button"
+          className={`btn btn-lg btn-block ${styles.shareBtn}`}
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await shareOrSave(run);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <Download size={16} aria-hidden="true" />
+          {saving ? "이미지 만드는 중…" : "엔딩 카드 이미지로 저장"}
+        </button>
         <div className={styles.endBtns}>
           <button type="button" className="btn btn-lg" onClick={onDex}>
             <BookOpen size={16} aria-hidden="true" />

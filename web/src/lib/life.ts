@@ -59,6 +59,7 @@ export type Run = {
   fame: number;
   biz: number;
   army: number;
+  broadcast?: Broadcast | null;
   focus: string;
   focusName: string | null;
   focuses: { id: string; name: string; hint: string }[];
@@ -79,6 +80,12 @@ export type Run = {
   logCount: number;
 };
 
+// 버튜버 루트 요약(버튜버를 한 번이라도 했을 때만)
+export type Broadcast = {
+  active: boolean; title: string; concept: string | null; show: string | null; nick: string[]; fame: number;
+  fandom: string | null; million: boolean; donated: number; graduated: boolean; now: string | null;
+};
+
 export type House = { id: string; name: string; price: number; bonus: Partial<Stats>; allowance: number; inherit: number; tuition: number };
 export type Fund = { id: string; name: string; hint: string };
 
@@ -89,6 +96,7 @@ export type Lobby = {
   usedToday: number;
   itemLimit: number;
   nextWorldNo: number;
+  liveId: number | null; // 방송 모드로 쓰는 판(주인)
   myRuns: number;
   balance: number;
   houses: House[];
@@ -135,6 +143,29 @@ export const buyLife = (runId: number, item: string, pay: "cash" | "points", fro
   post<{ run: Run; balance?: number }>({ action: "buy", runId, item, pay, from });
 export const resetLifeTest = () => post<{ deletedRuns: number }>({ action: "reset" });
 
+// ── 방송 모드(시청자 투표) ──
+export type VoteState = {
+  live: boolean; open: boolean; round: string | null; age: number | null; jobName: string | null; tag: string | null; text: string | null;
+  opts: { key: string; text: string; hint: string | null }[]; counts: Record<string, number>; total: number; myKey: string | null;
+};
+// 투표 상태 — 열려 있으면 자주, 아니면 가끔 확인
+export function useLifeVote(fast = false) {
+  const { isLoggedIn, channelId } = useAuth();
+  return useQuery({
+    queryKey: ["life-vote", channelId],
+    enabled: isLoggedIn,
+    refetchInterval: (q) => (fast || q.state.data?.open ? 2000 : 10000),
+    retry: false,
+    queryFn: () => apiFetch<VoteState>(`${API.life}?view=vote`),
+  });
+}
+export const castVote = (key: string) => post<VoteState>({ action: "vote", key });
+export const setLive = (runId: number | null) => post<{ liveId: number | null }>({ action: "live_set", runId });
+export const openVote = () => post<VoteState>({ action: "vote_open" });
+export const closeVote = (from: number) =>
+  post<{ run: Run; roll: Roll | null; winner: string; counts: Record<string, number>; total: number }>({ action: "vote_close", from });
+export const fetchLive = (from: number) => apiFetch<{ run: Run | null; vote: VoteState }>(`${API.life}?view=live&from=${from}`);
+
 export const LIFE_ERRORS: Record<string, string> = {
   not_open: "아직 준비 중이에요.",
   bad_house: "집 정보를 찾지 못했어요. 새로고침해 주세요.",
@@ -153,6 +184,9 @@ export const LIFE_ERRORS: Record<string, string> = {
   busy: "다른 창에서 진행 중이에요. 새로고침해 주세요.",
   too_young: "15세부터 돈을 굴릴 수 있어요.",
   bought: "지금은 다시 살 수 없어요.",
+  not_live: "지금 방송 모드인 유진이 없어요.",
+  vote_closed: "투표가 마감됐어요.",
+  no_vote_opts: "투표할 수 있는 선택지가 없어요.",
   bad_focus: "지금 나이에는 고를 수 없는 초점이에요.",
   bad_fund: "돈을 굴릴 곳을 찾지 못했어요.",
   has_pending: "먼저 지금 결정을 골라 주세요.",

@@ -10,20 +10,26 @@
 // POST { action: "fund", runId, fund, from }               → 여유자금 굴리는 곳 바꾸기 { run }
 // POST { action: "buy", runId, item, pay, from }           → 상점(pay: cash | points) { run, balance }
 // POST { action: "reset" }                                 → 테스트 기록 초기화(테스트 모드에서만)
+// 방송 모드(유진이 방송에서 키우는 판의 갈림길을 시청자가 팬보드에서 투표):
+// GET  ?view=vote                                          → 지금 투표 상태(로그인한 누구나, 테스트 모드여도)
+// GET  ?view=live&from=                                     → 방송 화면용 판 + 투표(주인만)
+// POST { action: "live_set", runId|null }                  → 이 판을 방송 모드로(주인만, null이면 끔)
+// POST { action: "vote_open" } / { action: "vote_close", from } → 투표 열기·마감(주인만, 마감하면 1등 선택지로 진행)
+// POST { action: "vote", key }                             → 투표(한 사람 한 표, 마감 전까진 바꿀 수 있음)
 // from = 화면이 이미 가진 기록 줄 수. 응답의 run.log는 그 뒤로 새로 생긴 줄만.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-import { advance, buy, choose, jobTitle, netWorth, setFocus, setFund, shopList, stageOf, startRun } from "./engine.ts";
+import { advance, broadcastOf, buy, choose, jobTitle, netWorth, setFocus, setFund, shopList, stageOf, startRun } from "./engine.ts";
 import { DAILY, FOCUSES, FUNDS, HOUSES, ITEMS, JOBS, MODS, SPECIALS } from "./content.ts";
-import type { Entry, HouseId, State, Stats } from "./types.ts";
+import type { Entry, HouseId, Pending, State, Stats } from "./types.ts";
 
 const KNOWN_ERRORS = new Set([
   "not_open", "bad_house", "user_not_found", "in_progress", "daily_limit", "insufficient_balance", "no_pending", "bad_choice",
   "bad_item", "not_playing", "item_limit", "too_fast", "cant_afford", "points_only", "busy", "bad_focus", "bad_fund", "too_young",
-  "has_pending", "bought",
+  "has_pending", "bought", "not_live", "vote_closed", "no_vote_opts",
 ]);
 
 function json(body: unknown, status: number) {
@@ -42,7 +48,7 @@ type Row = {
   id: number; channel_id: string; world_no: number | null; is_test: boolean; house: string; spent: number; points_used: number;
   status: "playing" | "ended"; state: State; log: Entry[]; ver: number; title: string | null;
 };
-type Settings = { is_open: boolean; daily_limit: number; item_limit: number };
+type Settings = { is_open: boolean; daily_limit: number; item_limit: number; live_life_id: number | null; vote_round: string | null; vote_open: boolean };
 
 const houseName = (id: string) => HOUSES.find((h) => h.id === id)?.name ?? id;
 const DEX_TOTAL = JOBS.length + MODS.length + DAILY.filter((d) => d.rare).length + SPECIALS.length;
@@ -73,6 +79,7 @@ function view(r: Row, from: number, itemLimit: number) {
     fame: s.fame,
     biz: s.biz,
     army: s.army,
+    broadcast: broadcastOf(s),
     focus: s.focus,
     focusName: focusNow?.name ?? null,
     focuses: FOCUSES.filter((f) => f.stage === nextStage && (!f.min || s.age + 1 >= f.min)).map((f) => ({ id: f.id, name: f.name, hint: f.hint })),
@@ -161,6 +168,7 @@ async function lobby(admin: SupabaseClient, channelId: string, test: boolean, st
     usedToday: usedToday.count ?? 0,
     itemLimit: st.item_limit,
     nextWorldNo: Number(maxNo.data?.world_no ?? 0) + 1,
+    liveId: st.live_life_id,
     myRuns: mine.count ?? 0,
     balance: Number(user.data?.balance ?? 0),
     houses: (houses.data ?? []).map((h) => {
@@ -191,6 +199,49 @@ async function dex(admin: SupabaseClient, channelId: string, test: boolean) {
   };
 }
 
+// ── 방송 모드 투표 ──
+// 시청자가 고를 수 있는 선택지: 포인트 후원·돈 부족으로 막힌 건 빼고
+const voteOpts = (p: Pending | null) => (p?.opts ?? []).filter((o) => !o.pts && !o.off);
+const roundOf = (r: Row) => `${r.id}:${r.state.age}:${r.state.pending?.id ?? "-"}:${r.ver}`;
+
+async function loadLive(admin: SupabaseClient, st: Settings): Promise<Row | null> {
+  if (!st.live_life_id) return null;
+  const { data } = await admin.from("life_lives").select("*").eq("id", st.live_life_id).maybeSingle();
+  return (data as Row | null) ?? null;
+}
+
+async function voteState(admin: SupabaseClient, st: Settings, me: string, live?: Row | null) {
+  const r = live === undefined ? await loadLive(admin, st) : live;
+  const playing = !!r && r.status === "playing";
+  const p = playing ? r!.state.pending : null;
+  // 갈림길이 바뀌었으면(주인이 직접 골랐거나 다음 해로 넘어감) 투표는 닫힌 걸로 봄
+  const open = st.vote_open && playing && !!p && st.vote_round === roundOf(r!);
+  const counts: Record<string, number> = {};
+  let myKey: string | null = null;
+  if (st.vote_round) {
+    const { data } = await admin.from("life_votes").select("channel_id, key").eq("round", st.vote_round);
+    for (const v of data ?? []) {
+      counts[v.key as string] = (counts[v.key as string] ?? 0) + 1;
+      if (v.channel_id === me) myKey = v.key as string;
+    }
+  }
+  return {
+    live: playing,
+    open,
+    round: st.vote_round,
+    age: playing ? r!.state.age : null,
+    jobName: playing ? jobTitle(r!.state) ?? r!.state.school : null,
+    tag: p?.tag ?? null,
+    text: p?.text ?? null,
+    opts: voteOpts(p).map((o) => ({ key: o.key, text: o.text, hint: o.hint ?? null })),
+    counts,
+    total: Object.values(counts).reduce((a, b) => a + b, 0),
+    myKey,
+  };
+}
+
+const setSettings = (admin: SupabaseClient, patch: Partial<Settings>) => admin.from("life_settings").update(patch).eq("id", true);
+
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
@@ -199,10 +250,32 @@ Deno.serve(async (req: Request) => {
 
   try {
     const admin = getAdminClient();
-    const { data: settings, error: sErr } = await admin.from("life_settings").select("is_open, daily_limit, item_limit").maybeSingle();
+    const { data: settings, error: sErr } = await admin.from("life_settings").select("is_open, daily_limit, item_limit, live_life_id, vote_round, vote_open").maybeSingle();
     if (sErr) throw new Error(`life_settings 조회 실패: ${sErr.message}`);
-    const st = (settings ?? { is_open: false, daily_limit: 3, item_limit: 3 }) as Settings;
+    const st = (settings ?? { is_open: false, daily_limit: 3, item_limit: 3, live_life_id: null, vote_round: null, vote_open: false }) as Settings;
     const isOwner = session.channelId === OWNER_CHANNEL_ID;
+
+    // 방송 투표는 테스트 모드여도 시청자 누구나(로그인만 하면)
+    if (req.method === "GET" && new URL(req.url).searchParams.get("view") === "vote") {
+      return json(await voteState(admin, st, session.channelId), 200);
+    }
+    let voteBody: Record<string, unknown> | null = null;
+    if (req.method === "POST") {
+      voteBody = await req.clone().json().catch(() => ({})) as Record<string, unknown>;
+      if (voteBody.action === "vote") {
+        const { data: ok } = await admin.rpc("rate_limit_hit", { p_key: `life-vote:${session.channelId}`, p_window_sec: 10, p_max: 20 });
+        if (ok === false) return fail("too_fast");
+        const r = await loadLive(admin, st);
+        if (!r || r.status !== "playing") return fail("not_live");
+        if (!st.vote_open || st.vote_round !== roundOf(r)) return fail("vote_closed");
+        const key = String(voteBody.key ?? "");
+        if (!voteOpts(r.state.pending).some((o) => o.key === key)) return fail("bad_choice");
+        const { error } = await admin.from("life_votes").upsert({ round: st.vote_round, channel_id: session.channelId, key }, { onConflict: "round,channel_id" });
+        if (error) throw new Error(`life_votes 저장 실패: ${error.message}`);
+        return json(await voteState(admin, st, session.channelId, r), 200);
+      }
+    }
+
     if (!st.is_open && !isOwner) return json({ error: "not_open" }, 403);
     const test = !st.is_open;
     const me = session.channelId;
@@ -211,6 +284,12 @@ Deno.serve(async (req: Request) => {
       const url = new URL(req.url);
       const v = url.searchParams.get("view") ?? "lobby";
       if (v === "dex") return json(await dex(admin, me, test), 200);
+      if (v === "live") {
+        if (!isOwner) return json({ error: "forbidden" }, 403);
+        const r = await loadLive(admin, st);
+        const from = Math.max(0, Math.floor(Number(url.searchParams.get("from")) || 0));
+        return json({ run: r ? view(r, from, st.item_limit) : null, vote: await voteState(admin, st, me, r) }, 200);
+      }
       if (v === "run") {
         const id = Number(url.searchParams.get("id"));
         if (!Number.isFinite(id) || id <= 0) return json({ error: "bad_request" }, 400);
@@ -222,7 +301,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
-    const body = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const body = voteBody ?? {};
     const { data: allowed } = await admin.rpc("rate_limit_hit", { p_key: `life:${me}`, p_window_sec: 10, p_max: 40 });
     if (allowed === false) return fail("too_fast");
 
@@ -241,6 +320,41 @@ Deno.serve(async (req: Request) => {
       if (data?.error) return fail(data.error);
       const r = await loadPlaying(admin, me, data.id);
       return json({ run: view(r!, 0, st.item_limit), balance: data.balance }, 200);
+    }
+
+    // ── 방송 모드(주인만) ──
+    if (body.action === "live_set" || body.action === "vote_open" || body.action === "vote_close") {
+      if (!isOwner) return json({ error: "forbidden" }, 403);
+      if (body.action === "live_set") {
+        const id = body.runId == null ? null : Math.floor(Number(body.runId) || 0);
+        if (id) {
+          const r = await loadPlaying(admin, me, id);
+          if (!r || r.status !== "playing") return fail("not_playing");
+        }
+        await setSettings(admin, { live_life_id: id, vote_open: false, vote_round: null });
+        return json({ liveId: id }, 200);
+      }
+      const r = await loadLive(admin, st);
+      if (!r || r.status !== "playing") return fail("not_live");
+      if (body.action === "vote_open") {
+        if (!voteOpts(r.state.pending).length) return fail("no_vote_opts");
+        const round = roundOf(r);
+        await admin.from("life_votes").delete().eq("round", round);
+        await setSettings(admin, { vote_open: true, vote_round: round });
+        return json(await voteState(admin, { ...st, vote_open: true, vote_round: round }, me, r), 200);
+      }
+      // 마감: 1등 선택지로 진행(동점이면 그중 무작위, 아무도 안 했으면 전체 중 무작위)
+      const opts = voteOpts(r.state.pending);
+      if (!opts.length) return fail("no_vote_opts");
+      const vs = await voteState(admin, st, me, r);
+      const top = Math.max(0, ...opts.map((o) => vs.counts[o.key] ?? 0));
+      const pool = opts.filter((o) => (vs.counts[o.key] ?? 0) === top);
+      const winner = pool[Math.floor(Math.random() * pool.length)].key;
+      const res = choose(r.state, r.log, winner);
+      if (res.error) return fail(res.error);
+      if (!(await save(admin, r))) return fail("busy");
+      await setSettings(admin, { vote_open: false });
+      return json({ run: view(r, from, st.item_limit), roll: res.roll ?? null, winner, counts: vs.counts, total: vs.total }, 200);
     }
 
     if (body.action === "reset") {
