@@ -11,6 +11,7 @@
 // POST { action: "pay",    setId }            → 지급(테스트 회차는 기록만)
 // POST { action: "cancel", setId }            → 취소(베팅 환불)
 // POST { action: "delete", setId }            → 테스트 회차 삭제
+// POST { action: "site", setId, hidden }      → 팬보드 투표 탭 카드 내리기(true)/다시 올리기(false)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
 
@@ -86,7 +87,7 @@ async function stateOf(admin: Admin, setId: number | null) {
   for (const p of people) dist[correctBy.get(p) ?? 0]++;
   return {
     set: {
-      id: s.id, clientKey: s.client_key, title: s.title, status: s.status, isTest: s.is_test, betClosed: s.bet_closed,
+      id: s.id, clientKey: s.client_key, title: s.title, status: s.status, isTest: s.is_test, betClosed: s.bet_closed, siteHidden: s.site_hidden,
       rewards: s.base_rewards, multipliers: s.bet_multipliers.map(Number),
       participants: people.size, bettors: (bets ?? []).length, betTotal: (bets ?? []).reduce((a, b) => a + b.amount, 0),
       correctDist: dist,
@@ -180,6 +181,11 @@ async function act(admin: Admin, body: Record<string, unknown>) {
     if (error) throw new Error(`${action} 실패: ${error.message}`);
     if (data?.error) bad(String(data.error));
     return { ...(await stateOf(admin, setId)), result: data };
+  }
+
+  if (action === "site") {
+    await admin.from("mystery_sets").update({ site_hidden: body.hidden === true }).eq("id", setId);
+    return stateOf(admin, setId);
   }
 
   if (action === "delete") {

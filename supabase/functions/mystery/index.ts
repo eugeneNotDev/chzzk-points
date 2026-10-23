@@ -1,7 +1,7 @@
 // 미스테리 라디오 연속 투표 — 시청자용(투표 탭 카드). 진행(열기·마감·공개·지급)은 mystery-remote(리모컨) 쪽.
 // 0096_mystery_votes.sql 참고.
 //
-// GET (로그인 필요) → 지금 보여줄 이야기 1건(진행 중이거나 방금 끝난 것) — 없으면 { set: null }
+// GET (로그인 필요) → 지금 보여줄 이야기 1건(진행 중이거나 방금 끝난 것, 리모컨에서 내린 건 제외) — 없으면 { set: null }
 //   { set: { id, title, status: "open"|"revealed"|"paid", isTest, betOpen, rewards, multipliers,
 //            questions: [{ id, position, prompt, options, status, counts, total, myChoice, answer(공개 후에만) }],
 //              (아직 안 연 투표는 prompt=null, options=[] — 스포일러 방지)
@@ -43,6 +43,7 @@ async function activeSet(admin: Admin): Promise<SetRow | null> {
     .select("id, title, status, is_test, bet_closed, base_rewards, bet_multipliers, pay_log, revealed_at, paid_at")
     .in("status", ["open", "revealed", "paid"])
     .not("opened_at", "is", null)
+    .eq("site_hidden", false)
     .order("opened_at", { ascending: false })
     .limit(1)
     .maybeSingle();
