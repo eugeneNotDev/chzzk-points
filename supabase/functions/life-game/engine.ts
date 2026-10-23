@@ -438,8 +438,8 @@ function jobIncome(c: Ctx): number {
     // 버튜버는 나이가 들수록 인지도가 빠짐(40세 1, 45세 2, 50세 3, 60세 5 …)
     if (j.id === "vtuber" && s.age >= 40) s.fame = clamp(s.fame - Math.ceil((s.age - 38) / 5), 0, 100);
     if (s.fame >= 55) c.add("fame55"); // 엔딩은 죽을 때가 아니라 가장 유명했던 때 기준
-    if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
-    if (before < 70 && s.fame >= 70) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
+    if (before < 30 && s.fame >= 30 && !c.has("yangs")) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
+    if (before < 70 && s.fame >= 70 && !c.has("gold_button")) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
     rankByValue(c, j, s.fame, "fame");
     // 아직 작은 방송인은 알바를 병행해서 최소한은 범
     return Math.max(s.fame < 30 ? 1300 : 0, Math.round((150 + s.fame * s.fame * 2.6) * j.creator * (0.6 + c.rnd() * 0.8)));
@@ -660,7 +660,7 @@ function dailyEvents(c: Ctx) {
     c.apply(e.fx, "day", e.t);
   }
   // 희귀 이벤트
-  if (c.chance(0.025 + (s.luck === 6 ? 0.02 : 0))) {
+  if (c.chance(0.02 + (s.luck === 6 ? 0.015 : 0))) {
     const e = pickWeighted(c, DAILY.filter((x) => x.rare && eligible(c, x)));
     if (e) {
       s.seen[e.id] = s.age;
