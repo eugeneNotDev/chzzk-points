@@ -920,6 +920,13 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   return { points: pay === "points" ? price : 0 };
 }
 
+function ladderOf(s: State) {
+  const cur = JOBS.find((j) => j.id === s.job && j.creator && j.ranks && j.rankAt);
+  const j = cur ?? JOBS.find((x) => x.id === "vtuber")!;
+  const rank = cur ? s.rank ?? 0 : Math.max(0, ...s.jobs.filter((x) => x.id === "vtuber").map((x) => j.ranks!.indexOf(x.name)));
+  return { ladder: j.ranks!.map((name, i) => ({ name, at: j.rankAt![i] })), rank };
+}
+
 // 버튜버를 한 번이라도 했으면 화면의 "방송" 카드에 보여줄 요약(아니면 null)
 export function broadcastOf(s: State) {
   if (!s.jobs.some((j) => j.id === "vtuber")) return null;
@@ -936,6 +943,8 @@ export function broadcastOf(s: State) {
     donated: s.donated ?? 0,
     graduated: f.includes("vt_graduated"),
     now: f.includes("vt_convert") ? jobTitle(s) : null, // 전향했으면 지금 하는 방송
+    // 등급 사다리(지금 방송 직업 기준: 버튜버, 전향했으면 그 직업) — 인지도가 rankAt을 넘으면 오름
+    ...ladderOf(s),
   };
 }
 

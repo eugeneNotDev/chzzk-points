@@ -1034,10 +1034,9 @@ function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial:
   );
 }
 
-// 방송 카드 — 버튜버 루트(진엔딩 루트)의 상태를 한눈에
-const FAME_STEPS: [number, string][] = [[0, "하꼬"], [30, "고정 시청자"], [55, "인기 방송인"], [70, "팔로워 100만"], [90, "레전드"]];
+// 방송 카드 — 버튜버 루트(진엔딩 루트)의 상태를 한눈에. 등급은 게임 속 직업 등급 그대로(하꼬 → 중소 → 중견 → 대형 → 레전드)
 function BroadcastCard({ b }: { b: Broadcast }) {
-  const step = [...FAME_STEPS].reverse().find(([v]) => b.fame >= v)?.[1] ?? "하꼬";
+  const next = b.ladder[b.rank + 1] ?? null;
   return (
     <section className={`${styles.card} ${styles.bcCard} ${b.active ? styles.bcLive : ""}`}>
       <div className={styles.cardHead}>
@@ -1051,12 +1050,24 @@ function BroadcastCard({ b }: { b: Broadcast }) {
       {b.now && <p className={styles.bcSub}>예전엔 {b.title}</p>}
       <div className={styles.bcFame}>
         <div className={styles.bcFameTop}>
-          <span>인지도 · {step}</span>
+          <span>인지도</span>
           <b className="num">{b.fame}</b>
         </div>
         <div className={styles.bcBar}>
           <i style={{ width: `${Math.max(2, b.fame)}%` }} />
+          {b.ladder.slice(1).map((l) => (
+            <em key={l.name} style={{ left: `${l.at}%` }} className={b.fame >= l.at ? styles.bcTickOn : ""} title={`${l.name} · 인지도 ${l.at}`} />
+          ))}
         </div>
+        <p className={styles.bcNext}>
+          {next ? (
+            <>
+              다음 등급 <b>{next.name}</b> · 인지도 <span className="num">{next.at}</span>
+            </>
+          ) : (
+            "최고 등급이에요"
+          )}
+        </p>
       </div>
       <div className={styles.bcChips}>
         {b.concept && <span>{b.concept}</span>}

@@ -84,6 +84,7 @@ export type Run = {
 export type Broadcast = {
   active: boolean; title: string; concept: string | null; show: string | null; nick: string[]; fame: number;
   fandom: string | null; million: boolean; donated: number; graduated: boolean; now: string | null;
+  ladder: { name: string; at: number }[]; rank: number; // 등급 사다리(인지도가 at을 넘으면 오름)
 };
 
 export type House = { id: string; name: string; price: number; bonus: Partial<Stats>; allowance: number; inherit: number; tuition: number };

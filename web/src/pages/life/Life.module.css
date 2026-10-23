@@ -1056,10 +1056,32 @@
   font-size: 13px;
 }
 .bcBar {
+  position: relative;
   height: 8px;
   border-radius: 999px;
   background: var(--c-surface-3);
   overflow: hidden;
+}
+/* 등급이 오르는 인지도 눈금 */
+.bcBar em {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--c-surface);
+  opacity: 0.9;
+}
+.bcBar em.bcTickOn {
+  background: rgba(255, 255, 255, 0.75);
+}
+.bcNext {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.bcNext b {
+  color: var(--c-text-2);
 }
 .bcBar i {
   display: block;
