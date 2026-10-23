@@ -1,0 +1,227 @@
+/* 미스테리 라디오 연속 투표 카드("투표" 메뉴 맨 위) */
+.card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  border: 1.5px solid color-mix(in srgb, var(--c-blue) 45%, var(--c-border));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-blue) 10%, transparent);
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--c-blue-soft);
+  color: var(--c-blue);
+  font-weight: 800;
+  font-size: 12px;
+}
+.title {
+  margin: 10px 0 12px;
+  font-size: 18px;
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+.steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  padding: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+}
+.stepOpen {
+  border-color: color-mix(in srgb, var(--c-blue) 55%, var(--c-border));
+}
+.pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  opacity: 0.75;
+}
+.stepTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.stepLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--c-blue);
+}
+.stepMeta,
+.wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.prompt {
+  margin: 6px 0 10px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+.opts {
+  display: grid;
+  gap: 6px;
+}
+.opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  text-align: left;
+  overflow: hidden;
+  font-weight: 700;
+}
+.opt > * {
+  position: relative;
+}
+.opt:disabled {
+  cursor: default;
+}
+.fill {
+  position: absolute !important;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--c-blue) 13%, transparent);
+  transition: width 0.4s var(--ease-out);
+}
+.mine {
+  border-color: var(--c-blue);
+  color: var(--c-blue);
+}
+.right {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+.wrong {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.key {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--c-surface-3);
+  font-size: 12px;
+  font-weight: 800;
+}
+.optText {
+  flex: 1;
+  word-break: keep-all;
+}
+.pct {
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+.fine {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.fine:empty {
+  display: none;
+}
+
+.bet {
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface-2);
+  border: 1px dashed var(--c-border-strong);
+}
+.betHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.betHead span {
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.betMine {
+  margin-top: 6px;
+  font-size: 13px;
+}
+.betForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.betForm input {
+  flex: 1;
+  min-width: 0;
+}
+.quick {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.result {
+  margin-bottom: 12px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--c-blue-soft);
+}
+.perfect {
+  background: var(--c-gold-soft);
+}
+.resultBig {
+  font-size: 17px;
+  font-weight: 800;
+}
+.resultRows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.table {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.row {
+  display: grid;
+  grid-template-columns: 64px repeat(4, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+.row > span:first-child {
+  text-align: left;
+  font-weight: 700;
+}

@@ -60,3 +60,10 @@ verify_jwt = false
 
 [functions.life-game]
 verify_jwt = false
+
+[functions.mystery]
+verify_jwt = false
+
+# 미스테리 리모컨·방송화면(로컬 파일) 전용 — 리모컨 키(x-remote-key)로 직접 인증
+[functions.mystery-remote]
+verify_jwt = false

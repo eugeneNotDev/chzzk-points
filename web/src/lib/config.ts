@@ -26,6 +26,7 @@ export const API = {
   shopItems: `${FUNCTIONS_BASE_URL}/shop-items`,
   spendPoints: `${FUNCTIONS_BASE_URL}/spend-points`,
   predictions: `${FUNCTIONS_BASE_URL}/predictions`,
+  mystery: `${FUNCTIONS_BASE_URL}/mystery`,
   quiz: `${FUNCTIONS_BASE_URL}/quiz`,
   adminQuiz: `${FUNCTIONS_BASE_URL}/admin-quiz`,
   roulette: `${FUNCTIONS_BASE_URL}/roulette`,
