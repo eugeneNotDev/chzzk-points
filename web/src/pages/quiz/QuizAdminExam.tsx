@@ -1,7 +1,7 @@
 // 퀴즈 관리자 — 모의고사(문항 만들기, 채점 탭, 채점 방송 화면)
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, MonitorPlay, Plus, Trash2, Wand2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ImagePlus, MonitorPlay, PencilLine, Plus, Trash2, Wand2 } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
 import { Select } from "../../components/Select";
 import { confirmDialog, toast } from "../../lib/dialog";
@@ -9,6 +9,8 @@ import { maybeCompressImage } from "../../lib/notices";
 import { type QType } from "../../lib/quiz";
 import { supabase } from "../../lib/supabase";
 import { ExamPaper } from "./Exam";
+import { DoodleLayer, FixedPaper } from "./Doodle";
+import type { Doodle } from "../../lib/quiz";
 import { adminCall, errMsg, useAct, useQuizAdminLive, useStreamTitle, type Detail, type QuestionRow, type QuizRow } from "./quizAdminShared";
 import styles from "./Quiz.module.css";
 
@@ -399,6 +401,20 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
   const [localPick, setLocalPick] = useState<Record<string, string | null>>({});
   const idx = Math.max(0, sheets.findIndex((s) => s.id === sid));
   const sheet = sheets[idx];
+  // 시험지 낙서 — 낙서 있는 시험지를 볼 때만 불러옴. 채점하다 가리면 "낙서 숨기기"
+  const [showDoodle, setShowDoodle] = useState(true);
+  const dq = useQuery({
+    queryKey: ["quiz-doodle", sheet?.id],
+    enabled: !!sheet?.hasDoodle,
+    staleTime: Infinity,
+    queryFn: () => adminCall<{ doodle: Doodle | null }>({ action: "doodle", submissionId: sheet!.id }),
+  });
+  const doodle = sheet?.hasDoodle && showDoodle ? dq.data?.doodle ?? null : null;
+  const doodleBtn = sheet?.hasDoodle ? (
+    <button type="button" className={`btn btn-sm ${showDoodle ? "btn-primary" : ""}`} onClick={() => setShowDoodle((v) => !v)} aria-pressed={showDoodle}>
+      <PencilLine size={15} aria-hidden="true" /> {showDoodle ? "낙서 숨기기" : "낙서 보기"}
+    </button>
+  ) : null;
   const paid = !!d.quiz.rewarded_at;
 
   useEffect(() => {
@@ -469,7 +485,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
     setLocalPick({});
   }
 
-  const paper = sheet && (
+  const paperBase = sheet && (
     <ExamPaper
       title={`${sheet.name} 님의 답안`}
       subtitle={d.quiz.subtitle}
@@ -482,6 +498,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
       showKey={stream ? false : showKey}
     />
   );
+  const paper = doodle ? <FixedPaper overlay={() => <DoodleLayer doodle={doodle} />}>{paperBase}</FixedPaper> : paperBase;
   const nextReady = marked === d.questions.length && idx < sheets.length - 1;
 
   // 방송 화면 — 시험지를 크게 띄우고 이 창에서 바로 ○/✕. 목록 대신 위쪽 막대에서 이전/다음.
@@ -509,6 +526,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
               </span>
               </div>
               <div className={styles.gradeRight}>
+              {doodleBtn}
               <button type="button" className="btn btn-sm" disabled={busy || paid} onClick={auto}>
                 <Wand2 size={16} aria-hidden="true" /> 자동 채점
               </button>
@@ -547,6 +565,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
                   {i + 1}
                 </b>
                 {s.name}
+                {s.hasDoodle && <PencilLine size={13} className={styles.ml8} aria-label="낙서 있음" />}
               </span>
               {s.marked === s.total ? <span className="tag tag-accent num">{s.correct}개</span> : <span className="tag num">{s.marked}/{s.total}</span>}
             </button>
@@ -579,6 +598,7 @@ function GradingTab({ d, stream = false }: { d: Detail; stream?: boolean }) {
               <button type="button" className="btn btn-sm" disabled={busy || paid} onClick={auto}>
                 <Wand2 size={16} aria-hidden="true" /> 이 시험지 자동 채점
               </button>
+              {doodleBtn}
               <label className="check" style={{ fontSize: 13 }}>
                 <input type="checkbox" checked={showKey} onChange={(e) => setShowKey(e.target.checked)} />
                 정답 표시(방송 화면에 보일 수 있어요)

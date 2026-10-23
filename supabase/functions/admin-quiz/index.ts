@@ -50,7 +50,7 @@ import {
 } from "../_shared/quiz.ts";
 
 const BUCKET = "quiz-images";
-type Sub = SubmissionRow & { picks: Record<string, string> };
+type Sub = SubmissionRow & { picks: Record<string, string>; has_doodle?: boolean };
 const isChoice = (q: QuestionRow) => q.qtype === "choice" || q.qtype === "image";
 
 function json(body: unknown, status: number) {
@@ -85,7 +85,7 @@ async function loadQuestions(admin: Admin, quizId: number) {
   return (data ?? []) as QuestionRow[];
 }
 async function loadSubs(admin: Admin, quizId: number) {
-  return await fetchAll<Sub>((a, b) => admin.from("quiz_exam_submissions").select(`${SUBMISSION_COLS}, picks`).eq("quiz_id", quizId).order("submitted_at", { ascending: true }).order("id").range(a, b), "quiz_exam_submissions");
+  return await fetchAll<Sub>((a, b) => admin.from("quiz_exam_submissions").select(`${SUBMISSION_COLS}, picks, has_doodle`).eq("quiz_id", quizId).order("submitted_at", { ascending: true }).order("id").range(a, b), "quiz_exam_submissions");
 }
 async function loadOxAnswers(admin: Admin, quizId: number) {
   return await fetchAll<OxAnswerRow>((a, b) => admin.from("quiz_ox_answers").select("question_id, channel_id, choice, answered_at").eq("quiz_id", quizId).order("id").range(a, b), "quiz_ox_answers");
@@ -167,7 +167,7 @@ async function detail(admin: Admin, quiz: QuizRow) {
     const subs = await loadSubs(admin, quiz.id);
     const ranked = scoreExam(questions, subs);
     const names = await loadNames(admin, subs.map((s) => s.channel_id), true);
-    const sheets = subs.map((s) => ({ id: s.id, name: names.get(s.channel_id) ?? "", submittedAt: s.submitted_at, answers: s.answers, marks: s.marks ?? {}, picks: s.picks ?? {}, ...sheetTally(questions, s.marks ?? {}) }));
+    const sheets = subs.map((s) => ({ id: s.id, name: names.get(s.channel_id) ?? "", submittedAt: s.submitted_at, answers: s.answers, marks: s.marks ?? {}, picks: s.picks ?? {}, hasDoodle: !!s.has_doodle, ...sheetTally(questions, s.marks ?? {}) }));
     return {
       ...base,
       exam: {
@@ -234,6 +234,15 @@ Deno.serve(async (req: Request) => {
 
       case "get":
         return json(await detail(admin, await getQuiz(admin, body.quizId)), 200);
+
+      // 시험지 한 장의 낙서(채점 화면에서 그 시험지를 볼 때만 불러옴 — 목록엔 안 실음)
+      case "doodle": {
+        const sid = Number(body.submissionId);
+        if (!Number.isInteger(sid)) bad("invalid_request");
+        const { data, error } = await admin.from("quiz_exam_submissions").select("doodle").eq("id", sid).maybeSingle();
+        if (error) throw new Error(`quiz_exam_submissions 조회 실패: ${error.message}`);
+        return json({ doodle: data?.doodle ?? null }, 200);
+      }
 
       case "create": {
         if (body.kind !== "exam" && body.kind !== "ox") bad("invalid_kind");

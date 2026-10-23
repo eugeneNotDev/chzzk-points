@@ -2,18 +2,20 @@
 // 채점은 방송에서 시험지를 한 장씩 띄워 놓고 함(관리자 화면). 결과 발표 뒤엔 맞은 수·순위·내 시험지 채점 결과.
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Trophy } from "lucide-react";
+import { Check, PencilLine, Trophy } from "lucide-react";
 import { Card } from "../../components/Card";
 import { apiFetch, ApiError } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { confirmDialog, toast } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
-import { QUIZ_ERRORS, underlineParts, type ExamView, type QType } from "../../lib/quiz";
+import { QUIZ_ERRORS, underlineParts, type Doodle, type ExamView, type QType } from "../../lib/quiz";
 import { readStorage, writeStorage } from "../../lib/storage";
 import styles from "./Quiz.module.css";
+import { DoodleEditor, DoodleLayer, FixedPaper } from "./Doodle";
 
 const CIRCLED = ["①", "②", "③", "④"];
 const draftKey = (id: number) => `chzzk_quiz_draft_${id}`;
+const doodleKey = (id: number) => `chzzk_quiz_doodle_${id}`;
 
 export const leftText = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -215,6 +217,19 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
     }
   });
   const [busy, setBusy] = useState(false);
+  // 시험지 낙서(제출 전엔 이 브라우저에 임시저장 — 답안과 같이 제출)
+  const [doodle, setDoodle] = useState<Doodle | null>(() => {
+    try {
+      return JSON.parse(readStorage(doodleKey(quiz.id)) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [doodling, setDoodling] = useState(false);
+  const saveDoodle = (d: Doodle | null) => {
+    setDoodle(d);
+    writeStorage(doodleKey(quiz.id), d ? JSON.stringify(d) : null);
+  };
 
   // 제출 전 임시저장(새로고침해도 고른 답이 남게)
   useEffect(() => {
@@ -230,8 +245,9 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
     if (!(await confirmDialog(msg, { okText: "제출" }))) return;
     setBusy(true);
     try {
-      await apiFetch(API.quiz, { body: { action: "submit-exam", quizId: quiz.id, answers } });
+      await apiFetch(API.quiz, { body: { action: "submit-exam", quizId: quiz.id, answers, doodle } });
       writeStorage(draftKey(quiz.id), null);
+      writeStorage(doodleKey(quiz.id), null);
       toast("답안을 제출했어요.");
     } catch (e) {
       const code = e instanceof ApiError ? String(e.body.error ?? "") : "";
@@ -249,16 +265,33 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
   return (
     <div className="split">
       <div className="split-main">
-        <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={shown} onPick={canEdit ? pick : undefined} />
+        {submitted && quiz.mine?.doodle ? (
+          <FixedPaper overlay={() => <DoodleLayer doodle={quiz.mine!.doodle!} />}>
+            <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={shown} />
+          </FixedPaper>
+        ) : (
+          <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={shown} onPick={canEdit ? pick : undefined} />
+        )}
         {canEdit && (
           <div className={styles.paperFoot}>
             <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
               답안 제출 ({done}/{quiz.questions.length})
             </button>
+            <button type="button" className="btn btn-lg" onClick={() => setDoodling(true)}>
+              <PencilLine size={17} aria-hidden="true" /> {doodle ? "낙서 고치기" : "시험지에 낙서하기"}
+            </button>
             <span className={`muted ${styles.fs12}`}>
-              한 번 제출하면 고칠 수 없어요.
+              한 번 제출하면 고칠 수 없어요.{doodle ? " 낙서도 같이 제출돼요." : ""}
             </span>
           </div>
+        )}
+        {doodling && (
+          <DoodleEditor
+            paper={<ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={shown} />}
+            initial={doodle}
+            onSave={saveDoodle}
+            onClose={() => setDoodling(false)}
+          />
         )}
       </div>
       <aside className="split-aside split-aside-first">
@@ -297,6 +330,9 @@ export function ExamPanel({ quiz }: { quiz: ExamView }) {
               <>
                 <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={submit}>
                   답안 제출
+                </button>
+                <button type="button" className="btn" onClick={() => setDoodling(true)}>
+                  <PencilLine size={16} aria-hidden="true" /> {doodle ? `낙서 고치기 (${doodle.ops.length}획)` : "시험지에 낙서하기"}
                 </button>
                 <p className={`muted ${styles.fs12} ${styles.m0}`}>
                   한 번 제출하면 고칠 수 없어요.
@@ -413,7 +449,14 @@ function ExamResult({ quiz }: { quiz: ExamView }) {
           </div>
         </Card>
 
-        {mine && <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={mine.answers} marks={marks} />}
+        {mine &&
+          (mine.doodle ? (
+            <FixedPaper overlay={() => <DoodleLayer doodle={mine.doodle!} />}>
+              <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={mine.answers} marks={marks} />
+            </FixedPaper>
+          ) : (
+            <ExamPaper title={quiz.title} subtitle={quiz.subtitle} questions={quiz.questions} answers={mine.answers} marks={marks} />
+          ))}
       </div>
       <aside className="split-aside">
         <Card title="이번 회차 순위">

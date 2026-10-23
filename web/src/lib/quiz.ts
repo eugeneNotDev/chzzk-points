@@ -59,7 +59,7 @@ export type ExamView = QuizBase & {
   kind: "exam";
   questions: ExamQuestion[];
   participants: number;
-  mine: { answers: Record<string, string>; submittedAt: string; score: number | null; rank: number | null } | null;
+  mine: { answers: Record<string, string>; submittedAt: string; score: number | null; rank: number | null; doodle?: Doodle | null } | null;
   ranking: { rank: number; name: string; score: number; isMe: boolean }[];
 };
 
@@ -229,3 +229,7 @@ export function usePredictionLive() {
     },
   });
 }
+
+// 시험지 낙서 — 고정 폭(880) 시험지 위의 펜 획 기록. { c: 색, s: 굵기, p: [x,y,x,y,…], e?: 1(지우개) }
+export type DoodleOp = { c: string; s: number; p: number[]; e?: 1 };
+export type Doodle = { w: number; h: number; ops: DoodleOp[] };

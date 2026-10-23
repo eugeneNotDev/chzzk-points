@@ -30,7 +30,7 @@ export type QuestionRow = {
   asked_at: string | null;
   revealed_at: string | null;
 };
-type Sheet = { id: number; name: string; submittedAt: string; answers: Record<string, string>; marks: Record<string, boolean>; picks: Record<string, string>; correct: number; marked: number; total: number };
+type Sheet = { id: number; name: string; submittedAt: string; answers: Record<string, string>; marks: Record<string, boolean>; picks: Record<string, string>; correct: number; marked: number; total: number; hasDoodle?: boolean };
 type Payout = { channelId: string; channelName: string; amount: number; label: string };
 export type Detail = {
   quiz: QuizRow;

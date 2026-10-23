@@ -4,7 +4,8 @@
 // GET (로그인)              → 지금 회차(종류별 하나씩, OX 먼저) + 내 지난 기록: { quizzes: QuizView[], history: HistoryItem[] }
 // GET ?quizId=N (로그인)    → 그 회차(발표가 끝났거나 진행 중인 것만): { quiz: QuizView | null }
 //
-// POST { action: "submit-exam", quizId, answers: { "<문항 id>": "2" | "답" } } → { ok: true, submittedAt }  (한 사람당 한 번만, 고칠 수 없음)
+// POST { action: "submit-exam", quizId, answers: { "<문항 id>": "2" | "답" }, doodle? } → { ok: true, submittedAt }  (한 사람당 한 번만, 고칠 수 없음)
+//   doodle: 시험지 낙서 { w, h, ops: [{ c, s, p: [x,y,…], e? }] } — 없어도 됨
 // POST { action: "ox-answer", questionId, choice: "O" | "X" } → { ok: true, choice }
 //   실패 400 { error }: quiz_not_found / quiz_closed / already_submitted / question_closed / eliminated / invalid_request
 //
@@ -40,6 +41,29 @@ async function loadQuestions(admin: Admin, quizId: number) {
   return (data ?? []) as QuestionRow[];
 }
 
+// 시험지 낙서 검사 — 이상한 값은 버리고, 너무 크면 앞부분만(획 4000개·점 6만 개까지)
+type DoodleOp = { c: string; s: number; p: number[]; e?: 1 };
+function cleanDoodle(raw: unknown): { w: number; h: number; ops: DoodleOp[] } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const d = raw as { w?: unknown; h?: unknown; ops?: unknown };
+  const w = Math.round(Number(d.w));
+  const h = Math.round(Number(d.h));
+  if (!Array.isArray(d.ops) || !(w >= 100 && w <= 2000) || !(h >= 100 && h <= 20000)) return null;
+  const ops: DoodleOp[] = [];
+  let pts = 0;
+  for (const o of d.ops.slice(0, 4000) as Record<string, unknown>[]) {
+    if (!o || typeof o !== "object" || !Array.isArray(o.p) || o.p.length < 2) continue;
+    const c = String(o.c ?? "");
+    const sz = Math.round(Number(o.s));
+    if (!/^#[0-9a-fA-F]{6}$/.test(c) || !(sz >= 1 && sz <= 60)) continue;
+    const p = (o.p as unknown[]).slice(0, (o.p.length >> 1) << 1).map((v) => Math.max(-50, Math.min(20000, Math.round(Number(v)) || 0)));
+    pts += p.length / 2;
+    if (pts > 60000) break;
+    ops.push(o.e ? { c, s: sz, p, e: 1 } : { c, s: sz, p });
+  }
+  return ops.length ? { w, h, ops } : null;
+}
+
 function myReward(quiz: QuizRow, channelId: string) {
   const r = quiz.reward_log?.find((x) => x.channelId === channelId);
   return r ? { amount: r.amount, label: r.label } : null;
@@ -69,6 +93,12 @@ async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
   const subs = await fetchAll<SubmissionRow>((a, b) => admin.from("quiz_exam_submissions").select(SUBMISSION_COLS).eq("quiz_id", quiz.id).order("id").range(a, b), "quiz_exam_submissions");
   const mine = subs.find((s) => s.channel_id === channelId) ?? null;
   const revealed = quiz.status === "revealed";
+  // 내 시험지 낙서(내 것만 — 다른 사람 낙서는 안 보냄)
+  let myDoodle: unknown = null;
+  if (mine) {
+    const { data: dd } = await admin.from("quiz_exam_submissions").select("doodle").eq("id", mine.id).maybeSingle();
+    myDoodle = dd?.doodle ?? null;
+  }
 
   // 정답·채점 결과는 결과 발표 뒤에만
   const qs = questions.map((q) => {
@@ -95,7 +125,7 @@ async function examView(admin: Admin, quiz: QuizRow, channelId: string) {
     ...baseView(quiz, channelId),
     questions: quiz.status === "draft" ? [] : qs,
     participants: subs.length,
-    mine: mine ? { answers: mine.answers, submittedAt: mine.submitted_at, score: revealed ? mine.score : null, rank: revealed ? mine.rank : null } : null,
+    mine: mine ? { answers: mine.answers, submittedAt: mine.submitted_at, score: revealed ? mine.score : null, rank: revealed ? mine.rank : null, doodle: myDoodle } : null,
     ranking,
   };
 }
@@ -252,7 +282,8 @@ Deno.serve(async (req: Request) => {
         }
       }
       // 한 사람당 한 번만 — 이미 냈으면 unique 제약에 걸림(고쳐서 다시 낼 수 없음)
-      const { data: ins, error: ie } = await admin.from("quiz_exam_submissions").insert({ quiz_id: quizId, channel_id: session.channelId, answers }).select("submitted_at").maybeSingle();
+      const doodle = cleanDoodle(body.doodle);
+      const { data: ins, error: ie } = await admin.from("quiz_exam_submissions").insert({ quiz_id: quizId, channel_id: session.channelId, answers, doodle }).select("submitted_at").maybeSingle();
       if (ie) {
         if (ie.code === "23505") return json({ error: "already_submitted" }, 400);
         throw new Error(`제출 실패: ${ie.message}`);

@@ -1781,3 +1781,152 @@
   border-top: 1px solid var(--c-border);
   padding-top: 10px;
 }
+
+/* ── 시험지 낙서 ── */
+/* 낙서가 얹히는 시험지는 화면·방송 화면에 상관없이 늘 같은 모양(폭 880, 두 단)으로 — 모바일·방송용 여백/글자 크기 덮어씀 */
+.fixedWrap {
+  width: 100%;
+  min-width: 0;
+}
+.fixedBox {
+  position: relative;
+}
+.fixedInner {
+  position: relative;
+  transform-origin: 0 0;
+}
+.fixedInner .paper {
+  padding: 36px 40px 40px !important;
+}
+.fixedInner .paperArea {
+  font-size: 40px !important;
+}
+.fixedInner .paperRule {
+  margin: 20px 0 40px !important;
+}
+.fixedInner .qTitle {
+  font-size: 16px !important;
+}
+.fixedInner .qCol {
+  gap: 56px !important;
+}
+.fixedInner .q {
+  gap: 14px !important;
+}
+.doodleCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+.doodleDraw {
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+.doodleHand {
+  pointer-events: none;
+}
+.doodleEditor {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg);
+}
+.doodleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px max(12px, 2vw);
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.doodleTools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.doodleSeg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+}
+.doodleSeg button {
+  width: 34px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-text-2);
+}
+.doodleSeg button:disabled {
+  opacity: 0.35;
+}
+.doodleSeg button i {
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+.doodleSeg .doodleOn {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+.doodleZoom {
+  min-width: 42px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.doodleColors {
+  display: inline-flex;
+  gap: 5px;
+}
+.doodleColors button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--c-surface);
+  box-shadow: 0 0 0 1px var(--c-border);
+}
+.doodleColors .doodleColorOn {
+  box-shadow: 0 0 0 2px var(--c-text);
+}
+.doodleActs {
+  display: flex;
+  gap: 6px;
+}
+.doodleActs :global(.btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.doodleHint {
+  margin: 0;
+  padding: 8px max(12px, 2vw);
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.doodleScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 max(12px, 2vw) 40px;
+}
+.doodleNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--c-text-2);
+}
