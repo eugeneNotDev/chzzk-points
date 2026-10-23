@@ -435,6 +435,9 @@ function jobIncome(c: Ctx): number {
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
     if (r.tier === "great") c.apply(show?.greatFx, "job", show?.great ?? (s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다."), { roll: r, hl: true });
     else if (r.tier === "terrible") c.apply(show?.badFx ?? { s: { happy: -5 } }, "job", show?.bad ?? "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r });
+    // 버튜버는 나이가 들수록 인지도가 빠짐(40세 1, 45세 2, 50세 3, 60세 5 …)
+    if (j.id === "vtuber" && s.age >= 40) s.fame = clamp(s.fame - Math.ceil((s.age - 38) / 5), 0, 100);
+    if (s.fame >= 55) c.add("fame55"); // 엔딩은 죽을 때가 아니라 가장 유명했던 때 기준
     if (before < 30 && s.fame >= 30) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
     if (before < 70 && s.fame >= 70) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
     rankByValue(c, j, s.fame, "fame");
