@@ -87,7 +87,7 @@ npm run build:all    # 확인용 빌드 → web/dist/ (실제 사이트 + dist/b
 **배포는 `main`에 push하면 끝.** GitHub Actions(`.github/workflows/deploy.yml`)가 실제 사이트와 베타를 빌드해서 GitHub Pages에 올림(빌드 결과는 저장소에 커밋하지 않음). 진행 상황은 GitHub 저장소의 Actions 탭에서 볼 수 있음.
 push할 때마다 `check.yml`이 사이트 타입 검사·빌드, 서버 함수 타입 검사, 유진 키우기 밸런스 점검을 돌림 — 실패하면 커밋 옆에 빨간 X.
 
-베타에만 있는 기능(유진 키우기, 미스테리 투표 카드)은 `import.meta.env.MODE !== "live"`로 갈림.
+베타에만 있는 기능(지금은 유진 키우기)은 `import.meta.env.MODE !== "live"`로 갈림.
 사이트 주소를 바꿀 땐 세 군데를 같이: `web/src/lib/config.ts`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`(+ 저장소 Settings → Pages의 Custom domain, `web/public/CNAME`).
 
 ### Edge Function

@@ -1,12 +1,12 @@
 // 미스테리 라디오 연속 투표 카드 — 이야기 한 편에 투표 3개(예측 ① ② + 최종 진실/거짓)가 차례로 열림.
 // 무료로 투표만 해도 맞힌 개수만큼 기본 보상, 원하면 첫 투표 마감 전에 포인트를 걸어 맞힌 개수별 배수로 돌려받음.
-// "투표" 메뉴 맨 위에 뜸(진행 중이거나 방금 끝난 이야기가 있을 때만). 베타 전용(MYSTERY_ENABLED).
+// "투표" 메뉴 맨 위에 뜸(진행 중이거나 방금 끝난 이야기가 있을 때만).
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Check, Lock, Radio, X } from "lucide-react";
 import { ApiError } from "../../lib/auth";
 import { fmt } from "../../lib/format";
-import { castMysteryVote, MYSTERY_ENABLED, MYSTERY_ERRORS, placeMysteryBet, useMystery, type MysteryQuestion, type MysterySet } from "../../lib/mystery";
+import { castMysteryVote, MYSTERY_ERRORS, placeMysteryBet, useMystery, type MysteryQuestion, type MysterySet } from "../../lib/mystery";
 import styles from "./MysteryVoteCard.module.css";
 
 const NUM = ["①", "②", "③", "④", "⑤", "⑥"];
@@ -16,11 +16,6 @@ const errText = (e: unknown, fallback: string) => {
 };
 
 export function MysteryVoteCard() {
-  if (!MYSTERY_ENABLED) return null;
-  return <MysteryVoteCardInner />;
-}
-
-function MysteryVoteCardInner() {
   const q = useMystery();
   const s = q.data?.set;
   if (!s) return null;

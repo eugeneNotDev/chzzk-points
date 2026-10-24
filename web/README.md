@@ -10,7 +10,7 @@ npm run build:all    # 확인용 빌드 → dist/ (실제 사이트) + dist/beta
 
 - 로컬(`npm run dev`)에선 Supabase 함수가 `eugene4lpha.com`에서 온 요청만 받아서 공개 데이터만 보이고 로그인 기능은 안 됨 → 베타(`/beta/`)에 올려서 확인
 - 베타도 실제 DB를 쓰니까 테스트는 부계정으로
-- 베타 전용 기능은 `import.meta.env.MODE !== "live"`로 갈림(`lib/life.ts`의 `LIFE_ENABLED`, `lib/mystery.ts`의 `MYSTERY_ENABLED`)
+- 베타 전용 기능은 `import.meta.env.MODE !== "live"`로 갈림(지금은 `lib/life.ts`의 `LIFE_ENABLED` — 유진 키우기)
 
 ## 폴더
 

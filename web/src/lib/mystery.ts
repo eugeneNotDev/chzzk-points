@@ -5,9 +5,6 @@ import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { useTableRefetch } from "./realtime";
 
-// 베타(/beta/) 빌드에서만 투표 탭에 뜸. 실제 사이트에 열 때 true로 바꾸고 build:live.
-export const MYSTERY_ENABLED: boolean = import.meta.env.MODE !== "live";
-
 export type MysteryQuestion = {
   id: number;
   position: number;
@@ -38,14 +35,14 @@ export function useMystery() {
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["mystery", channelId],
-    enabled: isLoggedIn && MYSTERY_ENABLED,
+    enabled: isLoggedIn,
     // 실시간 신호를 놓쳤을 때 대비 — 투표 중이면 10초, 아니면 1분
     refetchInterval: (query) => (query.state.data?.set?.status === "open" ? 10_000 : 60_000),
     retry: false,
     queryFn: () => apiFetch<{ set: MysterySet | null }>(API.mystery),
   });
   // 투표 열기·마감·공개·지급, 다른 사람 투표가 들어오면 바로 다시 불러옴(0096_mystery_votes.sql의 mystery_pings)
-  useTableRefetch("mystery_pings", [["mystery"]], { event: "INSERT", minIntervalMs: 1200, settleMs: 200, enabled: isLoggedIn && MYSTERY_ENABLED });
+  useTableRefetch("mystery_pings", [["mystery"]], { event: "INSERT", minIntervalMs: 1200, settleMs: 200, enabled: isLoggedIn });
 
   // 지급이 끝나면 보유 포인트도 다시 불러옴
   const s = q.data?.set;
