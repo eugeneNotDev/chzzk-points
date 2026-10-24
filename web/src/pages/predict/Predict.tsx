@@ -150,7 +150,7 @@ export default function Predict() {
 
       <div className="split">
       <div className="split-main">
-      {/* 미스테리 라디오 연속 투표 — 진행 중이거나 방금 끝난 이야기가 있을 때만 뜸(베타 전용) */}
+      {/* 미스테리 라디오 연속 투표 — 진행 중이거나 방금 끝난 이야기가 있을 때만 뜸 */}
       <MysteryVoteCard />
       {/* 유진 키우기 방송 투표 — 유진이 방송에서 투표를 열었을 때만 뜸 */}
       <LifeVoteCard />

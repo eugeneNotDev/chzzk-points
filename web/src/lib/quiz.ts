@@ -216,16 +216,20 @@ export function underlineParts(text: string) {
   return text.split(/(__[^_]+__)/g).filter(Boolean).map((p) => (p.startsWith("__") && p.endsWith("__") ? { u: true, t: p.slice(2, -2) } : { u: false, t: p }));
 }
 
-// 투표(승부예측) 진행 중인지 — 메뉴에 "진행 중" 표시용. predictions는 공개 읽기 테이블.
+// 투표(승부예측) 또는 미스테리 라디오 투표가 진행 중인지 — 메뉴에 "진행 중" 표시용.
+// predictions는 공개 읽기 테이블, mystery_sets는 id·status·site_hidden 열만 공개(0098_mystery_public_status.sql).
 export function usePredictionLive() {
   return useQuery({
     queryKey: ["prediction-live"],
     staleTime: 15_000,
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("predictions").select("id").eq("status", "open").gt("closes_at", new Date().toISOString()).limit(1);
-      if (error) throw error;
-      return (data ?? []).length > 0;
+      const [p, m] = await Promise.all([
+        supabase.from("predictions").select("id").eq("status", "open").gt("closes_at", new Date().toISOString()).limit(1),
+        supabase.from("mystery_sets").select("id").eq("status", "open").eq("site_hidden", false).limit(1),
+      ]);
+      if (p.error) throw p.error;
+      return (p.data ?? []).length > 0 || (!m.error && (m.data ?? []).length > 0);
     },
   });
 }
