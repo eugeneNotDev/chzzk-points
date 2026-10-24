@@ -1,19 +1,18 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// 새 버전(React)은 개발하는 동안 eugene4lpha.com/beta/ 에 올려서 기존 사이트와 나란히 확인함.
-// 같은 도메인이라 Supabase CORS(eugene4lpha.com만 허용)와 치지직 로그인 리디렉트를 안 건드려도 되고,
-// 로그인 토큰(localStorage)도 기존 사이트와 그대로 공유됨.
-// 교체할 때는 `npm run build:live`(= --mode live) — 사이트 맨 앞(/)에 docs/로 빌드함(README 참고).
-//   live: docs/의 기존 파일(assets/, overlay.html, sw.js …)을 지우면 안 되니 emptyOutDir은 끔.
-//         앱 파일은 기존 docs/assets/와 섞이지 않게 docs/app/에 넣음.
+// 빌드 두 가지:
+//   npm run build      → 베타(eugene4lpha.com/beta/, docs/beta/). 베타 전용 기능이 켜짐(MODE !== "live")
+//   npm run build:live → 실제 사이트(/, docs/). docs/의 직접 관리 파일(overlay.html, sw.js, assets/ …)을
+//                        지우면 안 되니 emptyOutDir은 끄고, 앱 파일은 docs/app/에 따로 넣음.
+// 같은 도메인이라 로그인 토큰(localStorage)이 베타와 실제 사이트에서 그대로 공유됨.
 export default defineConfig(({ mode }) => {
   const live = mode === "live";
   return {
     base: live ? "/" : "/beta/",
     plugins: [
       react(),
-      // 교체 빌드(live)에선 베타 표시를 뺌 — 제목 "(베타)"와 검색엔진 차단(noindex)은 베타 주소에서만
+      // 실제 사이트 빌드(live)에선 베타 표시를 뺌 — 제목 "(베타)"와 검색엔진 차단(noindex)은 베타 주소에서만
       {
         name: "live-html",
         transformIndexHtml(html: string) {

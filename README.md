@@ -1,149 +1,123 @@
-# chzzk-points
+# chzzk-points (유진 팬보드)
 
-치지직 방송용 시청자 포인트 시스템. 시청자가 채팅/출석/후원으로 포인트를 모으고, 모은 포인트로 상점 상품을 사거나 투표에 걸어서 방송에 직접 개입할 수 있게 만든 팬 사이트임.
+치지직 방송용 시청자 포인트 팬 사이트 — https://eugene4lpha.com
+시청자가 출석·방송 코드·후원으로 포인트를 모으고, 상점·투표·미니게임·퀴즈로 방송에 직접 참여하게 만든 사이트임.
 
 기획 쪽 내용(요구사항, 결정 사항, 로드맵)은 Notion에 따로 정리해두고 이 저장소엔 코드만 둠.
 
 ## 기능
 
-- **치지직 로그인** — 치지직 OAuth로 로그인. 로그인하면 자동으로 가입 처리됨
-- **포인트 랭킹** — 보유 포인트 순위. 공개/비공개 설정 가능하고 비공개면 이름 대신 "비공개"로 나옴. 관리자 계정으로 보면 비공개 유저도 "비공개" 표시와 함께 실제 칭호·이름으로 보여서 전체 순위를 한눈에 볼 수 있음
-- **출석체크** — 방송 중일 때만 가능, 방송 한 번에 한 번(자정 넘어가도 방송 시작일 기준). 1회 100P, 누적 10번째마다 보너스 100P 추가. 달력으로 출석한 날 표시됨
-- **방송 코드** — 방송 중에 관리자 페이지 "방송 코드" 탭에서 코드를 만들어 뿌리면(랜덤 또는 직접 입력), 시청자가 출석체크 페이지에서 입력해서 포인트를 받음. 코드는 10분만 유효(다시보기로 보고 나중에 넣는 것 방지), 한 사람당 한 번, 선착순 인원 제한 가능. 진행 중인 코드는 한 번에 하나고, OBS 오버레이 왼쪽 위에 코드·남은 시간·남은 인원이 뜸. 틀린 코드를 10분에 10번 넘게 넣으면 잠깐 막힘
-- **포인트 상점** — 일반 상품(쿨타임, 방송 중 전용, 한정 수량 설정 가능)이랑 칭호 상품 두 종류 있음. 등록한 순서대로 보임. 상품을 사면 OBS 오버레이에 알림이 뜸. 관리자는 "판매 중지"(상점에서만 내림, 산 사람은 칭호 유지)랑 "삭제"(칭호까지 전원 회수)를 따로 쓸 수 있음. 한정 수량은 수정 창에서 "남은 수량"으로 보이고 고칠 수 있어서, 품절된 상품도 숫자만 늘리면 다시 팔림
-- **칭호** — 최고 보유 포인트 기준으로 자동으로 붙는 등급 칭호(브론즈~다이아몬드)는 이름 색으로 보이고, 상점에서 산 칭호나 관리자가 직접 준 칭호는 배지로 보임. 배지는 색(예시 색/HEX 직접 입력/무지개, 두 가지 색 그라데이션이나 배경색+글자색 조합도 가능) + 디자인(기본/메탈 반짝/빛나는 테두리/유리) + 장식(왕관·책·하트·늑대·양·십자가 등 아이콘 70여 개 중 하나, 반짝이 별)을 골라서 꾸밈. 전부 서로 같이 쓸 수 있음(무지개만 두 번째 색이랑은 같이 안 됨). 마이페이지에서 골라서 장착함
-- **투표(승부예측)** — 치지직 승부예측이랑 같은 방식. 항목마다 포인트를 걸고, 정산하면 진 쪽 포인트가 이긴 쪽에 건 비율대로 나눠짐. 다른 유저한테는 누가 어디 걸었는지 안 보임
-- **미니게임** — 사이드바 "미니게임" 아래에 룰렛·가위바위보·홀짝. 전부 브론즈 등급 이상만, 최소 100P(최대 제한 없음), 결과 나오고 2초 뒤에 다시 가능. 결과는 서버가 정하고 화면은 연출만 함. 평균 돌려받는 비율을 100%보다 조금 낮게 잡아서 많이 할수록 포인트가 조금씩 줄어드는 구조
-  - 룰렛: 가로로 굴러가는 배율 카드(x0~x5) 중 하나를 뽑음. 확률은 `roulette_outcomes` 테이블에서 조절
-  - 가위바위보: 손을 고르면 바로 한 판. 이기면 1.9배, 비기면 그대로, 지면 0
-  - 홀짝: 홀이나 짝을 고르면 카드(A~10) 한 장이 섞였다가 뒤집힘. 맞히면 1.9배, 틀리면 0
-  - 무료 뽑기: 하루 한 번(한국 시간 자정 초기화) 선물 상자를 공짜로 열어 10~300P, 0.1% 확률로 1,000P(황금 상자). 등급 제한 없음, 평균 하루 약 99P. 확률은 화면에 안 보여줌 — 구간은 `free_box_open()`에서 조절(0048, 최소 10P로 바꾼 건 0049)
-- **공지사항** — 사진이랑 파일 첨부 가능. 사진은 본문에 크게 보여주고, 파일은 다운로드용으로 따로 목록에 뜸. 새 공지 올라오면 메뉴에 알림 점 표시됨. 글쓰기 창에서 "HTML로 꾸미기"를 켜면 노션처럼 제목·콜아웃·토글·색 글자·체크리스트·2단·표 등을 버튼으로 넣고 미리보기로 확인하면서 쓸 수 있음(보는 화면에선 DOMPurify로 스크립트 등 위험한 건 걸러서 그림). 긴 글도 팝업 안에서 본문만 스크롤되고 버튼은 항상 보임. 이용 가이드처럼 계속 보여야 하는 글은 "상단 고정"으로 목록 맨 위에 붙여둘 수 있음(여러 개면 먼저 고정한 글이 위, 홈 화면 미리보기도 같은 순서)
-- **후원 적립** — 1만 치즈 이상 후원(채팅·영상 둘 다)하면 금액의 10%가 사이트 포인트로 자동 적립됨(내역엔 "후원 적립: 10,000치즈"). 사이트 가입자만, 1만 치즈 미만은 적립 없음. 익명 후원은 치지직 API로 누군지 알 수 없어서 관리자 페이지 "후원 적립" 탭 목록에 쌓이고, 유진님이 리모컨을 보고 유저를 골라 적립해줌. 방송 PC에서 `tools/donation-relay` 프로그램을 켜둬야 동작함(아래 "후원 연동 프로그램")
-- **마이페이지** — 잔액, 칭호, 공개 설정, 내 포인트 내역
-- **관리자 페이지** — 유저 검색, 포인트 지급/차감(일괄 가능, 실행취소 가능), 칭호 관리(유저별 보유 칭호 회수 + 새로 만들어 지급 / 상점 칭호·커스텀 칭호 그대로 지급), 밴, 전체 포인트 로그, 상점 사용 내역 처리(칭호 구매는 자동 지급이라 처리 체크 없음), 방송 코드 만들기/종료, 익명 후원 적립
-- **OBS 오버레이** — 상점 사용을 실시간으로 받아서 방송 화면에 알림 띄움. 방송 코드도 띄우려면 OBS 브라우저 소스 주소를 관리자 페이지 "방송 코드" 탭의 "주소 복사"로 받은 주소(`overlay.html?key=...`)로 바꿔야 함(키 없이 열면 상점 알림만 뜸)
-
-PC에선 왼쪽 사이드바, 폰에선 상단바 + 하단 탭바 레이아웃으로 바뀜. 스크롤바는 숨겨두고, 입력칸 자동완성(예전에 쳤던 값 추천)은 사이트 전체에서 꺼둠.
+- **치지직 로그인** — 치지직 OAuth. 로그인하면 자동 가입
+- **출석체크 · 방송 코드** — 방송 중 방송 한 번에 한 번 출석(1회 100P, 10번째마다 보너스). 관리자가 뿌린 방송 코드(10분 유효, 선착순 가능)를 입력하면 포인트
+- **랭킹 · 칭호** — 보유 포인트 순위(비공개 설정 가능). 최고 보유 포인트 기준 등급 칭호, 상점·관리자 칭호(색·디자인·아이콘 꾸미기), 지난달 1·2·3위 특수 칭호
+- **포인트 상점 · 칭호 상점** — 쿨타임·방송 중 전용·한정 수량. 사면 OBS 오버레이에 알림
+- **투표** — 치지직 승부예측 방식(진 쪽 포인트를 이긴 쪽 비율대로 나눔). 미스테리 라디오 연속 투표·유진 키우기 시청자 투표 카드도 여기에 뜸
+- **퀴즈** — 유진고사(시험지 제출 → 방송에서 채점, 시험지 낙서 가능), OX 퀴즈(데스매치/점수전)
+- **미니게임** — 무료 뽑기(하루 한 번), 룰렛, 가위바위보, 홀짝. 결과는 서버가 정함
+- **유진 키우기** — 인생 시뮬레이션 팬게임 (베타 빌드에서만, 주인 계정 테스트 중)
+- **커뮤니티** — 자유게시판, 방송 후기(작성 보상), 방종곡 신청, 그림 후원
+- **공지사항** — 사진·파일 첨부, 노션처럼 꾸미는 HTML 모드(DOMPurify로 거름), 상단 고정
+- **후원 적립** — 1만 치즈 이상 후원하면 10% 자동 적립(방송 PC에서 `tools/donation-relay` 실행 필요)
+- **방송 알림** — 홈 화면 앱 설치 + 방송 시작 웹 푸시
+- **관리자** — 유저·포인트(일괄·실행취소)·칭호·밴, 로그, 방송 코드, 익명 후원 적립, 신고, 백업 등
+- **OBS 오버레이** — 상점 알림·방송 코드·그림 후원 (`docs/overlay.html`)
 
 ## 구조
 
 ```
 chzzk-points/
-├── docs/                       # GitHub Pages가 그대로 서빙하는 프론트 (빌드 없음)
-│   ├── index.html              # 홈 + OAuth 콜백 처리
-│   ├── notice.html             # 공지사항 (관리자는 글쓰기/수정/삭제/고정)
-│   ├── ranking.html            # 포인트 랭킹
-│   ├── shop.html               # 포인트 상점 (일반 상점 / 칭호 상점)
-│   ├── predict.html            # 투표
-│   ├── roulette.html           # 미니게임: 룰렛
-│   ├── rps.html                # 미니게임: 가위바위보
-│   ├── oddeven.html            # 미니게임: 홀짝
-│   ├── freebox.html            # 미니게임: 무료 뽑기(하루 한 번 선물 상자)
-│   ├── attendance.html         # 출석체크
-│   ├── mypage.html             # 마이페이지
-│   ├── admin.html              # 관리자 페이지
-│   ├── overlay.html            # OBS 브라우저 소스용 오버레이
-│   └── assets/
-│       ├── css/style.css
-│       ├── img/, audio/        # 브랜드 이미지, 오버레이 알림음
-│       └── js/
-│           ├── supabase-client.js  # Supabase 클라이언트 (URL이랑 anon key만 들어감)
-│           ├── chzzk-auth.js       # 로그인/세션 토큰 관리, 사이드바·모바일 메뉴 등 공용 코드
-│           └── spa-router.js       # 페이지 이동할 때 본문만 갈아끼우는 간단한 라우터
+├── web/                    # 사이트 (React + Vite + TypeScript) — 빌드 결과가 docs/로 감
+│   ├── src/
+│   │   ├── nav.ts          # 메뉴 목록(사이드바·모바일·주소가 전부 여기서 나옴)
+│   │   ├── routes.ts       # 주소 → 화면
+│   │   ├── pages/          # 화면별 코드 (quiz/, life/, board/ …)
+│   │   ├── components/     # 공통 부품
+│   │   ├── lib/            # 로그인·서버 호출(config.ts의 API 목록)·데이터 조회
+│   │   └── styles/         # 디자인 토큰·공통 CSS
+│   └── scripts/copy-routes.mjs   # 메뉴 주소마다 index.html 복사(GitHub Pages용)
 │
-└── supabase/
-    ├── functions/              # Edge Functions (Deno)
-    │   ├── _shared/            # CORS, 세션 토큰, 설정값, 방송 중 여부 확인 공용 코드
-    │   ├── oauth-callback/     # 치지직 OAuth 토큰 교환 + 세션 토큰 발급
-    │   ├── me/                 # 내 프로필/잔액/포인트 내역/칭호 조회·수정
-    │   ├── attendance-check/   # 출석체크
-    │   ├── spend-points/       # 상점 상품 구매
-    │   ├── shop-items/         # 상품 관리 (관리자)
-    │   ├── predictions/        # 투표 조회 + 베팅
-    │   ├── roulette/           # 룰렛 상태 조회 + 돌리기
-    │   ├── rps/                # 가위바위보 상태 조회 + 한 판
-    │   ├── odd-even/           # 홀짝 상태 조회 + 한 판
-│   ├── free-box/           # 무료 뽑기 상태 조회 + 상자 열기
-    │   ├── notices/            # 공지 작성/수정/삭제/상단 고정 + 첨부파일 업로드 URL 발급 (관리자)
-    │   ├── broadcast-status/   # 지금 방송 중인지 확인
-    │   ├── admin-ranking/      # 관리자용 랭킹 (비공개 유저도 실제 이름으로)
-│   ├── stream-code/        # 방송 코드 입력(시청자) + 오버레이용 지금 코드 조회(키 필요)
-│   ├── admin-stream-codes/ # 관리자 "방송 코드" 탭 (만들기/종료/지난 코드)
-│   ├── admin-donations/    # 관리자 "후원 적립" 탭 (익명 후원 적립/무시, 연동 상태)
-│   ├── donation-relay/     # 후원 연동 프로그램 전용 중계 (치지직 후원 알림 세션 발급 + 후원 기록/적립)
-    │   └── admin/              # 관리자 기능 전부 (유저 관리, 포인트, 밴, 투표 생성/정산 등)
-    └── migrations/             # DB 스키마 변경 이력 (RLS 포함)
-
-tools/
-└── donation-relay/             # 방송 PC에서 켜두는 후원 연동 프로그램 (Node.js)
+├── docs/                   # GitHub Pages가 그대로 서빙 (main에 push하면 반영)
+│   ├── index.html, xxx.html, app/   # ← web 빌드 결과(직접 고치지 말 것)
+│   ├── beta/                        # ← 베타 빌드 결과
+│   ├── overlay.html, open-live.html # 직접 관리하는 파일(OBS 오버레이, 앱→치지직 열기)
+│   ├── sw.js, manifest.webmanifest  # 앱 설치·푸시
+│   └── assets/                      # 이미지·알림음, 오버레이가 쓰는 supabase 사본
+│
+├── supabase/
+│   ├── config.toml         # 함수별 설정(전부 verify_jwt = false — 새 함수는 꼭 추가)
+│   ├── functions/          # Edge Functions (Deno). _shared/는 공용 코드
+│   └── migrations/         # DB 변경 기록 (이름 규칙은 아래)
+│
+├── tools/
+│   ├── donation-relay/     # 방송 PC에서 켜두는 후원 연동 프로그램 (Node.js)
+│   └── life-content/       # 유진 키우기 밸런스 점검 스크립트
+│
+└── notice-drafts/          # 공지 HTML 초안
 ```
 
 ## 기술 스택
 
-- 프론트: 순수 HTML/CSS/JS. 빌드 도구 없이 `docs/`를 GitHub Pages가 그대로 서빙함
-- 백엔드: Supabase (Postgres, Edge Functions, Realtime, Storage)
-- 로그인: 치지직 Open API OAuth
+- 프론트: React 19 + Vite + TypeScript, TanStack Query, CSS Modules
+- 백엔드: Supabase (Postgres, Edge Functions, Realtime, Storage, pg_cron)
+- 로그인: 치지직 Open API OAuth + 자체 세션 토큰
+- 호스팅: GitHub Pages (`docs/`, 커스텀 도메인 `docs/CNAME`)
 
 ## 설계 메모
 
-- **시크릿은 프론트에 절대 안 둠.** 치지직 `clientSecret`, Supabase `service_role` 키, 세션 서명 키는 전부 Edge Function 환경변수에만 있음. `docs/`에 들어가는 건 공개돼도 되는 URL이랑 anon key뿐임
-- **로그인은 쿠키가 아니라 토큰 방식.** 프론트(GitHub Pages)랑 API(Supabase)가 도메인이 달라서, 크로스 도메인 쿠키 대신 자체 발급한 JWT를 `localStorage`에 두고 `Authorization: Bearer`로 보냄. 7일 만료이고 자주 들어오는 유저는 자동 연장됨
-- **읽기는 프론트에서 직접, 쓰기는 Edge Function으로.** 랭킹·공지·상품 목록처럼 공개 데이터는 anon key로 바로 읽고, 포인트가 움직이거나 관리자 권한이 필요한 건 전부 Edge Function을 거침. 브라우저(anon)에는 테이블 쓰기 권한 자체가 없고(RLS로도 한 번 더 막힘), 공개 정책이 없는 서버 전용 테이블은 읽기 권한도 없음. 새 테이블/함수를 만들어도 기본으로 브라우저엔 쓰기·실행 권한이 안 붙음(0044)
-- **방송 코드는 브라우저가 직접 못 읽음.** `overlay.html`은 공개 파일이라 누구나 열 수 있어서, 코드를 공개 테이블로 두면 방송을 안 보고도 알아낼 수 있음. 그래서 코드 테이블은 서버 전용이고, 오버레이는 주소의 키(`app_secrets.overlay_key`)로만 지금 코드를 받아오고 이후 변화는 그 키가 이름에 들어간 Realtime broadcast 채널로 받음. 키가 새면 `app_secrets`의 값을 바꾸고 OBS 주소를 다시 복사하면 됨(0047)
-- **비공개 설정은 서버에서 가림.** 비공개 유저는 공개 랭킹에서 이름·칭호뿐 아니라 치지직 채널 ID도 안 나감(채널 ID 대신 유저마다 무작위 값 `rank_key`가 들어가고, 본인 줄 "(나)" 표시는 `/me`가 본인에게만 알려주는 값으로 맞춤). 오버레이는 상점 사용 원본 기록(`spend_events`, 서버 전용) 대신 표시용 이름만 담긴 `overlay_events`를 구독함(비공개면 이름이 아예 안 담겨서 "익명")
-- **포인트는 기록이 기준, 잔액은 따라옴.** 모든 포인트 변동은 `points_ledger`에 +/- 기록으로 쌓고, `users.balance`는 그 합계를 트리거가 자동으로 맞춰주는 칸임. `balance`를 직접 고치는 건 DB에서 막아둠 (포인트 조정은 관리자 페이지 = 기록 추가로만). 실행취소도 기록을 지우지 않고 반대 기록을 추가하는 방식
-- **포인트 쓰는 건 DB 함수 하나로.** 미니게임은 `roulette_spin()`/`rps_play()`/`odd_even_play()`가 자격 확인·결과 뽑기·기록까지 한 번에 처리하고, 상점 구매, 투표 베팅은 `debit_points()`가 유저 행을 잠근 채로 잔액 확인 + 차감을 한 번에 처리함. 버튼을 연타해도 가진 것 이상은 못 씀
-- **첨부파일은 Storage에 직접 업로드.** Edge Function이 업로드용 signed URL만 발급해주고 파일은 브라우저가 Storage로 바로 올림. 저장 경로는 영문(uuid)만 쓰고 원래 파일명은 DB에 따로 둠 (Storage가 한글 경로를 안 받음)
-- **방송 중 여부**는 치지직 공식 API에 채널 하나만 조회하는 게 없어서 치지직 웹이 쓰는 비공개 엔드포인트를 짧게 캐싱해서 씀
-- **후원 적립은 방송 PC 프로그램 → 서버 판단.** 치지직 후원 알림은 소켓으로만 받을 수 있어서 방송 중에만 PC에서 작은 프로그램(`tools/donation-relay`)을 켜둠. 이 프로그램엔 치지직 토큰도 DB 키도 없고 "중계 비밀번호"만 있음. 유진님 치지직 토큰은 유진님이 사이트에 로그인할 때 서버(`streamer_tokens`)에만 저장되고, 적립 여부(금액·익명·가입자·밴)는 DB 함수 `record_donation()`이 정함. 같은 후원이 두 번 들어와도 한 번만 적립됨(0046)
+- **시크릿은 프론트에 절대 안 둠.** 치지직 `clientSecret`, `service_role` 키, 세션 서명 키는 Edge Function 환경변수에만 있음. 프론트(`web/src/lib/config.ts`)엔 공개돼도 되는 URL·anon key·client id만
+- **로그인은 토큰 방식.** 사이트와 API 도메인이 달라서 자체 JWT를 `localStorage`에 두고 `Authorization: Bearer`로 보냄. 7일 만료, 자주 들어오면 자동 연장
+- **읽기는 프론트에서 직접, 쓰기는 Edge Function으로.** 공개 데이터는 anon key로 바로 읽고, 포인트·관리자 기능은 전부 함수를 거침. 브라우저(anon)엔 테이블 쓰기 권한이 없음(RLS로도 막음, 0044·0075)
+- **포인트는 기록이 기준.** 모든 변동은 `points_ledger`에 쌓고 `users.balance`는 트리거가 합계를 맞춤(직접 수정 금지). 실행취소도 반대 기록을 추가
+- **포인트 쓰는 건 DB 함수 하나로.** 미니게임·상점·투표·퀴즈 보상은 DB 함수가 유저 행을 잠근 채 확인·차감·기록까지 한 번에 처리해서 연타해도 안전
+- **방송 코드·비공개 정보는 서버에서 가림.** 코드 테이블은 서버 전용, 오버레이는 주소의 키로만 받음. 비공개 유저는 랭킹에 이름·칭호·채널 ID가 안 나감
+- **후원 적립은 방송 PC 프로그램 → 서버 판단.** 프로그램엔 "중계 비밀번호"만 있고, 적립 여부는 DB 함수 `record_donation()`이 정함(중복 적립 없음)
+- **방송 중 여부**는 치지직 웹의 비공개 엔드포인트를 짧게 캐싱해서 씀
 
-## 배포
+## 개발 · 배포
 
-프론트는 `main`에 push하면 GitHub Pages에 자동 반영됨. 사이트 주소는 커스텀 도메인 `https://eugene4lpha.com/`(`docs/CNAME`, DNS는 호스팅케이알에서 GitHub Pages로 연결). 주소를 바꿀 땐 세 군데를 같이 바꿔야 함: `chzzk-auth.js`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터의 로그인 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`. CSS/JS를 고치면 캐시 때문에 안 바뀌어 보일 수 있어서, HTML에서 불러오는 `style.css?v=N`, `chzzk-auth.js?v=N` 같은 버전 숫자를 같이 올려줘야 함.
-
-백엔드는 Supabase CLI 기준:
+### 사이트
 
 ```bash
-# DB 마이그레이션 적용
-supabase db push
-
-# Edge Function 배포 (인증은 함수 안에서 자체 토큰으로 하니까 JWT 검증은 끔)
-supabase functions deploy <함수명> --no-verify-jwt
+cd web
+npm install          # 처음 한 번
+npm run dev          # http://localhost:5173/beta/ (로그인 필요한 기능은 CORS 때문에 안 됨)
+npm run build        # 베타 → docs/beta/  (https://eugene4lpha.com/beta/)
+npm run build:live   # 실제 사이트 → docs/
 ```
 
-Edge Function 환경변수(Supabase 대시보드에서 등록):
+빌드한 뒤 커밋·push하면 GitHub Pages에 반영됨. 베타에만 있는 기능(유진 키우기, 미스테리 투표 카드)은 `import.meta.env.MODE !== "live"`로 갈림.
+사이트 주소를 바꿀 땐 세 군데를 같이: `web/src/lib/config.ts`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`.
 
-| 이름 | 용도 |
-| --- | --- |
-| `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET` | 치지직 OAuth |
-| `SESSION_JWT_SECRET` | 세션 토큰 서명 키 (긴 랜덤 문자열). 관리자 로그인이 남 손에 넘어간 것 같으면 이 값을 새로 바꾸면 모든 로그인이 즉시 끊김(다들 다시 로그인하면 됨) |
-| `ALLOWED_ORIGIN` | CORS 허용 도메인 (`https://eugene4lpha.com`, 생략해도 같은 값) |
+### Edge Function
 
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`는 Supabase가 알아서 넣어줌. 로컬 개발용 예시는 `.env.example` 참고.
+```bash
+npx supabase functions deploy <함수명>
+```
+
+`supabase/config.toml`에 함수마다 `verify_jwt = false`가 있어야 함(인증은 함수 안에서 자체 토큰으로). **새 함수를 만들면 config.toml에도 추가.**
+
+환경변수(Supabase 대시보드): `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `SESSION_JWT_SECRET`(바꾸면 모든 로그인이 즉시 끊김), `ALLOWED_ORIGIN`. `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`는 자동.
+
+### DB 마이그레이션
+
+파일 이름은 **`<DB 기록 번호(14자리 날짜)>_<옛 번호>_<이름>.sql`** — 예: `20261023184301_0095_quiz_doodle.sql`.
+앞의 14자리가 Supabase의 마이그레이션 기록(`supabase_migrations.schema_migrations`)과 같아야 `supabase db push`/`migration list`가 꼬이지 않음.
+
+- 새 변경은 다음 번호(`0099_...`)로 이름 짓고, 적용한 기록 번호를 앞에 붙임
+- DB에 직접 SQL을 돌려서 고쳤으면 그 내용도 꼭 파일로 남기기
+- `npx supabase migration list`로 로컬 파일과 DB 기록이 같은지 확인 가능
 
 ## 후원 연동 프로그램 (tools/donation-relay)
 
-방송할 때 PC에서 `start.bat`을 더블클릭해서 켜두면 됨(창은 방송 끝날 때까지 열어두기). 처음 한 번은 필요한 파일을 자동으로 받느라 조금 걸림. Node.js가 깔려 있어야 함.
+방송할 때 PC에서 `start.bat`을 더블클릭해서 켜두면 됨(방송 끝날 때까지 창 열어두기). Node.js 필요.
 
-- `config.json`에 서버 주소랑 중계 비밀번호가 들어 있음. 비밀번호는 git에 안 올라가게 `.gitignore`에 넣어뒀고, 서버엔 해시(`app_secrets.donation_relay_secret_sha256`)만 있음. 새 PC에서 쓰려면 `config.example.json`을 복사해서 `config.json`을 만들고 비밀번호를 넣으면 됨. 비밀번호를 바꾸려면 새 값의 SHA-256을 `app_secrets`에 넣고 `config.json`도 같이 바꿈
-- 치지직 토큰은 방송할 때마다 자동으로 갱신되는데, **30일 넘게 방송을 안 하면 만료**돼서 프로그램 창에 "다시 로그인" 안내가 뜸. 그땐 사이트에서 로그아웃 → 유진 알파 계정으로 다시 로그인하면 됨. 관리자 페이지 "후원 적립" 탭에서 연동 상태를 볼 수 있음
-- 서버에 못 보낸 후원(인터넷 끊김 등)은 `pending.json`에 모아뒀다가 다시 보냄
-- 기준 금액(1만 치즈)이랑 비율(10%)은 `donation_points()` DB 함수에 있음
+- `config.json`에 서버 주소와 중계 비밀번호(git에 안 올라감, 서버엔 해시만). 새 PC에선 `config.example.json`을 복사해서 만듦
+- 치지직 토큰은 방송할 때마다 갱신되고, **30일 넘게 방송을 안 하면 만료** → 사이트에서 유진 알파 계정으로 다시 로그인
+- 못 보낸 후원은 `pending.json`에 모아뒀다가 다시 보냄
+- 기준 금액(1만 치즈)·비율(10%)은 `donation_points()` DB 함수에 있음
 
-## 상태
+## 아이콘 · 외부 라이브러리
 
-위 기능 전부 구현돼서 운영 중임.
-
-## 아이콘 출처
-
-칭호 아이콘은 무료 라이선스 아이콘을 씀: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0, Lorc·Delapouite 외). 어떤 아이콘이 어디 건지는 `docs/assets/js/chzzk-auth.js`의 `TITLE_ICONS` 위 주석 참고.
-
-## 외부 라이브러리
-
-사이트는 외부 CDN에서 스크립트를 받지 않고 `docs/assets/js/`에 사본을 직접 둠(로그인 토큰이 브라우저에 있어서, CDN이 뚫리거나 예고 없이 바뀌어도 영향 없게).
-
-- `supabase.min.js` — [supabase-js](https://github.com/supabase/supabase-js) 2.117.2 (MIT). 버전 올릴 땐 `npm i @supabase/supabase-js@<버전> esbuild` 후 `export { createClient } from "@supabase/supabase-js";` 한 줄짜리 파일을 `esbuild --bundle --format=esm --minify --platform=browser`로 묶어서 교체(맨 위 주석의 버전도 같이). Edge Function 쪽 import(`esm.sh/@supabase/supabase-js@2.117.2`)도 같은 버전으로 고정해둠 — 배포할 때 그 버전으로 묶여서 올라감
-- `purify.min.js` — 아래 참고
-
-공지 HTML을 걸러내는 데 [DOMPurify](https://github.com/cure53/DOMPurify) (Apache-2.0 / MPL-2.0, Cure53)를 `docs/assets/js/purify.min.js`로 그대로 넣어서 씀.
+- 칭호 아이콘: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0). 아이콘별 출처는 `web/src/lib/titleIcons.ts` 맨 위 주석
+- 사이트 라이브러리는 npm으로 받아 빌드에 같이 묶음(외부 CDN 안 씀): supabase-js, TanStack Query, React Router, DOMPurify(공지 HTML 거르기), motion, lucide-react, Pretendard·Outfit 글꼴
+- `docs/assets/js/supabase.min.js` — 오버레이(`overlay.html`)용 supabase-js 2.117.2 사본. Edge Function 쪽 import(`esm.sh/@supabase/supabase-js@2.117.2`)도 같은 버전

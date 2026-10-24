@@ -1,11 +1,11 @@
 # Edge Functions 설정.
 #
 # 이 프로젝트는 Supabase Auth를 안 쓰고 자체 세션 토큰(치지직 OAuth 기반, _shared/session.ts)을 쓴다.
-# 그래서 Supabase가 기본으로 요구하는 "Authorization 헤더에 Supabase JWT(anon key 등) 필수" 검증을
-# 함수별로 꺼두고, 대신 각 함수 안에서 우리 세션 토큰을 직접 검증한다.
-#   - oauth-callback: 로그인 전 최초 호출이라 애초에 우리 토큰이 없음 → 검증 끔
-#   - spend-points, attendance-check: Authorization 헤더를 "우리 세션 토큰" 용도로 쓰기 위해 검증 끔
-#     (각 함수 내부에서 _shared/session.ts의 verifySessionToken으로 직접 인증 처리)
+# 그래서 Supabase가 기본으로 요구하는 "Authorization 헤더에 Supabase JWT 필수" 검증을 함수마다 꺼두고,
+# 각 함수 안에서 우리 세션 토큰(또는 함수별 키)을 직접 검증한다.
+#
+# ⚠ 함수를 새로 만들면 여기에 꼭 추가할 것. 빠져 있으면 `supabase functions deploy`가 검증을 켜서
+#    그 함수가 모든 요청을 막아버림(지금 서버에 올라간 함수는 전부 verify_jwt = false).
 
 [functions.oauth-callback]
 verify_jwt = false
@@ -66,4 +66,48 @@ verify_jwt = false
 
 # 미스테리 리모컨·방송화면(로컬 파일) 전용 — 리모컨 키(x-remote-key)로 직접 인증
 [functions.mystery-remote]
+verify_jwt = false
+
+# 아래는 서버엔 이미 검증 꺼진 채로 올라가 있었는데 여기 빠져 있던 함수들
+
+[functions.admin-donations]
+verify_jwt = false
+
+[functions.admin-minigame-block]
+verify_jwt = false
+
+[functions.admin-ranking]
+verify_jwt = false
+
+[functions.admin-stream-codes]
+verify_jwt = false
+
+[functions.donation-relay]
+verify_jwt = false
+
+[functions.free-box]
+verify_jwt = false
+
+[functions.ledger-balance]
+verify_jwt = false
+
+[functions.odd-even]
+verify_jwt = false
+
+[functions.pages]
+verify_jwt = false
+
+[functions.predictions]
+verify_jwt = false
+
+[functions.roulette]
+verify_jwt = false
+
+[functions.rps]
+verify_jwt = false
+
+[functions.shop-items]
+verify_jwt = false
+
+[functions.stream-code]
 verify_jwt = false
