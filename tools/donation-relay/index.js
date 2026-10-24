@@ -13,7 +13,8 @@
 //   - 미션: 미션이 걸리면 기록만 해두고, 유진님이 "미션 성공"을 누르면 그때 적립(실패·거절이면 치즈 환불이라 적립 없음).
 //   - 구독권 선물: 선물한 사람에게 개수 × 1장 가격으로 적립(가격은 서버 donation-relay의 SUB_GIFT_PRICE).
 //   - 일반 후원은 여기서 무시(공식 API 쪽에서 이미 받음 — 두 번 적립 방지).
-// 받은 미션/선물 원본은 chat-events.log에 남겨둠(문제 생겼을 때 확인용, 저장소에는 안 올라감).
+// 받은 미션/선물/그 밖의 시스템 메시지 원본은 chat-events.log에 남겨둠(문제 생겼을 때 확인용, 저장소에는 안 올라감).
+// 구독권 선물은 "선물(12번)"이나 "0치즈 후원(10번)" 어느 쪽으로 와도 받음(giftInfo).
 
 "use strict";
 
@@ -319,17 +320,48 @@ function donorOf(msgUid, extras) {
   return { donatorChannelId: anonymous || !id || id === "anonymous" ? null : id };
 }
 
+// 구독권 선물인지 알아보기 — 치지직은 선물을 "선물(12번)" 메시지로 보내기도 하고, "0치즈 후원(10번)" 메시지로
+// 보내기도 함(2026-10-24 방송에서 확인: 다른 채팅 프로그램엔 "꾸꾸까꾸: 0 치즈"로 찍힘). 그래서 둘 다 봄.
+function giftInfo(type, extras) {
+  const dt = String(extras.donationType || "");
+  const gt = String(extras.giftType || "");
+  const looksGift = type === 12 || !!extras.giftId || /GIFT/i.test(gt) || /SUBSCRIPTION|GIFT/i.test(dt);
+  if (!looksGift) return null;
+  return { receiver: /RECEIVER/i.test(gt) || /RECEIVER/i.test(dt) };
+}
+
+function handleGift(m, uid, extras, nickname, gift) {
+  // 받는 사람 쪽 알림은 기록만 하고 건너뜀 — 선물한 사람 기준 한 번만 적립
+  if (gift.receiver) return chatLog("GIFT_RECEIVER", m);
+  chatLog("GIFT", m);
+  const giftId = extras.giftId || extras.giftOrderId || extras.orderId;
+  const who = extras.isAnonymous === true || uid === "anonymous" ? "익명" : nickname || "?";
+  // 선물 번호가 없으면 같은 선물이 두 번 적립될 수 있어서 자동 적립 안 함(관리자 페이지에서 직접 지급)
+  if (!giftId) return log(`구독권 선물(${who})을 받았는데 선물 번호가 없어서 적립하지 않음 — chat-events.log를 Claude에게 보여주세요`);
+  const total = Number(extras.quantity ?? extras.giftCount ?? extras.count ?? 1);
+  const quantity = Math.max(1, total - Number(extras.partialRefundedQuantity || 0));
+  sendChatItem({
+    action: "gift",
+    giftId,
+    donation: { ...donorOf(uid, extras), donatorNickname: nickname, quantity, tierNo: Number(extras.giftTierNo || extras.tierNo || 1) },
+  }, `구독권 선물 ${quantity}장 (${who})`);
+}
+
 function handleChatMessage(m) {
   const type = Number(m.msgTypeCode ?? m.messageTypeCode);
-  if (type !== 10 && type !== 12) return;
+  if (!(type >= 10)) return; // 1 = 일반 채팅
   const uid = m.uid ?? m.userId;
   const extras = obj(m.extras);
   const profile = obj(m.profile);
   const nickname = profile.nickname || extras.nickname || null;
 
+  const gift = giftInfo(type, extras);
+  if (gift) return handleGift(m, uid, extras, nickname, gift);
+
   if (type === 10) {
     const dt = extras.donationType;
-    if (dt !== "MISSION" && dt !== "MISSION_PARTICIPATION") return; // 일반 후원은 공식 API 쪽에서 처리
+    if (dt === "CHAT" || dt === "VIDEO") return; // 일반 후원은 공식 API 쪽에서 처리
+    if (dt !== "MISSION" && dt !== "MISSION_PARTICIPATION") return chatLog("DONATION_OTHER", m); // 모르는 종류는 원본만 남김
     chatLog("DONATION", m);
     const missionId = dt === "MISSION" ? extras.missionDonationId : (extras.relatedMissionDonationId || extras.missionDonationId);
     if (!missionId) return log("미션 후원을 받았는데 미션 번호가 없어서 건너뜀(chat-events.log 확인)");
@@ -347,18 +379,8 @@ function handleChatMessage(m) {
     return;
   }
 
-  // type 12 = 구독권 선물. 받는 사람 쪽 알림(SUBSCRIPTION_GIFT_RECEIVER)은 건너뛰고 선물한 사람 기준 한 번만.
-  if (extras.giftType === "SUBSCRIPTION_GIFT_RECEIVER") return;
-  chatLog("GIFT", m);
-  const giftId = extras.giftId;
-  if (!giftId) return log("구독권 선물을 받았는데 선물 번호가 없어서 건너뜀(chat-events.log 확인)");
-  const quantity = Math.max(1, Number(extras.quantity || 1) - Number(extras.partialRefundedQuantity || 0));
-  const who = extras.isAnonymous === true || uid === "anonymous" ? "익명" : nickname || "?";
-  sendChatItem({
-    action: "gift",
-    giftId,
-    donation: { ...donorOf(uid, extras), donatorNickname: nickname, quantity, tierNo: Number(extras.giftTierNo || 1) },
-  }, `구독권 선물 ${quantity}장 (${who})`);
+  // 구독 알림(11번) 등 그 밖의 시스템 메시지는 원본만 남김 — 새 종류가 생겼을 때 확인용
+  chatLog(`TYPE_${type}`, m);
 }
 
 function handleChatEvent(e) {
