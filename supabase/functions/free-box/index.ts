@@ -4,23 +4,13 @@
 // POST → 성공 { points, jackpot, balance, nextResetAt } / 실패 400 { error }: already_opened / user_not_found
 // 결과(포인트)는 DB 함수 free_box_open()이 정함 — 화면은 받은 결과로 연출만 함.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const RECENT_LIMIT = 7;
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 // 한국 시간 기준 오늘 날짜(YYYY-MM-DD)와 다음 자정(UTC ISO).
 function kstToday() {

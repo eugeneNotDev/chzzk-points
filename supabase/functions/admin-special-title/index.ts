@@ -9,23 +9,13 @@
 // POST { channelId, action: "bonus", id, bonusPct }     → 적립 보너스 바꾸기 → 같은 모양
 // 오류 400: missing_channel_id / invalid_title_name / invalid_title_color / too_many_titles / already_owned / user_not_found
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const MAX_PER_USER = 5;
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 // deno-lint-ignore no-explicit-any
 async function listTitles(admin: any, channelId: string) {

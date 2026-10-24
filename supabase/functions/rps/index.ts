@@ -11,8 +11,9 @@
 // 상대 손과 결과는 DB 함수 rps_play()가 유저 행을 잠근 채로 뽑고 포인트 기록까지 한 번에 처리함
 // (0037_rps.sql). 이기면 1.9배, 비기면 본전, 지면 0.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 
 const MIN_BET = 100;
@@ -20,22 +21,6 @@ const RECENT_LIMIT = 10;
 const COOLDOWN_SECONDS = 3; // rps_play()의 쿨타임과 같은 값(화면 안내용)
 const WIN_MULTIPLIER = 1.9; // rps_play()의 배당과 같은 값(화면 안내용)
 const HANDS = ["rock", "paper", "scissors"];
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 type Admin = ReturnType<typeof getAdminClient>;
 
@@ -67,8 +52,8 @@ async function handleGet(admin: Admin, channelId: string) {
     .eq("channel_id", channelId)
     .maybeSingle();
   if (userError) throw new Error(`users 조회 실패: ${userError.message}`);
-  if (!user) return jsonResponse({ error: "unauthorized" }, 401);
-  if (user.banned) return jsonResponse({ error: "banned" }, 403);
+  if (!user) return json({ error: "unauthorized" }, 401);
+  if (user.banned) return json({ error: "banned" }, 403);
 
   const required = await getRequiredTier(admin);
 
@@ -88,7 +73,7 @@ async function handleGet(admin: Admin, channelId: string) {
 
   const maxBalanceReached = Number(user.max_balance_reached);
   const block = minigameBlock(user.minigame_blocked_until);
-  return jsonResponse(
+  return json(
     {
       balance: Number(user.balance),
       maxBalanceReached,
@@ -123,29 +108,29 @@ async function handlePost(admin: Admin, channelId: string, req: Request) {
     .maybeSingle();
   if (blockError) throw new Error(`users 조회 실패: ${blockError.message}`);
   const block = minigameBlock(blockRow?.minigame_blocked_until ?? null);
-  if (block.blocked) return jsonResponse({ error: "minigame_blocked", blockedUntil: block.until }, 403);
+  if (block.blocked) return json({ error: "minigame_blocked", blockedUntil: block.until }, 403);
 
   const body = await req.json().catch(() => ({}));
   const bet = typeof body.bet === "number" ? body.bet : Number.NaN;
-  if (!Number.isInteger(bet) || bet < MIN_BET) return jsonResponse({ error: "invalid_bet" }, 400);
+  if (!Number.isInteger(bet) || bet < MIN_BET) return json({ error: "invalid_bet" }, 400);
   const hand = typeof body.hand === "string" ? body.hand : "";
-  if (!HANDS.includes(hand)) return jsonResponse({ error: "invalid_hand" }, 400);
+  if (!HANDS.includes(hand)) return json({ error: "invalid_hand" }, 400);
 
   const { data, error } = await admin.rpc("rps_play", { p_channel_id: channelId, p_bet: bet, p_hand: hand });
   if (error) {
     const msg = error.message || "";
-    if (msg.includes("banned")) return jsonResponse({ error: "banned" }, 403);
-    if (msg.includes("user_not_found")) return jsonResponse({ error: "unauthorized" }, 401);
-    if (msg.includes("invalid_bet")) return jsonResponse({ error: "invalid_bet" }, 400);
-    if (msg.includes("invalid_hand")) return jsonResponse({ error: "invalid_hand" }, 400);
-    if (msg.includes("tier_required")) return jsonResponse({ error: "tier_required" }, 400);
-    if (msg.includes("insufficient_balance")) return jsonResponse({ error: "insufficient_balance" }, 400);
+    if (msg.includes("banned")) return json({ error: "banned" }, 403);
+    if (msg.includes("user_not_found")) return json({ error: "unauthorized" }, 401);
+    if (msg.includes("invalid_bet")) return json({ error: "invalid_bet" }, 400);
+    if (msg.includes("invalid_hand")) return json({ error: "invalid_hand" }, 400);
+    if (msg.includes("tier_required")) return json({ error: "tier_required" }, 400);
+    if (msg.includes("insufficient_balance")) return json({ error: "insufficient_balance" }, 400);
     const cooldown = msg.match(/cooldown:(\d+)/);
-    if (cooldown) return jsonResponse({ error: "cooldown", retryAfterSeconds: Number(cooldown[1]) }, 400);
+    if (cooldown) return json({ error: "cooldown", retryAfterSeconds: Number(cooldown[1]) }, 400);
     throw new Error(`rps_play 실패: ${msg}`);
   }
 
-  return jsonResponse(
+  return json(
     {
       cpuHand: data.cpuHand,
       result: data.result,
@@ -162,15 +147,15 @@ Deno.serve(async (req: Request) => {
   if (preflight) return preflight;
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
+  if (!session) return json({ error: "unauthorized" }, 401);
 
   try {
     const admin = getAdminClient();
     if (req.method === "GET") return await handleGet(admin, session.channelId);
     if (req.method === "POST") return await handlePost(admin, session.channelId, req);
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return json({ error: "method_not_allowed" }, 405);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "rps_failed" }, 500);
+    return json({ error: "rps_failed" }, 500);
   }
 });

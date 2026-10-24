@@ -24,7 +24,7 @@
 //
 // verify_jwt는 supabase/config.toml에서 이 함수만 꺼져있음 (로그인 전이라 우리 세션 토큰이 아직 없음).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { getAdminClient } from "../_shared/db.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { issueSessionToken } from "../_shared/session.ts";
 import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";
@@ -185,15 +185,6 @@ async function fetchChzzkUser(accessToken: string): Promise<ChzzkUser> {
     throw new Error("치지직 유저 응답에 channelId가 없습니다.");
   }
   return { channelId, channelName: body?.content?.channelName ?? "" };
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
 }
 
 // users 테이블에 upsert. channel_name(+ 이번에 가져온 프로필 이미지)만 갱신하고 is_public/banned/created_at은

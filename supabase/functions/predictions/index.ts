@@ -29,27 +29,12 @@
 // 베팅 변경(요청사항): 처음 건 항목은 못 바꾸고, 같은 항목에만 더 걸 수 있음(0052_prediction_add_bet.sql).
 // 한 사람당 prediction_bets 행은 하나(unique 제약)라서 추가 베팅은 그 행의 amount에 더해짐 — 정산은 합계 기준.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 
 const MIN_BET_AMOUNT = 100;
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 async function isBanned(admin: ReturnType<typeof getAdminClient>, channelId: string): Promise<boolean> {
   const { data, error } = await admin.from("users").select("banned").eq("channel_id", channelId).maybeSingle();
@@ -137,21 +122,21 @@ Deno.serve(async (req: Request) => {
   if (preflight) return preflight;
 
   if (!["GET", "POST"].includes(req.method)) {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return json({ error: "method_not_allowed" }, 405);
   }
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
+  if (!session) return json({ error: "unauthorized" }, 401);
 
   try {
     const admin = getAdminClient();
-    if (await isBanned(admin, session.channelId)) return jsonResponse({ error: "banned" }, 403);
+    if (await isBanned(admin, session.channelId)) return json({ error: "banned" }, 403);
 
     if (req.method === "GET") {
       const prediction = await getLatestPrediction(admin);
-      if (!prediction) return jsonResponse({ prediction: null }, 200);
+      if (!prediction) return json({ prediction: null }, 200);
       const out = await buildPredictionResponse(admin, prediction, session.channelId);
-      return jsonResponse({ prediction: out }, 200);
+      return json({ prediction: out }, 200);
     }
 
     // POST — 베팅 / 추가 베팅. 검사와 베팅 행 갱신·포인트 차감은 DB 함수 place_prediction_bet()이 한 번에 처리함
@@ -161,9 +146,9 @@ Deno.serve(async (req: Request) => {
     const optionId = Number(body.optionId);
     const amount = Number(body.amount);
     if (!Number.isFinite(predictionId) || !Number.isFinite(optionId) || !Number.isInteger(amount)) {
-      return jsonResponse({ error: "invalid_request" }, 400);
+      return json({ error: "invalid_request" }, 400);
     }
-    if (amount < MIN_BET_AMOUNT) return jsonResponse({ error: "amount_too_small" }, 400);
+    if (amount < MIN_BET_AMOUNT) return json({ error: "amount_too_small" }, 400);
 
     const { data, error } = await admin.rpc("place_prediction_bet", {
       p_prediction_id: predictionId,
@@ -173,17 +158,17 @@ Deno.serve(async (req: Request) => {
     });
     if (error) throw new Error(`place_prediction_bet 실패: ${error.message}`);
     if (data?.error) {
-      if (data.error === "user_not_found") return jsonResponse({ error: "unauthorized" }, 401);
+      if (data.error === "user_not_found") return json({ error: "unauthorized" }, 401);
       const known = ["prediction_not_found", "prediction_closed", "invalid_option", "amount_too_small", "different_option", "insufficient_balance"];
-      return jsonResponse({ error: known.includes(data.error) ? data.error : "prediction_failed" }, 400);
+      return json({ error: known.includes(data.error) ? data.error : "prediction_failed" }, 400);
     }
 
-    return jsonResponse(
+    return json(
       { balance: Number(data.balance), bet: { optionId: Number(data.optionId), amount: Number(data.amount), added: data.added === true } },
       200,
     );
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "prediction_failed" }, 500);
+    return json({ error: "prediction_failed" }, 500);
   }
 });

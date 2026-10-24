@@ -18,8 +18,9 @@
 // POST { action: "vote", key }                             → 투표(한 사람 한 표, 마감 전까진 바꿀 수 있음)
 // from = 화면이 이미 가진 기록 줄 수. 응답의 run.log는 그 뒤로 새로 생긴 줄만.
 
-import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient, type Admin } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { advance, broadcastOf, buy, choose, jobTitle, netWorth, setFocus, setFund, shopList, stageOf, startRun } from "./engine.ts";
@@ -32,17 +33,7 @@ const KNOWN_ERRORS = new Set([
   "has_pending", "bought", "not_live", "vote_closed", "no_vote_opts",
 ]);
 
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 const fail = (e: string) => json({ error: KNOWN_ERRORS.has(e) ? e : "life_failed" }, 400);
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
 
 type Row = {
   id: number; channel_id: string; world_no: number | null; is_test: boolean; house: string; spent: number; points_used: number;
@@ -102,14 +93,14 @@ function view(r: Row, from: number, itemLimit: number) {
   };
 }
 
-async function loadPlaying(admin: SupabaseClient, channelId: string, runId: number): Promise<Row | null> {
+async function loadPlaying(admin: Admin, channelId: string, runId: number): Promise<Row | null> {
   const { data, error } = await admin.from("life_lives").select("*").eq("id", runId).eq("channel_id", channelId).maybeSingle();
   if (error) throw new Error(`life_lives 조회 실패: ${error.message}`);
   return (data as Row | null) ?? null;
 }
 
 // 저장(ver가 같을 때만). 끝난 판이면 제목·도감도
-async function save(admin: SupabaseClient, r: Row): Promise<boolean> {
+async function save(admin: Admin, r: Row): Promise<boolean> {
   const s = r.state;
   const ended = !!s.dead;
   const patch: Record<string, unknown> = { state: s, log: r.log, ver: r.ver + 1, age: s.age };
@@ -140,7 +131,7 @@ async function save(admin: SupabaseClient, r: Row): Promise<boolean> {
   return true;
 }
 
-async function lobby(admin: SupabaseClient, channelId: string, test: boolean, st: Settings) {
+async function lobby(admin: Admin, channelId: string, test: boolean, st: Settings) {
   const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
   const [houses, user, playing, last, mine, usedToday, todayList, todayCount, found, maxNo] = await Promise.all([
     admin.from("life_houses").select("id, name, price, bonus").order("sort"),
@@ -186,7 +177,7 @@ async function lobby(admin: SupabaseClient, channelId: string, test: boolean, st
   };
 }
 
-async function dex(admin: SupabaseClient, channelId: string, test: boolean) {
+async function dex(admin: Admin, channelId: string, test: boolean) {
   const { data, error } = await admin.from("life_found").select("kind, ref_id, first_at").eq("channel_id", channelId).eq("is_test", test);
   if (error) throw new Error(`life_found 조회 실패: ${error.message}`);
   const got = new Map((data ?? []).map((x) => [`${x.kind}:${x.ref_id}`, x.first_at as string]));
@@ -204,13 +195,13 @@ async function dex(admin: SupabaseClient, channelId: string, test: boolean) {
 const voteOpts = (p: Pending | null) => (p?.opts ?? []).filter((o) => !o.pts && !o.off);
 const roundOf = (r: Row) => `${r.id}:${r.state.age}:${r.state.pending?.id ?? "-"}:${r.ver}`;
 
-async function loadLive(admin: SupabaseClient, st: Settings): Promise<Row | null> {
+async function loadLive(admin: Admin, st: Settings): Promise<Row | null> {
   if (!st.live_life_id) return null;
   const { data } = await admin.from("life_lives").select("*").eq("id", st.live_life_id).maybeSingle();
   return (data as Row | null) ?? null;
 }
 
-async function voteState(admin: SupabaseClient, st: Settings, me: string, live?: Row | null) {
+async function voteState(admin: Admin, st: Settings, me: string, live?: Row | null) {
   const r = live === undefined ? await loadLive(admin, st) : live;
   const playing = !!r && r.status === "playing";
   const p = playing ? r!.state.pending : null;
@@ -240,7 +231,7 @@ async function voteState(admin: SupabaseClient, st: Settings, me: string, live?:
   };
 }
 
-const setSettings = (admin: SupabaseClient, patch: Partial<Settings>) => admin.from("life_settings").update(patch).eq("id", true);
+const setSettings = (admin: Admin, patch: Partial<Settings>) => admin.from("life_settings").update(patch).eq("id", true);
 
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);

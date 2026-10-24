@@ -4,14 +4,11 @@
 // POST { date: "YYYY-MM-DD", action: "delete" } → 그 날 일정 삭제 → { ok: true }
 // 오류 400: invalid_date / invalid_kind / invalid_time / invalid_title / invalid_memo
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 
 function validDate(s: unknown): s is string {
   if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -32,10 +29,7 @@ Deno.serve(async (req: Request) => {
   if (!validDate(body.date)) return json({ error: "invalid_date" }, 400);
 
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-    const admin = createClient(url, serviceRoleKey);
+    const admin = getAdminClient();
 
     if (body.action === "delete") {
       const { error } = await admin.from("broadcast_schedule").delete().eq("day", body.date);

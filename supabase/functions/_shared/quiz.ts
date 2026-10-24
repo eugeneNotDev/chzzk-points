@@ -1,13 +1,7 @@
 // 유진고사(quiz / admin-quiz 함수) 공통 — 채점·순위·OX 생존 계산. DB 구조는 0072_quiz.sql.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { getAdminClient, type Admin } from "./db.ts";
 
-export function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
-export type Admin = ReturnType<typeof getAdminClient>;
+export { getAdminClient, type Admin };
 
 // OX 응답 마감에 더해주는 방송 딜레이 여유(초) — 시청자 화면에선 이만큼 늦게 문제가 보이니까.
 export const OX_DELAY_GRACE_SEC = 3;

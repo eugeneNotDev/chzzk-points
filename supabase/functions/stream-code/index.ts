@@ -6,23 +6,13 @@
 // GET ?key=<오버레이 키>  (overlay.html 전용) → { active: { id, code, points, maxUses, usedCount, expiresAt } | null, serverNow }
 //   키가 틀리면 401. 코드는 이 키를 가진 오버레이한테만 알려줌.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { broadcastToOverlay, getActiveCode, getOverlayKey, sameString, toStreamCode } from "../_shared/stream-code.ts";
 
 const KNOWN_ERRORS = ["invalid_code", "expired", "sold_out", "already_redeemed", "too_many_attempts", "user_not_found"];
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);

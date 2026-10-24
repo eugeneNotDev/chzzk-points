@@ -26,8 +26,9 @@
 // attendedDates와 누적 횟수에서 빠짐 — me/index.ts의 포인트 로그와 같은 이유(밴 해제 후엔 출석체크
 // 달력도 완전히 새로 시작한 것처럼 보이게 함). attendance 행 자체는 지우지 않음.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { broadcastDateKst, getLiveInfo } from "../_shared/live.ts";
 
@@ -38,22 +39,6 @@ const BONUS_POINTS = 100;
 // 누적 출석 이 횟수마다 큰 보너스를 한 번 더 줌(위 보너스와 별도).
 const MILESTONE_EVERY = 100;
 const MILESTONE_POINTS = 1000;
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 // 주어진 시각을 "한국 시간(KST) 기준 YYYY-MM-DD" 문자열로. 해외 접속자가 있어도 서버 기준으로
 // 하루 경계가 항상 한국 자정이 되게 하려고 Intl로 타임존을 명시함 (수동 시(時) 계산보다 안전함).
@@ -150,15 +135,15 @@ Deno.serve(async (req: Request) => {
   if (preflight) return preflight;
 
   if (!["GET", "POST"].includes(req.method)) {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return json({ error: "method_not_allowed" }, 405);
   }
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
+  if (!session) return json({ error: "unauthorized" }, 401);
 
   try {
     const admin = getAdminClient();
-    if (await isBanned(admin, session.channelId)) return jsonResponse({ error: "banned" }, 403);
+    if (await isBanned(admin, session.channelId)) return json({ error: "banned" }, 403);
 
     const resetAt = await getResetAt(admin, session.channelId);
     const todayStr = kstDateString(new Date());
@@ -183,7 +168,7 @@ Deno.serve(async (req: Request) => {
         getAttendanceCount(admin, session.channelId, resetAt),
       ]);
 
-      return jsonResponse(
+      return json(
         {
           attendedDates,
           checkedToday,
@@ -202,7 +187,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // POST — 출석체크 시도
-    if (!liveInfo.isLive) return jsonResponse({ error: "not_live" }, 400);
+    if (!liveInfo.isLive) return json({ error: "not_live" }, 400);
 
     // attendance를 먼저 넣음(포인트보다 먼저) — (channel_id, attended_on) unique 제약이
     // "이번 방송에 이미 체크했는지"를 동시성까지 안전하게 걸러주는 관문 역할이라서, 여길 먼저
@@ -212,7 +197,7 @@ Deno.serve(async (req: Request) => {
       .insert({ channel_id: session.channelId, attended_on: sessionDate });
     if (insertError) {
       if (insertError.code === "23505") {
-        return jsonResponse({ error: "already_checked" }, 400);
+        return json({ error: "already_checked" }, 400);
       }
       throw new Error(`attendance insert 실패: ${insertError.message}`);
     }
@@ -239,7 +224,7 @@ Deno.serve(async (req: Request) => {
       getBalance(admin, session.channelId),
     ]);
 
-    return jsonResponse(
+    return json(
       {
         attendedDates,
         checkedToday: true,
@@ -259,6 +244,6 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "attendance_failed" }, 500);
+    return json({ error: "attendance_failed" }, 500);
   }
 });

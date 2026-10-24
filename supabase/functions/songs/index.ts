@@ -13,8 +13,9 @@
 // admin-restore   { id }                 → { ok }      (관리자: 잘못 누른 "틀었음" 되돌리기 → 다시 대기)
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 409 duplicate|already_today
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
@@ -23,16 +24,6 @@ const MAX_ARTIST = 40;
 const MAX_REASON = 80;
 const HISTORY_PAGE = 20;
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdmin() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
 type Admin = ReturnType<typeof getAdmin>;
 
 function kstDay(ms = Date.now()) {
@@ -62,7 +53,7 @@ Deno.serve(async (req: Request) => {
   const action = body?.action;
 
   try {
-    const admin = getAdmin();
+    const admin = getAdminClient();
 
     if (action === "list") return await list(admin, me, isAdmin);
 

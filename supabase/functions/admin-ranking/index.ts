@@ -8,38 +8,29 @@
 //   (public.ranking 뷰와 같은 모양·같은 순서 — 화면이 같은 코드로 그릴 수 있게)
 // Authorization: Bearer <세션토큰> 필수, 관리자(OWNER_CHANNEL_ID)가 아니면 403.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
-  if (req.method !== "GET") return jsonResponse({ error: "method_not_allowed" }, 405);
+  if (req.method !== "GET") return json({ error: "method_not_allowed" }, 405);
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
-  if (session.channelId !== OWNER_CHANNEL_ID) return jsonResponse({ error: "forbidden" }, 403);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  if (session.channelId !== OWNER_CHANNEL_ID) return json({ error: "forbidden" }, 403);
 
   const rawLimit = Number(new URL(req.url).searchParams.get("limit") ?? DEFAULT_LIMIT);
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), MAX_LIMIT) : DEFAULT_LIMIT;
 
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-    const admin = createClient(url, serviceRoleKey);
+    const admin = getAdminClient();
 
     const { data, error } = await admin.rpc("admin_ranking", { p_limit: limit });
     if (error) throw new Error(`admin_ranking 실패: ${error.message}`);
@@ -52,9 +43,9 @@ Deno.serve(async (req: Request) => {
       total_points: Number(r.total_points),
       special_titles: specialByChannel.get(r.channel_id as string) ?? null,
     }));
-    return jsonResponse({ rows }, 200);
+    return json({ rows }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "ranking_failed" }, 500);
+    return json({ error: "ranking_failed" }, 500);
   }
 });

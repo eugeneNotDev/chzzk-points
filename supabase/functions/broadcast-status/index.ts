@@ -7,7 +7,7 @@
 // 치지직 쪽에서 예고 없이 바뀔 수 있다는 점은 감안해야 함.
 // (실제 조회 로직은 _shared/live.ts에 — attendance-check도 같은 로직이 필요해서 공용으로 뺌.)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { createClient } from "../_shared/db.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { getLiveInfo } from "../_shared/live.ts";
 

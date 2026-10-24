@@ -30,26 +30,11 @@
 //     쿨타임과 한정 수량은 DB 함수 shop_purchase_claim()이 같은 사람·같은 상품을 잠그고 자리를 먼저 잡아서
 //     연타해도 한 번만 통과함(0075_security_hardening.sql).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { isChannelLive } from "../_shared/live.ts";
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 // banned/is_public을 한 번에 같이 조회함 (둘 다 users 한 행에서 나오는 값이라 쿼리를 안 나눔).
 // is_public은 오버레이 표시용 spend_events 스냅샷에 씀 — 비공개 유저면 오버레이에 실명 대신
@@ -102,19 +87,19 @@ Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
 
-  if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
+  if (!session) return json({ error: "unauthorized" }, 401);
 
   try {
     const admin = getAdminClient();
     const { banned, isPublic } = await getUserFlags(admin, session.channelId);
-    if (banned) return jsonResponse({ error: "banned" }, 403);
+    if (banned) return json({ error: "banned" }, 403);
 
     const body = await req.json().catch(() => ({}));
     const itemId = typeof body.itemId === "string" ? body.itemId : null;
-    if (!itemId) return jsonResponse({ error: "invalid_request" }, 400);
+    if (!itemId) return json({ error: "invalid_request" }, 400);
 
     const { data: item, error: itemError } = await admin
       .from("shop_items")
@@ -124,17 +109,17 @@ Deno.serve(async (req: Request) => {
       .eq("id", itemId)
       .maybeSingle();
     if (itemError) throw new Error(`shop_items 조회 실패: ${itemError.message}`);
-    if (!item || !item.is_active) return jsonResponse({ error: "item_not_found" }, 400);
+    if (!item || !item.is_active) return json({ error: "item_not_found" }, 400);
 
     if (item.requires_live && !(await isChannelLive())) {
-      return jsonResponse({ error: "not_live" }, 400);
+      return json({ error: "not_live" }, 400);
     }
 
     if (item.cooldown_seconds > 0) {
       const elapsed = await secondsSinceLastUse(admin, session.channelId, item.id);
       if (elapsed !== null && elapsed < item.cooldown_seconds) {
         const retryAfterSeconds = Math.ceil(item.cooldown_seconds - elapsed);
-        return jsonResponse({ error: "cooldown", retryAfterSeconds }, 400);
+        return json({ error: "cooldown", retryAfterSeconds }, 400);
       }
     }
 
@@ -157,12 +142,12 @@ Deno.serve(async (req: Request) => {
         .eq("title_id", item.grants_title_id)
         .maybeSingle();
       if (existingError) throw new Error(`user_purchased_titles 조회 실패: ${existingError.message}`);
-      if (existing) return jsonResponse({ error: "already_owned" }, 400);
+      if (existing) return json({ error: "already_owned" }, 400);
     }
 
     // 한정 수량(재고) — 다 팔렸으면 상품을 지우지 않고 구매만 막음(0021_shop_item_stock.sql).
     if (item.stock_limit != null && item.sold_count >= item.stock_limit) {
-      return jsonResponse({ error: "sold_out" }, 400);
+      return json({ error: "sold_out" }, 400);
     }
 
     // 쿨타임·한정 수량 자리를 DB에서 잠그고 먼저 잡음(0075_security_hardening.sql) — 위의 확인은 빠른 안내용이고,
@@ -173,8 +158,8 @@ Deno.serve(async (req: Request) => {
       p_cooldown_sec: item.cooldown_seconds ?? 0,
     });
     if (claimError) throw new Error(`shop_purchase_claim 실패: ${claimError.message}`);
-    if (claim?.error === "cooldown") return jsonResponse({ error: "cooldown", retryAfterSeconds: claim.retryAfterSeconds }, 400);
-    if (claim?.error === "sold_out") return jsonResponse({ error: "sold_out" }, 400);
+    if (claim?.error === "cooldown") return json({ error: "cooldown", retryAfterSeconds: claim.retryAfterSeconds }, 400);
+    if (claim?.error === "sold_out") return json({ error: "sold_out" }, 400);
     const claimId = claim?.claimId as number;
     const release = () => admin.rpc("shop_purchase_release", { p_claim: claimId });
 
@@ -191,7 +176,7 @@ Deno.serve(async (req: Request) => {
     }
     if (newBalance === null) {
       await release();
-      return jsonResponse({ error: "insufficient_balance" }, 400);
+      return json({ error: "insufficient_balance" }, 400);
     }
 
     // 칭호 부여 상품이면 여기서 실제로 잠금해제 기록을 남김. source="purchase"는 상점에서 산 칭호라는
@@ -227,7 +212,7 @@ Deno.serve(async (req: Request) => {
       if (eventError) throw new Error(`spend_events insert 실패: ${eventError.message}`);
     }
 
-    return jsonResponse(
+    return json(
       {
         balance: newBalance,
         item: { id: item.id, name: item.name, cost: item.cost, cooldownSeconds: item.cooldown_seconds },
@@ -237,6 +222,6 @@ Deno.serve(async (req: Request) => {
     );
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "spend_failed" }, 500);
+    return json({ error: "spend_failed" }, 500);
   }
 });

@@ -45,26 +45,11 @@
 //
 // verify_jwt는 config.toml에서 꺼져있음 (우리 세션 토큰을 Authorization에 쓰기 때문).
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
 import { requireSession, issueSessionToken, shouldRefresh } from "../_shared/session.ts";
 import { fetchChzzkChannelImage } from "../_shared/chzzk.ts";
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 const MY_POINTS_LOG_PAGE_SIZE = 10;
 const PROFILE_IMAGE_REFRESH_MS = 6 * 60 * 60 * 1000; // 6시간
@@ -297,7 +282,7 @@ Deno.serve(async (req: Request) => {
       const page = Number.isFinite(rawPage) && rawPage >= 1 ? Math.trunc(rawPage) : 1;
       const { entries, totalCount } = await listMyPointsLog(session.channelId, page);
       const totalPages = Math.max(Math.ceil(totalCount / MY_POINTS_LOG_PAGE_SIZE), 1);
-      return jsonResponse(
+      return json(
         { entries, page, pageSize: MY_POINTS_LOG_PAGE_SIZE, totalCount, totalPages, ...(refreshedToken ? { refreshedToken } : {}) },
         200,
       );
@@ -315,18 +300,18 @@ Deno.serve(async (req: Request) => {
       if ("selectedTitleId" in body) {
         const titleId = body.selectedTitleId;
         if (titleId !== null && typeof titleId !== "string") {
-          return jsonResponse({ error: "invalid_title" }, 400);
+          return json({ error: "invalid_title" }, 400);
         }
         const result = await setSelectedTitle(session.channelId, titleId);
         if (!result.ok) {
-          return jsonResponse({ error: result.error }, 400);
+          return json({ error: result.error }, 400);
         }
       }
       if ("selectedSpecialId" in body) {
         const sid = body.selectedSpecialId;
-        if (sid !== null && !Number.isSafeInteger(sid)) return jsonResponse({ error: "invalid_title" }, 400);
+        if (sid !== null && !Number.isSafeInteger(sid)) return json({ error: "invalid_title" }, 400);
         const result = await setSelectedSpecial(session.channelId, sid);
-        if (!result.ok) return jsonResponse({ error: result.error }, 400);
+        if (!result.ok) return json({ error: result.error }, 400);
       }
     }
 

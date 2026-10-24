@@ -101,26 +101,11 @@
 //     (가장 최근 투표 1건 — 관리자 화면용이라 predictions 함수(유저용 GET)와 달리 개별 베팅 내역까지
 //     그대로 보여줌(요청사항: 관리자에게는 비익명).)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 const ADMIN_USER_PAGE_SIZE = 10;
 
@@ -873,11 +858,11 @@ Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
   if (preflight) return preflight;
 
-  if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
-  if (session.channelId !== OWNER_CHANNEL_ID) return jsonResponse({ error: "forbidden" }, 403);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  if (session.channelId !== OWNER_CHANNEL_ID) return json({ error: "forbidden" }, 403);
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -889,31 +874,31 @@ Deno.serve(async (req: Request) => {
       const page = Math.max(rawPage, 1);
       const { users, totalCount } = await searchUsers(admin, q, page);
       const totalPages = Math.max(Math.ceil(totalCount / ADMIN_USER_PAGE_SIZE), 1);
-      return jsonResponse({ users, page, pageSize: ADMIN_USER_PAGE_SIZE, totalCount, totalPages }, 200);
+      return json({ users, page, pageSize: ADMIN_USER_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (body.action === "adjust-points") {
       const { channelId, amount, reason } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
       if (typeof amount !== "number" || !Number.isFinite(amount) || amount === 0) {
-        return jsonResponse({ error: "invalid_amount" }, 400);
+        return json({ error: "invalid_amount" }, 400);
       }
       const balance = await adjustPoints(admin, channelId, Math.trunc(amount), typeof reason === "string" ? reason : "");
-      return jsonResponse({ channelId, balance }, 200);
+      return json({ channelId, balance }, 200);
     }
 
     if (body.action === "set-ban") {
       const { channelId, banned } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
-      if (typeof banned !== "boolean") return jsonResponse({ error: "invalid_banned" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
+      if (typeof banned !== "boolean") return json({ error: "invalid_banned" }, 400);
       await setBan(admin, channelId, banned);
-      return jsonResponse({ channelId, banned }, 200);
+      return json({ channelId, banned }, 200);
     }
 
     if (body.action === "bulk-adjust-points") {
       const { target, amount, reason } = body;
       if (typeof amount !== "number" || !Number.isFinite(amount) || amount === 0) {
-        return jsonResponse({ error: "invalid_amount" }, 400);
+        return json({ error: "invalid_amount" }, 400);
       }
       const truncAmount = Math.trunc(amount);
 
@@ -922,23 +907,23 @@ Deno.serve(async (req: Request) => {
         channelIds = await getAllActiveChannelIds(admin);
       } else if (target === "selected") {
         if (!Array.isArray(body.channelIds) || body.channelIds.some((c: unknown) => typeof c !== "string" || !c)) {
-          return jsonResponse({ error: "invalid_channel_ids" }, 400);
+          return json({ error: "invalid_channel_ids" }, 400);
         }
         channelIds = [...new Set(body.channelIds as string[])];
       } else {
-        return jsonResponse({ error: "invalid_target" }, 400);
+        return json({ error: "invalid_target" }, 400);
       }
 
       const affected = await bulkAdjustPoints(admin, channelIds, truncAmount, typeof reason === "string" ? reason : "");
-      return jsonResponse({ affected }, 200);
+      return json({ affected }, 200);
     }
 
     if (body.action === "undo-adjustment") {
       const { id } = body;
-      if (typeof id !== "number" || !Number.isFinite(id)) return jsonResponse({ error: "missing_id" }, 400);
+      if (typeof id !== "number" || !Number.isFinite(id)) return json({ error: "missing_id" }, 400);
       const result = await undoAdjustment(admin, Math.trunc(id));
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ id, undone: true }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ id, undone: true }, 200);
     }
 
     if (body.action === "list-points-log") {
@@ -947,7 +932,7 @@ Deno.serve(async (req: Request) => {
       const page = Math.max(rawPage, 1);
       const { entries, totalCount } = await listPointsLog(admin, q, page);
       const totalPages = Math.max(Math.ceil(totalCount / POINTS_LOG_PAGE_SIZE), 1);
-      return jsonResponse({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
+      return json({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (body.action === "list-spend-log") {
@@ -956,122 +941,122 @@ Deno.serve(async (req: Request) => {
       const page = Math.max(rawPage, 1);
       const { entries, totalCount } = await listSpendLog(admin, q, page);
       const totalPages = Math.max(Math.ceil(totalCount / SPEND_LOG_PAGE_SIZE), 1);
-      return jsonResponse({ entries, page, pageSize: SPEND_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
+      return json({ entries, page, pageSize: SPEND_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }
 
     if (body.action === "set-processed") {
       const { id, processed } = body;
-      if (typeof id !== "number" || !Number.isFinite(id)) return jsonResponse({ error: "missing_id" }, 400);
-      if (typeof processed !== "boolean") return jsonResponse({ error: "invalid_processed" }, 400);
+      if (typeof id !== "number" || !Number.isFinite(id)) return json({ error: "missing_id" }, 400);
+      if (typeof processed !== "boolean") return json({ error: "invalid_processed" }, 400);
       await setProcessed(admin, id, processed);
-      return jsonResponse({ id, processed }, 200);
+      return json({ id, processed }, 200);
     }
 
     if (body.action === "bulk-set-processed") {
       const { ids, processed } = body;
       if (!Array.isArray(ids) || ids.length === 0 || ids.some((i: unknown) => typeof i !== "number" || !Number.isFinite(i))) {
-        return jsonResponse({ error: "invalid_ids" }, 400);
+        return json({ error: "invalid_ids" }, 400);
       }
-      if (typeof processed !== "boolean") return jsonResponse({ error: "invalid_processed" }, 400);
+      if (typeof processed !== "boolean") return json({ error: "invalid_processed" }, 400);
       const affected = await bulkSetProcessed(admin, ids as number[], processed);
-      return jsonResponse({ affected }, 200);
+      return json({ affected }, 200);
     }
 
     if (body.action === "get-stats") {
       const stats = await getStats(admin);
-      return jsonResponse(stats, 200);
+      return json(stats, 200);
     }
 
     if (body.action === "get-user-detail") {
       const { channelId } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
       const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
       const page = Math.max(rawPage, 1);
       const detail = await getUserDetail(admin, channelId, page);
-      if (!detail) return jsonResponse({ error: "user_not_found" }, 404);
+      if (!detail) return json({ error: "user_not_found" }, 404);
       const totalPages = Math.max(Math.ceil(detail.logTotalCount / USER_DETAIL_LOG_PAGE_SIZE), 1);
-      return jsonResponse({ ...detail, page, pageSize: USER_DETAIL_LOG_PAGE_SIZE, totalPages }, 200);
+      return json({ ...detail, page, pageSize: USER_DETAIL_LOG_PAGE_SIZE, totalPages }, 200);
     }
 
     if (body.action === "grant-custom-title") {
       const { channelId } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
       const name = typeof body.name === "string" ? body.name.trim() : "";
-      if (name.length === 0 || name.length > TITLE_NAME_MAX) return jsonResponse({ error: "invalid_title_name" }, 400);
+      if (name.length === 0 || name.length > TITLE_NAME_MAX) return json({ error: "invalid_title_name" }, 400);
       if (typeof body.color !== "string" || !TITLE_COLOR_PATTERN.test(body.color)) {
-        return jsonResponse({ error: "invalid_title_color" }, 400);
+        return json({ error: "invalid_title_color" }, 400);
       }
       const result = await grantCustomTitle(admin, channelId, name, body.color);
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ title: result.title }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ title: result.title }, 200);
     }
 
     if (body.action === "grant-title") {
       const { channelId, titleId } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
-      if (typeof titleId !== "string" || !titleId) return jsonResponse({ error: "missing_title_id" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
+      if (typeof titleId !== "string" || !titleId) return json({ error: "missing_title_id" }, 400);
       const result = await grantExistingTitle(admin, channelId, titleId);
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ granted: true }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ granted: true }, 200);
     }
 
     if (body.action === "revoke-title") {
       const { channelId, titleId } = body;
-      if (typeof channelId !== "string" || !channelId) return jsonResponse({ error: "missing_channel_id" }, 400);
-      if (typeof titleId !== "string" || !titleId) return jsonResponse({ error: "missing_title_id" }, 400);
+      if (typeof channelId !== "string" || !channelId) return json({ error: "missing_channel_id" }, 400);
+      if (typeof titleId !== "string" || !titleId) return json({ error: "missing_title_id" }, 400);
       const result = await revokeTitle(admin, channelId, titleId);
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ revoked: true }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ revoked: true }, 200);
     }
 
     if (body.action === "create-prediction") {
       const { title, options, durationMinutes } = body;
-      if (typeof title !== "string" || !title.trim()) return jsonResponse({ error: "invalid_title" }, 400);
+      if (typeof title !== "string" || !title.trim()) return json({ error: "invalid_title" }, 400);
       if (
         !Array.isArray(options) ||
         options.length < 2 ||
         options.some((o: unknown) => typeof o !== "string" || !o.trim())
       ) {
-        return jsonResponse({ error: "invalid_options" }, 400);
+        return json({ error: "invalid_options" }, 400);
       }
-      if (![5, 10, 15].includes(durationMinutes)) return jsonResponse({ error: "invalid_duration" }, 400);
+      if (![5, 10, 15].includes(durationMinutes)) return json({ error: "invalid_duration" }, 400);
       const trimmedOptions = (options as string[]).map((o) => o.trim());
       const result = await createPrediction(admin, title.trim(), trimmedOptions, durationMinutes);
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ predictionId: result.predictionId }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ predictionId: result.predictionId }, 200);
     }
 
     if (body.action === "cancel-prediction") {
       const { predictionId } = body;
       if (typeof predictionId !== "number" || !Number.isFinite(predictionId)) {
-        return jsonResponse({ error: "missing_prediction_id" }, 400);
+        return json({ error: "missing_prediction_id" }, 400);
       }
       const result = await cancelPrediction(admin, Math.trunc(predictionId));
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ predictionId, cancelled: true }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ predictionId, cancelled: true }, 200);
     }
 
     if (body.action === "resolve-prediction") {
       const { predictionId, winningOptionId } = body;
       if (typeof predictionId !== "number" || !Number.isFinite(predictionId)) {
-        return jsonResponse({ error: "missing_prediction_id" }, 400);
+        return json({ error: "missing_prediction_id" }, 400);
       }
       if (typeof winningOptionId !== "number" || !Number.isFinite(winningOptionId)) {
-        return jsonResponse({ error: "missing_winning_option_id" }, 400);
+        return json({ error: "missing_winning_option_id" }, 400);
       }
       const result = await resolvePrediction(admin, Math.trunc(predictionId), Math.trunc(winningOptionId));
-      if (!result.ok) return jsonResponse({ error: result.error }, 400);
-      return jsonResponse({ predictionId, resolved: true }, 200);
+      if (!result.ok) return json({ error: result.error }, 400);
+      return json({ predictionId, resolved: true }, 200);
     }
 
     if (body.action === "get-prediction-status") {
       const status = await getPredictionStatus(admin);
-      return jsonResponse({ prediction: status }, 200);
+      return json({ prediction: status }, 200);
     }
 
-    return jsonResponse({ error: "unknown_action" }, 400);
+    return json({ error: "unknown_action" }, 400);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "admin_failed" }, 500);
+    return json({ error: "admin_failed" }, 500);
   }
 });

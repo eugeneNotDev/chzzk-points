@@ -35,8 +35,9 @@
 // (진짜 검증은 서버가 확장자로 따로 하니, 클라이언트가 kind를 잘못 보내도 화면 표시만
 // 어색해질 뿐 보안 문제는 없음 — 아래 classifyByExtension 참고)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
@@ -55,22 +56,6 @@ interface AttachmentInput {
   mimeType: string;
   sizeBytes: number;
   kind: "image" | "file";
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 }
 
 function extensionOf(fileName: string): string {
@@ -108,12 +93,12 @@ Deno.serve(async (req: Request) => {
   if (preflight) return preflight;
 
   if (!["POST", "PATCH", "DELETE"].includes(req.method)) {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return json({ error: "method_not_allowed" }, 405);
   }
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
-  if (session.channelId !== OWNER_CHANNEL_ID) return jsonResponse({ error: "forbidden" }, 403);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  if (session.channelId !== OWNER_CHANNEL_ID) return json({ error: "forbidden" }, 403);
 
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -129,25 +114,25 @@ Deno.serve(async (req: Request) => {
       }
       if (body?.action === "set-pin") {
         const pinId = Number(body.id);
-        if (!Number.isSafeInteger(pinId) || pinId <= 0) return jsonResponse({ error: "missing_id" }, 400);
-        if (typeof body.pinned !== "boolean") return jsonResponse({ error: "invalid_pinned" }, 400);
+        if (!Number.isSafeInteger(pinId) || pinId <= 0) return json({ error: "missing_id" }, 400);
+        if (typeof body.pinned !== "boolean") return json({ error: "invalid_pinned" }, 400);
         const pinned = await setPinned(admin, pinId, body.pinned);
-        if (!pinned) return jsonResponse({ error: "not_found" }, 404);
-        return jsonResponse(pinned, 200);
+        if (!pinned) return json({ error: "not_found" }, 404);
+        return json(pinned, 200);
       }
 
       const { title, content, attachments } = body;
       const isHtml = body.isHtml === true;
       if (typeof title !== "string" || title.trim().length === 0) {
-        return jsonResponse({ error: "empty_title" }, 400);
+        return json({ error: "empty_title" }, 400);
       }
       // 본문은 비워도 됨(사진만 있는 스케줄표 공지 등) — 문자열이 아니면만 거절.
       if (content !== undefined && content !== null && typeof content !== "string") {
-        return jsonResponse({ error: "invalid_content" }, 400);
+        return json({ error: "invalid_content" }, 400);
       }
-      if ((content ?? "").length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
+      if ((content ?? "").length > MAX_CONTENT_LENGTH) return json({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
-      if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
+      if (validAttachments === null) return json({ error: "invalid_attachments" }, 400);
 
       const { data, error } = await admin
         .from("notices")
@@ -164,24 +149,24 @@ Deno.serve(async (req: Request) => {
       if (validAttachments.length > 0) {
         await insertAttachments(admin, data.id, validAttachments);
       }
-      return jsonResponse(data, 200);
+      return json(data, 200);
     }
 
     if (req.method === "PATCH") {
-      if (!id) return jsonResponse({ error: "missing_id" }, 400);
+      if (!id) return json({ error: "missing_id" }, 400);
       const patchBody = await req.json();
       const { title, content, attachments } = patchBody;
       const isHtml = patchBody.isHtml === true;
       if (typeof title !== "string" || title.trim().length === 0) {
-        return jsonResponse({ error: "empty_title" }, 400);
+        return json({ error: "empty_title" }, 400);
       }
       // 본문은 비워도 됨(사진만 있는 스케줄표 공지 등) — 문자열이 아니면만 거절.
       if (content !== undefined && content !== null && typeof content !== "string") {
-        return jsonResponse({ error: "invalid_content" }, 400);
+        return json({ error: "invalid_content" }, 400);
       }
-      if ((content ?? "").length > MAX_CONTENT_LENGTH) return jsonResponse({ error: "content_too_long" }, 400);
+      if ((content ?? "").length > MAX_CONTENT_LENGTH) return json({ error: "content_too_long" }, 400);
       const validAttachments = validateAttachments(attachments);
-      if (validAttachments === null) return jsonResponse({ error: "invalid_attachments" }, 400);
+      if (validAttachments === null) return json({ error: "invalid_attachments" }, 400);
 
       const { data, error } = await admin
         .from("notices")
@@ -194,14 +179,14 @@ Deno.serve(async (req: Request) => {
       await replaceAttachments(admin, Number(id), validAttachments);
       if (typeof patchBody.pinned === "boolean") {
         const pinned = await setPinned(admin, Number(id), patchBody.pinned);
-        if (pinned) return jsonResponse(pinned, 200);
+        if (pinned) return json(pinned, 200);
       }
-      return jsonResponse(data, 200);
+      return json(data, 200);
     }
 
     // DELETE — cascade가 notice_attachments 행은 지워주지만 Storage 객체는 별개라 직접 정리함
     // (notices 행을 지우기 전에 경로를 먼저 읽어둬야 함 — 지우고 나면 cascade로 같이 사라짐).
-    if (!id) return jsonResponse({ error: "missing_id" }, 400);
+    if (!id) return json({ error: "missing_id" }, 400);
     const { data: existingAttachments } = await admin
       .from("notice_attachments")
       .select("storage_path")
@@ -214,10 +199,10 @@ Deno.serve(async (req: Request) => {
         .remove(existingAttachments.map((a: { storage_path: string }) => a.storage_path));
       if (removeError) console.error(`notice-attachments storage 정리 실패: ${removeError.message}`);
     }
-    return jsonResponse({ ok: true }, 200);
+    return json({ ok: true }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "notice_failed" }, 500);
+    return json({ error: "notice_failed" }, 500);
   }
 });
 
@@ -245,10 +230,10 @@ async function setPinned(admin: ReturnType<typeof getAdminClient>, noticeId: num
 // 처리 없이 이 정도 단순한 로직으로 충분함).
 async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, files: unknown) {
   if (!Array.isArray(files) || files.length === 0) {
-    return jsonResponse({ error: "empty_files" }, 400);
+    return json({ error: "empty_files" }, 400);
   }
   if (files.length > MAX_ATTACHMENTS) {
-    return jsonResponse({ error: "too_many_files" }, 400);
+    return json({ error: "too_many_files" }, 400);
   }
 
   const uploads: Array<{ path: string; token: string; signedUrl: string; fileName: string; kind: "image" | "file" }> = [];
@@ -259,7 +244,7 @@ async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, fil
       typeof (f as { fileName?: unknown }).fileName !== "string" ||
       typeof (f as { sizeBytes?: unknown }).sizeBytes !== "number"
     ) {
-      return jsonResponse({ error: "invalid_file_entry" }, 400);
+      return json({ error: "invalid_file_entry" }, 400);
     }
     const displayName = sanitizeDisplayName((f as { fileName: string }).fileName);
     const sizeBytes = (f as { sizeBytes: number }).sizeBytes;
@@ -270,14 +255,14 @@ async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, fil
     // 의도를 따라줌 — 단, 확장자가 실제로 이미지가 아니면서 "image"를 요청하는 건 거부(문서를
     // 갤러리에 넣을 순 없음). requestedKind가 없거나 이상하면 기존처럼 확장자 기준으로만 정함.
     const extKind = classifyByExtension(displayName);
-    if (!extKind) return jsonResponse({ error: "unsupported_file_type", fileName: displayName }, 400);
+    if (!extKind) return json({ error: "unsupported_file_type", fileName: displayName }, 400);
     if (requestedKind === "image" && extKind !== "image") {
-      return jsonResponse({ error: "kind_mismatch", fileName: displayName }, 400);
+      return json({ error: "kind_mismatch", fileName: displayName }, 400);
     }
     const kind: "image" | "file" = requestedKind === "image" || requestedKind === "file" ? requestedKind : extKind;
 
     const maxBytes = kind === "image" ? MAX_IMAGE_BYTES : MAX_FILE_BYTES;
-    if (sizeBytes > maxBytes) return jsonResponse({ error: "file_too_large", fileName: displayName }, 400);
+    if (sizeBytes > maxBytes) return json({ error: "file_too_large", fileName: displayName }, 400);
 
     const path = buildStoragePath(displayName);
     const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
@@ -286,7 +271,7 @@ async function handleGetUploadUrls(admin: ReturnType<typeof getAdminClient>, fil
     uploads.push({ path: data.path, token: data.token, signedUrl: data.signedUrl, fileName: displayName, kind });
   }
 
-  return jsonResponse({ uploads }, 200);
+  return json({ uploads }, 200);
 }
 
 // notices insert/update의 attachments 필드를 검증함. 형식이 이상하면 null(호출부에서 400 처리).

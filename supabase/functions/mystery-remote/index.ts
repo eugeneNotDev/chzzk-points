@@ -13,7 +13,7 @@
 // POST { action: "delete", setId }            → 테스트 회차 삭제
 // POST { action: "site", setId, hidden }      → 팬보드 투표 탭 카드 내리기(true)/다시 올리기(false)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { getAdminClient } from "../_shared/db.ts";
 
 type Admin = ReturnType<typeof getAdminClient>;
 
@@ -22,13 +22,6 @@ const cors: Record<string, string> = {
   "Access-Control-Allow-Headers": "content-type, x-remote-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });

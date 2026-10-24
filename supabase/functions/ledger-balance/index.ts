@@ -2,16 +2,13 @@
 // POST { ids?: number[] }    → { byId: { [id]: 잔액 } }   포인트 기록 줄이 반영된 직후 잔액. 관리자는 아무 줄이나, 그 외엔 본인 줄만.
 // POST { times?: string[] }  → { byTime: { [시각]: 잔액 } } 본인의 그 시각 잔액(미니게임 최근 기록용).
 // 로그인 필수. 한 번에 최대 100개.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const MAX = 100;
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 
 Deno.serve(async (req: Request) => {
   const pre = handleCors(req);
@@ -22,10 +19,7 @@ Deno.serve(async (req: Request) => {
   const me = session.channelId;
   const body = await req.json().catch(() => ({}));
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-    const admin = createClient(url, key);
+    const admin = getAdminClient();
     const out: { byId?: Record<string, number>; byTime?: Record<string, number> } = {};
 
     if (Array.isArray(body.ids) && body.ids.length) {

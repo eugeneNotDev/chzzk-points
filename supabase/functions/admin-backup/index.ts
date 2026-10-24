@@ -9,8 +9,9 @@
 // POST { action: "list" }               → { items: [{ path, kind, createdAt, sizeBytes }] }   (관리자)
 // POST { action: "download", path }     → { url }  (60초짜리 다운로드 링크, 관리자)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
@@ -27,15 +28,6 @@ const TABLES = [
   "egg_progress",
 ];
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-function getAdmin() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
 type Admin = ReturnType<typeof getAdmin>;
 
 async function gzip(text: string): Promise<Uint8Array> {
@@ -100,7 +92,7 @@ Deno.serve(async (req: Request) => {
   const body = await req.json().catch(() => ({}));
 
   try {
-    const admin = getAdmin();
+    const admin = getAdminClient();
 
     // 예약 작업(pg_cron) 호출: 비밀 키로 확인
     const cronKey = req.headers.get("x-backup-key");

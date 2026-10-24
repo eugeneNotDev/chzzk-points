@@ -10,24 +10,14 @@
 // POST { action: "dismiss", id }           → { ok: true } 적립 없이 목록에서 치움
 // 오류: not_found / not_pending / user_not_found (400)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 const RECENT_LIMIT = 30;
 const KNOWN_ERRORS = ["not_found", "not_pending", "user_not_found"];
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 function knownError(message: string): string | null {
   return KNOWN_ERRORS.find((e) => message.includes(e)) ?? null;

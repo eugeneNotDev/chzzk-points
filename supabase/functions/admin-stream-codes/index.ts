@@ -8,8 +8,9 @@
 // POST { action: "end", id }                        → { ok: true }
 // 오류 400: invalid_code / invalid_points / invalid_points_max / invalid_max_uses / invalid_minutes / not_active
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { broadcastToOverlay, getActiveCode, getOverlayKey, toStreamCode } from "../_shared/stream-code.ts";
@@ -18,17 +19,6 @@ const PAGE_SIZE = 5;
 // invalid_points_max가 invalid_points보다 먼저 와야 함(knownError가 앞에서부터 포함 여부로 찾음).
 const KNOWN_ERRORS = ["invalid_code", "invalid_points_max", "invalid_points", "invalid_max_uses", "invalid_minutes", "not_active"];
 const SITE_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "https://eugene4lpha.com";
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 function knownError(message: string): string | null {
   return KNOWN_ERRORS.find((e) => message.includes(e)) ?? null;

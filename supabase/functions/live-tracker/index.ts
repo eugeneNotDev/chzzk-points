@@ -5,15 +5,12 @@
 // 누가 호출해도 같은 결과만 나오는(멱등) 기록 작업이라 인증은 없음. 대신 20초 안의 재호출은 치지직에 다시 묻지 않음.
 // 응답: { ok, live, openDate, closeDate }
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 
 let lastRunAt = 0;
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 
 // "2026-09-26 21:00:03"(KST) → ISO. 형식이 이상하면 null.
 function kstToIso(s: unknown): string | null {
@@ -29,10 +26,7 @@ Deno.serve(async (req: Request) => {
   lastRunAt = Date.now();
 
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-    const admin = createClient(url, key);
+    const admin = getAdminClient();
 
     const res = await fetch(`https://api.chzzk.naver.com/service/v2/channels/${OWNER_CHANNEL_ID}/live-detail`);
     if (!res.ok) throw new Error(`live-detail ${res.status}`);

@@ -10,22 +10,12 @@
 // POST { action: "vote", questionId, choice }  → 투표(마감 전까진 바꿀 수 있음)
 // POST { action: "bet", setId, amount }        → 베팅(첫 투표 마감 전까지, 같은 이야기에 더 걸 수 있음)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 
 type Admin = ReturnType<typeof getAdminClient>;
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 
 // 지급 끝난 이야기는 30분, 정답만 공개된 이야기는 3시간까지 카드에 남김
 const PAID_SHOW_MS = 30 * 60_000;

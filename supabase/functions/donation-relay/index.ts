@@ -24,7 +24,7 @@
 // 치지직 토큰: access 1일 / refresh 30일, refresh는 일회용이라 갱신할 때마다 새 값으로 바꿔 저장함.
 // 방송을 30일 넘게 안 하면 refresh도 만료되니, 그땐 유진님이 사이트에 다시 로그인하면 됨.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
+import { getAdminClient } from "../_shared/db.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { matchDrawingDonation } from "../_shared/drawing.ts";
 
@@ -35,13 +35,6 @@ const SUB_GIFT_PRICE: Record<number, number> = { 1: 5000, 2: 15000 };
 const MAX_GIFT_QUANTITY = 1000;
 
 type Admin = ReturnType<typeof getAdminClient>;
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, serviceRoleKey);
-}
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

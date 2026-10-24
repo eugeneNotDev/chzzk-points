@@ -15,8 +15,9 @@
 //              방송 중이 아니면 저장하지 않고 파일을 지움(live: false → 오버레이는 천천히 다시 물어봄).
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned|blocked / 413 too_large / 429 too_fast
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import { broadcastToOverlay, getOverlayKey, sameString } from "../_shared/stream-code.ts";
@@ -103,15 +104,6 @@ async function cleanup(admin: Admin) {
   }
 }
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-function getAdmin() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  return createClient(url, key);
-}
 type Admin = ReturnType<typeof getAdmin>;
 
 function newCode() {
@@ -143,7 +135,7 @@ Deno.serve(async (req: Request) => {
   // 방송 화면 캡쳐 — 로그인 없이 오버레이 키로
   if (body.action === "screen") {
     try {
-      return await screen(getAdmin(), body);
+      return await screen(getAdminClient(), body);
     } catch (err) {
       console.error(err instanceof Error ? err.message : err);
       return json({ error: "drawings_failed" }, 500);
@@ -154,7 +146,7 @@ Deno.serve(async (req: Request) => {
   const me = session.channelId;
   const isAdmin = me === OWNER_CHANNEL_ID;
   try {
-    const admin = getAdmin();
+    const admin = getAdminClient();
     const { data: user, error: uErr } = await admin.from("users").select("channel_id, banned, drawing_blocked").eq("channel_id", me).maybeSingle();
     // 조회 자체가 실패한 건(예: DB 변경 전) 서버 문제 — 401로 답하면 사이트가 로그아웃시켜 버려서 500으로
     if (uErr) throw new Error(`users 조회 실패: ${uErr.message}`);

@@ -11,7 +11,8 @@
 //
 // 정답은 공개 전까지 절대 응답에 넣지 않음(모의고사: 결과 발표 후, OX: 문제별 정답 공개 후).
 
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { json } from "../_shared/http.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import {
@@ -30,10 +31,6 @@ import {
   type QuizRow,
   type SubmissionRow,
 } from "../_shared/quiz.ts";
-
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 
 async function loadQuestions(admin: Admin, quizId: number) {
   const { data, error } = await admin.from("quiz_questions").select(QUESTION_COLS).eq("quiz_id", quizId).order("position", { ascending: true }).order("id", { ascending: true });

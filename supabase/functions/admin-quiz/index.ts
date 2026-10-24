@@ -26,7 +26,8 @@
 //   ox-reveal { questionId, answer: "O" | "X" } → 정답 공개(데스매치면 틀린 사람 탈락)
 //   ox-cancel { questionId }                    → 잘못 낸 문제 취소(응답 삭제, 대기열로)
 
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { handleCors } from "../_shared/cors.ts";
+import { json } from "../_shared/http.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
 import {
@@ -53,9 +54,6 @@ const BUCKET = "quiz-images";
 type Sub = SubmissionRow & { picks: Record<string, string>; has_doodle?: boolean };
 const isChoice = (q: QuestionRow) => q.qtype === "choice" || q.qtype === "image";
 
-function json(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
 class Bad extends Error {}
 function bad(code: string): never {
   throw new Bad(code);

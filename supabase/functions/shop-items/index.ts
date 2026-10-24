@@ -57,26 +57,11 @@
 // (공통: Authorization: Bearer <세션토큰>, session.channelId가 OWNER_CHANNEL_ID와
 //  일치해야만 허용 — 아니면 403)
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.2";
-import { corsHeaders, handleCors } from "../_shared/cors.ts";
+import { getAdminClient } from "../_shared/db.ts";
+import { json } from "../_shared/http.ts";
+import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
 import { OWNER_CHANNEL_ID } from "../_shared/config.ts";
-
-function getAdminClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 환경변수가 없습니다.");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 // 슬러그 형식: 소문자 영숫자 + 하이픈만 (points_ledger.reason에 그대로 안 들어가고
 // spend_events.item_id로 쓰이는 값이라 URL/코드에서 다루기 까다로운 문자는 막음).
@@ -98,12 +83,12 @@ Deno.serve(async (req: Request) => {
   if (preflight) return preflight;
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(req.method)) {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return json({ error: "method_not_allowed" }, 405);
   }
 
   const session = await requireSession(req);
-  if (!session) return jsonResponse({ error: "unauthorized" }, 401);
-  if (session.channelId !== OWNER_CHANNEL_ID) return jsonResponse({ error: "forbidden" }, 403);
+  if (!session) return json({ error: "unauthorized" }, 401);
+  if (session.channelId !== OWNER_CHANNEL_ID) return json({ error: "forbidden" }, 403);
 
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -140,7 +125,7 @@ Deno.serve(async (req: Request) => {
         }),
       );
       const withCounts = items.map((item, i) => (ownerCounts[i] === null ? item : { ...item, owner_count: ownerCounts[i] }));
-      return jsonResponse({ items: withCounts }, 200);
+      return json({ items: withCounts }, 200);
     }
 
     if (req.method === "POST") {
@@ -168,19 +153,19 @@ Deno.serve(async (req: Request) => {
       if (body.stockLimit !== undefined && body.stockLimit !== null) {
         const n = Number(body.stockLimit);
         if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
-          return jsonResponse({ error: "invalid_stock_limit" }, 400);
+          return json({ error: "invalid_stock_limit" }, 400);
         }
         stockLimit = n;
       }
 
       if (!ID_PATTERN.test(itemId)) {
-        return jsonResponse({ error: "invalid_id" }, 400);
+        return json({ error: "invalid_id" }, 400);
       }
-      if (name.length === 0) return jsonResponse({ error: "empty_name" }, 400);
-      if (!Number.isFinite(cost) || cost <= 0) return jsonResponse({ error: "invalid_cost" }, 400);
-      if (isTitleItem && titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
+      if (name.length === 0) return json({ error: "empty_name" }, 400);
+      if (!Number.isFinite(cost) || cost <= 0) return json({ error: "invalid_cost" }, 400);
+      if (isTitleItem && titleName.length === 0) return json({ error: "invalid_title_name" }, 400);
       if (isTitleItem && (typeof titleColor !== "string" || !COLOR_PATTERN.test(titleColor))) {
-        return jsonResponse({ error: "invalid_title_color" }, 400);
+        return json({ error: "invalid_title_color" }, 400);
       }
 
       // 새 상품은 맨 뒤로 — 지금 제일 큰 순서 번호 + 1 (두 탭 통틀어 최댓값이라 어느 탭이든 맨 뒤가 됨).
@@ -222,7 +207,7 @@ Deno.serve(async (req: Request) => {
         if (titleInsertError) {
           // titles.id는 shop_items.id와 별개 PK 공간이라, 관리자가 직접 준 칭호 등과 id가
           // 겹치면 충돌할 수 있음 — 구분되는 에러로 알려줌.
-          if (titleInsertError.code === "23505") return jsonResponse({ error: "title_id_conflict" }, 409);
+          if (titleInsertError.code === "23505") return json({ error: "title_id_conflict" }, 409);
           throw new Error(`titles insert 실패: ${titleInsertError.message}`);
         }
       }
@@ -249,41 +234,41 @@ Deno.serve(async (req: Request) => {
         if (isTitleItem) {
           await admin.from("titles").delete().eq("id", itemId);
         }
-        if (error.code === "23505") return jsonResponse({ error: "duplicate_id" }, 409);
+        if (error.code === "23505") return json({ error: "duplicate_id" }, 409);
         throw new Error(`shop_items insert 실패: ${error.message}`);
       }
-      return jsonResponse(data, 200);
+      return json(data, 200);
     }
 
     if (req.method === "PATCH" && url.searchParams.get("action") === "reorder") {
       const body = await req.json().catch(() => ({}));
       const ids = Array.isArray(body.ids) ? body.ids : null;
       if (!ids || ids.length === 0 || ids.length > 500 || !ids.every((x: unknown) => typeof x === "string" && ID_PATTERN.test(x))) {
-        return jsonResponse({ error: "invalid_order" }, 400);
+        return json({ error: "invalid_order" }, 400);
       }
       const { error } = await admin.rpc("reorder_shop_items", { p_ids: ids });
       if (error) {
         const msg = error.message || "";
-        if (msg.includes("stale_order")) return jsonResponse({ error: "stale_order" }, 409);
-        if (msg.includes("invalid_order")) return jsonResponse({ error: "invalid_order" }, 400);
+        if (msg.includes("stale_order")) return json({ error: "stale_order" }, 409);
+        if (msg.includes("invalid_order")) return json({ error: "invalid_order" }, 400);
         throw new Error(`reorder_shop_items 실패: ${msg}`);
       }
-      return jsonResponse({ ok: true }, 200);
+      return json({ ok: true }, 200);
     }
 
     if (req.method === "PATCH") {
-      if (!id) return jsonResponse({ error: "missing_id" }, 400);
+      if (!id) return json({ error: "missing_id" }, 400);
       const body = await req.json().catch(() => ({}));
       const update: Record<string, unknown> = {};
 
       if (body.name !== undefined) {
         const name = typeof body.name === "string" ? body.name.trim() : "";
-        if (name.length === 0) return jsonResponse({ error: "empty_name" }, 400);
+        if (name.length === 0) return json({ error: "empty_name" }, 400);
         update.name = name;
       }
       if (body.cost !== undefined) {
         const cost = Number(body.cost);
-        if (!Number.isFinite(cost) || cost <= 0) return jsonResponse({ error: "invalid_cost" }, 400);
+        if (!Number.isFinite(cost) || cost <= 0) return json({ error: "invalid_cost" }, 400);
         update.cost = Math.trunc(cost);
       }
       if (body.description !== undefined) {
@@ -294,12 +279,12 @@ Deno.serve(async (req: Request) => {
       }
       if (body.cooldownSeconds !== undefined) {
         const cooldown = Number(body.cooldownSeconds);
-        if (!Number.isFinite(cooldown) || cooldown < 0) return jsonResponse({ error: "invalid_cooldown" }, 400);
+        if (!Number.isFinite(cooldown) || cooldown < 0) return json({ error: "invalid_cooldown" }, 400);
         update.cooldown_seconds = Math.trunc(cooldown);
       }
       if (body.sortOrder !== undefined) {
         const sortOrder = Number(body.sortOrder);
-        if (!Number.isFinite(sortOrder)) return jsonResponse({ error: "invalid_sort_order" }, 400);
+        if (!Number.isFinite(sortOrder)) return json({ error: "invalid_sort_order" }, 400);
         update.sort_order = Math.trunc(sortOrder);
       }
       if (body.isActive !== undefined) {
@@ -314,7 +299,7 @@ Deno.serve(async (req: Request) => {
         } else {
           const stockLimit = Number(body.stockLimit);
           if (!Number.isFinite(stockLimit) || !Number.isInteger(stockLimit) || stockLimit <= 0) {
-            return jsonResponse({ error: "invalid_stock_limit" }, 400);
+            return json({ error: "invalid_stock_limit" }, 400);
           }
           update.stock_limit = stockLimit;
         }
@@ -325,12 +310,12 @@ Deno.serve(async (req: Request) => {
       const titleUpdate: Record<string, unknown> = {};
       if (body.titleName !== undefined) {
         const titleName = typeof body.titleName === "string" ? body.titleName.trim() : "";
-        if (titleName.length === 0) return jsonResponse({ error: "invalid_title_name" }, 400);
+        if (titleName.length === 0) return json({ error: "invalid_title_name" }, 400);
         titleUpdate.name = titleName;
       }
       if (body.titleColor !== undefined) {
         if (typeof body.titleColor !== "string" || !COLOR_PATTERN.test(body.titleColor)) {
-          return jsonResponse({ error: "invalid_title_color" }, 400);
+          return json({ error: "invalid_title_color" }, 400);
         }
         titleUpdate.color = body.titleColor.toLowerCase();
       }
@@ -341,7 +326,7 @@ Deno.serve(async (req: Request) => {
           .eq("id", id)
           .maybeSingle();
         if (existingError) throw new Error(`shop_items 조회 실패: ${existingError.message}`);
-        if (!existing?.grants_title_id) return jsonResponse({ error: "not_title_item" }, 400);
+        if (!existing?.grants_title_id) return json({ error: "not_title_item" }, 400);
 
         const { error: titleUpdateError } = await admin
           .from("titles")
@@ -351,27 +336,27 @@ Deno.serve(async (req: Request) => {
       }
 
       if (Object.keys(update).length === 0) {
-        if (Object.keys(titleUpdate).length === 0) return jsonResponse({ error: "empty_update" }, 400);
+        if (Object.keys(titleUpdate).length === 0) return json({ error: "empty_update" }, 400);
         // 칭호 이름/색만 왔으면 shop_items 자체는 고칠 게 없으니 현재 상태 그대로 다시 내려줌.
         const { data, error } = await admin.from("shop_items").select().eq("id", id).single();
         if (error) throw new Error(`shop_items 조회 실패: ${error.message}`);
-        return jsonResponse(data, 200);
+        return json(data, 200);
       }
 
       const { data, error } = await admin.from("shop_items").update(update).eq("id", id).select().single();
       if (error) throw new Error(`shop_items update 실패: ${error.message}`);
-      return jsonResponse(data, 200);
+      return json(data, 200);
     }
 
     // DELETE — 칭호 상품이면 연결된 칭호도 같이 지워서 보유자 전원에게서 회수함(헤더 주석 참고).
-    if (!id) return jsonResponse({ error: "missing_id" }, 400);
+    if (!id) return json({ error: "missing_id" }, 400);
     const { data: target, error: targetError } = await admin
       .from("shop_items")
       .select("grants_title_id")
       .eq("id", id)
       .maybeSingle();
     if (targetError) throw new Error(`shop_items 조회 실패: ${targetError.message}`);
-    if (!target) return jsonResponse({ error: "not_found" }, 404);
+    if (!target) return json({ error: "not_found" }, 404);
 
     const { error } = await admin.from("shop_items").delete().eq("id", id);
     if (error) throw new Error(`shop_items delete 실패: ${error.message}`);
@@ -387,9 +372,9 @@ Deno.serve(async (req: Request) => {
       const { error: titleDeleteError } = await admin.from("titles").delete().eq("id", target.grants_title_id);
       if (titleDeleteError) throw new Error(`titles delete 실패: ${titleDeleteError.message}`);
     }
-    return jsonResponse({ ok: true, revokedOwners }, 200);
+    return json({ ok: true, revokedOwners }, 200);
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
-    return jsonResponse({ error: "shop_item_failed" }, 500);
+    return json({ error: "shop_item_failed" }, 500);
   }
 });
