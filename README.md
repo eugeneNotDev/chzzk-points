@@ -20,13 +20,13 @@
 - **후원 적립** — 1만 치즈 이상 후원하면 10% 자동 적립(방송 PC에서 `tools/donation-relay` 실행 필요)
 - **방송 알림** — 홈 화면 앱 설치 + 방송 시작 웹 푸시
 - **관리자** — 유저·포인트(일괄·실행취소)·칭호·밴, 로그, 방송 코드, 익명 후원 적립, 신고, 백업 등
-- **OBS 오버레이** — 상점 알림·방송 코드·그림 후원 (`docs/overlay.html`)
+- **OBS 오버레이** — 상점 알림·방송 코드·그림 후원 (`web/public/overlay.html`)
 
 ## 구조
 
 ```
 chzzk-points/
-├── web/                    # 사이트 (React + Vite + TypeScript) — 빌드 결과가 docs/로 감
+├── web/                    # 사이트 (React + Vite + TypeScript)
 │   ├── src/
 │   │   ├── nav.ts          # 메뉴 목록(사이드바·모바일·주소가 전부 여기서 나옴)
 │   │   ├── routes.ts       # 주소 → 화면
@@ -34,20 +34,20 @@ chzzk-points/
 │   │   ├── components/     # 공통 부품
 │   │   ├── lib/            # 로그인·서버 호출(config.ts의 API 목록)·데이터 조회
 │   │   └── styles/         # 디자인 토큰·공통 CSS
+│   ├── public/             # 직접 관리하는 정적 파일 — 빌드할 때 사이트 맨 앞에 그대로 복사됨
+│   │   ├── overlay.html, open-live.html   # OBS 오버레이, 방송 알림 → 치지직 앱 열기
+│   │   ├── sw.js, manifest.webmanifest    # 앱 설치·푸시
+│   │   ├── CNAME
+│   │   └── assets/                        # 이미지·알림음, 오버레이가 쓰는 supabase 사본
 │   └── scripts/copy-routes.mjs   # 메뉴 주소마다 index.html 복사(GitHub Pages용)
-│
-├── docs/                   # GitHub Pages가 그대로 서빙 (main에 push하면 반영)
-│   ├── index.html, xxx.html, app/   # ← web 빌드 결과(직접 고치지 말 것)
-│   ├── beta/                        # ← 베타 빌드 결과
-│   ├── overlay.html, open-live.html # 직접 관리하는 파일(OBS 오버레이, 앱→치지직 열기)
-│   ├── sw.js, manifest.webmanifest  # 앱 설치·푸시
-│   └── assets/                      # 이미지·알림음, 오버레이가 쓰는 supabase 사본
 │
 ├── supabase/
 │   ├── config.toml         # 함수별 설정(전부 verify_jwt = false — 새 함수는 꼭 추가)
-│   ├── functions/          # Edge Functions (Deno). _shared/는 공용 코드
+│   ├── functions/          # Edge Functions (Deno). _shared/는 공용 코드(db.ts·http.ts·cors.ts·session.ts …)
+│   │                       # 큰 함수는 폴더 안에서 기능별로 나눔(admin/, board/, life-game/content·engine)
 │   └── migrations/         # DB 변경 기록 (이름 규칙은 아래)
 │
+├── .github/workflows/      # check.yml(push마다 검사), deploy.yml(main에 push하면 사이트 배포)
 ├── tools/
 │   ├── donation-relay/     # 방송 PC에서 켜두는 후원 연동 프로그램 (Node.js)
 │   └── life-content/       # 유진 키우기 밸런스 점검 스크립트
@@ -60,7 +60,7 @@ chzzk-points/
 - 프론트: React 19 + Vite + TypeScript, TanStack Query, CSS Modules
 - 백엔드: Supabase (Postgres, Edge Functions, Realtime, Storage, pg_cron)
 - 로그인: 치지직 Open API OAuth + 자체 세션 토큰
-- 호스팅: GitHub Pages (`docs/`, 커스텀 도메인 `docs/CNAME`)
+- 호스팅: GitHub Pages (GitHub Actions가 빌드해서 올림, 커스텀 도메인 `eugene4lpha.com`)
 
 ## 설계 메모
 
@@ -81,16 +81,19 @@ chzzk-points/
 cd web
 npm install          # 처음 한 번
 npm run dev          # http://localhost:5173/beta/ (로그인 필요한 기능은 CORS 때문에 안 됨)
-npm run build        # 베타 → docs/beta/  (https://eugene4lpha.com/beta/)
-npm run build:live   # 실제 사이트 → docs/
+npm run build:all    # 확인용 빌드 → web/dist/ (실제 사이트 + dist/beta/)
 ```
 
-빌드한 뒤 커밋·push하면 GitHub Pages에 반영됨. 베타에만 있는 기능(유진 키우기, 미스테리 투표 카드)은 `import.meta.env.MODE !== "live"`로 갈림.
-사이트 주소를 바꿀 땐 세 군데를 같이: `web/src/lib/config.ts`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`.
+**배포는 `main`에 push하면 끝.** GitHub Actions(`.github/workflows/deploy.yml`)가 실제 사이트와 베타를 빌드해서 GitHub Pages에 올림(빌드 결과는 저장소에 커밋하지 않음). 진행 상황은 GitHub 저장소의 Actions 탭에서 볼 수 있음.
+push할 때마다 `check.yml`이 사이트 타입 검사·빌드, 서버 함수 타입 검사, 유진 키우기 밸런스 점검을 돌림 — 실패하면 커밋 옆에 빨간 X.
+
+베타에만 있는 기능(유진 키우기, 미스테리 투표 카드)은 `import.meta.env.MODE !== "live"`로 갈림.
+사이트 주소를 바꿀 땐 세 군데를 같이: `web/src/lib/config.ts`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`(+ 저장소 Settings → Pages의 Custom domain, `web/public/CNAME`).
 
 ### Edge Function
 
 ```bash
+npx supabase link --project-ref azowisiuyeohhfxxmewb   # 이 PC에서 처음 한 번
 npx supabase functions deploy <함수명>
 ```
 
@@ -120,4 +123,4 @@ npx supabase functions deploy <함수명>
 
 - 칭호 아이콘: [Phosphor Icons](https://phosphoricons.com) (MIT), [Material Design Icons](https://pictogrammers.com) (Apache 2.0), [game-icons.net](https://game-icons.net) (CC BY 3.0). 아이콘별 출처는 `web/src/lib/titleIcons.ts` 맨 위 주석
 - 사이트 라이브러리는 npm으로 받아 빌드에 같이 묶음(외부 CDN 안 씀): supabase-js, TanStack Query, React Router, DOMPurify(공지 HTML 거르기), motion, lucide-react, Pretendard·Outfit 글꼴
-- `docs/assets/js/supabase.min.js` — 오버레이(`overlay.html`)용 supabase-js 2.117.2 사본. Edge Function 쪽 import(`esm.sh/@supabase/supabase-js@2.117.2`)도 같은 버전
+- `web/public/assets/js/supabase.min.js` — 오버레이(`overlay.html`)용 supabase-js 2.117.2 사본. Edge Function 쪽 import(`esm.sh/@supabase/supabase-js@2.117.2`)도 같은 버전

@@ -9,11 +9,13 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nav = readFileSync(resolve(root, "src/nav.ts"), "utf8");
-const files = [...new Set([...nav.matchAll(/path:\s*"([a-z0-9-]+\.html)"/g)].map((m) => m[1]))];
+const live = process.argv.includes("--live");
+// 베타 전용 메뉴(life: true — 유진 키우기)는 실제 사이트 빌드에선 주소를 안 만듦
+const files = [...new Set(nav.split("\n").filter((l) => !(live && /\blife:\s*true/.test(l))).flatMap((l) => [...l.matchAll(/path:\s*"([a-z0-9-]+\.html)"/g)].map((m) => m[1])))];
 
-// --live(실제 사이트 빌드)면 docs/ 바로 아래, 아니면 베타(docs/beta/)
-const outDir = resolve(root, process.argv.includes("--live") ? "../docs" : "../docs/beta");
+// --live(실제 사이트 빌드)면 dist/ 바로 아래, 아니면 베타(dist/beta/)
+const outDir = resolve(root, live ? "dist" : "dist/beta");
 // 실제 사이트 빌드(--live)에선 404.html도 앱으로 — 없는 주소면 앱의 "없는 페이지예요" 화면.
-if (process.argv.includes("--live")) files.push("404.html");
+if (live) files.push("404.html");
 for (const file of files) copyFileSync(resolve(outDir, "index.html"), resolve(outDir, file));
 console.log(`[copy-routes] ${files.length}개 주소에 index.html 복사: ${files.join(", ")}`);

@@ -3,34 +3,37 @@
 //   - 보낸 사람 인증: RFC 8292 (VAPID) — ES256 서명한 JWT
 // VAPID 비밀키는 저장소에 없고 DB(app_secrets: vapid_private_jwk)에만 있음. 공개키는 사이트 JS에 그대로 들어감.
 
+// 바이트 배열 — 새 TypeScript에선 WebCrypto가 ArrayBuffer 기반 배열만 받는다고 타입을 엄격히 봐서 이름을 붙여 둠(동작은 같음)
+type Bytes = Uint8Array<ArrayBuffer>;
+
 const enc = new TextEncoder();
 
-export function b64urlEncode(bytes: Uint8Array): string {
+export function b64urlEncode(bytes: Bytes): string {
   let s = "";
   for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-export function b64urlDecode(str: string): Uint8Array {
+export function b64urlDecode(str: string): Bytes {
   const s = str.replace(/-/g, "+").replace(/_/g, "/");
   const bin = atob(s + "===".slice((s.length + 3) % 4));
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Bytes[]): Bytes {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let o = 0;
   for (const p of parts) { out.set(p, o); o += p.length; }
   return out;
 }
 
-async function hmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+async function hmac(key: Bytes, data: Bytes): Promise<Bytes> {
   const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
 }
 
 // 비공개키(d) + 공개키(65바이트 0x04|x|y) → ECDH/ECDSA용 키
-async function importPrivate(d: Uint8Array, pub: Uint8Array, usage: "ECDH" | "ECDSA"): Promise<CryptoKey> {
+async function importPrivate(d: Bytes, pub: Bytes, usage: "ECDH" | "ECDSA"): Promise<CryptoKey> {
   const jwk = { kty: "EC", crv: "P-256", d: b64urlEncode(d), x: b64urlEncode(pub.slice(1, 33)), y: b64urlEncode(pub.slice(33, 65)), ext: true };
   return usage === "ECDH"
     ? await crypto.subtle.importKey("jwk", jwk, { name: "ECDH", namedCurve: "P-256" }, false, ["deriveBits"])
@@ -39,15 +42,15 @@ async function importPrivate(d: Uint8Array, pub: Uint8Array, usage: "ECDH" | "EC
 
 export interface EncryptOptions {
   // 테스트용(RFC 8291 예시값 재현) — 평소엔 비워두면 매번 새로 만듦
-  senderPrivate?: Uint8Array;
-  senderPublic?: Uint8Array;
-  salt?: Uint8Array;
+  senderPrivate?: Bytes;
+  senderPublic?: Bytes;
+  salt?: Bytes;
 }
 
 // RFC 8291 — 구독(p256dh, auth)용으로 payload 암호화한 요청 본문(Content-Encoding: aes128gcm)
-export async function encryptPayload(p256dh: Uint8Array, authSecret: Uint8Array, payload: Uint8Array, opts: EncryptOptions = {}): Promise<Uint8Array> {
+export async function encryptPayload(p256dh: Bytes, authSecret: Bytes, payload: Bytes, opts: EncryptOptions = {}): Promise<Bytes> {
   let asPrivate: CryptoKey;
-  let asPublic: Uint8Array;
+  let asPublic: Bytes;
   if (opts.senderPrivate && opts.senderPublic) {
     asPrivate = await importPrivate(opts.senderPrivate, opts.senderPublic, "ECDH");
     asPublic = opts.senderPublic;

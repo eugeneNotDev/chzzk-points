@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>overlay · 유진 팬보드</title>
+<style>
+  /* OBS 브라우저 소스용 — 배경 완전 투명, 공통 style.css는 안 씀 (다크 배경이라 방송화면에 안 맞음) */
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  #overlay-root {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding: 24px;
+    font-family: system-ui, "Noto Sans KR", sans-serif;
+    pointer-events: none;
+  }
+  /* 상점 사용 알림 — 방송에서 잘 보이게 크게, 10초 동안 떠 있음(스크립트의 el.remove 시각과 맞춤) */
+  .toast {
+    background: rgba(20, 24, 28, 0.88);
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 28px;
+    margin-top: 12px;
+    font-family: "Godo", system-ui, "Noto Sans KR", sans-serif;
+    font-size: 2rem;
+    line-height: 1.3;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    border: 1px solid rgba(0, 229, 160, 0.35);
+    animation: toast-in 0.3s ease-out, toast-out 0.5s ease-in 9.5s forwards;
+  }
+  .toast .who { color: #00e5a0; font-weight: 700; }
+  /* 방송 코드 박스(왼쪽 위) — overlay.html?key=... 로 열었을 때만 뜸.
+     글꼴은 사이트 로고/제목과 같은 고도체(Godo) — 한글 코드도 예쁘게 보이게(style.css의 --font-logo와 같은 파일). */
+  @font-face { font-family: "Godo"; src: url("//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Godo"; src: url("//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+  .code-box {
+    position: fixed; top: 32px; left: 32px; width: max-content; min-width: 280px; max-width: calc(100vw - 64px); box-sizing: border-box;
+    background: rgba(16, 19, 23, 0.88); color: #fff; border-radius: 12px; padding: 14px 18px 13px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35); border: 1px solid rgba(0, 229, 160, 0.35);
+    font-family: "Godo", system-ui, "Noto Sans KR", sans-serif;
+    animation: code-in 0.35s ease-out;
+  }
+  .code-box[hidden] { display: none; }
+  .code-box .label { display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; color: #00e5a0; }
+  .code-box .time { color: #fff; font-variant-numeric: tabular-nums; font-size: 16px; }
+  .code-box .code { margin: 8px 0 6px; font-size: 38px; font-weight: 700; letter-spacing: 0.08em; text-align: center; word-break: keep-all; overflow-wrap: anywhere; line-height: 1.15; }
+  .code-box .sub { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; color: #c9d1d9; }
+  .code-box .sub b { color: #00e5a0; }
+  .code-box .bar { margin-top: 10px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+  .code-box .bar i { display: block; height: 100%; width: 100%; background: #00e5a0; border-radius: 3px; transition: width 1s linear; }
+  .code-box .where { margin-top: 8px; font-size: 12px; color: #8b939b; text-align: center; }
+  @keyframes code-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toast-out { to { opacity: 0; transform: translateY(-8px); } }
+
+  /* 그림 후원(0067_drawing_donations.sql) — 그림도네처럼 방송 화면 위에 배경 없이 그림만 그려짐.
+     그림판(960×540)이 오버레이 화면 전체(16:9)에 그대로 겹침 — 그린 자리 그대로 화면에 나옴. 한 번에 하나씩, 들어온 순서대로. */
+  .drawing { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; pointer-events: none; animation: drawing-in 0.25s ease-out; }
+  .drawing.out { animation: drawing-out 0.5s ease-in forwards; }
+  .drawing canvas { display: block; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; }
+  /* 누가 보냈는지 — 화면 위쪽 가운데 작은 이름표 + 남은 시간 막대 */
+  .drawing .cap {
+    position: absolute; top: 2.2vh; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: baseline; gap: 10px; padding: 7px 16px 9px; border-radius: 999px;
+    background: rgba(16, 19, 23, 0.78); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    font-family: "Godo", system-ui, "Noto Sans KR", sans-serif; color: #fff; font-size: 1.15rem; font-weight: 700; white-space: nowrap; overflow: hidden;
+  }
+  .drawing .cap .who { color: #00e5a0; }
+  .drawing .cap .amt { font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); }
+  .drawing .bar { position: absolute; left: 14px; right: 14px; bottom: 3px; height: 3px; border-radius: 2px; overflow: hidden; }
+  .drawing .bar i { display: block; height: 100%; background: #00e5a0; transform-origin: left; animation: drawing-bar linear forwards; animation-play-state: paused; }
+  .drawing.holding .bar i { animation-play-state: running; }
+  @keyframes drawing-in { from { opacity: 0; } }
+  @keyframes drawing-out { to { opacity: 0; } }
+  @keyframes drawing-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+</style>
+</head>
+<body>
+  <!-- OBS 브라우저 소스로 이 페이지를 추가함. 배경 투명 처리 이미 돼있음. -->
+  <div id="overlay-root"></div>
+  <!-- 방송 코드 — 주소에 ?key=...(관리자 페이지 "방송 코드" 탭에서 복사)가 있을 때만 씀. -->
+  <div class="code-box" id="code-box" hidden>
+    <div class="label"><span>방송 코드</span><span class="time" id="code-time">10:00</span></div>
+    <div class="code" id="code-text"></div>
+    <div class="sub"><span><b id="code-points"></b></span><span id="code-uses"></span></div>
+    <div class="bar"><i id="code-bar"></i></div>
+    <div class="where">eugene4lpha.com → 출석체크에서 입력</div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "./assets/js/supabase-client.js";
+
+    const root = document.getElementById("overlay-root");
+
+    // 알림음 — 원본 파일 자체를 절반 볼륨으로 미리 낮춰서 넣어둠(assets/audio/spend-alert.mp3).
+    // 재생할 때마다 새 Audio 인스턴스를 만듦 — 연타로 여러 개 뜰 때 소리끼리 끊기지 않고 겹쳐서 남.
+    const ALERT_SOUND_URL = "./assets/audio/spend-alert.mp3";
+    function playAlertSound() {
+      const audio = new Audio(ALERT_SOUND_URL);
+      audio.play().catch((err) => {
+        // 자동재생이 막히는 특수한 경우가 있을 수 있어 조용히 무시 (OBS 브라우저 소스는 보통 허용됨).
+        console.error("[overlay] 알림음 재생 실패", err);
+      });
+    }
+
+    // 상점 사용 알림. overlay_events 한 줄 = 알림 하나(0044_privacy_hardening.sql).
+    // spend_events(상점 사용 원본 기록 — 실제 이름·채널 ID가 들어있음)는 이제 서버 전용이라 여기서 못 읽음.
+    // 대신 spend_events에 기록이 생길 때 DB 트리거가 화면에 보여줄 것만 담아 overlay_events에 넣어줌:
+    //   display_name: 공개 유저면 이름, 비공개 유저면 null → "익명"으로 표시
+    //   item_name: 사용 시점 상품 이름(예전 기록처럼 이름이 없으면 상품 id)
+    function renderToast(event) {
+      const el = document.createElement("div");
+      el.className = "toast";
+      const itemLabel = event.item_name || "상품";
+      const whoLabel = event.display_name || "익명";
+      el.innerHTML = `<span class="who">${escapeHtml(whoLabel)}</span>님이 <b>${escapeHtml(itemLabel)}</b> 사용!`;
+      root.appendChild(el);
+      playAlertSound();
+      // 애니메이션 끝나면 DOM에서 제거 (누적 방지) — CSS의 toast-out(9.5초 + 0.5초)과 맞춤
+      setTimeout(() => el.remove(), 10200);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    supabase
+      .channel("overlay_events_overlay")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "overlay_events" },
+        (payload) => renderToast(payload.new),
+      )
+      .subscribe();
+
+    // --- 방송 코드 (0047_stream_codes.sql) ---------------------------------------
+    // 코드는 DB에서 직접 못 읽게 막아뒀고(누구나 overlay.html을 열 수 있어서), 주소의 key를 아는 오버레이만
+    // stream-code 함수에서 지금 코드를 받아오고, 이후 변화는 이 key가 들어간 이름의 채널(broadcast)로 받음.
+    const overlayKey = new URLSearchParams(location.search).get("key");
+    const STREAM_CODE_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/stream-code";
+    const codeBox = document.getElementById("code-box");
+    let activeCode = null;
+    let clockOffset = 0; // 서버 시각 - 이 PC 시각
+
+    function syncClock(serverNow) {
+      const t = new Date(serverNow).getTime();
+      if (Number.isFinite(t)) clockOffset = t - Date.now();
+    }
+    // 남은 시간(ms). 시간 제한 없는 코드(expiresAt 없음)면 Infinity.
+    function remainingMs() {
+      if (!activeCode) return 0;
+      if (!activeCode.expiresAt) return Infinity;
+      return new Date(activeCode.expiresAt).getTime() - (Date.now() + clockOffset);
+    }
+    function isSoldOut(c) {
+      return c.maxUses != null && c.usedCount >= c.maxUses;
+    }
+    function hideCode() {
+      activeCode = null;
+      codeBox.hidden = true;
+    }
+    function renderCode() {
+      if (!activeCode || remainingMs() <= 0 || isSoldOut(activeCode)) { hideCode(); return; }
+      const c = activeCode;
+      document.getElementById("code-text").textContent = c.code;
+      const fmt = (n) => Number(n).toLocaleString("ko-KR");
+      document.getElementById("code-points").textContent = c.pointsMax ? `${fmt(c.points)}~${fmt(c.pointsMax)}P 랜덤` : `+${fmt(c.points)}P`;
+      document.getElementById("code-uses").innerHTML = c.maxUses != null
+        ? `선착순 <b>${(c.maxUses - c.usedCount).toLocaleString("ko-KR")}</b>/${c.maxUses.toLocaleString("ko-KR")}명 남음`
+        : "";
+      tick();
+      codeBox.hidden = false;
+    }
+    function tick() {
+      if (!activeCode) return;
+      const left = remainingMs();
+      if (left <= 0) { hideCode(); return; }
+      const bar = document.getElementById("code-bar");
+      if (left === Infinity) {
+        document.getElementById("code-time").textContent = "제한 없음";
+        bar.parentElement.hidden = true;
+        return;
+      }
+      bar.parentElement.hidden = false;
+      const sec = Math.ceil(left / 1000);
+      document.getElementById("code-time").textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+      // 막대는 만든 시각~끝나는 시각 전체 길이 대비 남은 비율.
+      const total = new Date(activeCode.expiresAt).getTime() - new Date(activeCode.createdAt).getTime();
+      bar.style.width = `${Math.max(0, Math.min(100, total > 0 ? (left / total) * 100 : 0))}%`;
+    }
+
+    async function fetchActiveCode() {
+      try {
+        const res = await fetch(`${STREAM_CODE_URL}?key=${encodeURIComponent(overlayKey)}`);
+        if (!res.ok) {
+          if (res.status === 401) console.error("[overlay] 오버레이 키가 맞지 않아요. 관리자 페이지에서 주소를 다시 복사해 주세요.");
+          return;
+        }
+        const data = await res.json();
+        syncClock(data.serverNow);
+        activeCode = data.active;
+        renderCode();
+      } catch (err) {
+        console.error("[overlay] 방송 코드 조회 실패", err);
+      }
+    }
+
+
+    // --- 그림 후원 (0067_drawing_donations.sql) -------------------------------------
+    // donation-relay가 후원 메시지에서 그림 코드를 찾으면 같은 키 채널로 "drawing"을 보냄 → 들어온 순서대로 하나씩 띄움.
+    // 관리자가 "끄기"를 누르면 "drawing-hide"가 와서, 지금 떠 있으면 바로 내리고 기다리는 중이면 빼버림.
+    const drawingQueue = [];
+    let drawingNow = null; // { id, el, timer }
+    // 획 기록(strokesUrl)이 있으면 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼) — 다 그려지면 완성 그림으로 바꿔서
+    // 결과가 정확히 같게 하고, 그때부터 표시 시간(seconds)을 셈. 획 기록을 못 받으면 완성 그림만 바로 띄움.
+    const DRAW_W = 960, DRAW_H = 540;
+    function loadImage(url) {
+      return new Promise((ok, fail) => { const im = new Image(); im.onload = () => ok(im); im.onerror = fail; im.src = url; });
+    }
+    async function loadStrokes(url) {
+      if (!url) return null;
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) return null;
+        const ops = await res.json();
+        return Array.isArray(ops) && ops.length ? ops : null;
+      } catch { return null; }
+    }
+    // 그림판(DrawCanvas)과 같은 방식으로 획을 그림 — 점 사이를 중간점 곡선으로. 지우개(e)는 그 자리를 투명하게 지움.
+    // 예전 그림(흰 배경 시절)의 지우개는 흰 펜으로 기록돼 있어서 그대로 흰색으로 그려짐 — 끝나면 완성 그림으로 바뀜.
+    function drawSegment(c, op, i) {
+      const p = op.p, n = p.length / 2;
+      c.globalCompositeOperation = op.e ? "destination-out" : "source-over";
+      c.strokeStyle = op.c; c.fillStyle = op.c; c.lineWidth = op.w; c.lineCap = "round"; c.lineJoin = "round";
+      if (n === 1 || i === 0) {
+        c.beginPath(); c.arc(p[0], p[1], op.w / 2, 0, Math.PI * 2); c.fill();
+        return;
+      }
+      const a = Math.max(0, i - 2), b = i - 1;
+      const ax = p[a * 2], ay = p[a * 2 + 1], bx = p[b * 2], by = p[b * 2 + 1], cx = p[i * 2], cy = p[i * 2 + 1];
+      c.beginPath();
+      c.moveTo((ax + bx) / 2, (ay + by) / 2);
+      c.quadraticCurveTo(bx, by, (bx + cx) / 2, (by + cy) / 2);
+      c.stroke();
+    }
+    function replay(canvas, ops, done) {
+      const c = canvas.getContext("2d");
+      c.clearRect(0, 0, DRAW_W, DRAW_H);
+      // 그릴 일 목록(점 하나 = 한 칸, 지우기 = 한 칸)
+      const steps = [];
+      for (const op of ops) {
+        if (op.k === "clear") steps.push([op, -1]);
+        else for (let i = 0; i < op.p.length / 2; i++) steps.push([op, i]);
+      }
+      // 아주 빠르게 — 점 수에 맞춰 1.2~4초 안에 다 그림
+      const dur = Math.max(1200, Math.min(4000, steps.length * 1.6));
+      const t0 = performance.now();
+      let k = 0;
+      function frame(now) {
+        if (!canvas.isConnected) return;
+        const until = Math.min(steps.length, Math.ceil(((now - t0) / dur) * steps.length));
+        for (; k < until; k++) {
+          const [op, i] = steps[k];
+          if (i < 0) c.clearRect(0, 0, DRAW_W, DRAW_H);
+          else drawSegment(c, op, i);
+        }
+        c.globalCompositeOperation = "source-over";
+        if (k < steps.length) requestAnimationFrame(frame);
+        else done();
+      }
+      requestAnimationFrame(frame);
+    }
+    async function showNextDrawing() {
+      if (drawingNow || !drawingQueue.length) return;
+      const d = drawingQueue.shift();
+      const el = document.createElement("div");
+      el.className = "drawing";
+      const sec = Math.max(3, Math.min(60, Number(d.seconds) || 10));
+      const who = d.nickname ? `${escapeHtml(d.nickname)}님의 그림` : "익명님의 그림";
+      el.innerHTML = `<canvas width="${DRAW_W}" height="${DRAW_H}"></canvas><div class="cap"><span class="who">${who}</span><span class="amt">${Number(d.amount || 0).toLocaleString("ko-KR")}치즈</span><div class="bar"><i style="animation-duration:${sec}s"></i></div></div>`;
+      const canvas = el.querySelector("canvas");
+      // 받는 동안에도 자리를 잡아둠 — 그 사이에 다음 그림이 와도 겹쳐 뜨지 않고 기다리게
+      const slot = { id: d.id, el, timer: null };
+      drawingNow = slot;
+      const [img, ops] = await Promise.all([loadImage(d.url).catch(() => null), loadStrokes(d.strokesUrl)]);
+      if (drawingNow !== slot) return; // 받는 중에 관리자가 끔
+      if (!img && !ops) {
+        console.error("[overlay] 그림을 못 불러왔어요", d.url);
+        drawingNow = null; showNextDrawing();
+        return;
+      }
+      document.body.appendChild(el);
+      playAlertSound();
+      const hold = () => {
+        if (drawingNow !== slot) return;
+        if (img) {
+          // 완성 그림으로 마무리 — 투명 배경이라 덮어 그리면 다시 보여준 획이 비쳐서, 지우고 그림
+          const c = canvas.getContext("2d");
+          c.clearRect(0, 0, DRAW_W, DRAW_H);
+          c.drawImage(img, 0, 0, DRAW_W, DRAW_H);
+        }
+        el.classList.add("holding");
+        slot.timer = setTimeout(() => endDrawing(d.id), sec * 1000);
+      };
+      if (ops) replay(canvas, ops, hold);
+      else hold();
+    }
+    function endDrawing(id) {
+      if (!drawingNow || drawingNow.id !== id) return;
+      const { el, timer } = drawingNow;
+      clearTimeout(timer);
+      drawingNow = null;
+      el.classList.add("out");
+      setTimeout(() => { el.remove(); showNextDrawing(); }, 520);
+    }
+    function onDrawing(payload) {
+      if (!payload || !payload.url) return;
+      if (drawingNow?.id === payload.id || drawingQueue.some((x) => x.id === payload.id)) return;
+      drawingQueue.push(payload);
+      showNextDrawing();
+    }
+    function onDrawingHide(payload) {
+      const i = drawingQueue.findIndex((x) => x.id === payload?.id);
+      if (i >= 0) drawingQueue.splice(i, 1);
+      if (drawingNow?.id === payload?.id) {
+        // 끄기는 애니메이션 없이 즉시
+        clearTimeout(drawingNow.timer);
+        drawingNow.el.remove();
+        drawingNow = null;
+        showNextDrawing();
+      }
+    }
+
+    // --- 방송 화면 캡쳐 → 그림판 배경 -------------------------------------------------
+    // OBS WebSocket(도구 → WebSocket 서버 설정)으로 지금 방송 화면(프로그램 장면)을 10초마다 작게 찍어서 서버에 올림.
+    // 그림판(그림 후원 페이지)이 이걸 배경으로 보여줘서, 시청자가 방송 화면을 보면서 그 위에 그림(그림도네처럼).
+    // 주소에 &obs=<WebSocket 비밀번호>가 있을 때만 켜짐(비밀번호를 안 쓰면 &obs= 처럼 비워둠). 포트가 4455가 아니면 &obsport=.
+    // 서버가 방송 중이 아니라고 하면 1분마다만 다시 해봄.
+    const obsPass = new URLSearchParams(location.search).get("obs");
+    const obsPort = new URLSearchParams(location.search).get("obsport") || "4455";
+    const DRAWINGS_URL = "https://azowisiuyeohhfxxmewb.supabase.co/functions/v1/drawings";
+    const SCREEN_EVERY_MS = 10_000, SCREEN_IDLE_MS = 60_000, SCREEN_W = 640, SCREEN_H = 360;
+
+    async function sha256b64(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+    // obs-websocket 5 — 연결·인증하고, 요청을 보내면 응답을 Promise로 돌려주는 작은 클라이언트
+    function connectObs() {
+      return new Promise((resolve, reject) => {
+        const ws = new WebSocket(`ws://127.0.0.1:${obsPort}`);
+        const waiting = new Map();
+        let n = 0, ready = false;
+        const api = {
+          ws,
+          call(requestType, requestData) {
+            return new Promise((ok, fail) => {
+              const requestId = String(++n);
+              waiting.set(requestId, { ok, fail });
+              ws.send(JSON.stringify({ op: 6, d: { requestType, requestId, requestData } }));
+              setTimeout(() => { if (waiting.delete(requestId)) fail(new Error(`${requestType} 응답 없음`)); }, 8000);
+            });
+          },
+        };
+        ws.onmessage = async (ev) => {
+          const msg = JSON.parse(ev.data);
+          if (msg.op === 0) {
+            const d = { rpcVersion: 1, eventSubscriptions: 0 };
+            const auth = msg.d.authentication;
+            if (auth) d.authentication = await sha256b64((await sha256b64((obsPass || "") + auth.salt)) + auth.challenge);
+            ws.send(JSON.stringify({ op: 1, d }));
+          } else if (msg.op === 2) {
+            ready = true;
+            resolve(api);
+          } else if (msg.op === 7) {
+            const w = waiting.get(msg.d.requestId);
+            if (!w) return;
+            waiting.delete(msg.d.requestId);
+            if (msg.d.requestStatus?.result) w.ok(msg.d.responseData || {});
+            else w.fail(new Error(`${msg.d.requestType} 실패: ${msg.d.requestStatus?.comment || msg.d.requestStatus?.code}`));
+          }
+        };
+        ws.onclose = (ev) => {
+          for (const w of waiting.values()) w.fail(new Error("OBS 연결 끊김"));
+          waiting.clear();
+          // 4009 = 비밀번호 틀림
+          if (!ready) reject(new Error(ev.code === 4009 ? "OBS WebSocket 비밀번호가 맞지 않아요" : `OBS WebSocket에 연결하지 못했어요 (포트 ${obsPort}, 코드 ${ev.code})`));
+        };
+      });
+    }
+    // OBS가 준 jpg를 작게 webp로 다시 만들어서 올림(서버 저장소는 webp·png만 받음)
+    function toWebp(dataUrl) {
+      return loadImage(dataUrl).then((im) => {
+        const cv = document.createElement("canvas");
+        cv.width = SCREEN_W; cv.height = SCREEN_H;
+        cv.getContext("2d").drawImage(im, 0, 0, SCREEN_W, SCREEN_H);
+        return cv.toDataURL("image/webp", 0.6);
+      });
+    }
+    async function screenLoop() {
+      let obs = null;
+      for (;;) {
+        let wait = SCREEN_EVERY_MS;
+        try {
+          if (!obs || obs.ws.readyState !== WebSocket.OPEN) obs = await connectObs();
+          const sc = await obs.call("GetCurrentProgramScene");
+          const sourceName = sc.currentProgramSceneName || sc.sceneName;
+          const shot = await obs.call("GetSourceScreenshot", { sourceName, imageFormat: "jpg", imageWidth: SCREEN_W, imageHeight: SCREEN_H, imageCompressionQuality: 75 });
+          const image = await toWebp(shot.imageData);
+          const res = await fetch(DRAWINGS_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "screen", key: overlayKey, image }) });
+          if (res.status === 401) { console.error("[overlay] 오버레이 키가 맞지 않아 방송 화면을 못 올렸어요"); wait = SCREEN_IDLE_MS; }
+          else if (res.ok && (await res.json()).live === false) wait = SCREEN_IDLE_MS;
+        } catch (err) {
+          console.error("[overlay] 방송 화면 캡쳐 실패", err instanceof Error ? err.message : err);
+          wait = 15_000;
+        }
+        await new Promise((r) => setTimeout(r, wait));
+      }
+    }
+
+    if (overlayKey) {
+      if (obsPass !== null) screenLoop();
+      setInterval(tick, 1000);
+      fetchActiveCode();
+      supabase
+        .channel(`stream-code-${overlayKey}`)
+        .on("broadcast", { event: "code" }, ({ payload }) => {
+          syncClock(payload.serverNow);
+          activeCode = payload;
+          renderCode();
+        })
+        .on("broadcast", { event: "update" }, ({ payload }) => {
+          if (!activeCode || activeCode.id !== payload.id) return;
+          activeCode.usedCount = payload.usedCount;
+          renderCode();
+        })
+        .on("broadcast", { event: "end" }, ({ payload }) => {
+          if (activeCode && activeCode.id === payload.id) hideCode();
+        })
+        .on("broadcast", { event: "drawing" }, ({ payload }) => onDrawing(payload))
+        .on("broadcast", { event: "drawing-hide" }, ({ payload }) => onDrawingHide(payload))
+        .subscribe((status) => {
+          // 연결이 끊겼다가 다시 붙으면 그 사이에 놓친 변화가 있을 수 있어서 한 번 새로 받아옴.
+          if (status === "SUBSCRIBED") fetchActiveCode();
+        });
+    }
+  </script>
+</body>
+</html>

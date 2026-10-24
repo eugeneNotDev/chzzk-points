@@ -23,5 +23,6 @@ tools/donation-relay/chat-events.log
 # Claude 결과물(초안 스크린샷 등) — 저장소에 안 올림
 Claude outputs/
 
-# 새 버전(React) — 설치 폴더
+# 사이트(React) — 설치 폴더, 빌드 결과(배포는 GitHub Actions가 빌드해서 올림)
 web/node_modules/
+web/dist/

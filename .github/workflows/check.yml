@@ -1,0 +1,48 @@
+# 검사 — push·PR마다 사이트 타입 검사·빌드, 서버 함수 타입 검사.
+# 실패하면 GitHub 커밋 옆에 빨간 X가 뜸(사이트 배포와는 별개라 실패해도 사이트는 그대로).
+name: 검사
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  web:
+    name: 사이트 (타입 검사·빌드)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build:all
+
+  functions:
+    name: 서버 함수 (타입 검사)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          # 새 Deno는 타입 규칙이 바뀔 때가 있어서 확인한 버전으로 고정(올릴 땐 로컬에서 먼저 확인)
+          deno-version: v2.9.8
+      - name: deno check
+        run: deno check supabase/functions/*/index.ts
+
+  life-balance:
+    name: 유진 키우기 밸런스 점검(오류만)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 콘텐츠 오류 없는지 400판 돌려보기
+        shell: bash
+        run: node --experimental-strip-types --no-warnings tools/life-content/balance.ts 400 | tee balance.txt && ! grep -qE "오류 [1-9]" balance.txt
