@@ -1,4 +1,4 @@
-// 칭호 배지 값 해석 — 기존 사이트 chzzk-auth.js의 parseTitleStyle/titleBadgeForeground 등을 TS로 옮긴 것.
+// 칭호 배지 값 해석 — 기존 사이트 chzzk-auth.js의 parseTitleStyle 등을 TS로 옮긴 것.
 // DB엔 titles.color 한 칸에 "색 + 디자인 + 아이콘 + 별" 조합이 문자열로 저장돼 있음:
 //   "#00e5a0" / "rainbow" / "shine-crown-ffd43b" / "glow-rainbow" / "book-star-00e5a0"
 //   "basic-ff6bb5-5dc8ff"(그라데이션) / "glass-1b1e24-t-f2c230"(배경+글자)
@@ -76,18 +76,6 @@ export function mixHex(hex: string, targetHex: string, t: number) {
 function textColorOn(base: string) {
   const contrastWhite = 1.05 / (hexLuminance(base) + 0.05);
   return contrastWhite >= 3 ? "#ffffff" : "#111418";
-}
-
-export function titleBadgeForeground({ color, color2, mix, design }: TitleStyle) {
-  if (color === "rainbow") return "#ffffff";
-  if (color2 && mix === "ink") return color2;
-  const base = color2 ? mixHex(color, color2, 0.5) : color;
-  if (design === "glow") return mixHex(base, "#ffffff", 0.35);
-  if (design === "glass") {
-    const light = mixHex(base, "#ffffff", 0.55);
-    return hexLuminance(light) < 0.2 ? "#e9ecef" : light;
-  }
-  return textColorOn(base);
 }
 
 // 특수 칭호(닉네임 윗줄 작은 글씨)용 — 어두운 배경에서 너무 어두운 색은 밝게, 밝은 테마에선 너무 밝은 색은 어둡게.

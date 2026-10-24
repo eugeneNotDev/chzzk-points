@@ -1,6 +1,7 @@
 // 공지 본문 + 첨부(사진 갤러리, 다운로드 파일 목록) 보기 — 공지사항 화면과 홈 미리보기 팝업이 같이 씀.
 import { Download, FileText } from "lucide-react";
-import { formatFileSize, noticeAttachmentUrl, sanitizeNoticeHtml, type NoticeAttachment } from "../lib/notices";
+import { formatFileSize, noticeAttachmentUrl, type NoticeAttachment } from "../lib/notices";
+import { sanitizeNoticeHtml } from "../lib/noticeHtml";
 import styles from "./NoticeContent.module.css";
 
 export type PreviewFile = { name: string; size: number; url?: string; kind: "image" | "file" };

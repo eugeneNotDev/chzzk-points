@@ -1,0 +1,32 @@
+/* 특수 칭호 줄(지난달 순위·관리자 지급 칭호, 닉네임 윗줄 작은 글씨) — components/TitleBadge.tsx의 SpecialTitleLine.
+   상점 칭호 이름표는 title-plate.css. */
+
+@keyframes title-badge-rainbow {
+  from { background-position: 0% 50%; }
+  to { background-position: 200% 50%; }
+}
+
+.rk-sp { display: flex; align-items: center; column-gap: 4px; font-weight: 800; letter-spacing: 0.01em; }
+
+.rk-sp-item { display: inline-flex; align-items: center; gap: 2px; color: var(--sp, #f5c542); white-space: nowrap; }
+
+.rk-sp-icon { width: 1.05em; height: 1.05em; flex: 0 0 auto; position: relative; top: -0.09em; }
+
+.rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.rk-sp-item--rainbow { color: #ffd43b; }
+
+.rk-sp-item--rainbow .rk-sp-text {
+  background: linear-gradient(90deg, #ff4d5a, #ff922b, #ffd43b, #94d82d, #00e5a0, #5dc8ff, #9b6bff, #ff6bb5, #ff4d5a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: title-badge-rainbow 6s linear infinite;
+}
+
+.rk-sp-dot { color: var(--c-text-3); font-weight: 400; }
+
+:root[data-theme="light"] .rk-sp-item { color: var(--sp-l, var(--sp, #b07800)); }
+
+:root[data-theme="light"] .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad-l, var(--sp-grad)); -webkit-background-clip: text; background-clip: text; }
+
+:root[data-theme="light"] .rk-sp-item--rainbow { color: #e8a400; }

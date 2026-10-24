@@ -8,7 +8,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppLayout } from "./components/layout/AppLayout";
 import { ALL_NAV_ITEMS } from "./nav";
 import Home from "./pages/Home";
-import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 import { SkelGroup } from "./components/Skeleton";
 import { PAGES } from "./routes";
@@ -51,20 +50,16 @@ createRoot(document.getElementById("root")!).render(
           <Route element={<AppLayout />}>
             <Route index element={<Home />} />
             <Route path="index.html" element={<Home />} />
-            {ALL_NAV_ITEMS.filter((i) => i.path).map((item) => {
+            {ALL_NAV_ITEMS.filter((i) => PAGES[i.path]).map((item) => {
               const Page = PAGES[item.path];
               return (
                 <Route
                   key={item.path}
                   path={item.path}
                   element={
-                    Page ? (
-                      <Suspense fallback={<PageLoading />}>
-                        <Page />
-                      </Suspense>
-                    ) : (
-                      <ComingSoon item={item} />
-                    )
+                    <Suspense fallback={<PageLoading />}>
+                      <Page />
+                    </Suspense>
                   }
                 />
               );

@@ -149,16 +149,6 @@
   border-radius: 50%;
   background: var(--c-live);
 }
-.newDot + .soon {
-  margin-left: 8px;
-}
-.soon {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--c-text-4);
-  opacity: 0.8;
-}
 
 .topUser {
   display: flex;

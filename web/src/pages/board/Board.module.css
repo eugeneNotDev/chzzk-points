@@ -649,20 +649,6 @@
   border-top: 0;
   padding-top: 0;
 }
-.cform {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-.cform textarea {
-  flex: 1;
-  min-height: 42px;
-  resize: none;
-  line-height: 1.5;
-}
-.cform :global(.btn) {
-  flex: none;
-}
 .note {
   margin: 8px 0 0;
   color: var(--c-text-4);
@@ -814,66 +800,6 @@
 }
 
 /* ── 넓은 화면 옆 칸 ── */
-.writeCard {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 22px 24px;
-  border-radius: var(--r-xl);
-  background:
-    radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--c-accent) 14%, transparent), transparent 60%),
-    var(--c-surface);
-  border: 1px solid color-mix(in srgb, var(--c-accent) 22%, var(--c-border));
-}
-.writeTitle {
-  font-family: var(--font-logo);
-  font-size: 18px;
-}
-.writeDesc {
-  margin-bottom: 4px;
-  color: var(--c-text-3);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.asideList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.asideRow {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  transition: background-color var(--dur) var(--ease-out);
-}
-.asideRow:hover {
-  background: var(--c-hover);
-}
-.asideOn {
-  background: var(--c-accent-soft);
-}
-.asideTitle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.asideMeta {
-  color: var(--c-text-4);
-  font-size: 12px;
-}
-.asideEmpty {
-  padding: 16px 12px;
-  color: var(--c-text-3);
-  font-size: 13px;
-}
 
 /* ── 좋아요 하트 터짐(Lucian #022) — 크기는 하트(1em) 기준 비율 ── */
 .hb {

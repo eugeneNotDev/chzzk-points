@@ -643,9 +643,6 @@
   .split {
     grid-template-columns: minmax(0, 1fr) 360px;
   }
-  .split-wide-aside {
-    grid-template-columns: minmax(0, 1fr) 420px;
-  }
   .split-aside {
     position: sticky;
     top: 84px;

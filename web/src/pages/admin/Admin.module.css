@@ -30,9 +30,6 @@
 .inline .select {
   width: auto;
 }
-:global(.select).inlineSel {
-  width: auto;
-}
 
 /* ── 접기 카드 제목 ── */
 .collapseBtn {

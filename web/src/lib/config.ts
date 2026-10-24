@@ -37,6 +37,7 @@ export const API = {
   ledgerBalance: `${FUNCTIONS_BASE_URL}/ledger-balance`,
   push: `${FUNCTIONS_BASE_URL}/push`,
   adminRanking: `${FUNCTIONS_BASE_URL}/admin-ranking`,
+  adminSchedule: `${FUNCTIONS_BASE_URL}/admin-schedule`,
   adminBackup: `${FUNCTIONS_BASE_URL}/admin-backup`,
   adminDonations: `${FUNCTIONS_BASE_URL}/admin-donations`,
   adminMinigameBlock: `${FUNCTIONS_BASE_URL}/admin-minigame-block`,

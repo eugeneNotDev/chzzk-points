@@ -90,36 +90,8 @@
   flex-direction: column;
   gap: 20px;
 }
-
-.collapseHead {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.collapseHead h2 {
-  font-size: 17px;
-  font-weight: 800;
-}
-.collapseHead svg {
-  margin-left: auto;
-  color: var(--c-text-3);
-  transition: transform 0.2s;
-}
 .rot {
   transform: rotate(180deg);
-}
-.collapseBody {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 12px;
 }
 .link {
   color: var(--c-accent);
@@ -143,12 +115,6 @@
 .titleSel {
   border-color: var(--c-accent);
   background: var(--c-accent-soft);
-}
-.titleBadge {
-  font-size: 18px;
-  min-height: 30px;
-  display: flex;
-  align-items: center;
 }
 
 .toggleRow {
@@ -283,17 +249,6 @@
 .maTabs { margin-left: auto; }
 
 /* 특수 칭호 카드 */
-.spHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 0 0 6px;
-  font-size: 17px;
-}
-.spHead .muted {
-  font-size: 13px;
-  font-weight: 500;
-}
 .spStage {
   display: flex;
   flex-direction: column;

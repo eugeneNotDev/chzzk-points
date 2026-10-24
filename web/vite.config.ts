@@ -25,13 +25,17 @@ export default defineConfig(({ mode }) => {
       outDir: live ? "../docs" : "../docs/beta",
       emptyOutDir: !live,
       assetsDir: live ? "app" : "assets",
-      // 라이브러리를 따로 묶어두면 사이트를 다시 배포해도 시청자 브라우저가 라이브러리는 캐시된 걸 그대로 씀.
+      // 라이브러리를 앱 코드와 따로 묶어두면 사이트를 다시 배포해도 시청자 브라우저가 라이브러리는 캐시된 걸 그대로 씀.
+      // (패키지 이름 목록으로 지정하면 react-dom/client·framer-motion처럼 하위 경로·내부 패키지가 앱 파일에 섞여 들어가서 경로로 나눔)
       rollupOptions: {
         output: {
-          manualChunks: {
-            react: ["react", "react-dom", "react-router-dom"],
-            data: ["@supabase/supabase-js", "@tanstack/react-query"],
-            motion: ["motion"],
+          manualChunks(id: string) {
+            const m = id.match(/node_modules\/((?:@[^/]+\/)?[^/]+)\//);
+            if (!m) return;
+            const pkg = m[1];
+            if (/^(react|react-dom|scheduler|react-router|react-router-dom|cookie|set-cookie-parser)$/.test(pkg)) return "react";
+            if (/^(@supabase\/|@tanstack\/)/.test(pkg)) return "data";
+            if (/^(motion|framer-motion|motion-dom|motion-utils)$/.test(pkg)) return "motion";
           },
         },
       },

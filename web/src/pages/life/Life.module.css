@@ -1737,12 +1737,6 @@
 }
 
 /* 돈쓰기 */
-.shopNote {
-  font-size: 12px;
-  color: var(--c-text-3);
-  margin: -4px 0 10px;
-  line-height: 1.5;
-}
 .catTabs {
   display: flex;
   gap: 4px;
@@ -1768,25 +1762,6 @@
   background: var(--c-text);
   border-color: var(--c-text);
   color: var(--c-bg);
-}
-.shopList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-.shopList li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 10px 0;
-  border-top: 1px solid var(--c-border);
-}
-.shopList li:first-child {
-  border-top: 0;
-  padding-top: 2px;
 }
 .shopInfo {
   flex: 1;

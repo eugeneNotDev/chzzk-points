@@ -1,8 +1,7 @@
-// 새로 만든 화면 목록(주소 → 화면). 여기 등록된 메뉴만 실제 화면이 뜨고, 나머지는 "준비 중".
+// 화면 목록(주소 → 화면).
 // 화면마다 따로 불러와서(lazy) 처음 접속할 때 받는 양을 줄이고, 첫 화면이 뜬 뒤 한가할 때 나머지 화면도
 // 미리 받아둠(preloadPages) — 메뉴를 옮길 때 "불러오는 중"이 깜빡이지 않고 바로 넘어가게.
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { QUIZ_ENABLED } from "./lib/quiz";
 import { LIFE_ENABLED } from "./lib/life";
 
 type Loader = () => Promise<{ default: ComponentType }>;
@@ -16,8 +15,7 @@ const LOADERS: Record<string, Loader> = {
   "shop.html": () => import("./pages/shop/Shop"),
   "titles.html": () => import("./pages/shop/Titles"),
   "predict.html": () => import("./pages/predict/Predict"),
-  // 유진고사 — 베타 빌드에서만(lib/quiz.ts QUIZ_ENABLED)
-  ...(QUIZ_ENABLED ? { "quiz.html": () => import("./pages/quiz/Quiz") } : {}),
+  "quiz.html": () => import("./pages/quiz/Quiz"),
   "roulette.html": () => import("./pages/games/Roulette"),
   "rps.html": () => import("./pages/games/Rps"),
   "oddeven.html": () => import("./pages/games/OddEven"),
@@ -45,5 +43,3 @@ export function preloadPages(isAdmin = false) {
   if (ric) ric(run);
   else setTimeout(run, 1500);
 }
-
-export const isReady = (path: string) => path === "" || path in PAGES;

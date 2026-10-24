@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
+import { lastJong } from "./format";
 
 // 베타(/beta/) 빌드에서만 메뉴·주소에 들어감. 실제 사이트에 열 때 true로 바꾸고(유진고사와 같은 방식),
 // DB의 life_settings.is_open도 true로 바꾸면 시청자 누구나 플레이(그 전엔 서버가 주인 계정만 허용).
@@ -235,8 +236,7 @@ export function histStats(row: number[] | undefined, fallback: Stats): Stats {
 
 // 한국어 조사(서버 josa.ts와 같은 규칙): 받침 있으면 을/으로, 없으면 를/로
 export function josa(w: string, j: "을" | "로" | "와" | "가") {
-  const ch = w.charCodeAt(w.length - 1);
-  const jong = ch >= 0xac00 && ch <= 0xd7a3 ? (ch - 0xac00) % 28 : 0;
+  const jong = lastJong(w) ?? 0;
   if (j === "로") return w + (jong !== 0 && jong !== 8 ? "으로" : "로");
   const pair = { 을: ["을", "를"], 와: ["과", "와"], 가: ["이", "가"] }[j];
   return w + (jong !== 0 ? pair[0] : pair[1]);

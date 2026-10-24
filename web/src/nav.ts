@@ -1,8 +1,7 @@
 // 사이트 메뉴 구조 — 사이드바, 모바일 더보기 시트, 라우터가 전부 이 목록 하나를 봄.
 // 메뉴를 추가/이름 변경할 땐 여기만 고치면 됨.
 // path는 기존 사이트 주소(xxx.html)와 똑같이 둬서 교체 후에도 즐겨찾기·링크가 그대로 동작함.
-// 실제 화면이 있는지는 routes.ts에 등록됐는지로 판단(없으면 "준비 중").
-import { QUIZ_ENABLED } from "./lib/quiz";
+// 화면은 routes.ts에 등록.
 import { LIFE_ENABLED } from "./lib/life";
 import {
   CalendarDays,
@@ -31,7 +30,7 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   adminOnly?: boolean;
-  // 퀴즈(유진고사) — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임. 베타 빌드에서만 들어감(lib/quiz.ts QUIZ_ENABLED).
+  // 퀴즈 — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임
   quiz?: boolean;
   // 유진 키우기 — 테스트 중이라 베타 빌드에서만, 관리자에게만 보임(lib/life.ts LIFE_ENABLED)
   life?: boolean;
@@ -39,7 +38,7 @@ export type NavItem = {
 
 export type NavGroup = { title: string | null; items: NavItem[] };
 
-export const NAV_GROUPS: NavGroup[] = [
+const GROUPS: NavGroup[] = [
   {
     title: null,
     items: [
@@ -87,19 +86,9 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+// 실제 사이트 빌드에선 유진 키우기를 메뉴·주소에서 뺌
+export const NAV_GROUPS: NavGroup[] = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => LIFE_ENABLED || !i.life) }));
 export const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
-
-// 실제 사이트 빌드에선 유진고사를 메뉴·주소에서 아예 뺌
-if (!QUIZ_ENABLED) {
-  for (const g of NAV_GROUPS) g.items = g.items.filter((i) => !i.quiz);
-  ALL_NAV_ITEMS.splice(0, ALL_NAV_ITEMS.length, ...ALL_NAV_ITEMS.filter((i) => !i.quiz));
-}
-
-// 실제 사이트 빌드에선 유진 키우기도 메뉴·주소에서 뺌
-if (!LIFE_ENABLED) {
-  for (const g of NAV_GROUPS) g.items = g.items.filter((i) => !i.life);
-  ALL_NAV_ITEMS.splice(0, ALL_NAV_ITEMS.length, ...ALL_NAV_ITEMS.filter((i) => !i.life));
-}
 
 // 모바일 하단 탭바 — 자주 쓰는 4개 + 더보기
 export const MOBILE_TABS = ["", "attendance.html", "shop.html", "freebox.html"];

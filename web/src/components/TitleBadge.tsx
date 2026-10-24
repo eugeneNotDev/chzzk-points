@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { TITLE_ICON_MAP } from "../lib/titleIcons";
-import { mixHex, parseTitleStyle, spForDark, spForLight, titleBadgeForeground } from "../lib/titleStyle";
+import { mixHex, parseTitleStyle, spForDark, spForLight } from "../lib/titleStyle";
 
 // 아이콘 SVG 내용은 이 사이트 코드에 들어있는 고정 데이터(titleIcons.ts)라 그대로 넣어도 안전함.
 export function TitleIconSvg({ id, className = "tb-icon" }: { id: string; className?: string }) {
@@ -9,54 +9,6 @@ export function TitleIconSvg({ id, className = "tb-icon" }: { id: string; classN
   const inner = icon.inner ?? `<path d="${icon.d}"/>`;
   return (
     <svg className={className} viewBox={icon.viewBox ?? "0 0 256 256"} fill="currentColor" aria-hidden="true" dangerouslySetInnerHTML={{ __html: inner }} />
-  );
-}
-
-const STAR_PATH = "M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z";
-
-// 상점 구매/관리자 지급 칭호 배지 — 모양은 기존 사이트와 완전히 같음(styles/title-badge.css).
-export function TitleBadge({ name, value, className }: { name: string; value: string | null | undefined; className?: string }) {
-  const style = parseTitleStyle(value);
-  const { color, color2, mix, design, icon, star } = style;
-  const classes = ["title-badge"];
-  if (design !== "basic") classes.push(`title-badge--${design}`);
-  if (color === "rainbow") classes.push("title-badge--rainbow");
-  if (color2) classes.push(mix === "ink" ? "title-badge--ink" : "title-badge--duo");
-  if (icon) classes.push("title-badge--icon");
-  if (star) classes.push("title-badge--starred");
-  if (className) classes.push(className);
-
-  let vars: Record<string, string> = {};
-  if (color !== "rainbow") {
-    vars = {
-      "--badge-bg": color,
-      "--badge-fg": titleBadgeForeground(style),
-      "--badge-light": mixHex(color, "#ffffff", 0.55),
-      "--badge-dark": mixHex(color, "#000000", 0.32),
-    };
-    if (color2) {
-      Object.assign(vars, {
-        "--badge-bg2": color2,
-        "--badge-light2": mixHex(color2, "#ffffff", 0.55),
-        "--badge-dark2": mixHex(color2, "#000000", 0.32),
-      });
-    }
-  }
-  return (
-    <span className={classes.join(" ")} style={vars as CSSProperties}>
-      {design === "shine" && <span className="tb-sweep" aria-hidden="true" />}
-      {icon && <TitleIconSvg id={icon} />}
-      <span className="tb-text">{name}</span>
-      {star && (
-        <span className="tb-stars" aria-hidden="true">
-          {[1, 2, 3].map((i) => (
-            <svg key={i} className={`tb-star tb-star--${i}`} viewBox="0 0 24 24">
-              <path fill="currentColor" d={STAR_PATH} />
-            </svg>
-          ))}
-        </span>
-      )}
-    </span>
   );
 }
 

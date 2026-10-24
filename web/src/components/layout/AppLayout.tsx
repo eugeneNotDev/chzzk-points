@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { LogIn, LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import { ALL_NAV_ITEMS, MOBILE_TABS, NAV_GROUPS, type NavItem } from "../../nav";
-import { isReady, preloadPages } from "../../routes";
+import { preloadPages } from "../../routes";
 import { useHasNewNotice } from "../../lib/notices";
 import { usePredictionLive, useQuizPeek } from "../../lib/quiz";
 import { logout, startLogin, useAuth } from "../../lib/auth";
@@ -54,7 +54,6 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                 <item.icon size={18} strokeWidth={2} aria-hidden="true" />
                 <span>{item.label}</span>
                 {item.path === "notice.html" && newNotice && <span className={styles.newDot} aria-label="새 공지" />}
-                {!isReady(item.path) && <span className={styles.soon}>준비 중</span>}
                 {((item.quiz && quizLive) || (item.path === "predict.html" && predictLive)) && <span className={styles.liveTag}>진행 중</span>}
               </NavLink>
             ))}

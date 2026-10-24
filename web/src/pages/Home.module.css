@@ -321,20 +321,6 @@
   color: var(--c-live-text);
   background: var(--c-live-soft);
 }
-
-.rankList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.rankRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 6px 12px;
-  border-radius: 10px;
-}
 .me {
   background: var(--c-accent-soft);
 }
@@ -356,19 +342,6 @@
 .rankName :global(.rk-sp) {
   font-size: 11px;
 }
-.rankNameLine {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 6px;
-}
-.rankNameText {
-  min-width: 0;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 .muted {
   color: var(--c-text-3);
   font-weight: 500;
@@ -381,12 +354,6 @@
   border: 1px solid var(--c-border-strong);
   border-radius: 4px;
   padding: 0 4px;
-}
-.rankPoints {
-  flex: none;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--c-text-2);
 }
 
 /* ── 게시판 ── */
@@ -407,11 +374,6 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-}
-.segment .segOn {
-  background: var(--c-surface-3);
-  color: var(--c-text);
-  font-weight: 700;
 }
 .boardChip {
   flex: none;
@@ -448,16 +410,6 @@
   margin-left: 5px;
   font-size: 13px;
   color: var(--c-accent);
-}
-
-.skel {
-  padding: 4px 12px 8px;
-}
-.skelRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 46px;
 }
 
 @media (max-width: 599px) {

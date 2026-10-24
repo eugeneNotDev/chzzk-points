@@ -2,13 +2,12 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../../components/ui";
 import { apiFetch, ApiError } from "../../lib/auth";
-import { FUNCTIONS_BASE_URL } from "../../lib/config";
+import { API } from "../../lib/config";
 import { WEEK_KO } from "../../lib/format";
 import type { SchedRow } from "./Schedule";
 import styles from "./Schedule.module.css";
 import { confirmDialog } from "../../lib/dialog";
 
-const URL_ = `${FUNCTIONS_BASE_URL}/admin-schedule`;
 const pad = (n: number) => String(n).padStart(2, "0");
 const ERRORS: Record<string, string> = {
   invalid_title: "제목은 1~30자로 입력해주세요.",
@@ -47,7 +46,7 @@ export function ScheduleEditor({ day, row, onClose, onSaved }: { day: string | n
     setBusy(true);
     setStatus({ text: "저장 중..." });
     try {
-      await apiFetch(URL_, { body: payload });
+      await apiFetch(API.adminSchedule, { body: payload });
       onSaved();
     } catch (e) {
       const code = e instanceof ApiError ? String(e.body.error ?? "") : "";

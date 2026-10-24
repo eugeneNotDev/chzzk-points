@@ -6,9 +6,6 @@ import { apiFetch, useAuth } from "./auth";
 import { supabase } from "./supabase";
 import { useTableRefetch } from "./realtime";
 
-// 퀴즈 기능 켜기/끄기. 2026-10-20 실제 사이트에 적용(베타 테스트 끝). 다시 베타 전용으로 돌리려면 import.meta.env.MODE !== "live"로.
-export const QUIZ_ENABLED: boolean = true;
-
 // OX: 출제 후 이 시간 동안은 "곧 시작" 안내만 보여주고(방송 딜레이 여유), 그 뒤부터 제한시간을 셈. 서버의 OX_DELAY_GRACE_SEC와 같아야 함.
 export const OX_READY_MS = 3000;
 
@@ -101,10 +98,9 @@ export type QuizHistoryItem = {
 
 // 메뉴에 띄울지(로그인 없이도) — 진행 중이거나 방금 끝난 회차가 있을 때만
 export function useQuizPeek() {
-  useTableRefetch("quiz_pings", [["quiz-peek"]], { event: "INSERT", filter: "kind=eq.state", minIntervalMs: 3000, settleMs: 400, enabled: QUIZ_ENABLED });
+  useTableRefetch("quiz_pings", [["quiz-peek"]], { event: "INSERT", filter: "kind=eq.state", minIntervalMs: 3000, settleMs: 400 });
   return useQuery({
     queryKey: ["quiz-peek"],
-    enabled: QUIZ_ENABLED,
     staleTime: 15_000,
     refetchInterval: 60_000,
     queryFn: async () => {
@@ -125,7 +121,7 @@ export function useQuiz() {
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["quiz", channelId],
-    enabled: isLoggedIn && QUIZ_ENABLED,
+    enabled: isLoggedIn,
     refetchInterval: (q) => {
       const vs = q.state.data?.quizzes ?? [];
       return vs.some((v) => v.kind === "ox" && v.status === "open") ? 15_000 : 60_000;
@@ -137,7 +133,7 @@ export function useQuiz() {
     filter: "kind=eq.state",
     minIntervalMs: 700,
     settleMs: 150,
-    enabled: isLoggedIn && QUIZ_ENABLED,
+    enabled: isLoggedIn,
   });
 
   const vs = q.data?.quizzes;
@@ -168,7 +164,7 @@ export function useQuizHistory() {
   const { isLoggedIn, channelId } = useAuth();
   return useQuery({
     queryKey: ["quiz-history", channelId],
-    enabled: isLoggedIn && QUIZ_ENABLED,
+    enabled: isLoggedIn,
     staleTime: 60_000,
     queryFn: () => apiFetch<{ quizzes: QuizView[]; history: QuizHistoryItem[] }>(`${API.quiz}?histOnly=1`),
   });

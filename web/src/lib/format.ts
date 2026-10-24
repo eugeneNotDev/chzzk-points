@@ -31,9 +31,15 @@ export function formatLeft(ms: number) {
 
 export const WEEK_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+// 마지막 글자의 받침 번호(0 = 받침 없음, 8 = ㄹ). 한글 음절이 아니면 null.
+export function lastJong(word: string): number | null {
+  const c = word.charCodeAt(word.length - 1) - 0xac00;
+  return c >= 0 && c <= 11171 ? c % 28 : null;
+}
+
 // 받침에 따라 조사 고르기 — josa("공지사항", "을", "를") → "을". 한글이 아니면 "을(를)".
 export function josa(word: string, withBatchim: string, without: string) {
-  const c = word.charCodeAt(word.length - 1) - 0xac00;
-  if (c < 0 || c > 11171) return `${withBatchim}(${without})`;
-  return c % 28 === 0 ? without : withBatchim;
+  const jong = lastJong(word);
+  if (jong === null) return `${withBatchim}(${without})`;
+  return jong === 0 ? without : withBatchim;
 }
