@@ -11,7 +11,7 @@
 // PUSH_PUBLIC = false면 관리자 계정만 알림을 켤 수 있음(테스트용). 2026-10 공개(true) — 사이트의 PWA_PUBLIC과 같이 맞출 것.
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|not_open
 
-import { getAdminClient } from "../_shared/db.ts";
+import { getAdminClient, type Admin } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
@@ -21,8 +21,6 @@ import { sendPush, type VapidKeys } from "../_shared/webpush.ts";
 const PUSH_PUBLIC = true;
 const MAX_PER_USER = 10; // 한 사람이 알림 켤 수 있는 기기 수
 const LIVE_URL = `https://chzzk.naver.com/live/${OWNER_CHANNEL_ID}`;
-
-type Admin = ReturnType<typeof getAdmin>;
 
 async function getSecret(admin: Admin, name: string): Promise<string | null> {
   const { data } = await admin.from("app_secrets").select("value").eq("name", name).maybeSingle();

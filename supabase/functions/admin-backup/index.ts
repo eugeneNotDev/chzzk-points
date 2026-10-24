@@ -9,7 +9,7 @@
 // POST { action: "list" }               → { items: [{ path, kind, createdAt, sizeBytes }] }   (관리자)
 // POST { action: "download", path }     → { url }  (60초짜리 다운로드 링크, 관리자)
 
-import { getAdminClient } from "../_shared/db.ts";
+import { getAdminClient, type Admin } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
@@ -27,8 +27,6 @@ const TABLES = [
   "board_posts", "board_comments", "board_images", "board_review_rewards", "board_reports", "board_post_likes", "board_comment_likes", "song_requests",
   "egg_progress",
 ];
-
-type Admin = ReturnType<typeof getAdmin>;
 
 async function gzip(text: string): Promise<Uint8Array> {
   const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));

@@ -15,7 +15,7 @@
 //              방송 중이 아니면 저장하지 않고 파일을 지움(live: false → 오버레이는 천천히 다시 물어봄).
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned|blocked / 413 too_large / 429 too_fast
 
-import { getAdminClient } from "../_shared/db.ts";
+import { getAdminClient, type Admin } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
@@ -103,8 +103,6 @@ async function cleanup(admin: Admin) {
     console.error(`그림 정리 실패: ${e instanceof Error ? e.message : e}`);
   }
 }
-
-type Admin = ReturnType<typeof getAdmin>;
 
 function newCode() {
   const b = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));

@@ -13,7 +13,7 @@
 // admin-restore   { id }                 → { ok }      (관리자: 잘못 누른 "틀었음" 되돌리기 → 다시 대기)
 // 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 409 duplicate|already_today
 
-import { getAdminClient } from "../_shared/db.ts";
+import { getAdminClient, type Admin } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
@@ -23,8 +23,6 @@ const MAX_TITLE = 60;
 const MAX_ARTIST = 40;
 const MAX_REASON = 80;
 const HISTORY_PAGE = 20;
-
-type Admin = ReturnType<typeof getAdmin>;
 
 function kstDay(ms = Date.now()) {
   return new Date(ms + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
