@@ -3,7 +3,7 @@
 //   - 매주 자동: pg_cron이 x-backup-key 헤더(app_secrets.backup_key 값)를 붙여 호출 → kind "auto"
 //   - 관리자 수동: 관리자 페이지 "백업" 탭에서 "지금 백업" → kind "manual"
 // 보관: 자동 최근 8개, 수동 최근 10개(그보다 오래된 건 지움).
-// 비밀값/토큰 테이블(app_secrets, streamer_tokens, hidden_pages)과 금방 지워지는 신호용 테이블은 백업에서 뺌.
+// 비밀값/토큰 테이블(app_secrets, streamer_tokens)과 금방 지워지는 신호용 테이블은 백업에서 뺌.
 //
 // POST { action: "run" }                → { ok, path, sizeBytes, tables }
 // POST { action: "list" }               → { items: [{ path, kind, createdAt, sizeBytes }] }   (관리자)

@@ -94,9 +94,6 @@ verify_jwt = false
 [functions.odd-even]
 verify_jwt = false
 
-[functions.pages]
-verify_jwt = false
-
 [functions.predictions]
 verify_jwt = false
 
