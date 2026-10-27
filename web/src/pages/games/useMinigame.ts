@@ -101,7 +101,6 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string, 
     else if (code === "invalid_bet") setError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
     else if (code === "not_today") setError("오늘의 미니게임이 바뀌었어요. 위의 새 게임으로 버튼을 눌러주세요.");
     else if (code === "round_active") setError("이미 날고 있는 로켓이 있어요. 불러오는 중…");
-    else if (code === "invalid_auto") setError("자동 내리기는 x1.01 ~ x200 사이로 정해 주세요.");
     else if (code !== "banned" && code !== "unauthorized") setError(`${name}을(를) 하지 못했어요. 다시 시도해주세요.`);
     if (["insufficient_balance", "tier_required", "minigame_blocked"].includes(code)) qc.invalidateQueries({ queryKey: key });
   }

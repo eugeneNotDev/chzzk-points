@@ -2,7 +2,7 @@
 //
 // GET → { balance, maxBalanceReached, requiredPoints, requiredTierName, eligible, blocked, blockedUntil, minBet, maxBet,
 //         growth, maxMultiplier, cooldownSeconds: 0, rotation, active(진행 중인 판 or null), serverNow, recent }
-// POST { action: "start", bet, auto? }   → 발사(베팅만큼 바로 빠짐). auto: 자동 내리기 배수(선택)
+// POST { action: "start", bet }         → 발사(베팅만큼 바로 빠짐)
 // POST { action: "cashout", roundId }    → 지금 배수로 내리기(요청이 DB에 도착한 순간 기준)
 // POST { action: "watch", roundId }      → 판이 끝날 때까지(최대 25초) 기다렸다가 상태를 돌려줌.
 //                                          끝나는 시각 전엔 절대 응답하지 않아서 터지는 배수가 미리 새지 않음.
@@ -169,10 +169,8 @@ async function handlePost(admin: Admin, channelId: string, req: Request) {
 
   const bet = typeof body.bet === "number" ? body.bet : Number.NaN;
   if (!Number.isInteger(bet) || bet < MIN_BET || bet > MAX_BET) return json({ error: "invalid_bet" }, 400);
-  const auto = body.auto == null || body.auto === "" ? null : Number(body.auto);
-  if (auto != null && (!Number.isFinite(auto) || auto < 1.01 || auto > MAX_MULT)) return json({ error: "invalid_auto" }, 400);
-
-  return await rpc(admin, "rocket_start", { p_channel_id: channelId, p_bet: bet, p_auto: auto });
+  // 자동 내리기는 없앰(DB 함수는 auto 인자를 아직 받지만 항상 null로 보냄)
+  return await rpc(admin, "rocket_start", { p_channel_id: channelId, p_bet: bet, p_auto: null });
 }
 
 Deno.serve(async (req: Request) => {

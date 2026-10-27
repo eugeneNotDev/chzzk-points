@@ -54,7 +54,6 @@ export default function Rocket({ top }: { top?: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [flight, setFlight] = useState<Flight | null>(null);
   const [now, setNow] = useState(Date.now());
-  const [autoText, setAutoText] = useState("");
   const [cashing, setCashing] = useState(false);
   const [result, setResult] = useState<ResultView | null>(null);
   const finished = useRef(new Set<number>());
@@ -157,10 +156,8 @@ export default function Rocket({ top }: { top?: ReactNode }) {
     begin(active, game.query.dataUpdatedAt);
   }, [active?.roundId, fetching]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const auto = autoText.trim() === "" ? null : Number(autoText.replace(/[^0-9.]/g, ""));
-  const autoBad = auto != null && (!Number.isFinite(auto) || auto < 1.01 || auto > (game.state?.maxMultiplier ?? 200));
   // 내린 뒤(after)엔 로켓이 아직 날고 있어도 바로 다음 판 발사 가능
-  const canLaunch = game.canPlay && !autoBad && phase !== "flying";
+  const canLaunch = game.canPlay && phase !== "flying";
 
   async function launch() {
     if (!canLaunch) return;
@@ -169,7 +166,7 @@ export default function Rocket({ top }: { top?: ReactNode }) {
     game.setPlaying(true);
     const sentAt = Date.now();
     try {
-      const r = await apiFetch<Round>(API.rocket, { body: { action: "start", bet: game.bet, auto: auto ?? undefined } });
+      const r = await apiFetch<Round>(API.rocket, { body: { action: "start", bet: game.bet } });
       game.setBalance(r.balance);
       if (!game.alive.current) return;
       begin(r, (sentAt + Date.now()) / 2);
@@ -231,7 +228,7 @@ export default function Rocket({ top }: { top?: ReactNode }) {
   const tone = crashedNow ? styles.rocketCrashed : flight?.cashedAt != null ? styles.rocketCashed : "";
 
   let status = "걸 포인트를 정하고 발사해 보세요";
-  if (phase === "flying") status = flight?.autoAt ? `x${x2(flight.autoAt)}에서 자동으로 내려요 · 지금 내리면 ${fmt(Math.floor((flight?.bet ?? 0) * mult))}P` : `지금 내리면 ${fmt(Math.floor((flight?.bet ?? 0) * mult))}P`;
+  if (phase === "flying") status = `지금 내리면 ${fmt(Math.floor((flight?.bet ?? 0) * mult))}P`;
   if (phase === "after") status = `x${x2(flight?.cashedAt ?? 1)}에서 내렸어요 · 로켓은 아직 나는 중`;
   if (phase === "done" && flight) status = flight.cashedAt != null ? `x${x2(flight.cashedAt)}에서 내렸어요 · x${x2(flight.crashAt ?? 0)}에서 터짐` : "펑! 못 내렸어요";
 
@@ -283,19 +280,6 @@ export default function Rocket({ top }: { top?: ReactNode }) {
             </div>
           </div>
           <BetPanel game={game}>
-            <label className={styles.autoRow}>
-              <span className="muted">자동 내리기 (선택)</span>
-              <input
-                className={`num ${autoBad ? styles.bad : ""}`}
-                inputMode="decimal"
-                placeholder="예: 2.00"
-                value={autoText}
-                disabled={phase === "flying" || phase === "after"}
-                onChange={(e) => setAutoText(e.target.value.replace(/[^0-9.]/g, "").slice(0, 6))}
-                aria-label="자동 내리기 배수"
-              />
-            </label>
-            {autoBad && <p className={`${styles.hint} ${styles.hintBad}`}>자동 내리기는 x1.01 ~ x200 사이로 정해 주세요</p>}
             {phase === "flying" ? (
               <button type="button" className={`btn btn-lg btn-block ${styles.cashBtn}`} disabled={cashing || flight?.crashAt != null} onClick={cashOut}>
                 {cashing ? "내리는 중…" : `x${x2(mult)} 내리기 (+${fmt(Math.floor((flight?.bet ?? 0) * mult) - (flight?.bet ?? 0))}P)`}
@@ -305,7 +289,7 @@ export default function Rocket({ top }: { top?: ReactNode }) {
                 {game.playing ? "발사 준비 중…" : game.waiting ? "잠시만요…" : phase === "done" || phase === "after" ? "다시 발사" : "발사"}
               </button>
             )}
-            <p className={styles.hint}>내리기는 서버에 도착한 순간의 배수로 확정돼요. 창을 닫아도 판은 계속 진행돼요(자동 내리기가 없으면 결국 터져요).</p>
+            <p className={styles.hint}>내리기는 서버에 도착한 순간의 배수로 확정돼요. 창을 닫아도 판은 계속 진행되고, 결국 터진 걸로 끝나요.</p>
             <GameResult result={result} />
           </BetPanel>
         </section>

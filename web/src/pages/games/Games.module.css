@@ -1060,32 +1060,6 @@
 .rocketCashed b {
   color: var(--c-accent);
 }
-.autoRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-}
-.autoRow input {
-  width: 120px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--c-border);
-  background: var(--c-surface-2);
-  color: var(--c-text);
-  font-size: 16px;
-  font-weight: 700;
-  text-align: right;
-}
-.autoRow input:focus {
-  outline: none;
-  border-color: var(--c-accent);
-}
-.autoRow input.bad {
-  border-color: var(--c-danger);
-}
 .cashBtn {
   background: #ffb347;
   border-color: #ffb347;
