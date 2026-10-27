@@ -23,7 +23,7 @@ const FILLER: Record<string, number> = { "0": 10, "0.5": 14, "1": 26, "1.2": 14,
 const colorOf = (m: number) => COLORS[String(m)] || (m >= 5 ? "#f2c230" : "#6b7480");
 
 export default function Roulette({ top }: { top?: ReactNode }) {
-  const game = useMinigame<RouletteState>(API.roulette, "룰렛");
+  const game = useMinigame<RouletteState>(API.roulette, "룰렛", { maxBet: 200_000_000 });
   const mults = game.state?.multipliers?.length ? game.state.multipliers : [0, 0.5, 1, 1.2, 1.5, 2, 3, 5, 10];
   const filler = () => {
     const pool = mults.map((m) => [m, FILLER[String(m)] ?? 8] as const);

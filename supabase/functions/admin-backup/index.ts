@@ -25,7 +25,6 @@ const TABLES = [
   "stream_codes", "stream_code_redemptions", "stream_code_failures",
   "notices", "notice_attachments", "broadcast_schedule", "broadcast_sessions",
   "board_posts", "board_comments", "board_images", "board_review_rewards", "board_reports", "board_post_likes", "board_comment_likes", "song_requests",
-  "egg_progress",
 ];
 
 async function gzip(text: string): Promise<Uint8Array> {

@@ -25,7 +25,8 @@ export type GameStateBase = {
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function useMinigame<S extends GameStateBase>(url: string, name: string) {
+export function useMinigame<S extends GameStateBase>(url: string, name: string, opts: { maxBet?: number } = {}) {
+  const maxBet = opts.maxBet ?? MAX_BET;
   const { isLoggedIn, channelId } = useAuth();
   const qc = useQueryClient();
   const key = ["minigame", url, channelId];
@@ -65,7 +66,7 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     if (balance < MIN_BET) [bad, hint] = [true, `${fmt(MIN_BET)}P 이상 있어야 할 수 있어요`];
     else if (bet < MIN_BET) [bad, hint] = [true, `${fmt(MIN_BET)}P 이상 걸어야 해요`];
     else if (bet > balance) [bad, hint] = [true, "보유 포인트보다 많이 걸 수 없어요"];
-    else if (bet > MAX_BET) [bad, hint] = [true, `한 번에 ${fmt(MAX_BET)}P까지 걸 수 있어요`];
+    else if (bet > maxBet) [bad, hint] = [true, `한 번에 ${fmt(maxBet)}P까지 걸 수 있어요`];
   }
 
   const canPlay = !bad && !playing && !waiting;
@@ -98,7 +99,9 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     else if (code === "tier_required") setError(`${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요.`);
     else if (code === "minigame_blocked") setError("미니게임 참여가 제한된 계정이에요.");
     else if (code === "invalid_bet") setError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
-    else if (code === "not_today") setError("오늘의 미니게임이 바뀌었어요. 새로고침해 주세요.");
+    else if (code === "not_today") setError("오늘의 미니게임이 바뀌었어요. 위의 새 게임으로 버튼을 눌러주세요.");
+    else if (code === "round_active") setError("이미 날고 있는 로켓이 있어요. 불러오는 중…");
+    else if (code === "invalid_auto") setError("자동 내리기는 x1.01 ~ x200 사이로 정해 주세요.");
     else if (code !== "banned" && code !== "unauthorized") setError(`${name}을(를) 하지 못했어요. 다시 시도해주세요.`);
     if (["insufficient_balance", "tier_required", "minigame_blocked"].includes(code)) qc.invalidateQueries({ queryKey: key });
   }

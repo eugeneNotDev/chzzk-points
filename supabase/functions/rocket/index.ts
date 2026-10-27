@@ -125,16 +125,26 @@ async function handleWatch(admin: Admin, channelId: string, roundId: number) {
     .maybeSingle();
   if (error) throw new Error(`rocket_rounds 조회 실패: ${error.message}`);
   if (!r) return json({ error: "round_not_found" }, 404);
-  if (r.status === "flying") {
-    const crash = Number(r.crash_at);
-    const auto = r.auto_at == null ? null : Number(r.auto_at);
-    const endMult = auto != null && auto < crash ? auto : crash;
-    const endAt = new Date(r.started_at).getTime() + (Math.log(endMult) / GROWTH) * 1000;
-    const wait = Math.min(WATCH_MAX_MS, Math.max(0, endAt - Date.now() + 30));
-    await new Promise((res) => setTimeout(res, wait));
+  if (r.status !== "flying") return await rpc(admin, "rocket_settle", { p_channel_id: channelId, p_round_id: roundId });
+
+  const crash = Number(r.crash_at);
+  const auto = r.auto_at == null ? null : Number(r.auto_at);
+  const endMult = auto != null && auto < crash ? auto : crash;
+  const endAt = new Date(r.started_at).getTime() + (Math.log(endMult) / GROWTH) * 1000;
+  const deadline = Date.now() + WATCH_MAX_MS;
+  // 끝나는 시각(또는 25초 한도)까지 기다렸다가 DB에 정리를 맡김. 이 서버 시계가 DB보다 조금 빨라서 아직 "flying"이면
+  // 바로 돌려주지 않고 조금씩 더 기다림 — 25초 한도 전에 "flying"이 오면 곧 끝난다는 신호가 돼 버려서.
+  await new Promise((res) => setTimeout(res, Math.min(deadline, Math.max(Date.now(), endAt + 30)) - Date.now()));
+  for (;;) {
+    const { data, error } = await admin.rpc("rocket_settle", { p_channel_id: channelId, p_round_id: roundId });
+    if (error) {
+      const e = rpcError(error.message || "");
+      if (e) return e;
+      throw new Error(`rocket_settle 실패: ${error.message}`);
+    }
+    if (data?.status !== "flying" || Date.now() >= deadline) return json(data, 200);
+    await new Promise((res) => setTimeout(res, Math.min(100, deadline - Date.now())));
   }
-  // 시간이 됐으면 DB가 정리, 아직이면 status: "flying" 그대로(화면이 다시 watch)
-  return await rpc(admin, "rocket_settle", { p_channel_id: channelId, p_round_id: roundId });
 }
 
 async function handlePost(admin: Admin, channelId: string, req: Request) {

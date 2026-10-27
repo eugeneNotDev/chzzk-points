@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
-import { apiFetch } from "../../lib/auth";
+import { apiFetch, ApiError } from "../../lib/auth";
 import { API } from "../../lib/config";
 import { fmt } from "../../lib/format";
 import { BetPanel, GameLock, GameResult, RecentList, type ResultView } from "./GameParts";
@@ -39,9 +39,8 @@ const RED = "#e03141";
 const x2 = (m: number) => m.toFixed(2);
 
 export default function Rocket({ top }: { top?: ReactNode }) {
-  const game = useMinigame<RocketState>(API.rocket, "양 로켓");
+  const game = useMinigame<RocketState>(API.rocket, "양 로켓", { maxBet: 10_000_000 });
   const growth = game.state?.growth ?? 0.13;
-  const maxBet = game.state?.maxBet ?? 10_000_000;
   const [phase, setPhase] = useState<Phase>("idle");
   const [flight, setFlight] = useState<Flight | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -78,17 +77,15 @@ export default function Rocket({ top }: { top?: ReactNode }) {
     }
   }, [phase, exploded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 서버 시각 → 화면 시각
-  const toClient = (startedAt: string, serverNow: string, sentAt: number) => {
-    const offset = Date.parse(serverNow) - (sentAt + Date.now()) / 2;
-    return Date.parse(startedAt) - offset;
-  };
+  // 서버 시각 → 화면 시각(clientAt: serverNow를 받았을 무렵의 화면 시각)
+  const toClient = (startedAt: string, serverNow: string, clientAt: number) => Date.parse(startedAt) - (Date.parse(serverNow) - clientAt);
 
   function finish(r: Round) {
     if (finished.current.has(r.roundId)) return;
     finished.current.add(r.roundId);
     tracking.current = null;
     setCashing(false);
+    if (r.status === "cashed") game.setPlaying(false); // 내렸으면 로켓이 아직 날아도 다음 판 가능
     setFlight((f) => (f && f.roundId === r.roundId ? { ...f, crashAt: r.crashAt, cashedAt: r.cashedAt, payout: r.payout } : f));
     setPhase((p) => (p === "flying" ? (r.status === "cashed" ? "after" : "flying") : p));
     game.applyResult(r.balance, { bet: r.bet, status: r.status, crashAt: r.crashAt, cashedAt: r.cashedAt, payout: r.payout, createdAt: new Date().toISOString() });
@@ -115,14 +112,23 @@ export default function Rocket({ top }: { top?: ReactNode }) {
         fails = 0;
         if (r.status !== "flying") return finish(r);
       } catch (e) {
-        if (++fails >= 5) return game.handleError(e);
+        if (++fails >= 5) {
+          // 연결이 계속 안 되면 화면을 멈추고 서버 상태를 다시 받아옴(아직 나는 중이면 아래 이어보기가 다시 붙음)
+          tracking.current = null;
+          setFlight(null);
+          setPhase("idle");
+          game.setPlaying(false);
+          game.handleError(e);
+          void game.query.refetch();
+          return;
+        }
         await new Promise((res) => setTimeout(res, 1000));
       }
     }
   }
 
-  function begin(r: Round, sentAt: number) {
-    const f: Flight = { roundId: r.roundId, bet: r.bet, autoAt: r.autoAt, start: toClient(r.startedAt, r.serverNow, sentAt), crashAt: null, cashedAt: null, payout: 0 };
+  function begin(r: Round, clientAt: number) {
+    const f: Flight = { roundId: r.roundId, bet: r.bet, autoAt: r.autoAt, start: toClient(r.startedAt, r.serverNow, clientAt), crashAt: null, cashedAt: null, payout: 0 };
     tracking.current = r.roundId;
     setFlight(f);
     setNow(Date.now());
@@ -132,17 +138,19 @@ export default function Rocket({ top }: { top?: ReactNode }) {
   }
 
   // 새로고침·재접속 — 진행 중이던 판 이어서 보기
+  // 캐시에 남은 옛 상태 말고 방금 받아온 상태로만(시각 보정도 그 응답을 받은 시각 기준)
   const active = game.state?.active;
+  const fetching = game.query.isFetching;
   useEffect(() => {
-    if (!active || active.status !== "flying" || tracking.current === active.roundId || finished.current.has(active.roundId)) return;
+    if (fetching || !active || active.status !== "flying" || tracking.current === active.roundId || finished.current.has(active.roundId)) return;
     setResult(null);
-    begin(active, Date.now());
-  }, [active?.roundId]); // eslint-disable-line react-hooks/exhaustive-deps
+    begin(active, game.query.dataUpdatedAt);
+  }, [active?.roundId, fetching]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const auto = autoText.trim() === "" ? null : Number(autoText.replace(/[^0-9.]/g, ""));
   const autoBad = auto != null && (!Number.isFinite(auto) || auto < 1.01 || auto > (game.state?.maxMultiplier ?? 200));
-  const tooMuch = game.bet > maxBet;
-  const canLaunch = game.canPlay && !autoBad && !tooMuch && (phase === "idle" || phase === "done");
+  // 내린 뒤(after)엔 로켓이 아직 날고 있어도 바로 다음 판 발사 가능
+  const canLaunch = game.canPlay && !autoBad && phase !== "flying";
 
   async function launch() {
     if (!canLaunch) return;
@@ -154,10 +162,12 @@ export default function Rocket({ top }: { top?: ReactNode }) {
       const r = await apiFetch<Round>(API.rocket, { body: { action: "start", bet: game.bet, auto: auto ?? undefined } });
       game.setBalance(r.balance);
       if (!game.alive.current) return;
-      begin(r, sentAt);
+      begin(r, (sentAt + Date.now()) / 2);
     } catch (e) {
       game.setPlaying(false);
       game.handleError(e);
+      // 다른 창에서 이미 날고 있는 판이 있으면 그 판을 불러와서 이어보기
+      if (e instanceof ApiError && e.body.error === "round_active") void game.query.refetch();
     }
   }
 
@@ -256,18 +266,14 @@ export default function Rocket({ top }: { top?: ReactNode }) {
                 aria-label="자동 내리기 배수"
               />
             </label>
-            {(tooMuch || autoBad) && <p className={`${styles.hint} ${styles.hintBad}`}>{tooMuch ? `한 판에 ${fmt(maxBet)}P까지 걸 수 있어요` : "자동 내리기는 x1.01 ~ x200 사이로 정해 주세요"}</p>}
+            {autoBad && <p className={`${styles.hint} ${styles.hintBad}`}>자동 내리기는 x1.01 ~ x200 사이로 정해 주세요</p>}
             {phase === "flying" ? (
               <button type="button" className={`btn btn-lg btn-block ${styles.cashBtn}`} disabled={cashing || flight?.crashAt != null} onClick={cashOut}>
                 {cashing ? "내리는 중…" : `x${x2(mult)} 내리기 (+${fmt(Math.floor((flight?.bet ?? 0) * mult) - (flight?.bet ?? 0))}P)`}
               </button>
-            ) : phase === "after" ? (
-              <button type="button" className="btn btn-lg btn-block" disabled>
-                내림 완료 · 지켜보는 중
-              </button>
             ) : (
               <button type="button" className="btn btn-primary btn-lg btn-block" disabled={!canLaunch} onClick={launch}>
-                {game.playing ? "발사 준비 중…" : game.waiting ? "잠시만요…" : phase === "done" ? "다시 발사" : "발사"}
+                {game.playing ? "발사 준비 중…" : game.waiting ? "잠시만요…" : phase === "done" || phase === "after" ? "다시 발사" : "발사"}
               </button>
             )}
             <p className={styles.hint}>내리기는 서버에 도착한 순간의 배수로 확정돼요. 창을 닫아도 판은 계속 진행돼요(자동 내리기가 없으면 결국 터져요).</p>

@@ -18,6 +18,7 @@ import { requireSession } from "../_shared/session.ts";
 import { nextChangeAt, notToday, todayGame } from "../_shared/rotation.ts";
 
 const MIN_BET = 100;
+const MAX_BET = 200_000_000; // roulette_spin()과 같은 값 — x10 당첨이 포인트 기록 칸(integer)을 넘지 않게
 const RECENT_LIMIT = 10;
 const COOLDOWN_SECONDS = 5; // roulette_spin()의 쿨타임과 같은 값(화면 안내용)
 
@@ -90,6 +91,7 @@ async function handleGet(admin: Admin, channelId: string) {
       blocked: block.blocked,
       blockedUntil: block.until,
       minBet: MIN_BET,
+      maxBet: MAX_BET,
       rotation: { today: todayGame(), nextChangeAt: nextChangeAt() },
       cooldownSeconds,
       multipliers: (outcomes ?? []).map((o) => Number(o.multiplier)),
@@ -120,7 +122,7 @@ async function handlePost(admin: Admin, channelId: string, req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const bet = typeof body.bet === "number" ? body.bet : Number.NaN;
-  if (!Number.isInteger(bet) || bet < MIN_BET) return json({ error: "invalid_bet" }, 400);
+  if (!Number.isInteger(bet) || bet < MIN_BET || bet > MAX_BET) return json({ error: "invalid_bet" }, 400);
 
   const { data, error } = await admin.rpc("roulette_spin", { p_channel_id: channelId, p_bet: bet });
   if (error) {

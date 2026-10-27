@@ -927,3 +927,16 @@
 .cashBtn:hover:not(:disabled) {
   background: #ffc46b;
 }
+.rotStale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-basis: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--c-accent-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
