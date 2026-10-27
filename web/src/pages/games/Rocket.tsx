@@ -2,7 +2,7 @@
 // 터지는 배수는 서버(DB)만 알고, 화면엔 판이 끝난 뒤에야 내려옴. 내리기는 요청이 서버에 도착한 순간 기준.
 // 진행 중엔 "watch" 요청을 걸어두면 서버가 판이 끝나는 순간에 응답해 줌(그 전엔 응답 안 함).
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
 import { apiFetch, ApiError } from "../../lib/auth";
@@ -39,8 +39,18 @@ const RED = "#e03141";
 const x2 = (m: number) => m.toFixed(2);
 
 export default function Rocket({ top }: { top?: ReactNode }) {
+  const uid = useId().replace(/:/g, "");
   const game = useMinigame<RocketState>(API.rocket, "양 로켓", { maxBet: 10_000_000 });
   const growth = game.state?.growth ?? 0.13;
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ w: W, h: H });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setStageSize({ w: el.clientWidth || W, h: el.clientHeight || H }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [game.isLoggedIn]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [flight, setFlight] = useState<Flight | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -210,7 +220,14 @@ export default function Rocket({ top }: { top?: ReactNode }) {
   }).join(" ");
   const shipX = (elapsed / tMax) * 100;
   const shipY = (toY(mult) / H) * 100;
+  // 로켓 기울기 — 곡선의 지금 방향(화면 비율 대충 맞춰서)
+  const dt = Math.max(0.05, elapsed * 0.12);
+  const slope = (toY(Math.exp(growth * elapsed)) - toY(Math.exp(growth * Math.max(0, elapsed - dt)))) / ((dt / tMax) * W);
+  // 무대가 viewBox(640×320)와 비율이 달라서 실제 픽셀 비율로 보정
+  const angle = Math.max(-75, Math.min(-6, (Math.atan(slope * (stageSize.h / H) / (stageSize.w / W)) * 180 * 0.85) / Math.PI));
+  const lastX = ((elapsed / tMax) * W).toFixed(1);
   const crashedNow = phase === "done" && flight?.cashedAt == null && flight?.crashAt != null;
+  const lineColor = crashedNow ? RED : GREEN;
   const tone = crashedNow ? styles.rocketCrashed : flight?.cashedAt != null ? styles.rocketCashed : "";
 
   let status = "걸 포인트를 정하고 발사해 보세요";
@@ -236,16 +253,28 @@ export default function Rocket({ top }: { top?: ReactNode }) {
               ))}
             </div>
           )}
-          <div className={styles.rocketStage}>
+          <div className={styles.rocketStage} ref={stageRef}>
             <svg className={styles.rocketCurve} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
               {[0.25, 0.5, 0.75].map((r) => (
                 <line key={r} x1="0" x2={W} y1={H * r} y2={H * r} className={styles.rocketGrid} />
               ))}
-              {flight && <polyline points={pts} fill="none" stroke={crashedNow ? RED : GREEN} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />}
+              <defs>
+                <linearGradient id={`${uid}-area`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={lineColor} stopOpacity="0.32" />
+                  <stop offset="1" stopColor={lineColor} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {flight && (
+                <>
+                  <path d={`M0,${H} L${pts.replace(/ /g, " L")} L${lastX},${H} Z`} fill={`url(#${uid}-area)`} />
+                  <polyline points={pts} fill="none" stroke={lineColor} strokeOpacity="0.25" strokeWidth="12" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                  <polyline points={pts} fill="none" stroke={lineColor} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                </>
+              )}
             </svg>
             {flight && (
               <div className={styles.rocketShip} style={{ left: `${shipX}%`, top: `${shipY}%` }} aria-hidden="true">
-                {exploded ? <Boom /> : <Ship />}
+                {exploded ? <Boom key={flight.roundId} /> : <Ship angle={angle} uid={uid} burning={phase === "flying" || phase === "after"} />}
               </div>
             )}
             <div className={`${styles.rocketMult} ${tone}`} role="status" aria-live="off">
@@ -298,24 +327,121 @@ export default function Rocket({ top }: { top?: ReactNode }) {
   );
 }
 
-function Ship() {
+// 양이 탄 로켓 — 오른쪽을 보고 그린 뒤 곡선 방향으로 기울임. 불꽃은 깜빡이고 뒤로 연기가 흩어짐.
+function Ship({ angle, uid, burning }: { angle: number; uid: string; burning: boolean }) {
   return (
-    <svg width="56" height="56" viewBox="0 0 56 56">
-      <g transform="rotate(45 28 28)">
-        <path d="M22 42 L28 55 L34 42 Z" fill="#ffb347" />
-        <path d="M28 4 Q39 14 39 30 L39 41 L17 41 L17 30 Q17 14 28 4 Z" fill="#f1f4f6" stroke="#0d0f12" strokeWidth="2.5" strokeLinejoin="round" />
-        <circle cx="28" cy="22" r="5.5" fill="#4da3ff" stroke="#0d0f12" strokeWidth="2.5" />
-        <path d="M17 31 L9 44 L17 41 Z M39 31 L47 44 L39 41 Z" fill="#00e5a0" stroke="#0d0f12" strokeWidth="2" strokeLinejoin="round" />
-      </g>
-    </svg>
+    <div className={styles.shipWrap} style={{ transform: `translate(-48%, -50%) rotate(${angle}deg)` }}>
+      <svg width="104" height="52" viewBox="-36 0 104 52" overflow="visible">
+        <defs>
+          <linearGradient id={`${uid}-hull`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.55" stopColor="#e6eaee" />
+            <stop offset="1" stopColor="#a9b2bc" />
+          </linearGradient>
+          <linearGradient id={`${uid}-fin`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#3df2bd" />
+            <stop offset="1" stopColor="#00a874" />
+          </linearGradient>
+          <radialGradient id={`${uid}-glass`} cx="0.35" cy="0.3" r="0.8">
+            <stop offset="0" stopColor="#9fd8ff" />
+            <stop offset="1" stopColor="#1f5f9e" />
+          </radialGradient>
+          <linearGradient id={`${uid}-flameOut`} x1="1" y1="0" x2="0" y2="0">
+            <stop offset="0" stopColor="#fff3b0" />
+            <stop offset="0.35" stopColor="#ffb347" />
+            <stop offset="1" stopColor="#ff4d3d" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${uid}-flameIn`} x1="1" y1="0" x2="0" y2="0">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="1" stopColor="#ffe066" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {burning && (
+          <g className={styles.puffs}>
+            <circle className={styles.puff} cx="2" cy="26" r="5" />
+            <circle className={styles.puff} cx="2" cy="26" r="5" style={{ animationDelay: "-0.3s" }} />
+            <circle className={styles.puff} cx="2" cy="26" r="5" style={{ animationDelay: "-0.6s" }} />
+          </g>
+        )}
+        {burning && (
+          <g className={styles.flame}>
+            <path d="M14 17 C2 18 -14 22 -30 26 C-14 30 2 34 14 35 Z" fill={`url(#${uid}-flameOut)`} />
+            <path d="M14 21 C6 22 -2 24 -12 26 C-2 28 6 30 14 31 Z" fill={`url(#${uid}-flameIn)`} />
+          </g>
+        )}
+        <path d="M24 15 L13 3 Q11 1 14 1 L22 1 Q26 1 29 4 L37 14 Z" fill={`url(#${uid}-fin)`} stroke="#0b1a14" strokeWidth="1.6" strokeLinejoin="round" />
+        <path d="M24 37 L13 49 Q11 51 14 51 L22 51 Q26 51 29 48 L37 38 Z" fill={`url(#${uid}-fin)`} stroke="#0b1a14" strokeWidth="1.6" strokeLinejoin="round" />
+        <rect x="11" y="18" width="7" height="16" rx="2" fill="#5b6470" stroke="#0b1a14" strokeWidth="1.6" />
+        <path d="M17 15 C30 12 50 12 60 19 Q66 23 66 26 Q66 29 60 33 C50 40 30 40 17 37 Z" fill={`url(#${uid}-hull)`} stroke="#0b1a14" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M54 15.6 Q62 20 65.6 25 L65.6 27 Q62 32 54 36.4 Q57 26 54 15.6 Z" fill="#00d391" stroke="#0b1a14" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M24 14.2 Q26.5 26 24 37.8" fill="none" stroke="#00d391" strokeWidth="3.2" />
+        <path d="M22 19 C34 16.5 48 16.5 56 20" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.9" />
+        <circle cx="41" cy="26" r="8.6" fill="#c9d1d9" stroke="#0b1a14" strokeWidth="1.6" />
+        <circle cx="41" cy="26" r="6.6" fill={`url(#${uid}-glass)`} />
+        <g>
+          <circle cx="38.6" cy="23.6" r="2.4" fill="#ffffff" />
+          <circle cx="41.4" cy="22.6" r="2.6" fill="#ffffff" />
+          <circle cx="44" cy="23.8" r="2.2" fill="#ffffff" />
+          <ellipse cx="41.4" cy="27.4" rx="3.4" ry="3" fill="#f4e4d4" />
+          <circle cx="40.2" cy="27" r="0.75" fill="#14181d" />
+          <circle cx="42.6" cy="27" r="0.75" fill="#14181d" />
+          <ellipse cx="39.4" cy="28.6" rx="0.8" ry="0.5" fill="#f49aa8" />
+          <ellipse cx="43.4" cy="28.6" rx="0.8" ry="0.5" fill="#f49aa8" />
+        </g>
+        <path d="M37 21.5 Q39 19.6 41.5 19.6" fill="none" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+      </svg>
+    </div>
   );
 }
 
+// 터짐 — 섬광 → 불덩이 → 충격파 고리 → 파편·연기
+const BITS = [
+  [46, -30], [52, 6], [30, 40], [-8, 50], [-42, 30], [-50, -4], [-30, -40], [6, -52], [36, -46], [-48, 44],
+];
 function Boom() {
   return (
-    <svg width="64" height="64" viewBox="0 0 56 56">
-      <circle cx="28" cy="28" r="24" fill="#e03141" opacity="0.3" />
-      <path d="M28 4 L33 19 L49 13 L38 27 L51 36 L34 35 L30 52 L24 36 L7 41 L18 28 L7 15 L23 20 Z" fill="#ffb347" stroke="#0d0f12" strokeWidth="2" strokeLinejoin="round" />
-    </svg>
+    <div className={styles.boomWrap}>
+      <svg width="160" height="160" viewBox="-80 -80 160 160" overflow="visible">
+        <defs>
+          <radialGradient id="rk-fire" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.25" stopColor="#fff1a8" />
+            <stop offset="0.55" stopColor="#ffb347" />
+            <stop offset="0.8" stopColor="#ff5a3d" />
+            <stop offset="1" stopColor="#c41e3a" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="rk-flash" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#ffffff" />
+            <stop offset="0.4" stopColor="#fff6d6" stopOpacity="0.8" />
+            <stop offset="1" stopColor="#ffd27a" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="rk-smoke" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#4a525c" stopOpacity="0.85" />
+            <stop offset="0.6" stopColor="#3a4048" stopOpacity="0.45" />
+            <stop offset="1" stopColor="#2a2f36" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+        <circle className={styles.boomSmoke} cx="-16" cy="-8" r="24" fill="url(#rk-smoke)" style={{ animationDelay: "0.18s" }} />
+        <circle className={styles.boomSmoke} cx="18" cy="-14" r="20" fill="url(#rk-smoke)" style={{ animationDelay: "0.26s" }} />
+        <circle className={styles.boomSmoke} cx="2" cy="16" r="22" fill="url(#rk-smoke)" style={{ animationDelay: "0.32s" }} />
+        <circle className={styles.boomFlash} r="48" fill="url(#rk-flash)" />
+        <circle className={styles.boomRing} r="30" fill="none" stroke="#ffd27a" strokeWidth="2.5" strokeOpacity="0.9" />
+        <path className={styles.boomStar} d="M0 -46 L10 -14 L42 -24 L18 2 L44 22 L12 18 L4 48 L-8 18 L-40 30 L-18 2 L-42 -22 L-10 -14 Z" fill="#ffb347" />
+        <circle className={styles.boomBall} r="34" fill="url(#rk-fire)" />
+        {BITS.map(([dx, dy], i) => (
+          <rect
+            key={i}
+            className={styles.boomBit}
+            x="-3"
+            y="-2"
+            width={i % 3 === 0 ? 8 : 6}
+            height={i % 3 === 0 ? 5 : 3.5}
+            rx="1.5"
+            fill={i % 2 ? "#ffcf5c" : "#f1f4f6"}
+            style={{ "--dx": `${dx}px`, "--dy": `${dy}px`, animationDelay: `${(i % 4) * 0.02}s` } as React.CSSProperties}
+          />
+        ))}
+      </svg>
+    </div>
   );
 }
