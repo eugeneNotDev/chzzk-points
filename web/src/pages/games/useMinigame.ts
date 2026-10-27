@@ -1,4 +1,4 @@
-// 룰렛·가위바위보·홀짝 공통 — 상태 조회, 걸 포인트 검사, 결과 후 대기(서버 쿨타임과 맞춤), 에러 문구.
+// 룰렛·가위바위보·홀짝·양 로켓 공통 — 상태 조회, 걸 포인트 검사, 결과 후 대기(서버 쿨타임과 맞춤), 에러 문구.
 // 결과는 항상 서버(DB 함수)가 정하고 화면은 연출만 함.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -81,6 +81,12 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     if (alive.current && bet > newBalance) setBetRaw(Math.max(MIN_BET, Math.min(bet, newBalance)));
   }
 
+  // 잔액만 바꿀 때(양 로켓 발사처럼 기록은 아직 안 생길 때)
+  function setBalance(newBalance: number) {
+    qc.setQueryData<S>(key, (prev) => (prev ? { ...prev, balance: newBalance } : prev));
+    qc.setQueryData(["me", getChannelId()], (prev: { balance: number } | undefined) => (prev ? { ...prev, balance: newBalance } : prev));
+  }
+
   // 공통 실패 처리 — 문구 + 필요하면 상태 다시 받기
   function handleError(e: unknown) {
     const code = e instanceof ApiError ? String(e.body.error ?? "") : "network";
@@ -92,6 +98,7 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     else if (code === "tier_required") setError(`${state?.requiredTierName || "브론즈"} 등급부터 할 수 있어요.`);
     else if (code === "minigame_blocked") setError("미니게임 참여가 제한된 계정이에요.");
     else if (code === "invalid_bet") setError(`${fmt(MIN_BET)}P 이상 걸어야 해요.`);
+    else if (code === "not_today") setError("오늘의 미니게임이 바뀌었어요. 새로고침해 주세요.");
     else if (code !== "banned" && code !== "unauthorized") setError(`${name}을(를) 하지 못했어요. 다시 시도해주세요.`);
     if (["insufficient_balance", "tier_required", "minigame_blocked"].includes(code)) qc.invalidateQueries({ queryKey: key });
   }
@@ -113,6 +120,7 @@ export function useMinigame<S extends GameStateBase>(url: string, name: string) 
     setError,
     startWait,
     applyResult,
+    setBalance,
     handleError,
     alive,
   };

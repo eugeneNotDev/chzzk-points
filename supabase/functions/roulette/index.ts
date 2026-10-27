@@ -2,10 +2,10 @@
 //
 // GET  → 룰렛 화면에 필요한 내 상태
 //   { balance, maxBalanceReached, requiredPoints, requiredTierName, eligible, blocked, blockedUntil, minBet,
-//     cooldownSeconds(지금 남은 쿨타임, 없으면 0), multipliers: number[], recent: [{ bet, multiplier, payout, createdAt }] }
+//     rotation: { today, nextChangeAt }, cooldownSeconds(지금 남은 쿨타임, 없으면 0), multipliers: number[], recent: [{ bet, multiplier, payout, createdAt }] }
 // POST { bet: number } → 한 번 돌리기
 //   성공: { multiplier, payout, net, balance }
-//   실패: 401 unauthorized / 403 banned · minigame_blocked(관리자가 미니게임 참여를 막음)
+//   실패: 401 unauthorized / 403 banned · minigame_blocked(관리자가 미니게임 참여를 막음) · not_today(오늘의 미니게임이 아님)
 //         400 { error: "invalid_bet" | "tier_required" | "insufficient_balance" | "cooldown" (retryAfterSeconds 포함) }
 //
 // 결과(배율)는 DB 함수 roulette_spin()이 유저 행을 잠근 채로 뽑고 포인트 기록까지 한 번에 처리함
@@ -15,6 +15,7 @@ import { getAdminClient } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
 import { handleCors } from "../_shared/cors.ts";
 import { requireSession } from "../_shared/session.ts";
+import { nextChangeAt, notToday, todayGame } from "../_shared/rotation.ts";
 
 const MIN_BET = 100;
 const RECENT_LIMIT = 10;
@@ -89,6 +90,7 @@ async function handleGet(admin: Admin, channelId: string) {
       blocked: block.blocked,
       blockedUntil: block.until,
       minBet: MIN_BET,
+      rotation: { today: todayGame(), nextChangeAt: nextChangeAt() },
       cooldownSeconds,
       multipliers: (outcomes ?? []).map((o) => Number(o.multiplier)),
       recent: (recent ?? []).map((r) => ({
@@ -112,6 +114,9 @@ async function handlePost(admin: Admin, channelId: string, req: Request) {
   if (blockError) throw new Error(`users 조회 실패: ${blockError.message}`);
   const block = minigameBlock(blockRow?.minigame_blocked_until ?? null);
   if (block.blocked) return json({ error: "minigame_blocked", blockedUntil: block.until }, 403);
+  // 오늘의 미니게임이 아니면 거절(_shared/rotation.ts)
+  const off = notToday("roulette", channelId);
+  if (off) return off;
 
   const body = await req.json().catch(() => ({}));
   const bet = typeof body.bet === "number" ? body.bet : Number.NaN;

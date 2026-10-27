@@ -21,7 +21,7 @@ const TABLES = [
   "users", "points_ledger", "titles", "user_purchased_titles", "user_special_titles",
   "attendance", "shop_items", "spend_events", "donations",
   "predictions", "prediction_options", "prediction_bets",
-  "roulette_outcomes", "roulette_spins", "rps_games", "odd_even_games", "free_box_draws",
+  "roulette_outcomes", "roulette_spins", "rps_games", "odd_even_games", "rocket_rounds", "free_box_draws",
   "stream_codes", "stream_code_redemptions", "stream_code_failures",
   "notices", "notice_attachments", "broadcast_schedule", "broadcast_sessions",
   "board_posts", "board_comments", "board_images", "board_review_rewards", "board_reports", "board_post_likes", "board_comment_likes", "song_requests",

@@ -1,5 +1,6 @@
 // 홀짝 — 홀이나 짝을 고르면 카드(A~10) 한 장이 섞였다가 뒤집힘. 카드와 결과는 서버(odd_even_play)가 정함.
 // 카드 무늬(♠♥♦♣)는 보기용으로 화면에서 아무거나 고름(결과와 상관없음). 맞히면 1.9배, 틀리면 0.
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Card } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
@@ -29,7 +30,7 @@ function Suit({ suit }: { suit: string }) {
   return <svg viewBox={i.viewBox} aria-hidden="true" dangerouslySetInnerHTML={{ __html: i.inner }} />;
 }
 
-export default function OddEven() {
+export default function OddEven({ top }: { top?: ReactNode }) {
   const game = useMinigame<OeState>(API.oddEven, "홀짝");
   const [card, setCard] = useState<{ n: number; suit: string; red: boolean } | null>(null);
   const [open, setOpen] = useState(false);
@@ -97,6 +98,7 @@ export default function OddEven() {
     return (
       <div className="page">
         <PageHead title="홀짝" desc="카드 한 장이 홀일지 짝일지 맞혀보세요." />
+        {top}
         <Card>
           <LoginNeeded>로그인하면 홀짝을 할 수 있어요.</LoginNeeded>
         </Card>
@@ -108,6 +110,7 @@ export default function OddEven() {
   return (
     <div className="page">
       <PageHead title="홀짝" desc={`카드(A~10) 한 장이 홀일지 짝일지 맞혀보세요. 맞히면 ${mult}배, 틀리면 0`} />
+      {top}
       <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>

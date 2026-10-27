@@ -16,9 +16,7 @@ const LOADERS: Record<string, Loader> = {
   "titles.html": () => import("./pages/shop/Titles"),
   "predict.html": () => import("./pages/predict/Predict"),
   "quiz.html": () => import("./pages/quiz/Quiz"),
-  "roulette.html": () => import("./pages/games/Roulette"),
-  "rps.html": () => import("./pages/games/Rps"),
-  "oddeven.html": () => import("./pages/games/OddEven"),
+  "minigame.html": () => import("./pages/games/Today"),
   // 유진 키우기 — 베타 빌드에서만(lib/life.ts LIFE_ENABLED)
   ...(LIFE_ENABLED ? { "life.html": () => import("./pages/life/Life") } : {}),
   "board-free.html": () => import("./pages/board/Board").then((m) => ({ default: m.FreeBoard })),

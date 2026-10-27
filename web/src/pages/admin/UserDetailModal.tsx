@@ -103,7 +103,7 @@ export function UserDetailModal({ channelId, onClose, onChanged }: { channelId: 
   );
 }
 
-// 미니게임 차단 — 기간을 정해 룰렛·가위바위보·홀짝 참여를 막음(무료 뽑기·투표는 그대로).
+// 미니게임 차단 — 기간을 정해 룰렛·가위바위보·홀짝·양 로켓 참여를 막음(무료 뽑기·투표는 그대로).
 function MinigameBlock({ channelId, name }: { channelId: string; name: string }) {
   const qc = useQueryClient();
   const key = ["admin", "minigame-block", channelId];
@@ -113,7 +113,7 @@ function MinigameBlock({ channelId, name }: { channelId: string; name: string })
   const s = q.data;
   const set = async (dur: string) => {
     const msg =
-      dur === "off" ? `${name}님의 미니게임 차단을 풀까요?` : `${name}님의 미니게임 참여를 ${DURATION_LABEL[dur]} 막을까요?\n(룰렛·가위바위보·홀짝 불가, 무료 뽑기·투표는 가능)`;
+      dur === "off" ? `${name}님의 미니게임 차단을 풀까요?` : `${name}님의 미니게임 참여를 ${DURATION_LABEL[dur]} 막을까요?\n(룰렛·가위바위보·홀짝·양 로켓 불가, 무료 뽑기·투표는 가능)`;
     if (!(await confirmDialog(msg))) return;
     setBusy(true);
     try {

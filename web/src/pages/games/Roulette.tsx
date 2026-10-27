@@ -1,5 +1,6 @@
-// 룰렛 — 가로로 굴러가는 배율 카드(x0~x5) 중 하나. 결과는 서버(roulette_spin)가 정하고,
+// 룰렛 — 가로로 굴러가는 배율 카드(x0~x10) 중 하나. 결과는 서버(roulette_spin)가 정하고,
 // 화면은 그 카드가 가운데 선에 멈추도록 굴리는 연출만 함. 확률은 서버에만 있음.
+import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
@@ -16,14 +17,14 @@ const TILE_W = 88;
 const STEP = TILE_W + 8;
 const SPIN_MS = REDUCED_MOTION ? 1200 : 5200;
 const SERVER_COOLDOWN_MS = 5000;
-const COLORS: Record<string, string> = { "0": "#e03141", "0.5": "#ff922b", "1": "#6b7480", "1.2": "#2fb574", "1.5": "#00a8e8", "2": "#8b5cf6", "3": "#ff6bb5", "5": "#f2c230" };
+const COLORS: Record<string, string> = { "0": "#e03141", "0.5": "#ff922b", "1": "#6b7480", "1.2": "#2fb574", "1.5": "#00a8e8", "2": "#8b5cf6", "3": "#ff6bb5", "5": "#f2c230", "10": "#ffd84d" };
 // 결과 말고 지나가는 카드들은 보기 좋게 섞기만 하는 용도(실제 확률 아님)
-const FILLER: Record<string, number> = { "0": 10, "0.5": 14, "1": 26, "1.2": 14, "1.5": 12, "2": 9, "3": 7, "5": 5 };
+const FILLER: Record<string, number> = { "0": 10, "0.5": 14, "1": 26, "1.2": 14, "1.5": 12, "2": 9, "3": 7, "5": 5, "10": 3 };
 const colorOf = (m: number) => COLORS[String(m)] || (m >= 5 ? "#f2c230" : "#6b7480");
 
-export default function Roulette() {
+export default function Roulette({ top }: { top?: ReactNode }) {
   const game = useMinigame<RouletteState>(API.roulette, "룰렛");
-  const mults = game.state?.multipliers?.length ? game.state.multipliers : [0, 0.5, 1, 1.2, 1.5, 2, 3, 5];
+  const mults = game.state?.multipliers?.length ? game.state.multipliers : [0, 0.5, 1, 1.2, 1.5, 2, 3, 5, 10];
   const filler = () => {
     const pool = mults.map((m) => [m, FILLER[String(m)] ?? 8] as const);
     let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0);
@@ -100,6 +101,7 @@ export default function Roulette() {
     return (
       <div className="page">
         <PageHead title="룰렛" desc="배율 카드가 굴러가다 멈춘 곳의 배율만큼 받아요." />
+        {top}
         <Card>
           <LoginNeeded>로그인하면 룰렛을 돌릴 수 있어요.</LoginNeeded>
         </Card>
@@ -110,6 +112,7 @@ export default function Roulette() {
   return (
     <div className="page">
       <PageHead title="룰렛" desc="배율 카드가 굴러가다 멈춘 곳의 배율만큼 받아요. 브론즈 등급부터, 최소 100P." />
+      {top}
       <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>

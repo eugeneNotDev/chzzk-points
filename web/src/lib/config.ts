@@ -32,6 +32,7 @@ export const API = {
   roulette: `${FUNCTIONS_BASE_URL}/roulette`,
   rps: `${FUNCTIONS_BASE_URL}/rps`,
   oddEven: `${FUNCTIONS_BASE_URL}/odd-even`,
+  rocket: `${FUNCTIONS_BASE_URL}/rocket`,
   songs: `${FUNCTIONS_BASE_URL}/songs`,
   drawings: `${FUNCTIONS_BASE_URL}/drawings`,
   ledgerBalance: `${FUNCTIONS_BASE_URL}/ledger-balance`,

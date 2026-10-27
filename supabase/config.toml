@@ -103,6 +103,9 @@ verify_jwt = false
 [functions.rps]
 verify_jwt = false
 
+[functions.rocket]
+verify_jwt = false
+
 [functions.shop-items]
 verify_jwt = false
 

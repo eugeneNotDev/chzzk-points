@@ -1,5 +1,6 @@
 // 가위바위보 — 손을 고르면 바로 한 판. 상대 손과 결과는 서버(rps_play)가 정함.
 // 이기면 1.9배, 비기면 그대로, 지면 0.
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { LoginNeeded, PageHead } from "../../components/ui";
@@ -27,7 +28,7 @@ function HandIcon({ hand, size = 56 }: { hand: Hand; size?: number }) {
   return <svg width={size} height={size} viewBox={i.viewBox} aria-hidden="true" dangerouslySetInnerHTML={{ __html: i.inner }} />;
 }
 
-export default function Rps() {
+export default function Rps({ top }: { top?: ReactNode }) {
   const game = useMinigame<RpsState>(API.rps, "가위바위보");
   const [me, setMe] = useState<Hand>("rock");
   const [cpu, setCpu] = useState<Hand>("rock");
@@ -91,6 +92,7 @@ export default function Rps() {
     return (
       <div className="page">
         <PageHead title="가위바위보" desc="이기면 1.9배, 비기면 그대로, 지면 0이에요." />
+        {top}
         <Card>
           <LoginNeeded>로그인하면 가위바위보를 할 수 있어요.</LoginNeeded>
         </Card>
@@ -102,6 +104,7 @@ export default function Rps() {
   return (
     <div className="page">
       <PageHead title="가위바위보" desc={`손을 고르면 바로 한 판. 이기면 ${mult}배 · 비기면 그대로 · 지면 0`} />
+      {top}
       <GameLock state={game.state} query={game.query} />
       <div className={styles.gameLayout}>
         <section className={styles.stageCard}>

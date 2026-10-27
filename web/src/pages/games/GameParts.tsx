@@ -22,7 +22,7 @@ export function GameLock({ state, query }: { state: GameStateBase | undefined; q
       <div className={styles.lock}>
         <Lock size={22} aria-hidden="true" />
         <strong>미니게임 참여가 제한됐어요</strong>
-        <p className="muted">{until} 룰렛·가위바위보·홀짝에 참여할 수 없어요. 무료 뽑기와 투표는 그대로 할 수 있어요.</p>
+        <p className="muted">{until} 미니게임에 참여할 수 없어요. 무료 뽑기와 투표는 그대로 할 수 있어요.</p>
       </div>
     );
   }
