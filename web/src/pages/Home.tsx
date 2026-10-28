@@ -1,3 +1,4 @@
+import { EmojiTitle } from "../components/ui";
 import { LoadError } from "../components/LoadError";
 import { useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
@@ -176,7 +177,7 @@ function NoticePreview() {
         <Link key={n.id} to={`/notice.html?id=${n.id}`} className={styles.row}>
           {n.pinned_at && <span className={`${styles.tag} ${styles.tagAccent}`}>고정</span>}
           {!n.pinned_at && isNoticeNew(n) && <span className={`${styles.tag} ${styles.tagLive}`}>NEW</span>}
-          <span className={styles.rowTitle}>{n.title || "(제목 없음)"}</span>
+          <span className={styles.rowTitle}>{n.title ? <EmojiTitle text={n.title} /> : "(제목 없음)"}</span>
           <span className={`${styles.rowMeta} num`}>{shortDate(n.created_at)}</span>
         </Link>
       ))}

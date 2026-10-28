@@ -129,3 +129,19 @@ export function LoginNeeded({ children = "로그인하면 이용할 수 있어�
     </div>
   );
 }
+
+// 제목 맨 앞 이모지(📻 새 기능 업데이트 …)만 따로 감싸서 글자 높이에 맞춤 —
+// 이모지 글꼴(특히 윈도우)은 줄 높이·기준선이 달라서 그냥 두면 글자보다 위아래로 어긋나 보임.
+const LEAD_EMOJI = /^((?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:\uFE0F|\u20E3|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}|\p{Regional_Indicator})*)\s*/u;
+export function EmojiTitle({ text }: { text: string }) {
+  const m = LEAD_EMOJI.exec(text);
+  if (!m) return <>{text}</>;
+  return (
+    <>
+      <span className="lead-emoji">
+        {m[1]}
+      </span>
+      {text.slice(m[0].length)}
+    </>
+  );
+}

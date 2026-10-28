@@ -792,3 +792,17 @@
     animation: none;
   }
 }
+
+/* 제목 맨 앞 이모지 — 글자 높이 가운데에 맞춤(components/ui.tsx EmojiTitle) */
+.lead-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1em;
+  margin-right: 0.3em;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 1em;
+  line-height: 1;
+  vertical-align: -0.1em;
+}

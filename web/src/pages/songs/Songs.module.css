@@ -568,7 +568,9 @@
   border: 1px solid var(--c-border-strong);
   background: var(--c-surface-2);
   color: var(--c-text-2);
-  vertical-align: -4px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 .keyOk {
   border-color: color-mix(in srgb, var(--c-accent) 45%, transparent);

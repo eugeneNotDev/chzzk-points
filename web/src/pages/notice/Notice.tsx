@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Pencil, Pin, PinOff, Plus, Trash2, X } from "lucide-react";
 import { Card, EmptyState } from "../../components/Card";
-import { PageHead } from "../../components/ui";
+import { EmojiTitle, PageHead } from "../../components/ui";
 import { NoticeBody } from "../../components/NoticeContent";
 import { useAuth } from "../../lib/auth";
 import { deleteNotice, isNoticeNew, markNoticeRead, setNoticePin, useNoticeReadVersion, useNotices, type Notice as NoticeT } from "../../lib/notices";
@@ -168,7 +168,7 @@ export default function Notice() {
                     고정
                   </span>
                 )}
-                {viewing.title || "(제목 없음)"}
+                {viewing.title ? <EmojiTitle text={viewing.title} /> : "(제목 없음)"}
               </h3>
               <div className={styles.viewBody}>
                 <NoticeBody content={viewing.content} isHtml={viewing.is_html} attachments={viewing.notice_attachments} />
@@ -219,7 +219,7 @@ export default function Notice() {
               고정
             </span>
           )}
-          <span className={bs.tt}>{n.title || "(제목 없음)"}</span>
+          <span className={bs.tt}>{n.title ? <EmojiTitle text={n.title} /> : "(제목 없음)"}</span>
           {isNoticeNew(n) && <span className={bs.newMark}>N</span>}
         </span>
         <span className={bs.preview}>{previewOf(n)}</span>
