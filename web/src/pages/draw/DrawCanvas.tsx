@@ -1,12 +1,12 @@
 // 그림판 — 그림 후원용. 실제 그림 크기는 960×540(16:9)으로 고정하고, 화면엔 칸 너비에 맞춰 늘려 보여줌.
 // 배경은 투명 — 방송 화면 위에 그림만 그려짐(그림도네처럼). 그리는 동안은 배경으로 방송 화면 캡쳐(방송 중, 10초마다 바뀜)
 // 또는 바둑판(밝게/어둡게)을 보여줌 — 이 배경은 그림에 안 들어감.
-// 펜·지우개(투명하게 지움), 굵기 3단계, 색 12개 + 직접 고르기, 되돌리기/다시 하기(최대 40번), 전체 지우기.
+// 펜·지우개(투명하게 지움)·스포이드(그림에서 색 뽑기), 굵기 3단계, 색 12개 + 직접 고르기 + 최근 쓴 색, 되돌리기/다시 하기(최대 40번), 전체 지우기.
 // 그리던 그림은 이 브라우저에 잠깐 저장해서(새로고침해도 유지) 보내면 지움.
 // 획 기록(ops)도 같이 남김 — 방송 오버레이가 이걸로 그림이 빠르게 그려지는 모습을 다시 보여줌(그림도네처럼).
 //   op: { c: 색, w: 굵기, p: [x,y,x,y,...] (정수 좌표), e?: 1 (지우개) } | { k: "clear" }
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Contrast, Eraser, MonitorPlay, Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Contrast, Eraser, MonitorPlay, Pencil, Pipette, Redo2, Trash2, Undo2 } from "lucide-react";
 import { readStorage, writeStorage } from "../../lib/storage";
 import styles from "./Draw.module.css";
 
@@ -24,6 +24,18 @@ const SIZES = [
   { v: 24, label: "굵게" },
 ];
 const MAX_HISTORY = 40;
+// 최근 쓴 색(기본 12색 말고 직접 고르거나 스포이드로 뽑은 색) — 다른 색 쓰다가 원래 색으로 돌아오기 쉽게
+const RECENT_KEY = "chzzk_points_draw_recent";
+const MAX_RECENT = 8;
+const readRecent = (): string[] => {
+  try {
+    const v = JSON.parse(readStorage(RECENT_KEY) || "[]");
+    return Array.isArray(v) ? v.filter((c) => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)).slice(0, MAX_RECENT) : [];
+  } catch {
+    return [];
+  }
+};
+const hex = (n: number) => n.toString(16).padStart(2, "0");
 const MAX_POINTS = 60_000; // 획 기록이 너무 커지면(아주 오래 그리면) 재생 없이 그림만 보냄
 
 export type DrawOp = { c: string; w: number; p: number[]; e?: 1 } | { k: "clear" };
@@ -35,6 +47,22 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
   const [color, setColor] = useState(COLORS[0]);
   const [size, setSize] = useState(SIZES[1].v);
   const [eraser, setEraser] = useState(false);
+  const [picking, setPicking] = useState(false); // 스포이드 — 다음 터치 한 번은 그리지 않고 그 자리 색을 가져옴
+  const [recent, setRecent] = useState<string[]>(readRecent);
+  const [pickMsg, setPickMsg] = useState<string | null>(null);
+  const remember = (c: string) => {
+    if (COLORS.includes(c)) return;
+    setRecent((prev) => {
+      const next = [c, ...prev.filter((x) => x !== c)].slice(0, MAX_RECENT);
+      writeStorage(RECENT_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+  const choose = (c: string) => {
+    setColor(c);
+    setEraser(false);
+    setPicking(false);
+  };
   // 고른 배경(기본: 방송 화면). 방송 화면을 골랐는데 캡쳐가 없으면(방송 꺼짐 등) 밝은 배경으로 보여줌.
   const [bg, setBg] = useState<Bg>(() => {
     const v = readStorage(BG_KEY);
@@ -134,8 +162,23 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     c.globalCompositeOperation = "source-over";
   };
 
+  // 스포이드 — 그 자리에 칠해진 색(투명한 곳이면 안내만)
+  const pickAt = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const [x, y] = pos(e);
+    const d = ctx().getImageData(Math.min(CANVAS_W - 1, Math.max(0, Math.floor(x))), Math.min(CANVAS_H - 1, Math.max(0, Math.floor(y))), 1, 1).data;
+    if (d[3] < 40) {
+      setPickMsg("그림이 없는 곳이에요. 칠해진 곳을 눌러주세요.");
+      return;
+    }
+    const c = `#${hex(d[0])}${hex(d[1])}${hex(d[2])}`;
+    choose(c);
+    remember(c);
+    setPickMsg(null);
+  };
+
   const down = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
+    if (picking) return pickAt(e);
     e.currentTarget.setPointerCapture(e.pointerId);
     pushHistory();
     const p = pos(e);
@@ -166,6 +209,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     curOp.current = null;
     redoOps.current = [];
     strokes.current += 1;
+    if (!eraser) remember(color);
     changed();
   };
 
@@ -248,13 +292,26 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
     <div className={styles.board}>
       <div className={styles.tools} role="toolbar" aria-label="그리기 도구">
         <div className={styles.toolGroup}>
-          <button type="button" className={`${styles.tool} ${!eraser ? styles.toolOn : ""}`} onClick={() => setEraser(false)} aria-pressed={!eraser} title="펜">
+          <button type="button" className={`${styles.tool} ${!eraser && !picking ? styles.toolOn : ""}`} onClick={() => { setEraser(false); setPicking(false); }} aria-pressed={!eraser && !picking} title="펜">
             <Pencil size={17} aria-hidden="true" />
             <span>펜</span>
           </button>
-          <button type="button" className={`${styles.tool} ${eraser ? styles.toolOn : ""}`} onClick={() => setEraser(true)} aria-pressed={eraser} title="지우개">
+          <button type="button" className={`${styles.tool} ${eraser && !picking ? styles.toolOn : ""}`} onClick={() => { setEraser(true); setPicking(false); }} aria-pressed={eraser && !picking} title="지우개">
             <Eraser size={17} aria-hidden="true" />
             <span>지우개</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.tool} ${picking ? styles.toolOn : ""}`}
+            onClick={() => {
+              setPicking((v) => !v);
+              setPickMsg(null);
+            }}
+            aria-pressed={picking}
+            title="스포이드 — 그림에서 색 가져오기"
+          >
+            <Pipette size={17} aria-hidden="true" />
+            <span>스포이드</span>
           </button>
         </div>
         <div className={styles.toolGroup} role="radiogroup" aria-label="굵기">
@@ -275,24 +332,35 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
               aria-label={c}
               className={`${styles.swatch} ${!eraser && color === c ? styles.swatchOn : ""}`}
               style={{ background: c }}
-              onClick={() => {
-                setColor(c);
-                setEraser(false);
-              }}
+              onClick={() => choose(c)}
             />
           ))}
           <label className={styles.customColor} title="직접 고르기">
             <input
               type="color"
               value={color}
-              onChange={(e) => {
-                setColor(e.target.value);
-                setEraser(false);
-              }}
+              onChange={(e) => choose(e.target.value)}
               aria-label="색 직접 고르기"
             />
           </label>
         </div>
+        {recent.length > 0 && (
+          <div className={styles.recent} role="radiogroup" aria-label="최근 쓴 색">
+            <span className={styles.recentLabel}>최근</span>
+            {recent.map((c) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={!eraser && color === c}
+                aria-label={`최근 색 ${c}`}
+                className={`${styles.swatch} ${styles.swatchSm} ${!eraser && color === c ? styles.swatchOn : ""}`}
+                style={{ background: c }}
+                onClick={() => choose(c)}
+              />
+            ))}
+          </div>
+        )}
         <div className={styles.toolGroup}>
           <button type="button" className={styles.tool} onClick={doUndo} disabled={!undo.current.length} title="되돌리기 (Ctrl+Z)">
             <Undo2 size={17} aria-hidden="true" />
@@ -318,7 +386,7 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
         ref={cv}
         width={CANVAS_W}
         height={CANVAS_H}
-        className={`${styles.canvas} ${bgNow === "dark" ? styles.canvasDark : ""} ${bgNow === "screen" ? styles.canvasScreen : ""} ${eraser ? styles.erasing : ""}`}
+        className={`${styles.canvas} ${bgNow === "dark" ? styles.canvasDark : ""} ${bgNow === "screen" ? styles.canvasScreen : ""} ${eraser && !picking ? styles.erasing : ""} ${picking ? styles.picking : ""}`}
         style={bgNow === "screen" && screen ? { backgroundImage: `url("${screen}")` } : undefined}
         onPointerDown={down}
         onPointerMove={move}
@@ -326,6 +394,11 @@ export const DrawCanvas = forwardRef<DrawCanvasHandle, { onChange?: (blank: bool
         onPointerCancel={up}
         aria-label="그림판 — 마우스나 손가락으로 그려요"
       />
+      {(picking || pickMsg) && (
+        <p className={styles.pickHint} role="status">
+          {pickMsg ?? "그림에서 가져올 색을 눌러주세요."}
+        </p>
+      )}
     </div>
   );
 });

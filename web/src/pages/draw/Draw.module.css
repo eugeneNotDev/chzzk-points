@@ -165,6 +165,35 @@
 .erasing {
   cursor: cell;
 }
+/* 스포이드 — 누른 자리 색을 가져옴 */
+.picking {
+  cursor: copy;
+}
+.pickHint {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid var(--c-border);
+  background: var(--c-accent-soft);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+/* 최근 쓴 색 */
+.recent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.recentLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text-3);
+}
+.swatchSm {
+  width: 22px;
+  height: 22px;
+}
 .sendRow {
   display: flex;
   align-items: center;
