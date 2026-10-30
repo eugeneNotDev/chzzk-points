@@ -793,7 +793,16 @@
   }
 }
 
-/* 제목 맨 앞 이모지 — 이모지는 사이트 전체가 Noto Color Emoji 한 글꼴로 그려서(tokens.css) 위치 보정 없이 간격만 */
+/* 제목 맨 앞 이모지 — 글자 높이 가운데에 맞춤(components/ui.tsx EmojiTitle) */
 .lead-emoji {
-  margin-right: 0.25em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;
+  height: 1em;
+  margin-right: 0.3em;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  font-size: 1em;
+  line-height: 1;
+  vertical-align: 0.06em;
 }

@@ -58,11 +58,11 @@
   --s-8: 32px;
 
   /* 글꼴 */
-  --font-sans: "Pretendard Variable", Pretendard, "Apple Color Emoji", "Fanboard Emoji", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   /* 숫자 전용 글꼴(Outfit) — 사이트에 같이 묶어서 배포 */
-  --font-num: "Outfit Variable", "Pretendard Variable", Pretendard, "Apple Color Emoji", "Fanboard Emoji", system-ui, sans-serif;
+  --font-num: "Outfit Variable", "Pretendard Variable", Pretendard, system-ui, sans-serif;
   /* 제목·로고용(고도체) — 기존 사이트와 같은 글꼴. @font-face는 global.css */
-  --font-logo: "Godo", "Pretendard Variable", Pretendard, "Apple Color Emoji", "Fanboard Emoji", system-ui, sans-serif;
+  --font-logo: "Godo", "Pretendard Variable", Pretendard, system-ui, sans-serif;
 
   /* 움직임 — 전환·호버가 "뚝" 바뀌지 않고 부드럽게 붙게 */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
