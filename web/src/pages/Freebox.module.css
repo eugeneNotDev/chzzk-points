@@ -37,8 +37,12 @@
 }
 .stage {
   position: relative;
-  height: 440px;
+  min-height: 440px;
+  box-sizing: border-box;
+  padding: 24px 0 22px;
   display: flex;
+  flex-direction: column;
+  gap: 4px;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -122,11 +126,11 @@
   color: var(--c-gold);
 }
 
+/* 상자 아래에 이어서 배치 — 예전엔 바닥에 붙여 띄워서, 좁은 화면에선 상자(340px)와 겹쳤음 */
 .caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 24px;
+  position: relative;
+  margin: 0;
+  padding: 0 16px;
   text-align: center;
   font-size: 15px;
   font-weight: 500;
@@ -302,7 +306,7 @@
     font-size: 22px;
   }
   .stage {
-    height: 340px;
+    min-height: 340px;
   }
   .box svg {
     width: 180px;
