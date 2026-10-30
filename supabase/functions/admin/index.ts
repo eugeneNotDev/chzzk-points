@@ -31,7 +31,8 @@
 //     원래 행엔 undone=true를 세워서 중복 취소를 막음. 출석체크/상점 사용/밴 초기화 등 admin_action이
 //     아닌 행은 애초에 대상이 아니라서 "not_undoable"로 거절함 — 프론트에서 버튼 자체를 admin_action
 //     행에만 보여주지만(admin.html), 여기서도 한 번 더 확인함.)
-// POST { action: "list-points-log", q?: string, page?: number }
+// POST { action: "list-points-log", q?: string, page?: number, kind?: "all" | "minigame" | "other" }
+//   (kind: minigame = 룰렛·가위바위보·홀짝·양 로켓 기록만, other = 그것만 빼고, 없으면 전체)
 //   → { entries: [{ id, channelId, channelName, amount, reason, processed, adminAction, undone, createdAt }], page, pageSize, totalCount, totalPages }
 //     (points_ledger 최근 기록(지급/차감/상점 사용/출석체크 등 전부), 페이지당 10개. q 있으면 그
 //     이름을 가진 유저 기록만, 없으면 전체 유저 통틀어 최신순 — 오버레이 놓쳤을 때 누가 언제 뭘
@@ -187,7 +188,8 @@ Deno.serve(async (req: Request) => {
       const q = typeof body.q === "string" ? body.q : undefined;
       const rawPage = typeof body.page === "number" ? Math.trunc(body.page) : 1;
       const page = Math.max(rawPage, 1);
-      const { entries, totalCount } = await listPointsLog(admin, q, page);
+      const kind = body.kind === "minigame" || body.kind === "other" ? body.kind : "all";
+      const { entries, totalCount } = await listPointsLog(admin, q, page, kind);
       const totalPages = Math.max(Math.ceil(totalCount / POINTS_LOG_PAGE_SIZE), 1);
       return json({ entries, page, pageSize: POINTS_LOG_PAGE_SIZE, totalCount, totalPages }, 200);
     }

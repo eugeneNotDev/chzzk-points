@@ -1,4 +1,4 @@
-// 포인트 로그(최근 24시간, 전체 종류) · 상점 내역(상점 사용만, 전체 기간 — 처리 완료 표시용).
+// 포인트 로그(최근 24시간 — 미니게임 제외/미니게임만/전체로 나눠 봄) · 상점 내역(상점 사용만, 전체 기간 — 처리 완료 표시용).
 import { useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Search } from "lucide-react";
@@ -32,14 +32,22 @@ function SearchCard({ title, desc, onSearch }: { title: string; desc?: ReactNode
   );
 }
 
+type LogKind = "other" | "minigame" | "all";
+const LOG_KINDS: { id: LogKind; label: string }[] = [
+  { id: "other", label: "미니게임 제외" },
+  { id: "minigame", label: "미니게임만" },
+  { id: "all", label: "전체" },
+];
+
 export function LogTab() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [kind, setKind] = useState<LogKind>("other");
   const q = useQuery({
-    queryKey: ["admin", "points-log", query, page],
+    queryKey: ["admin", "points-log", query, page, kind],
     placeholderData: keepPreviousData,
-    queryFn: () => adminCall<Paged & { entries: LogEntry[] }>({ action: "list-points-log", q: query, page }),
+    queryFn: () => adminCall<Paged & { entries: LogEntry[] }>({ action: "list-points-log", q: query, page, kind }),
   });
   const balances = useBalancesById(q.data?.entries.map((e) => e.id));
   return (
@@ -52,6 +60,22 @@ export function LogTab() {
           setPage(1);
         }}
       />
+      <div className="segment" role="tablist" aria-label="기록 종류">
+        {LOG_KINDS.map((k) => (
+          <button
+            key={k.id}
+            type="button"
+            role="tab"
+            aria-selected={kind === k.id}
+            onClick={() => {
+              setKind(k.id);
+              setPage(1);
+            }}
+          >
+            {k.label}
+          </button>
+        ))}
+      </div>
       <Card flush>
         {q.isError && <EmptyState>불러오기에 실패했어요.</EmptyState>}
         {q.data?.entries.length === 0 && <EmptyState>기록이 없어요.</EmptyState>}

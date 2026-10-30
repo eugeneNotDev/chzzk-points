@@ -60,10 +60,16 @@ export async function getStats(admin: ReturnType<typeof getAdminClient>) {
 export const POINTS_LOG_PAGE_SIZE = 10;
 const POINTS_LOG_WINDOW_HOURS = 24;
 
+// 미니게임(룰렛·가위바위보·홀짝·양 로켓) 기록 — 사유 앞부분으로 구분. 판마다 한 줄씩 쌓여서 다른 기록이 묻히니
+// 포인트 로그에서 따로 보거나 빼고 볼 수 있게 함. (투표 "홀짝 결과 맞추기"는 "투표 …"로 시작해서 안 걸림)
+const MINIGAME_PREFIXES = ["룰렛 ", "가위바위보 ", "홀짝 ", "양 로켓 "];
+export type PointsLogKind = "all" | "minigame" | "other";
+
 export async function listPointsLog(
   admin: ReturnType<typeof getAdminClient>,
   q: string | undefined,
   page: number,
+  kind: PointsLogKind = "all",
 ) {
   let channelIdFilter: string[] | null = null;
   if (q && q.trim().length > 0) {
@@ -88,6 +94,8 @@ export async function listPointsLog(
     .order("created_at", { ascending: false })
     .range(offset, offset + POINTS_LOG_PAGE_SIZE - 1);
   if (channelIdFilter) query = query.in("channel_id", channelIdFilter);
+  if (kind === "minigame") query = query.or(MINIGAME_PREFIXES.map((p) => `reason.like."${p}*"`).join(","));
+  if (kind === "other") for (const p of MINIGAME_PREFIXES) query = query.not("reason", "like", `${p}%`);
 
   const { data: rows, error, count } = await query;
   if (error) throw new Error(`points_ledger 조회 실패: ${error.message}`);
