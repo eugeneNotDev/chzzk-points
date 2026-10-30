@@ -9,19 +9,20 @@ import type { SpecialTitle } from "../components/TitleBadge";
 
 export type NoticeRow = { id: number; title: string | null; pinned_at: string | null; created_at: string };
 
+// 홈 공지 카드 — 고정 공지는 전부 + 고정 아닌 최근 공지 limit개
 export function useNoticePreview(limit = 5) {
   return useQuery({
     queryKey: ["notices", "preview", limit],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("notices")
-        .select("id, title, pinned_at, created_at")
-        .order("pinned_at", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      return (data ?? []) as NoticeRow[];
+      const cols = "id, title, pinned_at, created_at";
+      const [pinned, recent] = await Promise.all([
+        supabase.from("notices").select(cols).not("pinned_at", "is", null).order("pinned_at", { ascending: true }),
+        supabase.from("notices").select(cols).is("pinned_at", null).order("created_at", { ascending: false }).limit(limit),
+      ]);
+      if (pinned.error) throw pinned.error;
+      if (recent.error) throw recent.error;
+      return [...(pinned.data ?? []), ...(recent.data ?? [])] as NoticeRow[];
     },
   });
 }

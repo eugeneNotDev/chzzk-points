@@ -242,6 +242,15 @@ export function afterActivity(qc: QueryClient, act: ActivityGrant | null | undef
   if (act.amount > 0) {
     toast(`게시판 활동 보상 +${act.amount}P (오늘 ${kind} ${act.used ?? "?"}/${act.max ?? "?"})`);
     qc.invalidateQueries({ queryKey: ["me"] });
+  } else {
+    // 보상이 없을 때도 이유를 알려줌(예전엔 아무 말이 없어서 "포인트가 안 들어온다"는 문의가 생김)
+    const why: Record<string, string> = {
+      too_short: kind === "글" ? "본문이 공백·사진 빼고 20자보다 짧아서 활동 보상은 없어요." : "댓글이 공백 빼고 5자보다 짧아서 활동 보상은 없어요.",
+      daily_limit: `오늘 ${kind} 활동 보상은 이미 다 받았어요. 밤 12시에 다시 채워져요.`,
+      per_post_limit: "같은 글에 단 댓글 보상은 2개까지예요.",
+      own_post: "내 글에 단 내 댓글은 활동 보상이 없어요.",
+    };
+    if (why[act.reason]) toast(why[act.reason]);
   }
   qc.invalidateQueries({ queryKey: ["board", "activity"] });
 }

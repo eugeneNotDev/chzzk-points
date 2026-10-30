@@ -162,7 +162,7 @@ function QuickTiles() {
 }
 
 function NoticePreview() {
-  const q = useNoticePreview(useWide() ? 8 : 5);
+  const q = useNoticePreview(5);
   const bloomN = useBloom(q.isLoading);
   useNoticeReadVersion();
   useTableRefetch("notices", [["notices"]]);
