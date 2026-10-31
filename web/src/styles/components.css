@@ -288,12 +288,13 @@
 .modal[open] {
   display: flex;
   flex-direction: column;
-  animation: modal-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: modal-in 0.24s var(--ease-out);
 }
+/* 뒤 배경 — 흐림(blur)은 뺌: 뒤에서 칭호 카드들이 계속 움직여서 열려 있는 내내 매 프레임 다시 흐리게 그려야 했고,
+   팝업이 뜨는 순간 버벅이는 원인이었음. 대신 팝업과 같이 서서히 어두워지게. */
 .modal::backdrop {
-  background: rgba(0, 0, 0, 0.6);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.64);
+  animation: modal-backdrop-in 0.24s var(--ease-out);
 }
 .modal-wide {
   width: min(calc(100vw - 32px), clamp(720px, 62vw, 1120px));
@@ -342,7 +343,18 @@
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(16px) scale(0.98);
+  }
+}
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+/* 모바일 아래에서 올라오는 시트 */
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
   }
 }
 @media (max-width: 599px) {
@@ -355,6 +367,9 @@
     margin: auto 0 0;
     border-radius: 20px 20px 0 0;
     border-bottom: 0;
+  }
+  .modal[open] {
+    animation: sheet-in 0.3s var(--ease-out);
   }
   .modal-head,
   .modal-body,
