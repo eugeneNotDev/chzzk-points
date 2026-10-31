@@ -4,7 +4,8 @@
 //   메탈(shine)  : 옅은 바탕 + 금속 그라데이션 테두리 + 빛이 지나감
 //   빛나는(glow) : 속은 어둡게(라이트는 하얗게) + 네온 링이 돌며 번짐
 //   유리(glass)  : 반투명 + 비스듬한 반사광
-//   꿈나라(dream): 밤하늘 바탕 + 하나씩 반짝이는 잔별 + 구석의 초승달(별·달 부품은 TitlePlate.tsx의 PlateDream)
+//   꿈나라(dream): 밤하늘 바탕 + 하나씩 반짝이는 잔별 + 구석의 보름달(별·달 부품은 TitlePlate.tsx의 PlateDream)
+//                  라이트 테마에서도 밤하늘 그대로 — 색 계산도 다크 기준으로 함
 //   두 색(바탕+글자 / 그라데이션) : 바탕·테두리에 두 색이 은은하게
 //   무지개, 반짝 별(star)
 // 색 계산은 테마(다크/라이트)에 따라 달라서 테마를 받아서 계산함. 모양은 styles/title-plate.css.
@@ -33,6 +34,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
   if (!value) return null;
   const s = parseTitleStyle(value);
   const { color, color2, mix: mx, design, icon, star } = s;
+  if (design === "dream") light = false; // 꿈나라는 테마와 상관없이 항상 밤
   const cls = ["tp", `tp-${design}`];
   if (color === "rainbow") cls.push("tp-rainbow");
   if (color2) cls.push("tp-two");

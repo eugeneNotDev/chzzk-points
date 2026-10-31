@@ -33,9 +33,6 @@
   --tp-gi: 22%;
   --tp-card-a: 12%;
   --tp-card-a2: 10%;
-  --tp-night: #eef0fb;
-  --tp-moon: #e0a800;
-  --tp-dust: 0.6;
 }
 
 /* ── 공통 ── */
@@ -326,15 +323,24 @@
   color: var(--c-text-3);
 }
 
-/* 꿈나라 — 밤하늘 바탕(왼쪽 칭호 색 → 오른쪽 짙은 밤) + 흐린 별가루, 잔별·달은 PlateDream(.tp-sky)이 그림 */
+/* 꿈나라 — 밤하늘 바탕(왼쪽 칭호 색 → 오른쪽 짙은 밤) + 흐린 별가루, 잔별·달은 PlateDream(.tp-sky)이 그림.
+   라이트 테마에서도 항상 밤 — 칸 안의 글자색(닉네임·포인트 등)도 다크 값으로 덮어씀 */
+.tp-dream {
+  --c-text: #f1f4f6;
+  --c-text-2: #aeb6be;
+  --c-text-3: #8a939c;
+  --c-text-4: #6e7781;
+  color: var(--c-text);
+  color-scheme: dark;
+}
 .tp.tp-dream {
   --bd: color-mix(in srgb, var(--edge) 45%, transparent);
-  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(60px 50px at calc(100% - 9px) 9px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 5%, var(--tp-night)));
 }
 .tp.tp-dream.tp-two {
   --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
-  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(60px 50px at calc(100% - 9px) 9px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 50%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 .tp.tp-dream::after {
@@ -356,16 +362,23 @@
   border-radius: inherit;
   pointer-events: none;
 }
+/* 보름달 — 랭킹 줄에선 포인트 숫자에 안 겹치게 구석에 작게, 시상대·상점 칸에선 조금 크게 */
 .tp-moon {
   position: absolute;
-  right: 10px;
-  top: 6px;
-  width: 11px;
-  height: 11px;
+  right: 5px;
+  top: 5px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  box-shadow: -3px 1.5px 0 0 var(--tp-moon);
-  transform: rotate(-20deg);
-  opacity: 0.8;
+  background: var(--tp-moon);
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--tp-moon) 80%, transparent)) drop-shadow(0 0 8px color-mix(in srgb, var(--tp-moon) 45%, transparent));
+}
+.tp-card .tp-moon {
+  right: 14px;
+  top: 10px;
+  width: 15px;
+  height: 15px;
 }
 .tp-dstar {
   position: absolute;
@@ -387,11 +400,11 @@
 }
 /* 시상대·상점 칸 */
 .tp.tp-card.tp-dream {
-  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(90px 70px at calc(100% - 21px) 17px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
 }
 .tp.tp-card.tp-dream.tp-two {
-  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(90px 70px at calc(100% - 21px) 17px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 
