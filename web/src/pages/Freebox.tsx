@@ -276,7 +276,7 @@ export default function Freebox() {
             <div className={styles.odds}>
               <div className={styles.oddBox}>
                 <span>일반 상자</span>
-                <b className="num">10 ~ 300P</b>
+                <b className="num">100 ~ 300P</b>
               </div>
               <div className={`${styles.oddBox} ${styles.oddGold}`}>
                 <span>황금 상자</span>
