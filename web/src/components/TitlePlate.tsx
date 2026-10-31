@@ -82,6 +82,7 @@ export function TitleStage({ name, value, sub, onClick, className = "" }: { name
     <button type="button" className={`tp-stage-btn ${className}`} onClick={onClick} disabled={!onClick} aria-label={`${name} 칭호 장착 미리보기`}>
       <span className={`tp-stage ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
         {plate?.star && <PlateStars />}
+        {plate?.design === "dream" && <PlateDream />}
         <span className="tp-stage-tag">{plate ? <TitleTag name={name} plate={plate} dot={false} /> : name}</span>
         {sub && <span className="tp-stage-sub">{sub}</span>}
       </span>
@@ -99,5 +100,37 @@ export function PlateStars() {
         </svg>
       ))}
     </>
+  );
+}
+
+// 꿈나라 디자인 — 잔별이 하나씩 따로 반짝이고(타이밍·크기 제각각) 구석에 초승달. 플레이트 안에 넣음.
+// [가로 %, 세로 %, 크기 px, 주기 s, 시작 지연 s] — 세 번째마다 십자 대신 작은 점
+const DREAM_STARS: [number, number, number, number, number][] = [
+  [8, 22, 9, 3.2, 0],
+  [19, 68, 5, 4.1, 1.3],
+  [31, 18, 7, 3.6, 2.4],
+  [46, 72, 6, 4.4, 0.6],
+  [58, 20, 8, 3.9, 1.9],
+  [69, 66, 5, 3.4, 3.0],
+  [80, 26, 6, 4.2, 0.2],
+  [25, 45, 10, 5.0, 2.9],
+  [52, 48, 5, 4.6, 3.6],
+  [90, 70, 4, 3.8, 1.1],
+];
+export function PlateDream() {
+  return (
+    <span className="tp-sky" aria-hidden="true">
+      <span className="tp-moon" />
+      {DREAM_STARS.map(([x, y, s, d, dl], i) => {
+        const style = { "--x": `${x}%`, "--y": `${y}%`, "--s": `${s}px`, "--d": `${d}s`, "--dl": `-${dl}s` } as CSSProperties;
+        return i % 3 === 2 ? (
+          <span key={i} className="tp-dstar tp-dstar--dot" style={style} />
+        ) : (
+          <svg key={i} className="tp-dstar" viewBox="0 0 24 24" style={style}>
+            <path fill="currentColor" d={STAR_PATH} />
+          </svg>
+        );
+      })}
+    </span>
   );
 }

@@ -4,11 +4,12 @@
 //   메탈(shine)  : 옅은 바탕 + 금속 그라데이션 테두리 + 빛이 지나감
 //   빛나는(glow) : 속은 어둡게(라이트는 하얗게) + 네온 링이 돌며 번짐
 //   유리(glass)  : 반투명 + 비스듬한 반사광
+//   꿈나라(dream): 밤하늘 바탕 + 하나씩 반짝이는 잔별 + 구석의 초승달(별·달 부품은 TitlePlate.tsx의 PlateDream)
 //   두 색(바탕+글자 / 그라데이션) : 바탕·테두리에 두 색이 은은하게
 //   무지개, 반짝 별(star)
 // 색 계산은 테마(다크/라이트)에 따라 달라서 테마를 받아서 계산함. 모양은 styles/title-plate.css.
 import type { CSSProperties } from "react";
-import { hexLuminance as lum, inkForLight, mixHex as mix, parseTitleStyle } from "./titleStyle";
+import { hexLuminance as lum, inkForLight, mixHex as mix, parseTitleStyle, type TitleStyle } from "./titleStyle";
 
 const RB_DARK_STOPS = ["#ff6b74", "#ffa94d", "#ffe066", "#a9e34b", "#38f9c0", "#74c0fc", "#b197fc", "#f783ac", "#ff6b74"];
 const RB_LIGHT_STOPS = ["#d6336c", "#e8590c", "#b8860b", "#5c940d", "#099268", "#1971c2", "#7048e8", "#c2255c", "#d6336c"];
@@ -25,6 +26,7 @@ export type TitlePlate = {
   /** iconFlow: 아이콘 그라데이션도 글자처럼 흐름(무지개) */
   tag: { className: string; style: CSSProperties; icon: string | null; iconStops?: [number, string][]; iconFlow?: boolean };
   star: boolean;
+  design: TitleStyle["design"];
 };
 
 export function titlePlate(value: string | null | undefined, light: boolean): TitlePlate | null {
@@ -48,6 +50,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
         iconFlow: true,
       },
       star,
+      design,
     };
   }
 
@@ -118,7 +121,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
   }
   if (design === "glow" && !light) tagCls += " tp-tag--glow";
 
-  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconStops }, star };
+  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconStops }, star, design };
 }
 
 function evenStops(colors: string[]): [number, string][] {

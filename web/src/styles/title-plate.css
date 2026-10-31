@@ -19,6 +19,9 @@
   --tp-gi: 50%; /* 빛나는: 안쪽 번짐 */
   --tp-card-a: 16%; /* 시상대 칸: 바탕 */
   --tp-card-a2: 14%;
+  --tp-night: #0b1020; /* 꿈나라: 밤하늘 */
+  --tp-moon: #fff4d6; /* 꿈나라: 별·달 */
+  --tp-dust: 0.45;
 }
 :root[data-theme="light"] {
   --tp-sw: 70%;
@@ -30,6 +33,9 @@
   --tp-gi: 22%;
   --tp-card-a: 12%;
   --tp-card-a2: 10%;
+  --tp-night: #eef0fb;
+  --tp-moon: #e0a800;
+  --tp-dust: 0.6;
 }
 
 /* ── 공통 ── */
@@ -320,6 +326,75 @@
   color: var(--c-text-3);
 }
 
+/* 꿈나라 — 밤하늘 바탕(왼쪽 칭호 색 → 오른쪽 짙은 밤) + 흐린 별가루, 잔별·달은 PlateDream(.tp-sky)이 그림 */
+.tp.tp-dream {
+  --bd: color-mix(in srgb, var(--edge) 45%, transparent);
+  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 5%, var(--tp-night)));
+}
+.tp.tp-dream.tp-two {
+  --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
+  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 50%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
+}
+.tp.tp-dream::after {
+  opacity: var(--tp-dust);
+  background: radial-gradient(1.2px 1.2px at 8% 30%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 22% 74%, var(--tp-moon) 99%, transparent),
+    radial-gradient(1.4px 1.4px at 41% 22%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 57% 80%, var(--tp-moon) 99%, transparent),
+    radial-gradient(1.2px 1.2px at 70% 35%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 84% 70%, var(--tp-moon) 99%, transparent),
+    radial-gradient(1.6px 1.6px at 33% 50%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 92% 18%, var(--tp-moon) 99%, transparent);
+}
+.tp-dream .tp-tag .tp-tx {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--tc) 45%, transparent));
+}
+/* 별·달 층 — .tp > * 의 position: relative 를 덮어써야 해서 .tp > .tp-sky */
+.tp > .tp-sky {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.tp-moon {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: -3px 1.5px 0 0 var(--tp-moon);
+  transform: rotate(-20deg);
+  opacity: 0.8;
+}
+.tp-dstar {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--s);
+  height: var(--s);
+  color: var(--tp-moon);
+  opacity: 0;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--tp-moon) 70%, transparent));
+  animation: tp-dtw var(--d) ease-in-out infinite;
+  animation-delay: var(--dl);
+}
+.tp-dstar--dot {
+  width: calc(var(--s) * 0.35);
+  height: calc(var(--s) * 0.35);
+  border-radius: 50%;
+  background: var(--tp-moon);
+}
+/* 시상대·상점 칸 */
+.tp.tp-card.tp-dream {
+  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
+}
+.tp.tp-card.tp-dream.tp-two {
+  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
+}
+
 @keyframes tp-sweep {
   0%,
   40% {
@@ -337,6 +412,25 @@
 @keyframes tp-rb {
   to {
     background-position: 200% 0;
+  }
+}
+@keyframes tp-dtw {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.2) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1) rotate(20deg);
+  }
+  24% {
+    opacity: 0.15;
+    transform: scale(0.5) rotate(40deg);
+  }
+  30% {
+    opacity: 0;
+    transform: scale(0.2);
   }
 }
 @keyframes tp-tw {
@@ -370,6 +464,10 @@
   }
   .tp .tp-sp {
     animation-duration: 2.4s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-dstar {
+    animation-duration: var(--d) !important;
     animation-iteration-count: infinite !important;
   }
 }

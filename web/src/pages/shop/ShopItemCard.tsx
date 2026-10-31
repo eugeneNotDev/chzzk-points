@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Check, Radio, Timer } from "lucide-react";
-import { TitleTag, PlateStars, useTitlePlate } from "../../components/TitlePlate";
+import { TitleTag, PlateDream, PlateStars, useTitlePlate } from "../../components/TitlePlate";
 import { useAuth } from "../../lib/auth";
 import { fmt } from "../../lib/format";
 import type { ShopItem } from "../../lib/shop";
@@ -35,6 +35,7 @@ function TitleStage({ name, value, onPreview }: { name: string; value: string | 
     <button type="button" className={styles.titleStage} onClick={onPreview} disabled={!onPreview} aria-label={`${name} 칭호 장착 미리보기`}>
       <span className={`${styles.stagePlate} ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
         {plate?.star && <PlateStars />}
+        {plate?.design === "dream" && <PlateDream />}
         {plate && (
           <span className={styles.stageTag}>
             <TitleTag name={name} plate={plate} dot={false} />

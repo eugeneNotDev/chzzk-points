@@ -9,13 +9,13 @@ export type TitleStyle = {
   color: string; // "#rrggbb" | "rainbow"
   color2: string | null;
   mix: "grad" | "ink";
-  design: "basic" | "shine" | "glow" | "glass";
+  design: "basic" | "shine" | "glow" | "glass" | "dream";
   icon: string | null;
   star: boolean;
 };
 
 const DEFAULT_TITLE_COLOR = "#00e5a0";
-const DESIGNS = new Set(["basic", "shine", "glow", "glass"]);
+const DESIGNS = new Set(["basic", "shine", "glow", "glass", "dream"]);
 
 export function parseTitleStyle(value: unknown): TitleStyle {
   const fallback: TitleStyle = { color: DEFAULT_TITLE_COLOR, color2: null, mix: "grad", design: "basic", icon: null, star: false };
@@ -155,4 +155,5 @@ export const TITLE_DESIGNS = [
   { id: "shine", name: "메탈 반짝" },
   { id: "glow", name: "빛나는 테두리" },
   { id: "glass", name: "유리" },
+  { id: "dream", name: "꿈나라" },
 ] as const;
