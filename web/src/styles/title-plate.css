@@ -335,12 +335,12 @@
 }
 .tp.tp-dream {
   --bd: color-mix(in srgb, var(--edge) 45%, transparent);
-  background: radial-gradient(60px 50px at calc(100% - 9px) 9px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(70px 60px at calc(100% - 15px) 11px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 5%, var(--tp-night)));
 }
 .tp.tp-dream.tp-two {
   --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
-  background: radial-gradient(60px 50px at calc(100% - 9px) 9px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(70px 60px at calc(100% - 15px) 11px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 50%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 .tp.tp-dream::after {
@@ -362,13 +362,13 @@
   border-radius: inherit;
   pointer-events: none;
 }
-/* 보름달 — 랭킹 줄에선 포인트 숫자에 안 겹치게 구석에 작게, 시상대·상점 칸에선 조금 크게 */
+/* 보름달 — 랭킹 줄 오른쪽 위(예전 초승달 자리), 시상대·상점 칸에선 조금 크게 */
 .tp-moon {
   position: absolute;
-  right: 5px;
-  top: 5px;
-  width: 8px;
-  height: 8px;
+  right: 10px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--tp-moon);
   opacity: 0.95;
