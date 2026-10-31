@@ -42,8 +42,10 @@ export function GameLock({ state, query }: { state: GameStateBase | undefined; q
   );
 }
 
-export function BetPanel({ game, children }: { game: Minigame; children: ReactNode }) {
-  const locked = !!game.state?.blocked || !game.state?.eligible;
+// busy: 판이 진행 중(양 로켓 비행 중 등)이면 걸 포인트를 못 바꾸게 잠그고, 안내도 그 문구로 바꿈
+// (이미 건 포인트가 빠져 잔액이 0이어도 "100P 이상 있어야…"가 빨갛게 떠서 못 내리는 줄 아는 일이 없게)
+export function BetPanel({ game, children, busy }: { game: Minigame; children: ReactNode; busy?: string }) {
+  const locked = !!busy || !!game.state?.blocked || !game.state?.eligible;
   const add = (v: number) => game.setBet(game.bet + v);
   return (
     <div className={styles.panel}>
@@ -57,7 +59,7 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
       <label className={styles.betField}>
         <span className="muted">걸 포인트</span>
         <input
-          className={`num ${game.hintBad && game.bet > 0 ? styles.bad : ""}`}
+          className={`num ${!busy && game.hintBad && game.bet > 0 ? styles.bad : ""}`}
           inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
@@ -88,7 +90,7 @@ export function BetPanel({ game, children }: { game: Minigame; children: ReactNo
           초기화
         </button>
       </div>
-      <p className={`${styles.hint} ${game.hintBad ? styles.hintBad : ""}`}>{game.hint}</p>
+      <p className={`${styles.hint} ${!busy && game.hintBad ? styles.hintBad : ""}`}>{busy ?? game.hint}</p>
       {children}
     </div>
   );

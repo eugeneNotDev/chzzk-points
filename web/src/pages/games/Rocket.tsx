@@ -279,7 +279,7 @@ export default function Rocket({ top }: { top?: ReactNode }) {
               <span>{status}</span>
             </div>
           </div>
-          <BetPanel game={game}>
+          <BetPanel game={game} busy={phase === "flying" ? "로켓이 나는 중이에요. 터지기 전에 내리기를 눌러요!" : undefined}>
             {phase === "flying" ? (
               <button type="button" className={`btn btn-lg btn-block ${styles.cashBtn}`} disabled={cashing || flight?.crashAt != null} onClick={cashOut}>
                 {cashing ? "내리는 중…" : `x${x2(mult)} 내리기 (+${fmt(Math.floor((flight?.bet ?? 0) * mult) - (flight?.bet ?? 0))}P)`}
