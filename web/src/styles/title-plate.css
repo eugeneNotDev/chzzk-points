@@ -373,6 +373,14 @@
   transform: rotate(-20deg);
   opacity: 0.8;
 }
+/* 시상대·상점처럼 큰 칸에선 초승달도 크게 */
+.tp-card .tp-moon {
+  right: 16px;
+  top: 12px;
+  width: 18px;
+  height: 18px;
+  box-shadow: -5px 2.5px 0 0 var(--tp-moon);
+}
 .tp-dstar {
   position: absolute;
   left: var(--x);
@@ -393,11 +401,11 @@
 }
 /* 시상대·상점 칸 */
 .tp.tp-card.tp-dream {
-  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
 }
 .tp.tp-card.tp-dream.tp-two {
-  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 
