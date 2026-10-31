@@ -335,12 +335,12 @@
 }
 .tp.tp-dream {
   --bd: color-mix(in srgb, var(--edge) 45%, transparent);
-  background: radial-gradient(70px 60px at calc(100% - 15px) 11px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 5%, var(--tp-night)));
 }
 .tp.tp-dream.tp-two {
   --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
-  background: radial-gradient(70px 60px at calc(100% - 15px) 11px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 50%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 .tp.tp-dream::after {
@@ -362,23 +362,16 @@
   border-radius: inherit;
   pointer-events: none;
 }
-/* 보름달 — 랭킹 줄 오른쪽 위(예전 초승달 자리), 시상대·상점 칸에선 조금 크게 */
 .tp-moon {
   position: absolute;
   right: 10px;
   top: 6px;
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  background: var(--tp-moon);
-  opacity: 0.95;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--tp-moon) 80%, transparent)) drop-shadow(0 0 8px color-mix(in srgb, var(--tp-moon) 45%, transparent));
-}
-.tp-card .tp-moon {
-  right: 14px;
-  top: 10px;
-  width: 15px;
-  height: 15px;
+  box-shadow: -3px 1.5px 0 0 var(--tp-moon);
+  transform: rotate(-20deg);
+  opacity: 0.8;
 }
 .tp-dstar {
   position: absolute;
@@ -400,11 +393,11 @@
 }
 /* 시상대·상점 칸 */
 .tp.tp-card.tp-dream {
-  background: radial-gradient(90px 70px at calc(100% - 21px) 17px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
 }
 .tp.tp-card.tp-dream.tp-two {
-  background: radial-gradient(90px 70px at calc(100% - 21px) 17px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+  background: radial-gradient(90px 70px at calc(100% - 16px) 14px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
 
