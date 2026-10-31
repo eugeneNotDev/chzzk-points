@@ -123,11 +123,16 @@
   transition: background var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .btnPrimary {
-  background: var(--c-accent);
+  background: var(--accent-3d-bg);
+  box-shadow: var(--accent-3d-shadow);
   color: var(--c-accent-ink);
+  font-weight: 800;
 }
 .btnPrimary:hover {
-  background: var(--c-accent-hover);
+  background: var(--accent-3d-bg-hover);
+}
+.btnPrimary:active {
+  box-shadow: var(--accent-3d-shadow-active);
 }
 .btnSecondary {
   background: var(--c-surface-3);

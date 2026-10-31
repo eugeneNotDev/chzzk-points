@@ -151,20 +151,23 @@
   gap: 10px;
   border: 0;
   border-radius: 14px;
-  background: var(--c-accent);
+  background: var(--accent-3d-bg);
+  box-shadow: var(--accent-3d-shadow);
   color: var(--c-accent-ink);
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  transition: background var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: box-shadow var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .openBtn:hover:not(:disabled) {
-  background: var(--c-accent-hover);
+  background: var(--accent-3d-bg-hover);
 }
 .openBtn:active:not(:disabled) {
   transform: translateY(1px);
+  box-shadow: var(--accent-3d-shadow-active);
 }
 .openBtn:disabled {
+  box-shadow: none;
   background: var(--c-surface-3);
   color: var(--c-text-3);
   cursor: default;

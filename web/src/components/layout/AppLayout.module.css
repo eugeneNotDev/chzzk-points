@@ -187,14 +187,18 @@
   padding: 0 16px;
   border: 0;
   border-radius: 999px;
-  background: var(--c-accent);
+  background: var(--accent-3d-bg);
+  box-shadow: var(--accent-3d-shadow);
   color: var(--c-accent-ink);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 .topLogin:hover {
-  background: var(--c-accent-hover);
+  background: var(--accent-3d-bg-hover);
+}
+.topLogin:active {
+  box-shadow: var(--accent-3d-shadow-active);
 }
 
 .userBox {
@@ -242,14 +246,18 @@
   gap: 8px;
   border: 0;
   border-radius: var(--r-md);
-  background: var(--c-accent);
+  background: var(--accent-3d-bg);
+  box-shadow: var(--accent-3d-shadow);
   color: var(--c-accent-ink);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 .loginBtn:hover {
-  background: var(--c-accent-hover);
+  background: var(--accent-3d-bg-hover);
+}
+.loginBtn:active {
+  box-shadow: var(--accent-3d-shadow-active);
 }
 
 .iconBtn {
