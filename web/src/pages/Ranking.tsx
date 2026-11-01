@@ -97,8 +97,8 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
           </b>
           {plate && r.shop_title_name && <TitleTag name={r.shop_title_name} plate={plate} dot={false} />}
           {r.self_private && (
-            <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 다른 사람에겐 '비공개'로만 보여요">
-              <Lock size={10} aria-hidden="true" /> 나만 보임
+            <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 내 화면에서만 이름·칭호가 보이고, 다른 사람에겐 '비공개'로 보여요">
+              <Lock size={10} aria-hidden="true" /> 비공개
             </span>
           )}
         </div>

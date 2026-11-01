@@ -1,7 +1,7 @@
 // 랭킹 목록 — 랭킹 화면과 홈 미리보기가 같이 씀.
 // 이름 칸 = [비공개 표시(관리자 화면만)] 닉네임 · 🐺 칭호, 특수 칭호는 닉네임 바로 위 작은 글씨.
 // 장착 칭호가 있으면 줄 전체가 칭호 색·테두리 플레이트가 됨(components/TitlePlate, styles/title-plate.css).
-// 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴(본인도 똑같이 — 설정이 잘 됐는지 보이게).
+// 비공개 유저는 이름이 이미 "비공개"로 가려져서 내려옴. 단 내 줄은 내 화면에서만 내 이름·칭호로 채우고 🔒 비공개 표시(lib/homeData.ts).
 //
 // 순위가 바뀌면(Lucian UX/UI Prompt #317 · MIT License (c) 2026 Seokwoooo · https://lucianlabs.dev/uxui-prompt/#317)
 // 줄들이 한꺼번에 바뀌지 않고 각자 새 자리로 미끄러져 감(0.6s). 올라간 줄은 살짝 떠서 앞으로, 내려간 줄은 뒤로 —
@@ -98,8 +98,8 @@ function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow
     <span className={styles.nameLine}>
       {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
       {r.self_private && (
-        <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 다른 사람에겐 '비공개'로만 보여요">
-          <Lock size={10} aria-hidden="true" /> 나만 보임
+        <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 내 화면에서만 이름·칭호가 보이고, 다른 사람에겐 '비공개'로 보여요">
+          <Lock size={10} aria-hidden="true" /> 비공개
         </span>
       )}
       <span className={styles.nameCol}>
