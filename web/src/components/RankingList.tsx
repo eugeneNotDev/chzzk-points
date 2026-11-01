@@ -97,7 +97,8 @@ function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow
     <span className={styles.nameLine}>
       {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
       <span className={styles.nameCol}>
-        {!isPrivate && <SpecialTitleLine list={r.special_titles} />}
+        {/* 비공개 유저는 공개 랭킹에선 칭호를 숨기지만, 관리자 화면에선 상점 칭호처럼 특수 칭호도 보여줌 */}
+        {(!isPrivate || r.admin_view) && <SpecialTitleLine list={r.special_titles} />}
         <span className={styles.nameRow}>
           <span className={`${styles.nameText} ${isPrivate && !r.admin_view ? styles.muted : ""}`}>
             {r.channel_name || "(이름 없음)"}
