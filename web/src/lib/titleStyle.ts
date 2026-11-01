@@ -2,6 +2,8 @@
 // DB엔 titles.color 한 칸에 "색 + 디자인 + 아이콘 + 별" 조합이 문자열로 저장돼 있음:
 //   "#00e5a0" / "rainbow" / "shine-crown-ffd43b" / "glow-rainbow" / "book-star-00e5a0"
 //   "basic-ff6bb5-5dc8ff"(그라데이션) / "glass-1b1e24-t-f2c230"(배경+글자)
+//   배경: "night"(밤하늘) / "sky"(무지개 하늘) 토큰 — 디자인·테두리·별과 따로 고름. 예: "shine-sheep-star-sky-rainbow"
+//   예전 꿈나라 디자인 값("dream-...")은 기본 디자인 + 밤하늘 배경으로 읽음
 import type { CSSProperties } from "react";
 import { TITLE_ICON_MAP } from "./titleIcons";
 
@@ -9,16 +11,19 @@ export type TitleStyle = {
   color: string; // "#rrggbb" | "rainbow"
   color2: string | null;
   mix: "grad" | "ink";
-  design: "basic" | "shine" | "glow" | "glass" | "dream";
+  design: "basic" | "shine" | "glow" | "glass";
   icon: string | null;
   star: boolean;
+  bg: TitleBg | null;
 };
+export type TitleBg = "night" | "sky";
 
 const DEFAULT_TITLE_COLOR = "#00e5a0";
-const DESIGNS = new Set(["basic", "shine", "glow", "glass", "dream"]);
+const DESIGNS = new Set(["basic", "shine", "glow", "glass"]);
+const BGS = new Set(["night", "sky"]);
 
 export function parseTitleStyle(value: unknown): TitleStyle {
-  const fallback: TitleStyle = { color: DEFAULT_TITLE_COLOR, color2: null, mix: "grad", design: "basic", icon: null, star: false };
+  const fallback: TitleStyle = { color: DEFAULT_TITLE_COLOR, color2: null, mix: "grad", design: "basic", icon: null, star: false, bg: null };
   if (typeof value !== "string" || !value) return fallback;
   const v = value.trim().toLowerCase();
   if (/^#[0-9a-f]{6}$/.test(v)) return { ...fallback, color: v };
@@ -51,12 +56,15 @@ export function parseTitleStyle(value: unknown): TitleStyle {
   let design: TitleStyle["design"] = "basic";
   let icon: string | null = null;
   let star = false;
+  let bg: TitleBg | null = null;
   for (const p of parts) {
     if (p === "star") star = true;
+    else if (p === "dream") bg = "night"; // 예전 꿈나라 디자인
+    else if (BGS.has(p)) bg = p as TitleBg;
     else if (TITLE_ICON_MAP.has(p)) icon = p;
     else if (DESIGNS.has(p)) design = p as TitleStyle["design"];
   }
-  return { color, color2, mix, design, icon, star };
+  return { color, color2, mix, design, icon, star, bg };
 }
 
 export function hexLuminance(hex: string) {
@@ -102,16 +110,17 @@ export function nameColorVars(value: string | null | undefined): CSSProperties |
   return { "--nm": base, "--nm-l": inkForLight(base, 0.22) } as CSSProperties;
 }
 
-export function composeTitleStyle({ color, color2, mix, design, icon, star }: TitleStyle) {
+export function composeTitleStyle({ color, color2, mix, design, icon, star, bg }: TitleStyle) {
   const isHex = (c: string | null) => /^#[0-9a-fA-F]{6}$/.test(c || "");
   const c = color === "rainbow" ? "rainbow" : isHex(color) ? color.toLowerCase() : DEFAULT_TITLE_COLOR;
   const c2 = c !== "rainbow" && isHex(color2) ? color2!.toLowerCase() : null; // 무지개는 두 번째 색이랑 같이 안 씀
   const d = DESIGNS.has(design) ? design : "basic";
   const ic = icon && TITLE_ICON_MAP.has(icon) ? icon : null;
-  if (d === "basic" && !ic && !star && !c2) return c;
+  const b = bg && BGS.has(bg) ? bg : null;
+  if (d === "basic" && !ic && !star && !c2 && !b) return c;
   let colorPart = c === "rainbow" ? "rainbow" : c.slice(1);
   if (c2) colorPart += `${mix === "ink" ? "-t-" : "-"}${c2.slice(1)}`;
-  const tokens = [d !== "basic" ? d : null, ic, star ? "star" : null].filter(Boolean) as string[];
+  const tokens = [d !== "basic" ? d : null, ic, star ? "star" : null, b].filter(Boolean) as string[];
   if (!tokens.length) tokens.push("basic");
   return [...tokens, colorPart].join("-");
 }
@@ -155,5 +164,10 @@ export const TITLE_DESIGNS = [
   { id: "shine", name: "메탈 반짝" },
   { id: "glow", name: "빛나는 테두리" },
   { id: "glass", name: "유리" },
-  { id: "dream", name: "꿈나라" },
+] as const;
+// 배경 — 디자인(테두리·광택)과 따로 고름. 라이트 테마에서도 항상 이 배경 그대로.
+export const TITLE_BACKGROUNDS = [
+  { id: null, name: "없음" },
+  { id: "night", name: "밤하늘" },
+  { id: "sky", name: "무지개 하늘" },
 ] as const;

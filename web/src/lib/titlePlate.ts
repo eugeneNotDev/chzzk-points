@@ -4,8 +4,10 @@
 //   메탈(shine)  : 옅은 바탕 + 금속 그라데이션 테두리 + 빛이 지나감
 //   빛나는(glow) : 속은 어둡게(라이트는 하얗게) + 네온 링이 돌며 번짐
 //   유리(glass)  : 반투명 + 비스듬한 반사광
-//   꿈나라(dream): 밤하늘 바탕 + 하나씩 반짝이는 잔별 + 구석의 초승달(별·달 부품은 TitlePlate.tsx의 PlateDream)
-//                  라이트 테마에서도 밤하늘 그대로 — 색 계산도 다크 기준으로 함
+//   배경(bg) — 디자인과 따로. 테두리·광택·별은 디자인 그대로 두고 바탕만 바꿈(부품은 TitlePlate.tsx의 PlateBg)
+//     밤하늘(night): 하나씩 반짝이는 잔별 + 구석의 초승달
+//     무지개 하늘(sky): 낮 하늘 + 무지개 아치 + 흘러가는 구름·양
+//     라이트 테마에서도 배경 그대로 — 색 계산도 다크 기준으로 함
 //   두 색(바탕+글자 / 그라데이션) : 바탕·테두리에 두 색이 은은하게
 //   무지개, 반짝 별(star)
 // 색 계산은 테마(다크/라이트)에 따라 달라서 테마를 받아서 계산함. 모양은 styles/title-plate.css.
@@ -27,15 +29,16 @@ export type TitlePlate = {
   /** iconFlow: 아이콘 그라데이션도 글자처럼 흐름(무지개) */
   tag: { className: string; style: CSSProperties; icon: string | null; iconStops?: [number, string][]; iconFlow?: boolean };
   star: boolean;
-  design: TitleStyle["design"];
+  bg: TitleStyle["bg"];
 };
 
 export function titlePlate(value: string | null | undefined, light: boolean): TitlePlate | null {
   if (!value) return null;
   const s = parseTitleStyle(value);
-  const { color, color2, mix: mx, design, icon, star } = s;
-  if (design === "dream") light = false; // 꿈나라는 테마와 상관없이 항상 밤
+  const { color, color2, mix: mx, design, icon, star, bg } = s;
+  if (bg) light = false; // 배경이 있으면 테마와 상관없이 그 배경 위 색으로
   const cls = ["tp", `tp-${design}`];
+  if (bg) cls.push(`tp-bg-${bg}`);
   if (color === "rainbow") cls.push("tp-rainbow");
   if (color2) cls.push("tp-two");
   if (star) cls.push("tp-starred");
@@ -52,7 +55,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
         iconFlow: true,
       },
       star,
-      design,
+      bg,
     };
   }
 
@@ -123,7 +126,7 @@ export function titlePlate(value: string | null | undefined, light: boolean): Ti
   }
   if (design === "glow" && !light) tagCls += " tp-tag--glow";
 
-  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconStops }, star, design };
+  return { className: cls.join(" "), style: v as CSSProperties, tag: { className: tagCls, style: tag as CSSProperties, icon, iconStops }, star, bg };
 }
 
 function evenStops(colors: string[]): [number, string][] {

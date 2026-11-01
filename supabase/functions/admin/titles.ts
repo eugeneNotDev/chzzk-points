@@ -7,7 +7,7 @@ import { getAdminClient } from "../_shared/db.ts";
 // 그대로 통과함).
 const CUSTOM_TITLE_MIN_POINTS = 999999999999;
 // "#rrggbb" 또는 특수 스타일 이름("rainbow" 등) — shop-items 함수의 COLOR_PATTERN과 같은 규칙.
-export const TITLE_COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,31})$/;
+export const TITLE_COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,63})$/;
 export const TITLE_NAME_MAX = 20;
 
 export async function grantCustomTitle(admin: ReturnType<typeof getAdminClient>, channelId: string, name: string, color: string) {

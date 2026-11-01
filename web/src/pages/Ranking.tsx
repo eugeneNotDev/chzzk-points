@@ -7,7 +7,7 @@ import { Card, EmptyState } from "../components/Card";
 import { PageHead } from "../components/ui";
 import { RankingList } from "../components/RankingList";
 import { SpecialTitleLine } from "../components/TitleBadge";
-import { PlateDream, PlateStars, TitleTag, useTitlePlate } from "../components/TitlePlate";
+import { PlateBg, PlateStars, TitleTag, useTitlePlate } from "../components/TitlePlate";
 import { Laurel } from "../components/Laurel";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, useRanking, type RankingRow } from "../lib/homeData";
@@ -87,7 +87,7 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
       {/* 내 칸 초록 테두리는 칭호가 없을 때만(칭호 테두리를 가리지 않게 — 랭킹 목록과 같음, "(나)"로 구분) */}
       <div className={`${styles.stepTop} ${me && !plate ? styles.stepMe : ""} ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
         {plate?.star && <PlateStars />}
-        {plate?.design === "dream" && <PlateDream />}
+        <PlateBg bg={plate?.bg} />
         <span className={styles.medal}>{i === 0 ? <Crown size={22} aria-hidden="true" /> : <Medal size={18} aria-hidden="true" />}</span>
         <div className={styles.stepName}>
           {!hidden && <SpecialTitleLine list={r.special_titles} />}

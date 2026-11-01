@@ -1,7 +1,8 @@
 // 칭호 꾸미기 — 상점 칭호 상품 추가/수정, 관리자 칭호 지급에서 같이 씀.
 //  - 색: 예시 동그라미 / 색상표(+) / HEX 직접 입력, 무지개
 //  - 두 가지 색: 그라데이션 또는 배경색+글자색
-//  - 디자인: 기본 / 메탈 반짝 / 빛나는 테두리 / 유리 / 꿈나라
+//  - 디자인: 기본 / 메탈 반짝 / 빛나는 테두리 / 유리
+//  - 배경: 없음 / 밤하늘 / 무지개 하늘 (디자인·테두리·별은 그대로 두고 바탕만)
 //  - 장식: 아이콘 70여 개 중 하나 + 반짝이 별
 // mode="special"이면 특수 칭호(닉네임 윗줄 글씨)용 — 디자인은 기본/광택만, 별·배경+글자 없음.
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import {
   parseHexColorInput,
   parseTitleStyle,
   TITLE_COLOR_PRESETS,
+  TITLE_BACKGROUNDS,
   TITLE_DESIGNS,
   titleBadgeTextColor,
   type TitleStyle,
@@ -40,7 +42,7 @@ export function TitleColorPicker({
   mode?: "badge" | "special";
 }) {
   const special = mode === "special";
-  const normalize = (st: TitleStyle): TitleStyle => (special ? { ...st, design: st.design === "shine" ? "shine" : "basic", star: false, mix: "grad" } : st);
+  const normalize = (st: TitleStyle): TitleStyle => (special ? { ...st, design: st.design === "shine" ? "shine" : "basic", star: false, bg: null, mix: "grad" } : st);
   const state = useMemo(() => normalize(parseTitleStyle(value)), [value, special]); // eslint-disable-line react-hooks/exhaustive-deps
   const [lastHex2, setLastHex2] = useState(state.color2 || "#5dc8ff");
   const [iconOpen, setIconOpen] = useState(false);
@@ -109,6 +111,20 @@ export function TitleColorPicker({
           })}
         </div>
       </div>
+
+      {!special && (
+        <div className={styles.row}>
+          <span className={styles.rowLabel}>배경</span>
+          <div className={styles.designs} role="radiogroup" aria-label="칭호 배경">
+            {TITLE_BACKGROUNDS.map((b) => (
+              <button key={b.id ?? "none"} type="button" role="radio" aria-checked={state.bg === b.id} className={`${styles.design} ${state.bg === b.id ? styles.on : ""}`} onClick={() => set({ bg: b.id })}>
+                <span className={`${styles.bgSample} ${b.id ? styles[`bg_${b.id}`] : ""}`} aria-hidden="true" />
+                <span>{b.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className={styles.row}>
         <span className={styles.rowLabel}>장식</span>

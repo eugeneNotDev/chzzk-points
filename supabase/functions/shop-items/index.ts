@@ -75,7 +75,7 @@ const PURCHASE_ONLY_MIN_POINTS = 999999999999;
 // 그대로 들어가는 값이라 형식을 엄격히 제한함. 특수 스타일은 프론트(chzzk-auth.js의
 // TITLE_SPECIAL_STYLES)에 등록된 이름만 실제로 그려지고, 모르는 이름은 기본색으로 보임 — 그래서
 // 나중에 스타일을 추가해도 이 함수는 다시 배포할 필요 없음.
-const COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,31})$/;
+const COLOR_PATTERN = /^(#[0-9a-fA-F]{6}|[a-z][a-z0-9-]{1,63})$/;
 const DEFAULT_TITLE_COLOR = "#00e5a0";
 
 Deno.serve(async (req: Request) => {

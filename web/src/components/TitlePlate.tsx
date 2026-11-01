@@ -2,7 +2,7 @@
 import { useId, useMemo, type CSSProperties, type ReactNode } from "react";
 import { TITLE_ICON_MAP } from "../lib/titleIcons";
 import { TITLE_ICON_CY } from "../lib/titleIconCenter";
-import { titlePlate } from "../lib/titlePlate";
+import { titlePlate, type TitlePlate as TitlePlateT } from "../lib/titlePlate";
 import { useTheme } from "../lib/theme";
 import { TitleIconSvg } from "./TitleBadge";
 
@@ -82,7 +82,7 @@ export function TitleStage({ name, value, sub, onClick, className = "" }: { name
     <button type="button" className={`tp-stage-btn ${className}`} onClick={onClick} disabled={!onClick} aria-label={`${name} 칭호 장착 미리보기`}>
       <span className={`tp-stage ${plate ? `${plate.className} tp-card` : ""}`} style={plate?.style}>
         {plate?.star && <PlateStars />}
-        {plate?.design === "dream" && <PlateDream />}
+        <PlateBg bg={plate?.bg} />
         <span className="tp-stage-tag">{plate ? <TitleTag name={name} plate={plate} dot={false} /> : name}</span>
         {sub && <span className="tp-stage-sub">{sub}</span>}
       </span>
@@ -103,7 +103,14 @@ export function PlateStars() {
   );
 }
 
-// 꿈나라 디자인 — 잔별이 하나씩 따로 반짝이고(타이밍·크기 제각각) 구석에 초승달. 플레이트 안에 넣음.
+/** 칭호 배경(밤하늘·무지개 하늘) 장식 — 플레이트 안에 넣음. 배경이 없으면 아무것도 안 그림. */
+export function PlateBg({ bg }: { bg: TitlePlateT["bg"] | undefined }) {
+  if (bg === "night") return <PlateDream />;
+  if (bg === "sky") return <PlateSky />;
+  return null;
+}
+
+// 밤하늘 배경 — 잔별이 하나씩 따로 반짝이고(타이밍·크기 제각각) 구석에 초승달. 플레이트 안에 넣음.
 // [가로 %, 세로 %, 크기 px, 주기 s, 시작 지연 s] — 세 번째마다 십자 대신 작은 점
 const DREAM_STARS: [number, number, number, number, number][] = [
   [8, 22, 9, 3.2, 0],
@@ -131,6 +138,52 @@ export function PlateDream() {
           </svg>
         );
       })}
+    </span>
+  );
+}
+
+// 무지개 하늘 배경 — 무지개 아치 + 천천히 좌우로 흘러가는 구름과 양(네루).
+// [가로 %, 세로 %, 폭 px, 주기 s, 시작 지연 s, 양?] — 랭킹 줄은 좁아서 2개만, 시상대·상점 칸은 5개
+const SKY_ROW: [number, number, number, number, number, boolean][] = [
+  [34, 2, 18, 40, 0, false],
+  [55, 56, 24, 38, 4, true],
+];
+const SKY_CARD: [number, number, number, number, number, boolean][] = [
+  [4, 62, 30, 40, 0, false],
+  [7, 8, 30, 38, 6, true],
+  [30, 4, 20, 46, 8, false],
+  [80, 62, 30, 46, 22, true],
+  [78, 6, 26, 52, 20, false],
+];
+const CLOUD_PATH = "M14 30a10 10 0 0 1 0-20a13 13 0 0 1 24-4a11 11 0 0 1 16 8a8 8 0 0 1 0 16z";
+function SkyCloud({ c, where }: { c: (typeof SKY_ROW)[number]; where: "row" | "card" }) {
+  const [x, y, w, d, dl, sheep] = c;
+  const style = { "--x": `${x}%`, "--y": `${y}%`, "--w": `${w}px`, "--d": `${d}s`, "--dl": `-${dl}s` } as CSSProperties;
+  const cls = `tp-cloud tp-cloud--${where}`;
+  return sheep ? (
+    <svg className={`${cls} tp-cloud--sheep`} viewBox="0 0 64 40" style={style}>
+      <path className="tp-wool" d="M16 28a9 9 0 0 1-2-17a11 11 0 0 1 20-5a10 10 0 0 1 16 6a8 8 0 0 1 0 16z" />
+      <ellipse className="tp-sheep-face" cx="51" cy="20" rx="6" ry="7.5" />
+      <ellipse className="tp-sheep-face" cx="46" cy="15" rx="3" ry="1.6" transform="rotate(-25 46 15)" />
+      <rect className="tp-sheep-face" x="20" y="27" width="3" height="8" rx="1.5" />
+      <rect className="tp-sheep-face" x="38" y="27" width="3" height="8" rx="1.5" />
+    </svg>
+  ) : (
+    <svg className={cls} viewBox="0 0 64 32" style={style}>
+      <path d={CLOUD_PATH} />
+    </svg>
+  );
+}
+export function PlateSky() {
+  return (
+    <span className="tp-sky" aria-hidden="true">
+      <span className="tp-arc" />
+      {SKY_ROW.map((c, i) => (
+        <SkyCloud key={`r${i}`} c={c} where="row" />
+      ))}
+      {SKY_CARD.map((c, i) => (
+        <SkyCloud key={`c${i}`} c={c} where="card" />
+      ))}
     </span>
   );
 }

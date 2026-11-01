@@ -14,7 +14,7 @@ import { useAuth } from "../lib/auth";
 import { isMyRankingRow, type RankingRow } from "../lib/homeData";
 import { SpecialTitleLine } from "./TitleBadge";
 import { Laurel } from "./Laurel";
-import { PlateDream, PlateStars, TitleTag, useTitlePlate } from "./TitlePlate";
+import { PlateBg, PlateStars, TitleTag, useTitlePlate } from "./TitlePlate";
 import styles from "./RankingList.module.css";
 import { useIconSnap } from "../lib/iconSnap";
 
@@ -122,7 +122,7 @@ function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow
       style={plate?.style}
     >
       {plate?.star && <PlateStars />}
-      {plate?.design === "dream" && <PlateDream />}
+      <PlateBg bg={plate?.bg} />
       <span className={`${styles.no} num`} style={{ color: hideRank ? "var(--c-text-4)" : (RANK_COLORS[i] ?? "var(--c-text-4)") }}>
         {!hideRank && i < 3 && <Laurel className={styles.laurelL} />}
         {hideRank ? "–" : i + 1}

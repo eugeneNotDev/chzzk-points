@@ -323,9 +323,11 @@
   color: var(--c-text-3);
 }
 
-/* 꿈나라 — 밤하늘 바탕(왼쪽 칭호 색 → 오른쪽 짙은 밤) + 흐린 별가루, 잔별·달은 PlateDream(.tp-sky)이 그림.
-   라이트 테마에서도 항상 밤 — 칸 안의 글자색(닉네임·포인트 등)도 다크 값으로 덮어씀 */
-.tp-dream {
+/* ── 배경(bg) — 디자인(테두리·광택·별)은 그대로 두고 바탕만 바꿈. 장식은 PlateBg(.tp-sky)가 그림.
+   라이트 테마에서도 배경 그대로 — 칸 안의 글자색(닉네임·포인트 등)도 밝은 글자로 덮어씀.
+   바탕 선택자는 디자인·두 색·시상대 칸 규칙보다 우선하도록 .tp.tp-bg-* / .tp.tp-card.tp-bg-* 로 씀 ── */
+.tp-bg-night,
+.tp-bg-sky {
   --c-text: #f1f4f6;
   --c-text-2: #aeb6be;
   --c-text-3: #8a939c;
@@ -333,25 +335,60 @@
   color: var(--c-text);
   color-scheme: dark;
 }
-.tp.tp-dream {
-  --bd: color-mix(in srgb, var(--edge) 45%, transparent);
-  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+/* 밤하늘 — 왼쪽 칭호 색 → 오른쪽 짙은 밤 + 흐린 별가루 + 달빛 */
+.tp-bg-night {
+  --tp-dust: radial-gradient(1.2px 1.2px at 8% 30%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1px 1px at 22% 74%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1.4px 1.4px at 41% 22%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1px 1px at 57% 80%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1.2px 1.2px at 70% 35%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1px 1px at 84% 70%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1.6px 1.6px at 33% 50%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent),
+    radial-gradient(1px 1px at 92% 18%, color-mix(in srgb, var(--tp-moon) 45%, transparent) 99%, transparent);
+}
+.tp.tp-bg-night {
+  background: var(--tp-dust), radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 5%, var(--tp-night)));
 }
-.tp.tp-dream.tp-two {
-  --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
-  background: radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+.tp.tp-bg-night.tp-two {
+  background: var(--tp-dust), radial-gradient(70px 60px at calc(100% - 14px) 12px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
     linear-gradient(90deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 50%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
 }
-.tp.tp-dream::after {
-  opacity: var(--tp-dust);
-  background: radial-gradient(1.2px 1.2px at 8% 30%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 22% 74%, var(--tp-moon) 99%, transparent),
-    radial-gradient(1.4px 1.4px at 41% 22%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 57% 80%, var(--tp-moon) 99%, transparent),
-    radial-gradient(1.2px 1.2px at 70% 35%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 84% 70%, var(--tp-moon) 99%, transparent),
-    radial-gradient(1.6px 1.6px at 33% 50%, var(--tp-moon) 99%, transparent), radial-gradient(1px 1px at 92% 18%, var(--tp-moon) 99%, transparent);
+.tp.tp-card.tp-bg-night {
+  background: var(--tp-dust), radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
 }
-.tp-dream .tp-tag .tp-tx {
+.tp.tp-card.tp-bg-night.tp-two {
+  background: var(--tp-dust), radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
+}
+/* 기본 디자인 + 밤하늘이면 테두리를 은은하게(예전 꿈나라 디자인과 같은 모양) */
+.tp.tp-basic.tp-bg-night {
+  --bd: color-mix(in srgb, var(--edge) 45%, transparent);
+}
+.tp.tp-basic.tp-bg-night.tp-two {
+  --bd: linear-gradient(90deg, color-mix(in srgb, var(--edge) 55%, transparent), color-mix(in srgb, var(--edge2) 55%, transparent));
+}
+.tp-bg-night .tp-tag .tp-tx {
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--tc) 45%, transparent));
+}
+/* 무지개 하늘 — 낮 하늘(칭호 색과 상관없이 고정) + 위쪽 빛 */
+.tp.tp-bg-sky,
+.tp.tp-card.tp-bg-sky,
+.tp.tp-card.tp-bg-sky.tp-two {
+  background: radial-gradient(120% 70% at 20% -10%, rgba(255, 255, 255, 0.26), transparent 60%), linear-gradient(180deg, #3a83d0 0%, #5fa8e8 65%, #8cc7f2 100%);
+}
+.tp-bg-sky .tp-tag .tp-tx {
+  filter: drop-shadow(0 0 1.5px rgba(20, 45, 100, 0.9)) drop-shadow(0 1px 2px rgba(20, 45, 100, 0.5));
+}
+.tp-bg-sky .tp-tag .tp-icon {
+  filter: drop-shadow(0 0 1.5px rgba(20, 45, 100, 0.9));
+}
+.tp-bg-sky > :not(.tp-sky):not(.tp-sp) {
+  text-shadow: 0 1px 3px rgba(10, 40, 90, 0.5);
+}
+.tp-bg-sky .tp-dot {
+  color: rgba(255, 255, 255, 0.85);
 }
 /* 별·달 층 — .tp > * 의 position: relative 를 덮어써야 해서 .tp > .tp-sky */
 .tp > .tp-sky {
@@ -399,14 +436,44 @@
   border-radius: 50%;
   background: var(--tp-moon);
 }
-/* 시상대·상점 칸 */
-.tp.tp-card.tp-dream {
-  background: radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), color-mix(in srgb, var(--tint) 4%, var(--tp-night)));
+/* 무지개 하늘 장식 — 무지개 아치(타원 띠) + 구름·양 */
+.tp-arc {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+  --rx: 55%;
+  --ry: 300%;
+  --cx: 74%;
+  --cy: 300%;
+  background: radial-gradient(ellipse var(--rx) var(--ry) at var(--cx) var(--cy), transparent 63%, #ff6b74 63% 66%, #ffa94d 66% 69%, #ffe066 69% 72%, #8ce99a 72% 75%, #74c0fc 75% 78%, #9775fa 78% 81%, transparent 81%);
+  filter: blur(0.5px);
 }
-.tp.tp-card.tp-dream.tp-two {
-  background: radial-gradient(100px 80px at calc(100% - 24px) 20px, color-mix(in srgb, var(--tp-moon) 20%, transparent), transparent 70%),
-    linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, var(--tp-night)), var(--tp-night) 55%, color-mix(in srgb, var(--tint2) 12%, var(--tp-night)));
+.tp-card .tp-arc {
+  --rx: 46%;
+  --ry: 125%;
+  --cx: 74%;
+  --cy: 128%;
+}
+.tp-cloud {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  fill: #fff;
+  opacity: 0.85;
+  filter: drop-shadow(0 1px 1px rgba(40, 90, 160, 0.25));
+  animation: tp-drift var(--d) ease-in-out infinite;
+  animation-delay: var(--dl);
+}
+.tp-cloud--sheep {
+  opacity: 0.95;
+}
+.tp-cloud--sheep .tp-sheep-face {
+  fill: #3b3f4a;
+}
+.tp-card .tp-cloud--row,
+.tp:not(.tp-card) .tp-cloud--card {
+  display: none;
 }
 
 @keyframes tp-sweep {
@@ -426,6 +493,15 @@
 @keyframes tp-rb {
   to {
     background-position: 200% 0;
+  }
+}
+@keyframes tp-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(12px);
   }
 }
 @keyframes tp-dtw {
@@ -480,7 +556,8 @@
     animation-duration: 2.4s !important;
     animation-iteration-count: infinite !important;
   }
-  .tp-dstar {
+  .tp-dstar,
+  .tp-cloud {
     animation-duration: var(--d) !important;
     animation-iteration-count: infinite !important;
   }

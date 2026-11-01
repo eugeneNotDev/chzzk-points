@@ -125,6 +125,27 @@
   display: flex;
   align-items: center;
 }
+/* 배경 고르기 버튼 안의 작은 견본 */
+.bgSample {
+  width: 44px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+}
+.bg_night {
+  background:
+    radial-gradient(1.2px 1.2px at 25% 35%, #fff4d6 99%, transparent),
+    radial-gradient(1px 1px at 55% 70%, #fff4d6 99%, transparent),
+    radial-gradient(1.2px 1.2px at 40% 20%, #fff4d6 99%, transparent),
+    radial-gradient(5px 5px at 80% 32%, #fff4d6 60%, transparent 70%),
+    linear-gradient(90deg, #1d2236, #0b1020);
+}
+.bg_sky {
+  background:
+    radial-gradient(ellipse 62% 150% at 72% 160%, transparent 60%, #ff6b74 60% 65%, #ffe066 65% 70%, #8ce99a 70% 75%, #74c0fc 75% 80%, transparent 80%),
+    linear-gradient(180deg, #3a83d0, #8cc7f2);
+}
 .iconBtn {
   gap: 6px;
 }

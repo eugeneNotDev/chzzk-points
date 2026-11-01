@@ -31,9 +31,9 @@
 
 :root[data-theme="light"] .rk-sp-item--rainbow { color: #e8a400; }
 
-/* 꿈나라 칭호 줄 안(항상 밤하늘)에서는 라이트 테마여도 다크용 색 그대로 */
-:root[data-theme="light"] .tp-dream .rk-sp-item { color: var(--sp, #f5c542); }
+/* 배경(밤하늘·무지개 하늘)이 있는 칭호 줄 안에서는 라이트 테마여도 다크용 색 그대로 */
+:root[data-theme="light"] :is(.tp-bg-night, .tp-bg-sky) .rk-sp-item { color: var(--sp, #f5c542); }
 
-:root[data-theme="light"] .tp-dream .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; }
+:root[data-theme="light"] :is(.tp-bg-night, .tp-bg-sky) .rk-sp-item--grad .rk-sp-text { background: var(--sp-grad); -webkit-background-clip: text; background-clip: text; }
 
-:root[data-theme="light"] .tp-dream .rk-sp-item--rainbow { color: #ffd43b; }
+:root[data-theme="light"] :is(.tp-bg-night, .tp-bg-sky) .rk-sp-item--rainbow { color: #ffd43b; }
