@@ -133,6 +133,23 @@
   padding: 0 4px;
   margin: 0 6px 4px 0;
 }
+/* 비공개인 내 줄 — 내 화면에서만 이름·칭호가 보인다는 표시(다른 사람에겐 "비공개") */
+.selfPrivateTag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--c-amber);
+  background: color-mix(in srgb, var(--c-amber) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-amber) 40%, transparent);
+  border-radius: 5px;
+  padding: 0 5px;
+  margin-right: 6px;
+  white-space: nowrap;
+}
 .points {
   flex: none;
   font-size: 15px;

@@ -8,6 +8,7 @@
 // 겹쳐도 헷갈리지 않게. 순위 옆에 ▲2 / ▼1 표시가 잠깐(1.3s) 뜸. 원본은 줄 높이가 같아서 자리를 직접 정하는데,
 // 여기선 칭호 때문에 줄 높이가 달라서 이전 위치 → 새 위치 차이만큼 되돌렸다가 풀어 주는 방식(FLIP).
 import { useLayoutEffect, useRef } from "react";
+import { Lock } from "lucide-react";
 import { fmt } from "../lib/format";
 import { useAuth } from "../lib/auth";
 import { isMyRankingRow, type RankingRow } from "../lib/homeData";
@@ -96,11 +97,16 @@ function Row({ k, r, i, me, onAdminClick, hideRank }: { k: string; r: RankingRow
   const nameInner = (
     <span className={styles.nameLine}>
       {r.admin_view && isPrivate && <span className={styles.privateTag}>비공개</span>}
+      {r.self_private && (
+        <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 다른 사람에겐 '비공개'로만 보여요">
+          <Lock size={10} aria-hidden="true" /> 나만 보임
+        </span>
+      )}
       <span className={styles.nameCol}>
         {/* 비공개 유저는 공개 랭킹에선 칭호를 숨기지만, 관리자 화면에선 상점 칭호처럼 특수 칭호도 보여줌 */}
-        {(!isPrivate || r.admin_view) && <SpecialTitleLine list={r.special_titles} />}
+        {(!isPrivate || r.admin_view || r.self_private) && <SpecialTitleLine list={r.special_titles} />}
         <span className={styles.nameRow}>
-          <span className={`${styles.nameText} ${isPrivate && !r.admin_view ? styles.muted : ""}`}>
+          <span className={`${styles.nameText} ${isPrivate && !r.admin_view && !r.self_private ? styles.muted : ""}`}>
             {r.channel_name || "(이름 없음)"}
             {me && " (나)"}
           </span>

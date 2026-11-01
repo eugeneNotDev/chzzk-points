@@ -2,7 +2,7 @@
 import { SkelInline } from "../components/Skeleton";
 import { LoadError } from "../components/LoadError";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Crown, Medal, TrendingUp } from "lucide-react";
+import { Crown, Lock, Medal, TrendingUp } from "lucide-react";
 import { Card, EmptyState } from "../components/Card";
 import { PageHead } from "../components/ui";
 import { RankingList } from "../components/RankingList";
@@ -77,7 +77,7 @@ const STAR_PATH = "M12 0l2.6 9.4L24 12l-9.4 2.6L12 24l-2.6-9.4L0 12l9.4-2.6z";
 export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; onAdminClick?: (channelId: string) => void }) {
   const { channelId } = useAuth();
   const plate = useTitlePlate(r.shop_title_name ? r.shop_title_color : null);
-  const hidden = r.is_public === false && !r.admin_view;
+  const hidden = r.is_public === false && !r.admin_view && !r.self_private;
   const me = isMyRankingRow(r, channelId);
   return (
     <div
@@ -96,6 +96,11 @@ export function PodiumStep({ r, i, onAdminClick }: { r: RankingRow; i: number; o
             {me && " (나)"}
           </b>
           {plate && r.shop_title_name && <TitleTag name={r.shop_title_name} plate={plate} dot={false} />}
+          {r.self_private && (
+            <span className={styles.selfPrivateTag} title="랭킹 비공개 중 — 다른 사람에겐 '비공개'로만 보여요">
+              <Lock size={10} aria-hidden="true" /> 나만 보임
+            </span>
+          )}
         </div>
         <span className={`${styles.stepPts} num`}>
           {fmt(r.total_points)}

@@ -1,10 +1,12 @@
 // 홈 화면에서 쓰는 데이터 조회(공지·랭킹·게시판·스케줄). 다른 페이지에서도 재사용할 수 있게 훅으로 분리.
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import { API, STORAGE } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { kstToday } from "./format";
 import { readStorage } from "./storage";
+import { useMe, useTitles, type Me, type TitleRow } from "./queries";
 import type { SpecialTitle } from "../components/TitleBadge";
 
 export type NoticeRow = { id: number; title: string | null; pinned_at: string | null; created_at: string };
@@ -38,12 +40,23 @@ export type RankingRow = {
   shop_title_color: string | null;
   special_titles: SpecialTitle[] | null;
   admin_view?: boolean;
+  // 비공개인 내 줄을 내 화면에서만 내 이름·칭호로 채운 것(다른 사람에겐 그대로 "비공개")
+  self_private?: boolean;
 };
 
 // 관리자면 비공개 유저도 실제 이름으로(admin-ranking), 아니면 공개 랭킹 뷰.
 export function useRanking(limit: number) {
   const { isAdmin, channelId } = useAuth();
+  const me = useMe().data;
+  const titles = useTitles().data;
+  // 비공개 유저의 줄은 서버가 이름·칭호를 빼고 보냄 — 내 줄이면 내 화면에서만 내 정보로 채움
+  const select = useCallback(
+    (rows: RankingRow[]) =>
+      me && !me.isPublic ? rows.map((r) => (!r.admin_view && r.is_public === false && isMyRankingRow(r, channelId) ? fillMyPrivateRow(r, me, titles) : r)) : rows,
+    [me, titles, channelId],
+  );
   return useQuery({
+    select,
     queryKey: ["ranking", limit, isAdmin ? channelId : "public"],
     staleTime: 15_000,
     refetchInterval: 60_000,
@@ -65,6 +78,22 @@ export function useRanking(limit: number) {
       return (data ?? []) as RankingRow[];
     },
   });
+}
+
+function fillMyPrivateRow(r: RankingRow, me: Me, titles: TitleRow[] | undefined): RankingRow {
+  const shop = me.selectedTitleId ? titles?.find((t) => t.id === me.selectedTitleId) : undefined;
+  // 랭킹 뷰와 같은 순서 — 관리자 고정 칭호가 있으면 그게 먼저, 아니면 장착한 것
+  const sp = me.specialTitles?.find((s) => s.forced) ?? me.specialTitles?.find((s) => s.id === me.selectedSpecialId);
+  return {
+    ...r,
+    channel_name: me.channelName || r.channel_name,
+    tier_title_name: me.tierTitleName,
+    tier_title_color: me.tierTitleColor,
+    shop_title_name: shop?.name ?? null,
+    shop_title_color: shop?.color ?? null,
+    special_titles: sp ? [{ name: sp.name, color: sp.color }] : null,
+    self_private: true,
+  };
 }
 
 export function isMyRankingRow(row: RankingRow, myChannelId: string | null) {
