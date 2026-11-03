@@ -15,6 +15,7 @@
 //   - 일반 후원은 여기서 무시(공식 API 쪽에서 이미 받음 — 두 번 적립 방지).
 // 받은 미션/선물/그 밖의 시스템 메시지 원본은 chat-events.log에 남겨둠(문제 생겼을 때 확인용, 저장소에는 안 올라감).
 // 구독권 선물은 "선물(12번)"이나 "0치즈 후원(10번)" 어느 쪽으로 와도 받음(giftInfo).
+// 선물한 사람 알림 없이 받는 사람 알림만 오는 경우도 있어서, 받는 사람 알림을 선물 번호별로 세서 적립함(gatherGiftReceiver).
 
 "use strict";
 
@@ -330,9 +331,40 @@ function giftInfo(type, extras) {
   return { receiver: /RECEIVER/i.test(gt) || /RECEIVER/i.test(dt) };
 }
 
+// 받는 사람 알림으로 선물 개수 세기 — 치지직 채팅창엔 선물한 사람 알림 없이 받는 사람마다 "선물(12번)"만 오기도 함
+// (2026-11-03 률찬님 2장 선물: 받는 사람 2명분 메시지만 오고 선물한 사람 알림은 없었음).
+// 같은 선물 번호의 받는 사람을 모았다가 몇 초 조용해지면 "선물한 사람(메시지의 uid)에게 받은 사람 수만큼"으로 한 번 보냄.
+// 선물한 사람 알림이 따로 와도 서버가 같은 선물 번호(g:선물번호)는 한 번만 적립해서 두 번 들어가지 않음.
+const GIFT_GATHER_MS = 4000;
+const giftGroups = new Map();
+function gatherGiftReceiver(m, uid, extras, nickname) {
+  const giftId = extras.giftId || extras.giftOrderId || extras.orderId;
+  if (!giftId) return log("구독권 선물 받는 사람 알림에 선물 번호가 없어서 적립하지 않음 — chat-events.log를 Claude에게 보여주세요");
+  let g = giftGroups.get(giftId);
+  if (!g) {
+    g = { uid, extras, nickname, receivers: new Set(), timer: null };
+    giftGroups.set(giftId, g);
+  }
+  g.receivers.add(extras.receiverUserIdHash || extras.receiverNickname || String(m.msgTime || g.receivers.size));
+  clearTimeout(g.timer);
+  g.timer = setTimeout(() => {
+    giftGroups.delete(giftId);
+    const quantity = g.receivers.size;
+    const who = g.extras.isAnonymous === true || g.uid === "anonymous" ? "익명" : g.nickname || "?";
+    sendChatItem({
+      action: "gift",
+      giftId,
+      donation: { ...donorOf(g.uid, g.extras), donatorNickname: g.nickname, quantity, tierNo: Number(g.extras.giftTierNo || g.extras.tierNo || 1) },
+    }, `구독권 선물 ${quantity}장 (${who})`);
+  }, GIFT_GATHER_MS);
+}
+
 function handleGift(m, uid, extras, nickname, gift) {
-  // 받는 사람 쪽 알림은 기록만 하고 건너뜀 — 선물한 사람 기준 한 번만 적립
-  if (gift.receiver) return chatLog("GIFT_RECEIVER", m);
+  // 받는 사람 쪽 알림 — 선물 번호별로 모아서 받은 사람 수만큼 적립
+  if (gift.receiver) {
+    chatLog("GIFT_RECEIVER", m);
+    return gatherGiftReceiver(m, uid, extras, nickname);
+  }
   chatLog("GIFT", m);
   const giftId = extras.giftId || extras.giftOrderId || extras.orderId;
   const who = extras.isAnonymous === true || uid === "anonymous" ? "익명" : nickname || "?";
