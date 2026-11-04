@@ -93,6 +93,7 @@ export function PostView({ board, id }: { board: BoardKind; id: number }) {
   const refetchKeep = async (focus?: number) => {
     await qc.invalidateQueries({ queryKey: ["board", "post", id] });
     qc.invalidateQueries({ queryKey: ["board", "list", board] });
+    qc.invalidateQueries({ queryKey: ["board", "preview"] }); // 홈 미리보기의 댓글 수 [n]도 같이
     if (focus) setFlash(focus);
   };
 
