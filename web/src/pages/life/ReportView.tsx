@@ -1,4 +1,4 @@
-// 유진 키우기 — 인생 리포트(엔딩·그래프·결정적 순간·공유 이미지).
+// 우진 키우기 — 인생 리포트(엔딩·그래프·결정적 순간·공유 이미지).
 import { useState } from "react";
 import { BookOpen, Download } from "lucide-react";
 import { fmt } from "../../lib/format";
@@ -70,11 +70,11 @@ export function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => v
         <section className={`${styles.endCard} ${special ? styles.endSpecial : ""}`}>
           <Orbit className={styles.endOrbit} />
           <span className={styles.endPre}>
-            {e.age}세, {e.cause === "old" ? "편안히" : josa(e.causeText, "로")} 생을 마친 유진은
+            {e.age}세, {e.cause === "old" ? "편안히" : josa(e.causeText, "로")} 생을 마친 우진은
           </span>
           {special && <span className={styles.chipGold}>특수 엔딩</span>}
           {!special && e.mod && e.modId !== "ordinary" && <span className={styles.endMod}>{e.mod}</span>}
-          <b className={styles.endTitle}>{special ? e.title : `${e.job} 유진`}</b>
+          <b className={styles.endTitle}>{special ? e.title : `${e.job} 우진`}</b>
           {special && <span className={styles.endFinale}>{e.specialText}</span>}
           <span className={styles.endFinale}>장례식에 {fmt(e.mourners)}명이 찾아왔어요.</span>
         </section>
@@ -143,7 +143,7 @@ export function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => v
         </section>
         {run.thoughts.length > 0 && (
           <section className={styles.card}>
-            <h3 className={styles.cardTitle}>유진이 남긴 생각</h3>
+            <h3 className={styles.cardTitle}>우진이 남긴 생각</h3>
             <ul className={styles.moments}>
               {run.thoughts.map((t, i) => (
                 <li key={i}>
@@ -162,7 +162,7 @@ export function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => v
             유
           </span>
           <div>
-            <span>유진이 보호자님께</span>
+            <span>우진이 보호자님께</span>
             <p>{letterLine(run)}</p>
           </div>
         </div>

@@ -1,4 +1,4 @@
-// 유진 키우기 엔진 — 갈림길·한 해 진행·선택·초점/투자 바꾸기·상점·방송 이력, 판 시작.
+// 우진 키우기 엔진 — 갈림길·한 해 진행·선택·초점/투자 바꾸기·상점·방송 이력, 판 시작.
 import {
   type Entry, type Fund, type HouseId, type Pending, type PendingOpt, type Roll, type State, type Stats,
 } from "../types.ts";

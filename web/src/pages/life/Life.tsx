@@ -1,4 +1,4 @@
-// 유진 키우기 v3 — 평행세계의 유진을 키우는 인생 게임(테스트 버전, 베타 빌드 전용).
+// 우진 키우기 v3 — 평행세계의 우진을 키우는 인생 게임(테스트 버전, 베타 빌드 전용).
 // 화면 흐름: 로비 → 태어날 집 고르기(포인트) → 진행(해마다 이야기·주사위 갈림길·올해의 초점·사람·돈쓰기) → 인생 리포트, 그리고 도감.
 // 인생 진행·결과는 전부 서버(life-game)가 정하고, 화면은 받은 기록을 속도에 맞춰 한 해씩 보여주기만 함.
 // 넓은 화면에선 3단(상태·돈 / 올해 이야기·선택 / 초점·사람·쇼핑), 좁아지면 2단 → 1단으로 쌓임(컨테이너 폭 기준).
@@ -51,7 +51,7 @@ export default function Life() {
     return (
       <div className={styles.page}>
         <div className={styles.center}>
-          <p className={styles.muted}>로그인하면 유진을 키울 수 있어요.</p>
+          <p className={styles.muted}>로그인하면 우진을 키울 수 있어요.</p>
           <button type="button" className="btn btn-primary btn-lg" onClick={startLogin}>
             <LogIn size={18} aria-hidden="true" />
             치지직으로 로그인
@@ -65,7 +65,7 @@ export default function Life() {
     return (
       <div className={styles.page}>
         {voteCard}
-        {notOpen ? !voteCard && <p className={styles.center}>아직 준비 중이에요.</p> : <LoadError what="유진 키우기" onRetry={() => q.refetch()} />}
+        {notOpen ? !voteCard && <p className={styles.center}>아직 준비 중이에요.</p> : <LoadError what="우진 키우기" onRetry={() => q.refetch()} />}
       </div>
     );
   }

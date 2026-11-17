@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 친구.
+// 우진 키우기 갈림길 — 친구.
 import type { Fork } from "../../engine.ts";
 import { R, dice, fx, pick } from "../util.ts";
 

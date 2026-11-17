@@ -1,4 +1,4 @@
-// 유진 키우기 v3 — 서버(life-game 함수) 응답 타입과 호출. 인생 진행·결과는 전부 서버가 정하고, 화면은 받은 기록을 보여주기만 함.
+// 우진 키우기 v3 — 서버(life-game 함수) 응답 타입과 호출. 인생 진행·결과는 전부 서버가 정하고, 화면은 받은 기록을 보여주기만 함.
 // 돈은 전부 "만원" 단위 정수(1 = 1만원). 포인트로 살 땐 1만원 = 1P.
 import { useQuery } from "@tanstack/react-query";
 import { API } from "./config";
@@ -172,7 +172,7 @@ export const LIFE_ERRORS: Record<string, string> = {
   not_open: "아직 준비 중이에요.",
   bad_house: "집 정보를 찾지 못했어요. 새로고침해 주세요.",
   user_not_found: "이용할 수 없는 계정이에요.",
-  in_progress: "이미 키우고 있는 유진이 있어요.",
+  in_progress: "이미 키우고 있는 우진이 있어요.",
   daily_limit: "오늘은 더 키울 수 없어요. 내일 다시 만나요.",
   insufficient_balance: "포인트가 부족해요.",
   no_pending: "이미 고른 선택이에요.",
@@ -181,12 +181,12 @@ export const LIFE_ERRORS: Record<string, string> = {
   not_playing: "이미 끝난 인생이에요.",
   item_limit: "이번 판에 포인트로 살 수 있는 횟수를 다 썼어요.",
   too_fast: "너무 빨라요. 잠깐만 기다려 주세요.",
-  cant_afford: "유진의 돈이 모자라요.",
+  cant_afford: "우진의 돈이 모자라요.",
   points_only: "어릴 땐 보호자가 포인트로만 사줄 수 있어요.",
   busy: "다른 창에서 진행 중이에요. 새로고침해 주세요.",
   too_young: "15세부터 돈을 굴릴 수 있어요.",
   bought: "지금은 다시 살 수 없어요.",
-  not_live: "지금 방송 모드인 유진이 없어요.",
+  not_live: "지금 방송 모드인 우진이 없어요.",
   vote_closed: "투표가 마감됐어요.",
   no_vote_opts: "투표할 수 있는 선택지가 없어요.",
   bad_focus: "지금 나이에는 고를 수 없는 초점이에요.",

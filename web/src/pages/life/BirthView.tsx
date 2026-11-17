@@ -1,4 +1,4 @@
-// 유진 키우기 — 태어날 집 고르기(포인트로 시작).
+// 우진 키우기 — 태어날 집 고르기(포인트로 시작).
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fmt } from "../../lib/format";
@@ -36,7 +36,7 @@ export function BirthView({ lobby, onBack, onStarted }: { lobby: Lobby; onBack: 
       <div className={styles.birthMain}>
         <TopBar title="태어날 집 고르기" onBack={onBack} />
         <div className={styles.intro}>
-          <h3>유진이 어떤 집에서 태어날까요?</h3>
+          <h3>우진이 어떤 집에서 태어날까요?</h3>
           <p>집에 따라 용돈·등록금 지원·물려받을 재산이 달라져요. 어느 집에서든 모든 결말이 나올 수 있어요.</p>
         </div>
         <div className={styles.houseList} role="radiogroup" aria-label="태어날 집">
@@ -92,7 +92,7 @@ export function BirthView({ lobby, onBack, onStarted }: { lobby: Lobby; onBack: 
           <span className="num">{fmt(after)} P</span>
         </div>
         <button type="button" className="btn btn-primary btn-lg btn-block" onClick={start} disabled={busy || short}>
-          {short ? "포인트가 부족해요" : busy ? "태어나는 중…" : "유진 태어나게 하기"}
+          {short ? "포인트가 부족해요" : busy ? "태어나는 중…" : "우진 태어나게 하기"}
         </button>
         {err && <p className={styles.error}>{err}</p>}
         <p className={styles.fine}>쓴 포인트는 돌려받지 않아요</p>

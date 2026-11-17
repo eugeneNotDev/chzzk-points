@@ -1,4 +1,4 @@
-// 유진 키우기 v3 — 서버 엔진에서 쓰는 타입. 화면 쪽(web/src/lib/life.ts)도 같은 모양을 씀.
+// 우진 키우기 v3 — 서버 엔진에서 쓰는 타입. 화면 쪽(web/src/lib/life.ts)도 같은 모양을 씀.
 // 돈은 전부 "만원" 단위 정수(1 = 1만원). 포인트로 살 때는 1만원 = 1P.
 
 export type StatKey = "health" | "intel" | "charm" | "happy" | "talent";
@@ -12,10 +12,10 @@ export type Person = {
   id: number;
   role: Role;
   name: string;
-  born: number; // 유진 나이 기준 태어난 해(부모는 음수)
+  born: number; // 우진 나이 기준 태어난 해(부모는 음수)
   bond: number; // 0~100
   alive: boolean;
-  since: number; // 만난(이 관계가 된) 유진 나이
+  since: number; // 만난(이 관계가 된) 우진 나이
 };
 export type Asset = { id: string; name: string; value: number; kind: "home" | "car" | "thing"; age: number };
 export type Fund = "deposit" | "bond" | "stock" | "coin";

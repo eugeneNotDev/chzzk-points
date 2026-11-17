@@ -30,7 +30,7 @@ export type NavItem = {
   adminOnly?: boolean;
   // 퀴즈 — 진행 중인 회차가 있을 때만(관리자는 항상) 메뉴에 보임
   quiz?: boolean;
-  // 유진 키우기 — 테스트 중이라 베타 빌드에서만, 관리자에게만 보임(lib/life.ts LIFE_ENABLED)
+  // 우진 키우기 — 테스트 중이라 베타 빌드에서만, 관리자에게만 보임(lib/life.ts LIFE_ENABLED)
   life?: boolean;
 };
 
@@ -61,7 +61,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { path: "freebox.html", label: "무료 뽑기", icon: Gift },
       { path: "minigame.html", label: "오늘의 미니게임", icon: Gamepad2 },
-      { path: "life.html", label: "유진 키우기", icon: Sprout, adminOnly: true, life: true },
+      { path: "life.html", label: "우진 키우기", icon: Sprout, adminOnly: true, life: true },
     ],
   },
   {
@@ -82,7 +82,7 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
-// 실제 사이트 빌드에선 유진 키우기를 메뉴·주소에서 뺌
+// 실제 사이트 빌드에선 우진 키우기를 메뉴·주소에서 뺌
 export const NAV_GROUPS: NavGroup[] = GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => LIFE_ENABLED || !i.life) }));
 // 옛 주소(룰렛·가위바위보·홀짝이 따로 있던 때) → 오늘의 미니게임으로 넘김(main.tsx). copy-routes도 이 줄을 읽어서 주소를 만들어 둠.
 export const LEGACY_PATHS = [{ path: "roulette.html" }, { path: "rps.html" }, { path: "oddeven.html" }].map((p) => p.path);

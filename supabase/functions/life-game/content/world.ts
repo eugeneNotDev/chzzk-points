@@ -1,4 +1,4 @@
-// 유진 키우기 기본 데이터 — 방송 컨텐츠·태어난 집·투자·올해의 초점·직업·상점·이름·병.
+// 우진 키우기 기본 데이터 — 방송 컨텐츠·태어난 집·투자·올해의 초점·직업·상점·이름·병.
 import type { Ctx, Disease, Focus, Fx, House, Item, Job, Show } from "../engine.ts";
 import { anyParent, fx, homePrice, kidsAt } from "./util.ts";
 

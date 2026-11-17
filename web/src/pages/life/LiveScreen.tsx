@@ -1,4 +1,4 @@
-// 유진 키우기 방송 화면(OBS 창) — 진행 화면의 "방송 화면 열기"로 뜸. 주인만.
+// 우진 키우기 방송 화면(OBS 창) — 진행 화면의 "방송 화면 열기"로 뜸. 주인만.
 // 방송 모드인 판의 올해 이야기 · 능력치 · 갈림길과 시청자 투표 현황을 큼직하게 보여줌. 조작은 진행 화면(리모컨)에서.
 // 서버 상태는 한 번에 몇 해씩 앞서 나가므로, 기록은 한 줄씩 차례로 보여주고(LINE_MS) 다 보여준 뒤에만 갈림길·엔딩을 띄움.
 import { useEffect, useState } from "react";
@@ -13,7 +13,7 @@ const END_HOLD_MS = 6000; // 마지막 해(떠나는 장면)를 보여준 뒤 �
 
 export default function LiveScreen() {
   useEffect(() => {
-    const t = window.setTimeout(() => (document.title = "유진 키우기 방송화면 · 유진 팬보드"), 0);
+    const t = window.setTimeout(() => (document.title = "우진 키우기 방송화면 · 유진 팬보드"), 0);
     return () => window.clearTimeout(t);
   }, []);
   const q = useQuery({ queryKey: ["life-live"], refetchInterval: 1500, queryFn: () => fetchLive(0) });
@@ -64,7 +64,7 @@ export default function LiveScreen() {
       <div className={styles.live}>
         <div className={styles.liveEmpty}>
           <Sprout size={48} aria-hidden="true" />
-          <b>{q.isLoading ? "불러오는 중…" : "방송 모드인 유진이 없어요"}</b>
+          <b>{q.isLoading ? "불러오는 중…" : "방송 모드인 우진이 없어요"}</b>
           <span>진행 화면에서 "방송 모드"를 켜 주세요</span>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function LiveScreen() {
   return (
     <div className={styles.live}>
       <header className={styles.liveTop}>
-        <span className={styles.liveBrand}>유진 키우기</span>
+        <span className={styles.liveBrand}>우진 키우기</span>
         <span className={styles.liveWorld}>
           {run.worldNo ? `No.${run.worldNo} 평행세계` : "테스트 세계"} · {run.houseName}
         </span>
@@ -125,9 +125,9 @@ export default function LiveScreen() {
           {ending ? (
             <div className={styles.liveEnd}>
               <span>
-                {ending.age}세, {ending.cause === "old" ? "편안히" : josa(ending.causeText, "로")} 떠난 유진은 이렇게 기억됐어요
+                {ending.age}세, {ending.cause === "old" ? "편안히" : josa(ending.causeText, "로")} 떠난 우진은 이렇게 기억됐어요
               </span>
-              <b>{ending.specialId ? ending.title : `${ending.mod && ending.modId !== "ordinary" ? ending.mod + " " : ""}${ending.job} 유진`}</b>
+              <b>{ending.specialId ? ending.title : `${ending.mod && ending.modId !== "ordinary" ? ending.mod + " " : ""}${ending.job} 우진`}</b>
               {ending.specialText && <p>{ending.specialText}</p>}
             </div>
           ) : (

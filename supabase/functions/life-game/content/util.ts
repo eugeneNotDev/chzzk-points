@@ -1,4 +1,4 @@
-// 유진 키우기 콘텐츠 공용 도구 — 효과·문구 짧게 쓰기, 조건 확인, 버튜버 루트·확률 계산 등.
+// 우진 키우기 콘텐츠 공용 도구 — 효과·문구 짧게 쓰기, 조건 확인, 버튜버 루트·확률 계산 등.
 import type { Ctx, Fx, Opt, Out, Text } from "../engine.ts";
 import { STAT_LABEL, type Stats, type StatKey, type Tier } from "../types.ts";
 import { JOBS } from "./world.ts";

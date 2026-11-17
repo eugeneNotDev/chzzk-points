@@ -1,4 +1,4 @@
-// 유진 키우기 진행 화면의 아래에서 올라오는 창 — 갈림길 선택, 주사위 굴리기.
+// 우진 키우기 진행 화면의 아래에서 올라오는 창 — 갈림길 선택, 주사위 굴리기.
 import { useEffect, useState } from "react";
 import { Dice5, GitFork, MessageCircle, Vote } from "lucide-react";
 import { fmt } from "../../lib/format";

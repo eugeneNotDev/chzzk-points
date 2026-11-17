@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 늦깎이 전문직 루트(수능을 놓쳐도 노리면 닿게).
+// 우진 키우기 갈림길 — 늦깎이 전문직 루트(수능을 놓쳐도 노리면 닿게).
 import type { Fork } from "../../engine.ts";
 import { lateBonus, tuitionFx, tuitionOf } from "../forkUtil.ts";
 import { R, dice, fx, inCollege, pick, statModOf } from "../util.ts";

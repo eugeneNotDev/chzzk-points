@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 일·돈.
+// 우진 키우기 갈림길 — 일·돈.
 import type { Fork } from "../../engine.ts";
 import { R, creatorJob, dice, fx, pick, salaried } from "../util.ts";
 import { JOBS } from "../world.ts";

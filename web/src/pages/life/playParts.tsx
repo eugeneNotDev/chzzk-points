@@ -1,4 +1,4 @@
-// 유진 키우기 진행 화면 — 속도·결과 표시 시간 같은 상수와 기록 줄에 붙는 작은 표시(변화량·주사위·아이콘).
+// 우진 키우기 진행 화면 — 속도·결과 표시 시간 같은 상수와 기록 줄에 붙는 작은 표시(변화량·주사위·아이콘).
 import {
   Baby, Briefcase, Coins, Dog, Flower2, GitFork, GraduationCap, Heart, MessageCircle, ShoppingBag, Sparkles, Sprout, Star, Stethoscope,
   UserRound, Users, type LucideIcon,

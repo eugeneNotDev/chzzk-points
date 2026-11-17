@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 어린 시절.
+// 우진 키우기 갈림길 — 어린 시절.
 import type { Fork } from "../../engine.ts";
 import { meetPartner } from "../forkUtil.ts";
 import { R, dice, fx, pick, single, statModOf } from "../util.ts";
@@ -7,8 +7,8 @@ export const childhoodForks: Fork[] = [
   {
     id: "kinder_dream", a: [5, 7], tag: "꿈", t: "유치원에서 장래희망을 물어봤다.",
     opts: [
-      pick("가수라고 한다", R("유진은 가수가 되고 싶다고 했다.", fx({ talent: 3 }))),
-      pick("의사라고 한다", R("유진은 의사가 되고 싶다고 했다.", fx({ intel: 3 }))),
+      pick("가수라고 한다", R("우진은 가수가 되고 싶다고 했다.", fx({ talent: 3 }))),
+      pick("의사라고 한다", R("우진은 의사가 되고 싶다고 했다.", fx({ intel: 3 }))),
       pick("늑대라고 한다", R("선생님이 한참 웃었다.", fx({ happy: 3, charm: 1 })), { hint: "???" }),
     ],
   },
@@ -23,7 +23,7 @@ export const childhoodForks: Fork[] = [
     ],
   },
   {
-    id: "lost_mart", a: [4, 8], t: "마트에서 유진이 사라졌다!",
+    id: "lost_mart", a: [4, 8], t: "마트에서 우진이 사라졌다!",
     opts: [
       dice("방송으로 찾는다", null, {
         good: R("과자 코너에서 시식하고 있었다.", fx({ happy: 2 })),
@@ -35,7 +35,7 @@ export const childhoodForks: Fork[] = [
     id: "pet_beg", a: [6, 12], t: "강아지를 키우고 싶다고 조른다.", if: (c) => !c.person("pet"),
     opts: [
       pick("키우게 해준다", R("{pet}가 식구가 됐다.", fx({ happy: 6 }, 0, { fn: (c) => { c.meet("pet", 80); } }))),
-      pick("안 된다고 한다", R("유진은 밤새 삐졌다.", fx({ happy: -3 }))),
+      pick("안 된다고 한다", R("우진은 밤새 삐졌다.", fx({ happy: -3 }))),
     ],
   },
   {
@@ -134,7 +134,7 @@ export const childhoodForks: Fork[] = [
     ],
   },
   {
-    id: "broadcast_start", a: [14, 24], tag: "꿈", t: "유진이 방송을 해보고 싶다며 조심스럽게 말을 꺼낸다.", if: (c) => !c.has("broadcast") && c.st("talent") >= 35,
+    id: "broadcast_start", a: [14, 24], tag: "꿈", t: "우진이 방송을 해보고 싶다며 조심스럽게 말을 꺼낸다.", if: (c) => !c.has("broadcast") && c.st("talent") >= 35,
     opts: [
       pick("장비를 사준다", R("새 마이크로 첫 방송을 켰다. 시청자는 세 명이었다.", fx({ talent: 3, happy: 5 }, 0, { add: ["mic", "broadcast"] })), { cost: 150 }),
       pick("공부부터 하라고 한다", R("방송은 대학 가서 하기로 했다.", fx({ intel: 3, happy: -4 }))),
@@ -153,7 +153,7 @@ export const childhoodForks: Fork[] = [
     ],
   },
   {
-    id: "runaway", a: [14, 18], tag: "가족", t: "부모님과 크게 싸운 유진이 가출하겠다고 한다.",
+    id: "runaway", a: [14, 18], tag: "가족", t: "부모님과 크게 싸운 우진이 가출하겠다고 한다.",
     opts: [
       pick("먼저 사과한다", R("부모님이 먼저 안아주셨다.", fx({ happy: 3 }, 0, { fn: (c) => { c.bond(c.person("mom"), 8); c.bond(c.person("dad"), 8); } }))),
       dice("진짜 나간다", null, {

@@ -1,4 +1,4 @@
-// 유진 키우기 일상 이벤트(주사위 없이 그냥 일어나는 일).
+// 우진 키우기 일상 이벤트(주사위 없이 그냥 일어나는 일).
 import type { Daily, Fx, Text } from "../engine.ts";
 import { anyParent, bizJob, creatorJob, fameUp, fx, inCollege, isBirthday, kidsAt, neru, salaried, single, vtJob } from "./util.ts";
 
@@ -144,7 +144,7 @@ export const DAILY: Daily[] = [
   R1("bday_miracle", [1, 120], "생일 촛불을 끄자 어디선가 늑대 울음과 양 울음이 함께 들렸다.", fx({ happy: 10, talent: 3 }), "유진의 생일에 키우면…", { if: () => isBirthday(), w: 200 }),
   R1("viral", [18, 60], "올린 영상이 하룻밤 사이에 백만 조회수를 찍었다.", fx({ charm: 8 }, 300, { add: ["fame"], fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 20)) }), "끼를 세상에 보여주면…", { if: (c) => c.has("mic") || c.has("music") || c.has("artsy") }),
   R1("celeb", [15, 70], "길에서 유명 연예인과 부딪혔다. 사인은 못 받았다.", fx({ happy: 3 }), "번화가를 걷다 보면…"),
-  R1("twin", [15, 80], "자신과 똑같이 생긴 사람을 봤다. 다른 평행세계의 유진일까?", fx({ happy: 1 }, 0, { add: ["met_twin"] }), "평행세계가 겹치는 순간이 있다면…"),
+  R1("twin", [15, 80], "자신과 똑같이 생긴 사람을 봤다. 다른 평행세계의 우진일까?", fx({ happy: 1 }, 0, { add: ["met_twin"] }), "평행세계가 겹치는 순간이 있다면…"),
   R1("hero", [20, 70], "물에 빠진 아이를 구했다. 뉴스에 나왔다.", fx({ charm: 8, happy: 5 }, 0, { add: ["hero"] }), "용기를 내야 하는 순간이 오면…"),
   R1("ghost", [10, 70], "새벽 3시, 방 안에서 누군가 이름을 불렀다.", fx({ happy: -3, health: -1 }), "미스테리한 밤이 찾아오면…"),
   R1("wolf_moon", [16, 90], "보름달 아래서 늑대 울음소리를 따라 불렀다. 처음으로 음정이 맞았다.", fx({ talent: 10 }), "늑대의 기억을 되찾으면…", { if: (c) => c.has("wolf_dream3") }),

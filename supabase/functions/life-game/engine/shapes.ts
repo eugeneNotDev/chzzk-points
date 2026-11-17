@@ -1,4 +1,4 @@
-// 유진 키우기 엔진 — 콘텐츠 모양(타입)과 직업 이름·장비 같은 작은 해석.
+// 우진 키우기 엔진 — 콘텐츠 모양(타입)과 직업 이름·장비 같은 작은 해석.
 import {
   type HouseId, type Kind, type Pending, type Roll, type State, type StatKey, type Stats, type Tier,
 } from "../types.ts";

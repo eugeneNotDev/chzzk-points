@@ -1,4 +1,4 @@
-// 유진 키우기 — 여러 화면이 같이 쓰는 작은 부품(상단바·능력치·주사위·장식).
+// 우진 키우기 — 여러 화면이 같이 쓰는 작은 부품(상단바·능력치·주사위·장식).
 import { type ReactNode } from "react";
 import { ArrowLeft, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, type LucideIcon } from "lucide-react";
 import { STATS, type Stats } from "../../lib/life";

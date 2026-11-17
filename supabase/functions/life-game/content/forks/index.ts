@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 전체 — 원래 FORKS 순서 그대로 이어붙임(순서가 우선순위에 영향을 줄 수 있어서 바꾸지 말 것).
+// 우진 키우기 갈림길 전체 — 원래 FORKS 순서 그대로 이어붙임(순서가 우선순위에 영향을 줄 수 있어서 바꾸지 말 것).
 import type { Fork } from "../../engine.ts";
 import { milestonesForks } from "./milestones.ts";
 import { illnessForks } from "./illness.ts";

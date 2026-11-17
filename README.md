@@ -19,7 +19,7 @@
 - **투표** — 치지직 승부예측 방식(진 쪽 포인트를 이긴 쪽 비율대로 나눔). 미스테리 라디오 연속 투표 카드도 여기에 뜸
 - **퀴즈** — 유진고사(시험지 제출 → 방송에서 채점, 낙서 가능), OX 퀴즈(데스매치/점수전)
 - **미니게임** — 무료 뽑기(하루 한 번, 100~300P) + 오늘의 미니게임(룰렛·가위바위보·홀짝·양 로켓 중 하루 하나, 한국 시간 자정마다 바뀜). 결과는 전부 서버가 정함
-- **유진 키우기** — 인생 시뮬레이션 팬게임(베타 빌드에서만, 테스트 중)
+- **우진 키우기** — 인생 시뮬레이션 팬게임(베타 빌드에서만, 테스트 중)
 
 **랭킹 · 칭호**
 - **랭킹** — 보유 포인트 순위. 비공개 설정 가능(남에겐 "비공개", 본인 화면에선 🔒 비공개 표시와 함께 내 이름·칭호)
@@ -60,7 +60,7 @@ chzzk-points/
 │
 ├── tools/
 │   ├── donation-relay/          # 방송 PC에서 켜두는 후원 연동 프로그램 (Node.js)
-│   └── life-content/            # 유진 키우기 밸런스 점검 스크립트
+│   └── life-content/            # 우진 키우기 밸런스 점검 스크립트
 │
 ├── notice-drafts/               # 공지 HTML 초안
 └── .github/workflows/           # check.yml(push마다 검사), deploy.yml(main에 push하면 배포)
@@ -85,9 +85,9 @@ npm run build:all    # 확인용 빌드 → dist/ (실제 사이트) + dist/beta
 ```
 
 - **배포는 `main`에 push하면 끝.** `deploy.yml`이 실제 사이트와 베타를 빌드해서 올림(빌드 결과는 커밋하지 않음). 진행 상황은 저장소 Actions 탭
-- push할 때마다 `check.yml`이 사이트 타입 검사·빌드, 서버 함수 타입 검사, 유진 키우기 밸런스 점검을 돌림 — 실패하면 커밋 옆에 빨간 X(배포와는 별개)
+- push할 때마다 `check.yml`이 사이트 타입 검사·빌드, 서버 함수 타입 검사, 우진 키우기 밸런스 점검을 돌림 — 실패하면 커밋 옆에 빨간 X(배포와는 별개)
 - 로컬(`npm run dev`)에선 서버 함수가 `eugene4lpha.com`에서 온 요청만 받아서 로그인 기능은 안 됨 → 베타(`/beta/`)에 올려서 확인. 베타도 실제 DB를 쓰니 테스트는 부계정으로
-- 베타 전용 기능은 `import.meta.env.MODE !== "live"`로 갈림(지금은 유진 키우기)
+- 베타 전용 기능은 `import.meta.env.MODE !== "live"`로 갈림(지금은 우진 키우기)
 - 사이트 주소를 바꿀 땐 같이 바꿀 곳: `web/src/lib/config.ts`의 `CHZZK_REDIRECT_URI`, 치지직 개발자센터 리디렉션 URL, Supabase 시크릿 `ALLOWED_ORIGIN`, 저장소 Settings → Pages의 Custom domain, `web/public/CNAME`
 
 ### Edge Function

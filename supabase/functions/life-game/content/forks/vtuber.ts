@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 버튜버 루트.
+// 우진 키우기 갈림길 — 버튜버 루트.
 import type { Fork } from "../../engine.ts";
 import { R, dice, dono, fameUp, fx, neru, pick, vtJob } from "../util.ts";
 import { SHOWS } from "../world.ts";
@@ -20,41 +20,41 @@ export const vtuberForks: Fork[] = [
     opts: SHOWS.map((sh) => pick(sh.name, R(`앞으로는 ${sh.name} 위주로 방송하기로 했다.`, { fn: (c) => (c.s.show = sh.id) }), { hint: sh.hint })),
   },
   {
-    id: "vt_first_dono", a: [14, 100], mile: true, tag: "첫 후원", t: "갓 데뷔한 유진의 방송. 아직 후원 알림이 한 번도 울린 적이 없다. 첫 후원을 해줄까?",
+    id: "vt_first_dono", a: [14, 100], mile: true, tag: "첫 후원", t: "갓 데뷔한 우진의 방송. 아직 후원 알림이 한 번도 울린 적이 없다. 첫 후원을 해줄까?",
     if: (c) => vtJob(c) && c.s.seen["vt_concept"] !== undefined && c.age > c.s.seen["vt_concept"],
     opts: [
-      dono(100, R("후원 알림이 처음으로 울렸다. 유진이 '어? 어?' 하다가 의자에서 떨어질 뻔했다.", fx({ happy: 5 }, 0, { add: ["first_dono"], fn: fameUp(3) }), true)),
-      dono(300, R("첫 후원 알림에 유진이 한참 말을 잇지 못했다. 다시보기로 세 번이나 돌려 봤다.", fx({ happy: 7, charm: 1 }, 0, { add: ["first_dono"], fn: fameUp(6) }), true)),
-      dono(500, R("첫 후원부터 500P! 유진이 방송이 끝날 때까지 그 닉네임을 불렀다.", fx({ happy: 9, charm: 2 }, 0, { add: ["first_dono"], fn: fameUp(10) }), true)),
-      pick("지켜보기만 한다", R("며칠 뒤 다른 시청자가 첫 후원을 했다. 유진이 소리를 질렀다.", fx({ happy: 3 }, 0, { fn: fameUp(1) }))),
+      dono(100, R("후원 알림이 처음으로 울렸다. 우진이 '어? 어?' 하다가 의자에서 떨어질 뻔했다.", fx({ happy: 5 }, 0, { add: ["first_dono"], fn: fameUp(3) }), true)),
+      dono(300, R("첫 후원 알림에 우진이 한참 말을 잇지 못했다. 다시보기로 세 번이나 돌려 봤다.", fx({ happy: 7, charm: 1 }, 0, { add: ["first_dono"], fn: fameUp(6) }), true)),
+      dono(500, R("첫 후원부터 500P! 우진이 방송이 끝날 때까지 그 닉네임을 불렀다.", fx({ happy: 9, charm: 2 }, 0, { add: ["first_dono"], fn: fameUp(10) }), true)),
+      pick("지켜보기만 한다", R("며칠 뒤 다른 시청자가 첫 후원을 했다. 우진이 소리를 질렀다.", fx({ happy: 3 }, 0, { fn: fameUp(1) }))),
     ],
   },
   {
     id: "vt_birthday", a: [15, 100], rep: 3, w: 40, tag: "생일 방송", t: (c) => `${c.age}번째 생일 방송. 채팅창이 축하 메시지로 가득하다.`,
     if: (c) => vtJob(c) && c.s.fame >= 5,
     opts: [
-      dono(100, R("축하 후원 알림이 울렸다. 유진이 케이크 앞에서 수줍게 웃었다.", fx({ happy: 4 }, 0, { fn: fameUp(2) }))),
-      dono(300, R("축하 후원이 이어졌다. 유진이 '내년에도 같이 해요'라고 약속했다.", fx({ happy: 6, charm: 1 }, 0, { fn: fameUp(4) }))),
-      dono(500, R("통 큰 축하 후원에 유진이 촛불을 끄다 말고 울컥했다. 레전드 생일 방송으로 남았다.", fx({ happy: 8, charm: 2 }, 0, { fn: fameUp(6) }), true)),
+      dono(100, R("축하 후원 알림이 울렸다. 우진이 케이크 앞에서 수줍게 웃었다.", fx({ happy: 4 }, 0, { fn: fameUp(2) }))),
+      dono(300, R("축하 후원이 이어졌다. 우진이 '내년에도 같이 해요'라고 약속했다.", fx({ happy: 6, charm: 1 }, 0, { fn: fameUp(4) }))),
+      dono(500, R("통 큰 축하 후원에 우진이 촛불을 끄다 말고 울컥했다. 레전드 생일 방송으로 남았다.", fx({ happy: 8, charm: 2 }, 0, { fn: fameUp(6) }), true)),
       pick("축하 채팅만 친다", R("축하 채팅을 하나하나 읽어주느라 방송이 한 시간 늘어났다.", fx({ happy: 3 }))),
     ],
   },
   {
-    id: "vt_cheer", a: [14, 100], mile: true, rep: 2, tag: "응원", t: "요즘 유진의 방송에 힘이 없다. 끝인사 목소리가 유난히 작았다.",
+    id: "vt_cheer", a: [14, 100], mile: true, rep: 2, tag: "응원", t: "요즘 우진의 방송에 힘이 없다. 끝인사 목소리가 유난히 작았다.",
     if: (c) => vtJob(c) && c.has("vt_down"),
     opts: [
-      dono(100, R("응원 후원 알림에 유진이 잠깐 말을 멈췄다. '…고마워요.'", fx({ happy: 6, health: 1 }, 0, { del: ["vt_down"] }))),
-      dono(300, R("응원 후원이 이어지자 유진의 목소리에 다시 힘이 들어갔다.", fx({ happy: 9, health: 2 }, 0, { del: ["vt_down"], fn: fameUp(2) }))),
-      dono(500, R("큰 응원 후원에 유진이 결국 웃음을 터뜨렸다. 그날 방송은 평소보다 한 시간 더 길었다.", fx({ happy: 12, health: 3, charm: 1 }, 0, { del: ["vt_down"], fn: fameUp(4) }), true)),
-      pick("채팅으로 응원만 보낸다", R("응원 채팅을 보며 유진은 조금씩 힘을 냈다.", fx({ happy: 3 }, 0, { del: ["vt_down"] }))),
+      dono(100, R("응원 후원 알림에 우진이 잠깐 말을 멈췄다. '…고마워요.'", fx({ happy: 6, health: 1 }, 0, { del: ["vt_down"] }))),
+      dono(300, R("응원 후원이 이어지자 우진의 목소리에 다시 힘이 들어갔다.", fx({ happy: 9, health: 2 }, 0, { del: ["vt_down"], fn: fameUp(2) }))),
+      dono(500, R("큰 응원 후원에 우진이 결국 웃음을 터뜨렸다. 그날 방송은 평소보다 한 시간 더 길었다.", fx({ happy: 12, health: 3, charm: 1 }, 0, { del: ["vt_down"], fn: fameUp(4) }), true)),
+      pick("채팅으로 응원만 보낸다", R("응원 채팅을 보며 우진은 조금씩 힘을 냈다.", fx({ happy: 3 }, 0, { del: ["vt_down"] }))),
     ],
   },
   {
     id: "vt_million", a: [14, 100], mile: true, tag: "축하 방송", t: "팔로워 100만 축하 방송! 네루들이 전부 모였다.",
     if: (c) => vtJob(c) && c.has("gold_button"),
     opts: [
-      dono(100, R("축하 후원 알림 사이로 유진이 연신 고개를 숙였다.", fx({ happy: 5, charm: 1 }))),
-      dono(300, R("후원 알림이 끊이지 않았다. 유진이 '이게 다 네루 덕분'이라고 몇 번이나 말했다.", fx({ happy: 7, charm: 2 }, 0, { fn: fameUp(2) }))),
+      dono(100, R("축하 후원 알림 사이로 우진이 연신 고개를 숙였다.", fx({ happy: 5, charm: 1 }))),
+      dono(300, R("후원 알림이 끊이지 않았다. 우진이 '이게 다 네루 덕분'이라고 몇 번이나 말했다.", fx({ happy: 7, charm: 2 }, 0, { fn: fameUp(2) }))),
       dono(500, R("축하 후원이 쏟아져서 알림이 30분 동안 멈추지 않았다.", fx({ happy: 9, charm: 3 }, 0, { fn: fameUp(3) }), true)),
       pick("축하 채팅만 친다", R("채팅창이 축하 메시지로 꽉 찼다.", fx({ happy: 4 }))),
     ],
@@ -83,12 +83,12 @@ export const vtuberForks: Fork[] = [
     ],
   },
   {
-    id: "vt_grad_dono", a: [14, 100], rep: 1, now: true, tag: "졸업 방송", t: "버튜버 유진으로서의 마지막 방송. 마지막 후원을 보낼까?",
+    id: "vt_grad_dono", a: [14, 100], rep: 1, now: true, tag: "졸업 방송", t: "버튜버 우진으로서의 마지막 방송. 마지막 후원을 보낼까?",
     if: (c) => c.has("vt_farewell"),
     opts: [
-      dono(100, R("마지막 후원 알림이 울렸다. 유진이 닉네임을 천천히 읽어줬다.", fx({ happy: 4 }, 0, { del: ["vt_farewell"] }))),
-      dono(300, R("마지막 후원에 유진이 끝내 목이 메었다. '진짜 마지막까지 고마워요.'", fx({ happy: 6 }, 0, { del: ["vt_farewell"] }))),
-      dono(500, R("마지막 방송의 마지막 후원. 유진이 한참 동안 아무 말도 못 했다. 그 장면은 오래도록 회자됐다.", fx({ happy: 8 }, 0, { del: ["vt_farewell"] }), true)),
+      dono(100, R("마지막 후원 알림이 울렸다. 우진이 닉네임을 천천히 읽어줬다.", fx({ happy: 4 }, 0, { del: ["vt_farewell"] }))),
+      dono(300, R("마지막 후원에 우진이 끝내 목이 메었다. '진짜 마지막까지 고마워요.'", fx({ happy: 6 }, 0, { del: ["vt_farewell"] }))),
+      dono(500, R("마지막 방송의 마지막 후원. 우진이 한참 동안 아무 말도 못 했다. 그 장면은 오래도록 회자됐다.", fx({ happy: 8 }, 0, { del: ["vt_farewell"] }), true)),
       pick("채팅으로 인사만 한다", R("'수고했어요' 채팅이 화면을 가득 채웠다.", fx({ happy: 3 }, 0, { del: ["vt_farewell"] }))),
     ],
   },

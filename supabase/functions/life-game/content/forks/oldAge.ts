@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 노년 갈림길.
+// 우진 키우기 갈림길 — 노년 갈림길.
 import type { Fork } from "../../engine.ts";
 import { wasJob } from "../forkUtil.ts";
 import { R, bizJob, creatorJob, dice, fx, homePrice, pick, retireFn, statModOf } from "../util.ts";

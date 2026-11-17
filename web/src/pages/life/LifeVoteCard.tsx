@@ -1,4 +1,4 @@
-// 유진 키우기 방송 투표 카드 — 유진이 방송에서 투표를 열면 뜸. "투표" 메뉴와 유진 키우기 화면 위쪽에 같이 씀.
+// 우진 키우기 방송 투표 카드 — 유진이 방송에서 투표를 열면 뜸. "투표" 메뉴와 우진 키우기 화면 위쪽에 같이 씀.
 // 투표는 테스트 모드여도 로그인한 시청자 누구나 할 수 있음(서버 life-game ?view=vote / action=vote).
 import { useState } from "react";
 import { Check, Vote } from "lucide-react";
@@ -32,7 +32,7 @@ export function LifeVoteCard() {
           방송 투표 중
         </span>
         <span className={styles.voteMeta}>
-          {v.age}세 유진{v.jobName ? ` · ${v.jobName}` : ""} · <b className="num">{v.total}</b>표
+          {v.age}세 우진{v.jobName ? ` · ${v.jobName}` : ""} · <b className="num">{v.total}</b>표
         </span>
       </div>
       <p className={styles.voteText}>{v.text}</p>

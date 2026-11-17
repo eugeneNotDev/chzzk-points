@@ -1,4 +1,4 @@
-// 유진 키우기 — 도감(직업·수식어·희귀 사건·특수 엔딩).
+// 우진 키우기 — 도감(직업·수식어·희귀 사건·특수 엔딩).
 import { useMemo, useState } from "react";
 import { Check, Lock, Trophy } from "lucide-react";
 import { LoadError } from "../../components/LoadError";
@@ -39,7 +39,7 @@ export function DexView({ onBack }: { onBack: () => void }) {
 
   return (
     <div className={styles.dex}>
-      <TopBar title="유진 도감" onBack={onBack} />
+      <TopBar title="우진 도감" onBack={onBack} />
       <section className={styles.dexHero}>
         <Ring pct={pct} size={76} stroke={7} />
         <div className={styles.dexCounts}>

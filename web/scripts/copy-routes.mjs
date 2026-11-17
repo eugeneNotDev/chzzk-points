@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const nav = readFileSync(resolve(root, "src/nav.ts"), "utf8");
 const live = process.argv.includes("--live");
-// 베타 전용 메뉴(life: true — 유진 키우기)는 실제 사이트 빌드에선 주소를 안 만듦
+// 베타 전용 메뉴(life: true — 우진 키우기)는 실제 사이트 빌드에선 주소를 안 만듦
 const files = [...new Set(nav.split("\n").filter((l) => !(live && /\blife:\s*true/.test(l))).flatMap((l) => [...l.matchAll(/path:\s*"([a-z0-9-]+\.html)"/g)].map((m) => m[1])))];
 
 // --live(실제 사이트 빌드)면 dist/ 바로 아래, 아니면 베타(dist/beta/)

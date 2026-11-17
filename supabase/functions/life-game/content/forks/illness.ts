@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 병(병이 생긴 해에 바로).
+// 우진 키우기 갈림길 — 병(병이 생긴 해에 바로).
 import { josa } from "../../josa.ts";
 import type { Fork } from "../../engine.ts";
 import { R, dice, fx, pick } from "../util.ts";

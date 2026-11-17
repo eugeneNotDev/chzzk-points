@@ -75,7 +75,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
   // 머리말
   ctx.fillStyle = C.sub;
   ctx.font = font(32, 700);
-  ctx.fillText(`유진 키우기 · ${run.worldNo ? `No.${run.worldNo} 평행세계` : "테스트 세계"}`, X, 128);
+  ctx.fillText(`우진 키우기 · ${run.worldNo ? `No.${run.worldNo} 평행세계` : "테스트 세계"}`, X, 128);
   ctx.fillStyle = C.dim;
   ctx.font = font(28, 600);
   ctx.fillText(`${run.houseName}에서 태어남`, X, 176);
@@ -84,7 +84,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
   const how = e.cause === "old" ? "편안히" : josa(e.causeText, "로");
   ctx.fillStyle = C.sub;
   ctx.font = font(38, 700);
-  ctx.fillText(`${e.age}세, ${how} 생을 마친 유진은`, X, 300);
+  ctx.fillText(`${e.age}세, ${how} 생을 마친 우진은`, X, 300);
 
   // 꼬리표
   let y = 340;
@@ -95,7 +95,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
   // 제목
   ctx.fillStyle = C.text;
   ctx.font = font(92, 900);
-  const title = special ? e.title : `${e.job} 유진`;
+  const title = special ? e.title : `${e.job} 우진`;
   const tl = wrap(ctx, title, W - X * 2, 3);
   y += 170;
   for (const l of tl) {
@@ -195,12 +195,12 @@ export async function drawShareCard(run: Run): Promise<Blob> {
 // 폰에선 공유 시트(지원하면), 아니면 파일로 저장
 export async function shareOrSave(run: Run) {
   const blob = await drawShareCard(run);
-  const name = `유진키우기_${run.worldNo ?? "test"}.png`;
+  const name = `우진키우기_${run.worldNo ?? "test"}.png`;
   const file = new File([blob], name, { type: "image/png" });
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] }) && /Mobi|Android|iPhone/i.test(navigator.userAgent)) {
     try {
-      await nav.share({ files: [file], title: "유진 키우기" });
+      await nav.share({ files: [file], title: "우진 키우기" });
       return;
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

@@ -1,4 +1,4 @@
-// 유진 키우기 — 로비(이어하기·새로 시작·오늘의 평행세계·도감 입구).
+// 우진 키우기 — 로비(이어하기·새로 시작·오늘의 평행세계·도감 입구).
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Dice5, RotateCcw, Target, Users, Wallet } from "lucide-react";
@@ -28,7 +28,7 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
     }
   }
   async function reset() {
-    if (!(await confirmDialog("테스트로 키운 유진과 테스트 도감을 전부 지울까요? (실제 기록은 그대로예요)"))) return;
+    if (!(await confirmDialog("테스트로 키운 우진과 테스트 도감을 전부 지울까요? (실제 기록은 그대로예요)"))) return;
     setBusy(true);
     try {
       await resetLifeTest();
@@ -51,13 +51,13 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
             <b className="num">{lobby.isTest ? "TEST" : `No.${lobby.nextWorldNo}`}</b>
           </div>
           <p className={styles.heroDesc}>
-            {lobby.isTest ? "테스트용" : `${lobby.nextWorldNo}번째`} 유진이 태어날 준비를 하고 있어요.
+            {lobby.isTest ? "테스트용" : `${lobby.nextWorldNo}번째`} 우진이 태어날 준비를 하고 있어요.
             <br />
-            주사위와 선택으로 유진의 인생을 함께 굴려 주세요.
+            주사위와 선택으로 우진의 인생을 함께 굴려 주세요.
           </p>
           <div className={styles.heroStats}>
             <div>
-              <span>내가 키운 유진</span>
+              <span>내가 키운 우진</span>
               <b className="num">
                 {fmt(lobby.myRuns)}
                 <small>명</small>
@@ -77,12 +77,12 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
           </div>
           {lobby.playing ? (
             <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onResume(lobby.playing!)}>
-              {worldLabel(lobby.playing)} 유진 이어서 키우기 · {lobby.playing.age}세
+              {worldLabel(lobby.playing)} 우진 이어서 키우기 · {lobby.playing.age}세
               <ArrowRight size={16} aria-hidden="true" />
             </button>
           ) : (
             <button type="button" className="btn btn-primary btn-lg btn-block" onClick={onStart} disabled={left === 0}>
-              {left === 0 ? "오늘은 여기까지" : "새 유진 키우기"}
+              {left === 0 ? "오늘은 여기까지" : "새 우진 키우기"}
               {left !== 0 && <ArrowRight size={16} aria-hidden="true" />}
             </button>
           )}
@@ -92,7 +92,7 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
           <button type="button" className={styles.tile} onClick={onDex}>
             <Ring pct={pct} />
             <div className={styles.tileText}>
-              <b>유진 도감</b>
+              <b>우진 도감</b>
               <span className="num">
                 {lobby.dex.got} / {lobby.dex.total} · {pct}%
               </span>
@@ -100,7 +100,7 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
           </button>
           <button type="button" className={styles.tile} onClick={() => lobby.last && openRun(lobby.last.id)} disabled={!lobby.last}>
             <div className={styles.tileText}>
-              <span>지난 유진</span>
+              <span>지난 우진</span>
               <b className={styles.tileTitle}>{lobby.last?.title ?? "아직 없어요"}</b>
             </div>
           </button>
@@ -111,12 +111,12 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
       <div className={styles.lobbySide}>
         <section className={styles.card}>
           <div className={styles.cardHead}>
-            <h3>오늘의 유진들</h3>
+            <h3>오늘의 우진들</h3>
             <span className={styles.muted}>
               오늘 <b className="num">{fmt(lobby.todayCount)}</b>명 탄생
             </span>
           </div>
-          {lobby.today.length === 0 && <p className={styles.empty}>오늘 생을 마친 유진이 아직 없어요.</p>}
+          {lobby.today.length === 0 && <p className={styles.empty}>오늘 생을 마친 우진이 아직 없어요.</p>}
           <ul className={styles.todayList}>
             {lobby.today.map((t) => (
               <li key={t.id}>
@@ -150,7 +150,7 @@ export function LobbyView({ lobby, onStart, onResume, onReport, onDex }: {
             <li>
               <Wallet size={15} aria-hidden="true" />
               <span>
-                15세부터 유진의 돈으로 <b>돈쓰기</b>를 할 수 있어요. 포인트로도 사줄 수 있어요(1만원 = 1P).
+                15세부터 우진의 돈으로 <b>돈쓰기</b>를 할 수 있어요. 포인트로도 사줄 수 있어요(1만원 = 1P).
               </span>
             </li>
             <li>

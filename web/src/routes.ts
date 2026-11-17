@@ -17,7 +17,7 @@ const LOADERS: Record<string, Loader> = {
   "predict.html": () => import("./pages/predict/Predict"),
   "quiz.html": () => import("./pages/quiz/Quiz"),
   "minigame.html": () => import("./pages/games/Today"),
-  // 유진 키우기 — 베타 빌드에서만(lib/life.ts LIFE_ENABLED)
+  // 우진 키우기 — 베타 빌드에서만(lib/life.ts LIFE_ENABLED)
   ...(LIFE_ENABLED ? { "life.html": () => import("./pages/life/Life") } : {}),
   "board-free.html": () => import("./pages/board/Board").then((m) => ({ default: m.FreeBoard })),
   "board-review.html": () => import("./pages/board/Board").then((m) => ({ default: m.ReviewBoard })),

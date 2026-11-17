@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 인생 마디(조건이 맞으면 반드시).
+// 우진 키우기 갈림길 — 인생 마디(조건이 맞으면 반드시).
 import type { Fork } from "../../engine.ts";
 import { badDebt } from "../../types.ts";
 import { focusOpts, jobOpts, think, tuitionFx, tuitionOf } from "../forkUtil.ts";
@@ -7,7 +7,7 @@ import { JOBS } from "../world.ts";
 
 export const milestonesForks: Fork[] = [
   {
-    id: "temper", a: [2, 3], mile: true, tag: "인생 마디", t: "두 살 유진, 어떤 기질이 보이기 시작했다.",
+    id: "temper", a: [2, 3], mile: true, tag: "인생 마디", t: "두 살 우진, 어떤 기질이 보이기 시작했다.",
     opts: [
       pick("호기심이 많다", R("뭐든 만지고 뜯어보는 아이가 됐다.", fx({ intel: 3 }, 0, { add: ["curious"] })), { hint: "지능 ↑" }),
       pick("활발하다", R("한시도 가만히 있지 않는 아이가 됐다.", fx({ health: 3 }, 0, { add: ["active"] })), { hint: "건강 ↑" }),
@@ -15,7 +15,7 @@ export const milestonesForks: Fork[] = [
       pick("흥이 많다", R("음악만 나오면 엉덩이를 흔드는 아이가 됐다.", fx({ talent: 3 }, 0, { add: ["groovy"] })), { hint: "끼 ↑" }),
     ],
   },
-  think("think5", 5, "다섯 살 유진에게 물었다. 커서 뭐가 되고 싶어?", ["늑대!", "엄마 아빠 같은 어른", "몰라, 그냥 맛있는 거 많이 먹는 사람"]),
+  think("think5", 5, "다섯 살 우진에게 물었다. 커서 뭐가 되고 싶어?", ["늑대!", "엄마 아빠 같은 어른", "몰라, 그냥 맛있는 거 많이 먹는 사람"]),
   { id: "school_in", a: [8, 9], mile: true, kind: "focus", tag: "인생 마디", t: "초등학교에 입학했다. 어떤 학생으로 키울까?", opts: focusOpts(1) },
   {
     id: "club", a: [13, 14], mile: true, tag: "인생 마디", t: "중학교에 들어가서 동아리를 골라야 한다.",
@@ -26,7 +26,7 @@ export const milestonesForks: Fork[] = [
       pick("만화부", R("만화 그리는 친구들과 친해졌다.", fx({ talent: 2, charm: 1 }, 0, { add: ["artsy"] })), { hint: "끼 ↑ · 그림" }),
     ],
   },
-  think("think15", 15, "열다섯 살 유진이 일기장에 적었다. 요즘 제일 고민되는 건…", ["진로", "친구 관계", "솔직히 아무 생각 없음"]),
+  think("think15", 15, "열다섯 살 우진이 일기장에 적었다. 요즘 제일 고민되는 건…", ["진로", "친구 관계", "솔직히 아무 생각 없음"]),
   {
     id: "high", a: [16, 16], mile: true, tag: "인생 마디", t: "고등학교 진학. 어디로 갈까?",
     opts: [
@@ -106,7 +106,7 @@ export const milestonesForks: Fork[] = [
     ],
   },
   { id: "adult_focus", a: [19, 23], mile: true, kind: "focus", tag: "인생 마디", t: "어엿한 어른이 됐다. 앞으로 어디에 힘을 쏟을까?", opts: focusOpts(2) },
-  think("think30", 30, "서른 살 유진이 혼잣말을 했다. 지금 내 인생은…", ["생각보다 괜찮다", "아직 시작도 안 했다", "어디서부터 잘못된 걸까"]),
+  think("think30", 30, "서른 살 우진이 혼잣말을 했다. 지금 내 인생은…", ["생각보다 괜찮다", "아직 시작도 안 했다", "어디서부터 잘못된 걸까"]),
   {
     id: "wedding", a: [18, 90], mile: true, now: true, tag: "결혼", t: "{p}와 결혼식을 어떻게 할까?",
     if: (c) => c.has("engaged") && !!c.person("partner"),
@@ -117,7 +117,7 @@ export const milestonesForks: Fork[] = [
       pick("혼인신고만", R("혼인신고서 한 장으로 부부가 됐다.", { s: { happy: 3 }, fn: wed(-3) })),
     ],
   },
-  think("think50", 50, "쉰 살 유진에게 누군가 물었다. 다시 태어나도 지금처럼 살 거야?", ["응, 똑같이", "조금만 다르게", "완전히 다르게"]),
+  think("think50", 50, "쉰 살 우진에게 누군가 물었다. 다시 태어나도 지금처럼 살 거야?", ["응, 똑같이", "조금만 다르게", "완전히 다르게"]),
   {
     id: "retire", a: [30, 75], mile: true, rep: 3, tag: "인생 마디", t: (c) => (c.age < 50 ? "현역에서 물러날 때가 왔다." : "정년이 다가왔다. 은퇴할까?"),
     if: (c) => { const j = JOBS.find((x) => x.id === c.s.job); return !!j && !!j.retire && c.age >= j.retire; },
@@ -127,5 +127,5 @@ export const milestonesForks: Fork[] = [
     ],
   },
   { id: "old_focus", a: [65, 67], mile: true, kind: "focus", tag: "인생 마디", t: "노년이 시작됐다. 하루를 어떻게 보낼까?", opts: focusOpts(3) },
-  think("think70", 70, "일흔 살 유진이 손주에게 해주고 싶은 말은…", ["하고 싶은 건 다 해봐", "건강이 최고다", "사람을 남겨라"]),
+  think("think70", 70, "일흔 살 우진이 손주에게 해주고 싶은 말은…", ["하고 싶은 건 다 해봐", "건강이 최고다", "사람을 남겨라"]),
 ];

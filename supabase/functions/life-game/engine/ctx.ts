@@ -1,4 +1,4 @@
-// 유진 키우기 엔진 — 한 해 동안 쓰는 작업대(상태 읽고 바꾸기·기록 남기기), 순자산.
+// 우진 키우기 엔진 — 한 해 동안 쓰는 작업대(상태 읽고 바꾸기·기록 남기기), 순자산.
 import {
   STAT_KEYS, type Entry, type Kind, type Person, type Role, type Roll, type State, type StatKey, type Stats,
 } from "../types.ts";
@@ -81,7 +81,7 @@ export class Ctx {
       id: ++this.s.pid,
       role,
       name: name ?? (free.length ? this.pick(free) : this.pick(pool)),
-      born: role === "child" || role === "pet" ? this.s.age : this.int(-3, 3), // 친구·연인은 유진과 비슷한 나이
+      born: role === "child" || role === "pet" ? this.s.age : this.int(-3, 3), // 친구·연인은 우진과 비슷한 나이
       bond: clamp(bond, 0, 100),
       alive: true,
       since: this.s.age,

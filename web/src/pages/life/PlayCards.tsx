@@ -1,4 +1,4 @@
-// 유진 키우기 진행 화면의 옆 칸 카드들 — 방송 이력·기록·돈·사람·쇼핑.
+// 우진 키우기 진행 화면의 옆 칸 카드들 — 방송 이력·기록·돈·사람·쇼핑.
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ShoppingBag, Radio, X, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { fmt } from "../../lib/format";

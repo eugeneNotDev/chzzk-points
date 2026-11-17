@@ -1,4 +1,4 @@
-// 유진 키우기 엔진 — 새 인생 만들기, 해마다 기록 쌓기, 마무리(엔딩).
+// 우진 키우기 엔진 — 새 인생 만들기, 해마다 기록 쌓기, 마무리(엔딩).
 import { STAT_KEYS, type Entry, type HouseId, type State, type Stats } from "../types.ts";
 import { MODS, SPECIALS } from "../content.ts";
 import { josa } from "../josa.ts";
@@ -20,7 +20,7 @@ export function newLife(house: HouseId, bonus: Partial<Stats>, rng: () => number
   const h = houseOf(s);
   c.meet("mom", h.momBond + c.int(-5, 10), "엄마").born = -c.int(27, 34);
   c.meet("dad", h.momBond + c.int(-10, 5), "아빠").born = -c.int(29, 37);
-  c.log("life", `${h.name}에서 유진이 태어났다.`);
+  c.log("life", `${h.name}에서 우진이 태어났다.`);
   pushHist(s);
   return { s, log: c.out };
 }
@@ -49,7 +49,7 @@ export function finish(c: Ctx) {
   const friends = s.people.filter((p) => p.role === "friend").length * 3;
   const fans = Math.round(s.fame * s.fame * 0.5);
   const mourners = family + friends + c.int(2, 8) + Math.round(s.stats.charm / 10) + fans;
-  const title = sp ? sp.title : `${mod && mod.id !== "ordinary" ? mod.text + " " : ""}${jobName} 유진`;
+  const title = sp ? sp.title : `${mod && mod.id !== "ordinary" ? mod.text + " " : ""}${jobName} 우진`;
   s.ending = {
     title, mod: mod?.text ?? null, modId: mod?.id ?? null, job: jobName, jobId, cause: s.dead.cause, causeText, age: a,
     specialId: sp?.id ?? null, specialText: sp?.text ?? null, mourners, netWorth: netWorth(s), earned: s.earned, peak: s.peak,

@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 연애·결혼·가족.
+// 우진 키우기 갈림길 — 연애·결혼·가족.
 import type { Fork } from "../../engine.ts";
 import { meetPartner } from "../forkUtil.ts";
 import { R, anyParent, dice, fx, kidsAt, pick, single } from "../util.ts";
@@ -27,7 +27,7 @@ export const familyForks: Fork[] = [
     ],
   },
   {
-    id: "confess_recv", a: [16, 45], rep: 6, tag: "연애", t: "누군가 유진에게 고백했다!", if: (c) => single(c) && c.st("charm") >= 45,
+    id: "confess_recv", a: [16, 45], rep: 6, tag: "연애", t: "누군가 우진에게 고백했다!", if: (c) => single(c) && c.st("charm") >= 45,
     opts: [
       pick("받아준다", R("{p}와 사귀게 됐다.", { s: { happy: 5 }, ...meetPartner(55) })),
       pick("정중히 거절한다", R("고맙지만 마음이 없었다.", fx({ charm: 1 }))),

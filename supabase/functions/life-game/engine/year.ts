@@ -1,4 +1,4 @@
-// 유진 키우기 엔진 — 한 해 굴리기(초점·능력치 변화·수입·생활비·경제·부모님·학교·군대·일상·병·죽음).
+// 우진 키우기 엔진 — 한 해 굴리기(초점·능력치 변화·수입·생활비·경제·부모님·학교·군대·일상·병·죽음).
 import { badDebt, type StatKey } from "../types.ts";
 import { DAILY, DISEASES, FOCUSES, JOBS, FUNDS, SHOWS } from "../content.ts";
 import { josa } from "../josa.ts";

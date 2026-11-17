@@ -1,4 +1,4 @@
-// 유진 키우기 갈림길 — 부모님.
+// 우진 키우기 갈림길 — 부모님.
 import type { Fork } from "../../engine.ts";
 import { R, anyParent, dice, fx, parentOld, pick } from "../util.ts";
 import { HOUSES } from "../world.ts";

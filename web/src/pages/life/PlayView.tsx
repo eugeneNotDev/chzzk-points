@@ -1,4 +1,4 @@
-// 유진 키우기 — 진행 화면(해마다 이야기를 속도에 맞춰 보여주고, 갈림길·초점·쇼핑·방송 모드를 다룸).
+// 우진 키우기 — 진행 화면(해마다 이야기를 속도에 맞춰 보여주고, 갈림길·초점·쇼핑·방송 모드를 다룸).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -302,7 +302,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       <header className={styles.playHead}>
         <div className={styles.ageBox}>
           <span>
-            {worldLabel(run)} 유진 · {view.houseName}
+            {worldLabel(run)} 우진 · {view.houseName}
           </span>
           <b>
             <span className="num" key={age}>
@@ -402,7 +402,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
           )}
           <div className={styles.yearHead}>
             <span>
-              <b className="num">{age}</b>세의 유진
+              <b className="num">{age}</b>세의 우진
             </span>
             <span className={styles.luck} title="올해의 운 — 높을수록 좋은 일이 잘 생겨요">
               올해의 운
