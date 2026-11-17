@@ -1,4 +1,4 @@
-# 검사 — push·PR마다 사이트 타입 검사·빌드, 서버 함수 타입 검사.
+﻿# 검사 — push·PR마다 사이트 타입 검사·빌드, 서버 함수 타입 검사.
 # 실패하면 GitHub 커밋 옆에 빨간 X가 뜸(사이트 배포와는 별개라 실패해도 사이트는 그대로).
 name: 검사
 
@@ -36,7 +36,7 @@ jobs:
         run: deno check supabase/functions/*/index.ts
 
   life-balance:
-    name: 유진 키우기 밸런스 점검(오류만)
+    name: 우진 키우기 밸런스 점검(오류만)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

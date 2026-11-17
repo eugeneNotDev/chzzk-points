@@ -287,18 +287,25 @@ export function eligible(c: Ctx, e: { id: string; a: [number, number]; if?: (c: 
   return true;
 }
 
+// 같은 일상 이벤트가 한 판에 너무 자주 반복되지 않게(감기 9번 같은 일) — 횟수는 seen["n:" + id]에 셈
+const DAILY_MAX = 4;
+// 희귀 이벤트가 터질 확률(해마다) — 행운(유성우) 상태면 조금 더
+const RARE_CHANCE = 0.007;
+const RARE_CHANCE_LUCKY = 0.008;
+
 export function dailyEvents(c: Ctx) {
   const s = c.s;
   const n = c.chance(0.3) ? 2 : c.chance(0.8) ? 1 : 0;
   for (let i = 0; i < n; i++) {
-    const pool = DAILY.filter((e) => !e.rare && eligible(c, e));
+    const pool = DAILY.filter((e) => !e.rare && eligible(c, e) && (s.seen["n:" + e.id] ?? 0) < (e.max ?? DAILY_MAX));
     const e = pickWeighted(c, pool, (x) => (x.w ?? 10) * (x.tone === 1 ? [0, 0.5, 0.8, 1, 1, 1.3, 2][s.luck] : x.tone === -1 ? [0, 2, 1.3, 1, 1, 0.8, 0.5][s.luck] : 1));
     if (!e) break;
     s.seen[e.id] = s.age;
+    s.seen["n:" + e.id] = (s.seen["n:" + e.id] ?? 0) + 1;
     c.apply(e.fx, "day", e.t);
   }
   // 희귀 이벤트
-  if (c.chance(0.02 + (s.luck === 6 ? 0.015 : 0))) {
+  if (c.chance(RARE_CHANCE + (s.luck === 6 ? RARE_CHANCE_LUCKY : 0))) {
     const e = pickWeighted(c, DAILY.filter((x) => x.rare && eligible(c, x)));
     if (e) {
       s.seen[e.id] = s.age;

@@ -44,6 +44,7 @@ export type Daily = {
   w?: number;
   if?: (c: Ctx) => boolean;
   rep?: number;
+  max?: number; // 한 판에 나올 수 있는 최대 횟수(rep 있는 일상 이벤트만, 없으면 DAILY_MAX)
   tone?: 1 | -1 | 0;
   rare?: boolean;
   hint?: string;
