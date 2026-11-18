@@ -1,11 +1,11 @@
 // 우진 키우기 갈림길 — 일·돈.
 import type { Fork } from "../../engine.ts";
-import { R, creatorJob, dice, fx, pick, salaried } from "../util.ts";
+import { R, creatorJob, dice, employee, fx, pick, streamJob } from "../util.ts";
 import { JOBS } from "../world.ts";
 
 export const workForks: Fork[] = [
   {
-    id: "promo", a: [28, 58], rep: 4, w: 14, tag: "일", t: "승진 심사가 다가왔다.", if: (c) => salaried(c) && (c.s.rank ?? 0) < (JOBS.find((j) => j.id === c.s.job)?.ranks?.length ?? 1) - 1,
+    id: "promo", a: [28, 58], rep: 4, w: 14, tag: "일", t: "승진 심사가 다가왔다.", if: (c) => employee(c) && (c.s.rank ?? 0) < (JOBS.find((j) => j.id === c.s.job)?.ranks?.length ?? 1) - 1,
     opts: [
       dice("밤새 준비한다", "intel", {
         great: R("특진 심사를 통과했다!", fx({ happy: 2, health: -1 }, 0, { fn: (c) => { if (!c.promote(2)) c.s.salary = Math.round(c.s.salary * 1.2); } }), true),
@@ -16,7 +16,7 @@ export const workForks: Fork[] = [
     ],
   },
   {
-    id: "layoff", a: [38, 60], tag: "일", t: "회사가 구조조정을 한다. 명단에 이름이 올랐다는 소문이 돈다.", if: (c) => salaried(c) && c.s.job !== "civil" && c.s.job !== "teacher",
+    id: "layoff", a: [38, 60], tag: "일", t: "회사가 구조조정을 한다. 명단에 이름이 올랐다는 소문이 돈다.", if: (c) => ["office", "bigcorp", "dev"].includes(c.s.job ?? ""),
     opts: [
       dice("버틴다", "charm", {
         good: R("살아남았다.", fx({ happy: -1 })),
@@ -26,7 +26,7 @@ export const workForks: Fork[] = [
     ],
   },
   {
-    id: "scout", a: [27, 52], tag: "일", t: "다른 회사에서 스카우트 제안이 왔다.", if: salaried,
+    id: "scout", a: [27, 52], tag: "일", t: "다른 곳에서 스카우트 제안이 왔다.", if: (c) => employee(c) && c.s.job !== "civil",
     opts: [
       pick("옮긴다", R("연봉이 올랐다. 일도 늘었다.", fx({ happy: -1 }, 0, { fn: (c) => (c.s.salary = Math.round(c.s.salary * 1.2)) }))),
       pick("남는다", R("익숙한 자리가 편했다.", fx({ happy: 3 }))),
@@ -40,7 +40,7 @@ export const workForks: Fork[] = [
     ],
   },
   {
-    id: "quit_dream", a: [25, 50], w: 6, tag: "일", t: "회사를 그만두고 하고 싶은 걸 하고 싶다고 한다.", if: salaried,
+    id: "quit_dream", a: [25, 50], w: 6, tag: "일", t: "직장을 그만두고 하고 싶은 걸 하고 싶다고 한다.", if: (c) => employee(c) || c.s.job === "alba" || c.s.job === "delivery",
     opts: [
       pick("응원한다", R("사표를 냈다. 속이 시원했다.", fx({ happy: 6 }, 0, { add: ["dream"], fn: (c) => c.quit("꿈을 좇는 중") }))),
       pick("현실을 생각하라고 한다", R("한숨을 쉬고 다시 출근했다.", fx({ happy: -4 }))),
@@ -58,30 +58,30 @@ export const workForks: Fork[] = [
     ],
   },
   {
-    id: "collab", a: [18, 70], rep: 3, tag: "방송", t: "큰 방송인에게서 합방 제안이 왔다.", if: creatorJob,
+    id: "collab", a: [18, 70], rep: 3, tag: "방송", t: (c) => (streamJob(c) ? "큰 방송인에게서 합방 제안이 왔다." : "유명한 사람에게서 협업 제안이 왔다."), if: creatorJob,
     opts: [
       dice("한다", "charm", {
-        great: R("합방이 레전드로 남았다. 클립이 사방에 퍼졌다.", fx({ happy: 5 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 15)) }), true),
-        good: R("재밌게 끝났다. 시청자가 늘었다.", fx({ happy: 3 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 6)) })),
+        great: R((c) => (streamJob(c) ? "합방이 레전드로 남았다. 클립이 사방에 퍼졌다." : "협업이 레전드로 남았다. 소문이 사방에 퍼졌다."), fx({ happy: 5 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 15)) }), true),
+        good: R((c) => (streamJob(c) ? "재밌게 끝났다. 시청자가 늘었다." : "재밌게 끝났다. 팬이 늘었다."), fx({ happy: 3 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 6)) })),
         bad: R("긴장해서 한마디도 못 했다.", fx({ happy: -3 }, 0, { fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 2)) })),
       }),
-      pick("내 페이스대로 간다", R("늘 하던 대로 방송했다.", fx({ happy: 1 }))),
+      pick("내 페이스대로 간다", R((c) => (streamJob(c) ? "늘 하던 대로 방송했다." : "늘 하던 대로 작업했다."), fx({ happy: 1 }))),
     ],
   },
   {
-    id: "controversy", a: [18, 70], rep: 6, tag: "방송", t: "방송에서 한 말이 논란이 됐다.", if: (c) => creatorJob(c) && c.s.fame >= 25,
+    id: "controversy", a: [18, 70], rep: 6, tag: "방송", t: (c) => (streamJob(c) ? "방송에서 한 말이 논란이 됐다." : "인터뷰에서 한 말이 논란이 됐다."), if: (c) => creatorJob(c) && c.s.fame >= 25,
     opts: [
-      dice("사과 방송을 한다", "charm", {
+      dice((c) => (streamJob(c) ? "사과 방송을 한다" : "사과문을 올린다"), "charm", {
         good: R("진심이 전해졌다. 오히려 팬이 늘었다.", fx({ charm: 2 }, 0, { fn: (c) => (c.s.fame = Math.min(100, c.s.fame + 3)) })),
         bad: R("사과문이 또 논란이 됐다.", fx({ happy: -6 }, 0, { add: ["vt_down"], fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 12)) })),
       }),
-      pick("잠시 쉰다", R("한 달 동안 방송을 쉬었다.", fx({ happy: -2, health: 2 }, 0, { fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 6)) }))),
+      pick("잠시 쉰다", R("한 달 동안 활동을 쉬었다.", fx({ happy: -2, health: 2 }, 0, { fn: (c) => (c.s.fame = Math.max(0, c.s.fame - 6)) }))),
     ],
   },
   {
-    id: "fan_letter", a: [20, 80], rep: 6, tag: "방송", t: "시청자에게 긴 편지를 받았다.", if: (c) => creatorJob(c) && c.s.fame >= 10,
+    id: "fan_letter", a: [20, 80], rep: 6, tag: "방송", t: (c) => (streamJob(c) ? "시청자에게 긴 편지를 받았다." : "팬에게 긴 편지를 받았다."), if: (c) => creatorJob(c) && c.s.fame >= 10,
     opts: [
-      pick("방송에서 읽어준다", R("편지를 읽다가 목이 메었다.", fx({ charm: 3, happy: 4 }, 0, { add: ["yangs"] }))),
+      pick((c) => (streamJob(c) ? "방송에서 읽어준다" : "SNS에 소개한다"), R("편지를 읽다가 목이 메었다.", fx({ charm: 3, happy: 4 }, 0, { add: ["yangs"] }))),
       pick("혼자 몰래 읽는다", R("편지를 지갑에 넣고 다녔다.", fx({ happy: 5 }))),
     ],
   },

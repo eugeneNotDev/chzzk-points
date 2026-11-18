@@ -2,7 +2,7 @@
 import {
   STAT_KEYS, type Entry, type Kind, type Person, type Role, type Roll, type State, type StatKey, type Stats,
 } from "../types.ts";
-import { HOUSES, JOBS, NAMES } from "../content.ts";
+import { HOUSES, JOBS, NAMES, RANK_UP_TEXT } from "../content.ts";
 import { josa } from "../josa.ts";
 import { type Fx, type Text, jobTitle } from "./shapes.ts";
 import { clamp, statMod, tierOf } from "./tools.ts";
@@ -135,7 +135,7 @@ export class Ctx {
       ? `인기가 오르면서 어엿한 ${josa(title, "가")} 됐다!`
       : why === "biz"
       ? `가게가 커져서 이제 ${josa(title, "라고")} 불린다!`
-      : `승진했다! 이제 ${josa(title, "이다")}.`;
+      : RANK_UP_TEXT[j.id]?.(title) ?? `승진했다! 이제 ${josa(title, "이다")}.`;
     this.log("job", msg, { hl: true, d: this.stat({ happy: 4 }) });
     return title;
   }

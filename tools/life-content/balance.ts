@@ -38,6 +38,8 @@ function play(house: HouseId, pick?: (s: State, ok: Opt[]) => Opt | undefined, f
 let errors = 0, decisions = 0, worstRepeat = 0;
 const per: Record<string, { age: number[]; net: number[]; bank: number; sp: number }> = {};
 const job: Record<string, number> = {}, mod: Record<string, number> = {}, sp: Record<string, number> = {}, rare: Record<string, number> = {}, repeats: Record<string, number> = {};
+// 같은 질문(결정)이 한 판에 3번 이상 나온 판 수 — 질문 문구 기준
+const askRepeats: Record<string, number> = {};
 for (let i = 0; i < N; i++) {
   const h = HOUSES[i % 4];
   const { s, log, errors: e } = play(h, () => { decisions++; return undefined; });
@@ -52,6 +54,9 @@ for (let i = 0; i < N; i++) {
   const dc: Record<string, number> = {};
   for (const x of log) if (x.k === "day") inc(dc, x.t);
   for (const [t, v] of Object.entries(dc)) { worstRepeat = Math.max(worstRepeat, v); if (v >= 8) inc(repeats, t); }
+  const ac: Record<string, number> = {};
+  for (const x of log) if (x.k === "pick") inc(ac, x.t.split(" → ")[0]);
+  for (const [t, v] of Object.entries(ac)) if (v >= 3) inc(askRepeats, t);
 }
 const warn = (v: number) => (v < N * 0.002 ? " ⚠" : "");
 console.log(`\n■ 무작위 플레이 ${N}판 — 오류 ${errors}${errors ? " ⚠" : ""} · 결정 ${(decisions / N).toFixed(1)}회/판`);
@@ -62,6 +67,8 @@ console.log("\n■ 특수 엔딩\n  " + SPECIALS.map((m) => `${m.title} ${pct(sp
 console.log("\n■ 희귀 이벤트(실제 생일 11/22에만 나오는 건 0%가 정상)\n  " + DAILY.filter((d) => d.rare).map((d) => `${d.id} ${pct(rare[d.id] ?? 0)}${warn(rare[d.id] ?? 0)}`).join(" · "));
 console.log(`\n■ 같은 일상 이벤트 한 판 최다 반복 ${worstRepeat}회${worstRepeat >= 8 ? " ⚠" : ""}`);
 for (const [t, v] of Object.entries(repeats).sort((a, b) => b[1] - a[1]).slice(0, 5)) console.log(`  ${pct(v)}의 판에서 8번 이상: ${t}`);
+console.log("\n■ 같은 질문이 한 판에 3번 이상 나온 판(질문 문구 기준, 상위 8개)");
+for (const [t, v] of Object.entries(askRepeats).sort((a, b) => b[1] - a[1]).slice(0, 8)) console.log(`  ${pct(v)}${v >= N * 0.05 ? " ⚠" : ""} ${t}`);
 
 // ── 2. 노리고 할 때 전문직 도달률(목표: 20~30% 안팎) ──
 const AIM: Record<string, { kw: string[]; f1: string; f2: string; late?: string }> = {

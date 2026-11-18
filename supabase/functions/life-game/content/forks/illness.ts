@@ -6,8 +6,9 @@ import { DISEASES } from "../world.ts";
 
 export const illnessForks: Fork[] = [
   {
+    // 병이 생긴 그 해에만(전엔 낫지 않은 동안 해마다 다시 떠서 같은 질문이 반복됐음 — 그 뒤 재발은 sick_again이 맡음)
     id: "sick_treat", a: [0, 120], rep: 1, tag: "건강", t: (c) => `${c.s.sick?.name ?? "병"}, 치료를 어떻게 할까?`,
-    if: (c) => !!c.s.sick,
+    if: (c) => !!c.s.sick && c.s.sick.since === c.age,
     opts: [
       dice("큰 병원에서 제대로 치료", "health", {
         great: R("치료가 아주 잘 됐다. 완치 판정을 받았다!", fx({ health: 8, happy: 5 }, 0, { fn: (c) => (c.s.sick = null) }), true),
@@ -21,7 +22,7 @@ export const illnessForks: Fork[] = [
         hint: "건강 주사위 · 일찍 발견하면 +",
       }),
       dice("버티면서 지낸다", null, {
-        good: R("이상하게 저절로 좋아졌다.", fx({ happy: 2 }, 0, { fn: (c) => c.s.sick && (c.s.sick.sev = Math.max(0, c.s.sick.sev - 1)) })),
+        good: R("이상하게 저절로 좋아졌다.", fx({ happy: 2 }, 0, { fn: (c) => { if (c.s.sick) c.s.sick = c.s.sick.sev <= 1 ? null : { ...c.s.sick, sev: c.s.sick.sev - 1 }; } })),
         bad: R("병이 깊어졌다.", fx({ health: -4, happy: -2 }, 0, { fn: (c) => c.s.sick && (c.s.sick.sev += 1) })),
       }, { hint: "돈 안 듦 · 운" }),
     ],

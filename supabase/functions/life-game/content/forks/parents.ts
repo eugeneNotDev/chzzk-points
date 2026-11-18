@@ -1,7 +1,21 @@
 // 우진 키우기 갈림길 — 부모님.
-import type { Fork } from "../../engine.ts";
+import type { Ctx, Fork } from "../../engine.ts";
 import { R, anyParent, dice, fx, parentOld, pick } from "../util.ts";
 import { HOUSES } from "../world.ts";
+
+// 쓰러지실 부모님 — 68세 이상이고 아직 쓰러진 적 없는 분(엄마 먼저)
+function sickParent(c: Ctx): "mom" | "dad" | null {
+  for (const w of ["mom", "dad"] as const) {
+    const p = c.person(w);
+    if (p && c.age - p.born >= 68 && !c.has(`par_sick_${w}`)) return w;
+  }
+  return null;
+}
+function markParentSick(c: Ctx) {
+  const w = sickParent(c);
+  if (w) c.add(`par_sick_${w}`);
+  return w;
+}
 
 export const parentsForks: Fork[] = [
   {
@@ -20,12 +34,13 @@ export const parentsForks: Fork[] = [
     ],
   },
   {
-    id: "par_sick", a: [30, 75], rep: 8, w: 10, tag: "가족", t: (c) => `${parentOld(c, 68) && c.person("mom") && c.age - c.person("mom")!.born >= 68 ? "엄마" : "아빠"}가 쓰러지셨다.`,
-    if: (c) => parentOld(c, 68),
+    // 부모님마다 한 번만(전엔 rep 8이라 요양병원에 모신 엄마가 8년 뒤 또 쓰러지는 일이 있었음)
+    id: "par_sick", a: [30, 75], rep: 2, w: 10, tag: "가족", t: (c) => `${sickParent(c) === "mom" ? "엄마" : "아빠"}가 쓰러지셨다.`,
+    if: (c) => !!sickParent(c),
     opts: [
-      pick("직접 간병한다", R("한동안 병원에서 쪽잠을 잤다.", fx({ happy: -3, health: -3 }, 0, { fn: (c) => { c.bond(c.person("mom"), 12); c.bond(c.person("dad"), 12); } }))),
-      pick("좋은 요양병원에 모신다", R("주말마다 찾아뵀다.", fx({ happy: -1 }, 0, { fn: (c) => { c.bond(c.person("mom"), 4); c.bond(c.person("dad"), 4); } })), { cost: 2000 }),
-      pick("바빠서 자주 못 간다", R("전화만 드렸다. 마음이 무거웠다.", fx({ happy: -4 }, 0, { fn: (c) => { c.bond(c.person("mom"), -8); c.bond(c.person("dad"), -8); } }))),
+      pick("직접 간병한다", R("한동안 병원에서 쪽잠을 잤다.", fx({ happy: -3, health: -3 }, 0, { fn: (c) => { const w = markParentSick(c); if (w) c.bond(c.person(w), 12); } }))),
+      pick("좋은 요양병원에 모신다", R("주말마다 찾아뵀다.", fx({ happy: -1 }, 0, { fn: (c) => { const w = markParentSick(c); if (w) c.bond(c.person(w), 4); } })), { cost: 2000 }),
+      pick("바빠서 자주 못 간다", R("전화만 드렸다. 마음이 무거웠다.", fx({ happy: -4 }, 0, { fn: (c) => { const w = markParentSick(c); if (w) c.bond(c.person(w), -8); } }))),
     ],
   },
   {

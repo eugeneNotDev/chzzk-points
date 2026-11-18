@@ -1,13 +1,13 @@
 // 우진 키우기 갈림길 공용 — 초점 선택지·학비·직업 선택지·만남 등.
 import { josa } from "../josa.ts";
-import type { Ctx, Fork, Fx, Job, Opt } from "../engine.ts";
+import type { Ctx, Fork, Fx, Job, Opt, Text } from "../engine.ts";
 import { STAT_LABEL } from "../types.ts";
 import { R, fx, passP, pick } from "./util.ts";
 import { FOCUSES, HOUSES, JOBS } from "./world.ts";
 
 // ── 갈림길(보호자의 선택) ──
 // 순서 = 같은 해에 마디가 겹칠 때의 우선순위
-export const think = (id: string, age: number, q: string, a: [string, string, string]): Fork => ({
+export const think = (id: string, age: number, q: Text, a: [string, string, string]): Fork => ({
   id, a: [age, age + 2], mile: true, kind: "think", tag: "생각 남기기", t: q,
   opts: a.map((x) => pick(x, R("우진은 그렇게 생각하기로 했다.", fx({ happy: 1 })))),
 });

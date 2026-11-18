@@ -64,14 +64,15 @@ function jobIncome(c: Ctx): number {
     const r = c.roll(show ? show.stat : "talent", (s.focus === "create" ? 1 : 0) + (show?.bonus ?? 0));
     const dF = (show?.dF ?? { great: 12, good: 5, normal: 1, bad: -3, terrible: -9 })[r.tier];
     const before = s.fame;
+    const live = ["vtuber", "streamer", "youtuber"].includes(j.id); // 방송하는 직업(작가·가수·일러스트 등은 방송 문구 대신 일반 문구)
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
-    if (r.tier === "great") c.apply(show?.greatFx, "job", show?.great ?? (s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다."), { roll: r, hl: true });
+    if (r.tier === "great") c.apply(show?.greatFx, "job", show?.great ?? (live ? (s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다.") : s.fame >= 60 ? "작업 하나가 크게 화제가 돼서 팬이 확 늘었다." : "이름이 조금씩 알려지기 시작했다."), { roll: r, hl: true });
     else if (r.tier === "terrible") c.apply(show?.badFx ?? { s: { happy: -5 } }, "job", show?.bad ?? "말실수가 퍼져서 한동안 시끄러웠다.", { roll: r });
     // 버튜버는 나이가 들수록 인지도가 빠짐(40세 1, 45세 2, 50세 3, 60세 5 …)
     if (j.id === "vtuber" && s.age >= 40) s.fame = clamp(s.fame - Math.ceil((s.age - 38) / 5), 0, 100);
     if (s.fame >= 55) c.add("fame55"); // 엔딩은 죽을 때가 아니라 가장 유명했던 때 기준
-    if (before < 30 && s.fame >= 30 && !c.has("yangs")) c.log("job", "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
-    if (before < 70 && s.fame >= 70 && !c.has("gold_button")) c.log("job", "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
+    if (before < 30 && s.fame >= 30 && !c.has("yangs")) c.log("job", live ? "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다." : "고정 팬이 생겼다. 팬들이 스스로를 '네루'라고 부르기 시작했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
+    if (before < 70 && s.fame >= 70 && !c.has("gold_button")) c.log("job", live ? "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다." : "팬이 100만을 넘었다. 네루들의 축하 메시지가 쏟아졌다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
     rankByValue(c, j, s.fame, "fame");
     // 아직 작은 방송인은 알바를 병행해서 최소한은 범
     return Math.max(s.fame < 30 ? 1300 : 0, Math.round((150 + s.fame * s.fame * 2.6) * j.creator * (0.6 + c.rnd() * 0.8)));

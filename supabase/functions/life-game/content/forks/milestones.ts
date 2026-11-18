@@ -119,13 +119,13 @@ export const milestonesForks: Fork[] = [
   },
   think("think50", 50, "쉰 살 우진에게 누군가 물었다. 다시 태어나도 지금처럼 살 거야?", ["응, 똑같이", "조금만 다르게", "완전히 다르게"]),
   {
-    id: "retire", a: [30, 75], mile: true, rep: 3, tag: "인생 마디", t: (c) => (c.age < 50 ? "현역에서 물러날 때가 왔다." : "정년이 다가왔다. 은퇴할까?"),
+    id: "retire", a: [30, 75], mile: true, rep: 5, tag: "인생 마디", t: (c) => (c.age < 50 ? "현역에서 물러날 때가 왔다." : "정년이 다가왔다. 은퇴할까?"),
     if: (c) => { const j = JOBS.find((x) => x.id === c.s.job); return !!j && !!j.retire && c.age >= j.retire; },
     opts: [
-      pick("은퇴한다", R("마지막 출근을 했다. 꽃다발이 무거웠다.", fx({ happy: 5, health: 2 }, 0, { fn: retireFn }), true)),
+      pick("은퇴한다", R((c) => { const was = c.s.jobs[c.s.jobs.length - 1]?.id; return `${was === "athlete" ? "은퇴 경기를 치렀다" : was === "idol" ? "마지막 무대에 섰다" : "마지막 출근을 했다"}. 꽃다발이 무거웠다.`; }, fx({ happy: 5, health: 2 }, 0, { fn: retireFn }), true)),
       pick("조금 더 일한다", R("아직은 일하는 게 좋다.", fx({ intel: 1, health: -1 }))),
     ],
   },
   { id: "old_focus", a: [65, 67], mile: true, kind: "focus", tag: "인생 마디", t: "노년이 시작됐다. 하루를 어떻게 보낼까?", opts: focusOpts(3) },
-  think("think70", 70, "일흔 살 우진이 손주에게 해주고 싶은 말은…", ["하고 싶은 건 다 해봐", "건강이 최고다", "사람을 남겨라"]),
+  think("think70", 70, (c) => `일흔 살 우진이 ${c.has("grandkid") ? "손주" : "젊은 사람들"}에게 해주고 싶은 말은…`, ["하고 싶은 건 다 해봐", "건강이 최고다", "사람을 남겨라"]),
 ];

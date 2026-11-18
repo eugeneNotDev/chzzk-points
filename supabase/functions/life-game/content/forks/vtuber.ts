@@ -14,7 +14,7 @@ export const vtuberForks: Fork[] = [
     ],
   },
   {
-    id: "vt_show", a: [14, 100], mile: true, rep: 3, tag: "방송",
+    id: "vt_show", a: [14, 100], mile: true, rep: 10, tag: "방송", // 개편은 10년에 한 번쯤(전엔 3년마다라 같은 질문이 계속 나왔음)
     t: (c) => (c.s.show ? "방송 개편 시즌이다. 주력 컨텐츠를 바꿔볼까?" : "이제 주력 컨텐츠를 정할 때다. 어떤 방송을 메인으로 할까?"),
     if: (c) => vtJob(c) && c.s.seen["vt_concept"] !== undefined && c.age > c.s.seen["vt_concept"],
     opts: SHOWS.map((sh) => pick(sh.name, R(`앞으로는 ${sh.name} 위주로 방송하기로 했다.`, { fn: (c) => (c.s.show = sh.id) }), { hint: sh.hint })),

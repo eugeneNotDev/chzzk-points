@@ -1,6 +1,7 @@
 // 우진 키우기 기본 데이터 — 방송 컨텐츠·태어난 집·투자·올해의 초점·직업·상점·이름·병.
 import type { Ctx, Disease, Focus, Fx, House, Item, Job, Show } from "../engine.ts";
-import { anyParent, fx, homePrice, kidsAt } from "./util.ts";
+import { josa } from "../josa.ts";
+import { anyParent, fx, homePrice, kidName, kidsAt } from "./util.ts";
 
 export const SHOWS: Show[] = [
   {
@@ -98,6 +99,17 @@ export const JOBS: Job[] = [
   { id: "ceo", name: "재벌 회장", cat: "자영업", hint: "재벌가에서 회사를 물려받으면…", req: () => false, roll: "intel", dc: 0, pay: 15000, growth: 0.04, cap: 40000, fy: { happy: -1 } , ranks: ["재벌 후계자", "재벌 부회장", "재벌 회장"] },
 ];
 
+// 회사식 "승진"이 어색한 직업(알바·프리랜서·선수·농부·회장)이 해가 지나 등급이 오를 때 쓰는 글. 없으면 "승진했다!"
+export const RANK_UP_TEXT: Record<string, (title: string) => string> = {
+  alba: (t) => `일이 손에 익어서 ${josa(t, "가")} 됐다.`,
+  delivery: (t) => `어느새 ${josa(t, "라고")} 불린다.`,
+  illustrator: (t) => `의뢰가 늘어서 이제 ${josa(t, "이다")}.`,
+  voice: (t) => `맡는 배역이 커졌다! 이제 ${josa(t, "이다")}.`,
+  athlete: (t) => `실력을 인정받아 ${josa(t, "가")} 됐다!`,
+  farmer: (t) => `농사 솜씨가 늘어서 ${josa(t, "가")} 됐다.`,
+  ceo: (t) => `그룹 안에서 입지를 굳혔다. 이제 ${josa(t, "이다")}.`,
+};
+
 // ── 상점(돈쓰기) — 15세 전은 보호자가 포인트로만 ──
 const giveParents: Fx = {
   s: { happy: 2 },
@@ -192,7 +204,7 @@ export const ITEMS: Item[] = [
   { id: "parents_trip", name: "부모님 효도 여행", cat: "가족", a: [25, 80], price: 600, t: "부모님을 해외여행 보내드렸다. 사진이 백 장 넘게 왔다.", fx: { ...giveParents, s: { happy: 4 } }, hint: "부모님 사이 ↑↑", if: anyParent },
   { id: "date", name: "데이트 코스", cat: "연애", a: [15, 95], price: 30, t: "{p}와 근사한 데이트를 했다.", fx: fx({ happy: 2 }, 0, { fn: (c) => c.bond(c.partner(), 6) }), hint: "연인 사이 ↑", if: (c) => !!c.partner() },
   { id: "gift_partner", name: "연인 선물", cat: "연애", a: [15, 95], price: 120, t: "{p}에게 선물을 했다. 한참 웃었다.", fx: fx({ happy: 2 }, 0, { fn: (c) => c.bond(c.partner(), 12) }), hint: "연인 사이 ↑↑", if: (c) => !!c.partner() },
-  { id: "kid_academy", name: "아이 학원비 1년", cat: "가족", a: [25, 75], price: 600, t: "{c}를 학원에 보냈다.", fx: fx({}, 0, { fn: (c) => { const k = c.folks("child").slice(-1)[0]; c.bond(k, 3); c.add("kid_edu"); } }), hint: "아이 공부 ↑", if: (c) => kidsAt(c, 7, 18).length > 0 },
+  { id: "kid_academy", name: "아이 학원비 1년", cat: "가족", a: [25, 75], price: 600, t: (c) => `${josa(kidName(c, 7, 18), "를")} 학원에 보냈다.`, fx: fx({}, 0, { fn: (c) => { const k = kidsAt(c, 7, 18).slice(-1)[0]; c.bond(k, 3); c.add("kid_edu"); } }), hint: "아이 공부 ↑", if: (c) => kidsAt(c, 7, 18).length > 0 },
   { id: "donation", name: "기부", cat: "경험", a: [20, 100], price: 1000, t: "익명으로 1,000만원을 기부했다.", fx: fx({ charm: 3, happy: 4 }, 0, { add: ["donor"] }), hint: "매력·행복 ↑" },
 ];
 

@@ -1,14 +1,22 @@
 // 우진 키우기 갈림길 — 노년 갈림길.
-import type { Fork } from "../../engine.ts";
+import type { Ctx, Fork } from "../../engine.ts";
 import { wasJob } from "../forkUtil.ts";
-import { R, bizJob, creatorJob, dice, fx, homePrice, pick, retireFn, statModOf } from "../util.ts";
+import { R, bizJob, creatorJob, dice, employee, fx, homePrice, pick, retireFn, statModOf } from "../util.ts";
 import { JOBS } from "../world.ts";
+
+// 일을 내려놓을 때 마지막 장면(방송·가게가 아닌 직업)
+const LAST_WORK: Record<string, string> = {
+  alba: "마지막 근무를 마쳤다.", delivery: "마지막 배달을 마쳤다.", illustrator: "마지막 그림을 넘겼다.", voice: "마지막 녹음을 마쳤다.",
+  singer: "마지막 무대를 마쳤다.", idol: "마지막 무대를 마쳤다.", writer: "마지막 화를 올렸다.", farmer: "마지막 수확을 마쳤다.", ceo: "회장 자리를 물려줬다.",
+};
+// 날마다 출근하는 일(프리랜서·농부·선수·방송·가게는 "출근"이 어색함)
+const commute = (c: Ctx) => employee(c) || ["alba", "delivery", "ceo"].includes(c.s.job ?? "");
 
 export const oldAgeForks: Fork[] = [
   {
-    id: "old_trip", a: [65, 88], rep: 6, tag: "노년", t: "기운이 남아 있을 때 여행을 가볼까?",
+    id: "old_trip", a: [65, 88], rep: 10, tag: "노년", t: "기운이 남아 있을 때 여행을 가볼까?",
     opts: [
-      pick("가족이랑 다 같이 간다", R("온 가족이 함께 바닷가 여행을 갔다. 손주가 모래성을 쌓았다.", fx({ happy: 7 }, 0, { fn: (c) => { for (const k of c.folks("child")) c.bond(k, 4); c.bond(c.person("spouse"), 4); } }), true), { cost: 500, if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
+      pick("가족이랑 다 같이 간다", R((c) => (c.folks("child").length ? `온 가족이 함께 바닷가 여행을 갔다.${c.has("grandkid") ? " 손주가 모래성을 쌓았다." : ""}` : "{p}와 단둘이 바닷가 여행을 갔다."), fx({ happy: 7 }, 0, { fn: (c) => { for (const k of c.folks("child")) c.bond(k, 4); c.bond(c.person("spouse"), 4); } }), true), { cost: 500, if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
       dice("혼자 배낭을 멘다", "health", {
         good: R("혼자 기차를 타고 전국을 돌았다. 젊어진 기분이었다.", fx({ happy: 7, health: 1 })),
         bad: R("여행 사흘째에 몸살이 나서 돌아왔다.", fx({ health: -3, happy: 1 })),
@@ -112,7 +120,7 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "abroad_work", a: [24, 40], tag: "일", t: "해외에서 일해볼 기회가 생겼다.", if: (c) => !!c.s.job && !c.has("abroad_work"),
+    id: "abroad_work", a: [24, 40], tag: "일", t: "해외에서 일해볼 기회가 생겼다.", if: (c) => employee(c) && !c.has("abroad_work"),
     opts: [
       dice("떠난다", "charm", {
         great: R("해외에서 승승장구했다. 연봉이 크게 올랐다.", fx({ happy: 5, intel: 3 }, 0, { add: ["abroad_work", "travel"], fn: (c) => (c.s.salary = Math.round(c.s.salary * 1.5)) }), true),
@@ -123,9 +131,9 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "burnout", a: [24, 62], tag: "일", t: "아침마다 출근하기가 너무 싫다. 번아웃인 것 같다.", if: (c) => !!c.s.job && c.st("happy") < 45,
+    id: "burnout", a: [24, 62], tag: "일", t: (c) => (commute(c) ? "아침마다 출근하기가 너무 싫다. 번아웃인 것 같다." : "요즘 일이 손에 안 잡힌다. 번아웃인 것 같다."), if: (c) => !!c.s.job && c.st("happy") < 45,
     opts: [
-      pick("휴직하고 쉰다", R("반년을 푹 쉬었다. 다시 웃음이 났다.", fx({ happy: 8, health: 3 }, 0, { fn: (c) => c.money(-Math.round(c.s.salary * 0.4)) }))),
+      pick((c) => (commute(c) ? "휴직하고 쉰다" : "잠시 일을 쉰다"), R("반년을 푹 쉬었다. 다시 웃음이 났다.", fx({ happy: 8, health: 3 }, 0, { fn: (c) => c.money(-Math.round(c.s.salary * 0.4)) }))),
       pick("버틴다", R("꾸역꾸역 버텼다.", fx({ health: -3, happy: -2 }))),
       pick("상담을 받는다", R("상담 선생님 앞에서 처음으로 울었다.", fx({ happy: 5 })), { cost: 100 }),
     ],
@@ -133,7 +141,7 @@ export const oldAgeForks: Fork[] = [
   {
     id: "mid_crisis", a: [40, 55], tag: "인생", t: "갑자기 인생이 허무하게 느껴진다.",
     opts: [
-      pick("오토바이를 산다", R("바람을 가르며 달렸다. 가족들은 반대했다.", fx({ happy: 6, health: -1 })), { cost: 2000 }),
+      pick("오토바이를 산다", R("바람을 가르며 달렸다. 주변에서는 다들 말렸다.", fx({ happy: 6, health: -1 })), { cost: 2000 }),
       dice("밴드를 결성한다", "talent", {
         good: R("동네 축제에서 공연했다. 살아있는 기분이었다.", fx({ happy: 7, talent: 3 }, 0, { add: ["music"] })),
         bad: R("합주실 월세만 내다 해체했다.", fx({ happy: -2 }, -200)),
@@ -161,7 +169,7 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "lottery_buy", a: [20, 90], rep: 6, w: 4, tag: "돈", t: "꿈에 돼지가 나왔다. 복권을 살까?",
+    id: "lottery_buy", a: [20, 90], rep: 15, w: 4, tag: "돈", t: "꿈에 돼지가 나왔다. 복권을 살까?",
     opts: [
       dice("산다", null, {
         great: R("3등에 당첨됐다! 150만원!", fx({ happy: 5 }, 150), true),
@@ -176,13 +184,14 @@ export const oldAgeForks: Fork[] = [
     opts: [
       pick("크게 기부한다", R("장학재단을 만들었다. 아이들의 편지가 쌓였다.", fx({ charm: 6, happy: 6 }, 0, { add: ["donor"] }), true), { cost: 10000 }),
       pick("조금만", R("동네 복지관에 기부했다.", fx({ charm: 2, happy: 2 })), { cost: 500 }),
-      pick("자식들에게 물려준다", R("재산은 그대로 두었다.", fx({}))),
+      pick((c) => (c.s.people.some((p) => p.role === "child") ? "자식들에게 물려준다" : "그대로 둔다"), R("재산은 그대로 두었다.", fx({}))),
     ],
   },
   {
-    id: "retire_free", a: [60, 88], rep: 5, tag: "인생", t: "이제 일을 내려놓을 때가 된 것 같다.", if: (c) => !!c.s.job && !JOBS.find((j) => j.id === c.s.job)?.retire,
+    id: "retire_free", a: [60, 88], rep: 8, tag: "인생", t: "이제 일을 내려놓을 때가 된 것 같다.", if: (c) => !!c.s.job && !JOBS.find((j) => j.id === c.s.job)?.retire,
     opts: [
-      pick("은퇴한다", R((c) => (JOBS.find((j) => j.id === c.s.job)?.biz ? "마지막으로 가게 셔터를 내렸다. 단골들이 꽃을 들고 왔다." : "마지막 방송을 마쳤다. 고마운 사람이 많았다."), fx({ happy: 5 }, 0, { fn: retireFn }), true)),
+      // 글은 은퇴 처리(retireFn) 뒤에 만들어지므로 직업은 경력 목록의 마지막 것으로 봄
+      pick("은퇴한다", R((c) => { const was = c.s.jobs[c.s.jobs.length - 1]?.id ?? ""; return JOBS.find((j) => j.id === was)?.biz ? "마지막으로 가게 셔터를 내렸다. 단골들이 꽃을 들고 왔다." : ["vtuber", "streamer", "youtuber"].includes(was) ? "마지막 방송을 마쳤다. 고마운 사람이 많았다." : (LAST_WORK[was] ?? "마지막 일을 마쳤다.") + " 고마운 사람이 많았다."; }, fx({ happy: 5 }, 0, { fn: retireFn }), true)),
       pick("아직 할 수 있다", R("조금만 더 해보기로 했다.", fx({ health: -1, happy: 1 }))),
     ],
   },
@@ -196,14 +205,14 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "silver_stream", a: [63, 90], tag: "꿈", t: "손주가 할아버지도 방송 한번 해보라고 한다.", if: (c) => !creatorJob(c),
+    id: "silver_stream", a: [63, 90], tag: "꿈", t: (c) => (c.has("grandkid") ? "손주가 할아버지도 방송 한번 해보라고 한다." : "주변에서 방송 한번 해보라고 한다."), if: (c) => !creatorJob(c),
     opts: [
       dice("해본다", "talent", {
         great: R("'늑대 할아버지' 채널이 대박이 났다!", fx({ happy: 8 }, 0, { add: ["broadcast"], fn: (c) => { c.hire("vtuber"); c.s.fame = 35; } }), true),
         good: R("소소하게 구독자가 생겼다. 매일이 즐겁다.", fx({ happy: 5 }, 0, { add: ["broadcast"] })),
         bad: R("마이크를 거꾸로 들고 30분을 떠들었다.", fx({ happy: 2 })),
       }),
-      pick("이 나이에 무슨…", R("손주가 실망한 눈치였다.", fx({}))),
+      pick("이 나이에 무슨…", R((c) => (c.has("grandkid") ? "손주가 실망한 눈치였다." : "다들 아쉬워했다."), fx({}))),
     ],
   },
   {
