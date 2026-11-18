@@ -7,7 +7,7 @@ import styles from "./Life.module.css";
 import { TopBar } from "./parts";
 
 /* ── 태어날 집 고르기 ── */
-export function BirthView({ lobby, onBack, onStarted }: { lobby: Lobby; onBack: () => void; onStarted: (r: Run) => void }) {
+export function BirthView({ lobby, onBack, onStarted }: { lobby: Lobby; onBack: () => void; onStarted: (r: Run, balance?: number) => void }) {
   const qc = useQueryClient();
   const [pick, setPick] = useState(lobby.houses[0]?.id ?? "poor");
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export function BirthView({ lobby, onBack, onStarted }: { lobby: Lobby; onBack: 
       const res = await startLife(pick);
       qc.invalidateQueries({ queryKey: ["me"] });
       qc.invalidateQueries({ queryKey: ["life-lobby"] });
-      onStarted(res.run);
+      onStarted(res.run, res.balance);
     } catch (e) {
       setErr(lifeErrorText(e));
       setBusy(false);

@@ -38,6 +38,17 @@
   text-align: center;
   margin-top: 4px;
 }
+/* 상점 창 안 에러(살 수 없을 때 이유) */
+.shopErr {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c-danger) 10%, var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--c-danger) 30%, var(--c-border));
+  font-size: 13px;
+  color: var(--c-red-text);
+  text-align: center;
+}
 .empty {
   padding: 18px 0 14px;
   font-size: 13px;

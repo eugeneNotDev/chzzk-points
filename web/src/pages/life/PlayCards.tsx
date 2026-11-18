@@ -217,7 +217,7 @@ export function ShopCard({ run, lobby, busy, onOpen, onFund }: {
           포인트 <b className="num">{ptsLeft}</b>/{run.pointsLimit}번
         </span>
       </div>
-      <button type="button" className={styles.shopOpen} onClick={onOpen}>
+      <button type="button" className={styles.shopOpen} onClick={onOpen} disabled={busy}>
         <ShoppingBag size={18} aria-hidden="true" />
         <span>
           <b>{kid ? "보호자가 사주기" : "상점 열기"}</b>
@@ -244,8 +244,8 @@ export function ShopCard({ run, lobby, busy, onOpen, onFund }: {
   );
 }
 
-export function ShopModal({ run, balance, canShop, busy, onBuy, onClose }: {
-  run: Run; balance: number; canShop: boolean; busy: boolean;
+export function ShopModal({ run, balance, canShop, busy, err, onBuy, onClose }: {
+  run: Run; balance: number; canShop: boolean; busy: boolean; err?: string | null;
   onBuy: (id: string, pay: "cash" | "points", name: string, price: number) => void; onClose: () => void;
 }) {
   const cats = useMemo(() => [...new Set(run.shop.map((s) => s.cat))], [run.shop]);
@@ -321,6 +321,7 @@ export function ShopModal({ run, balance, canShop, busy, onBuy, onClose }: {
             </li>
           ))}
         </ul>
+        {err && <p className={styles.shopErr} role="alert">{err}</p>}
         <p className={styles.fine}>상점이 열려 있는 동안은 시간이 멈춰요 · 1만원 = 1P</p>
       </div>
     </div>

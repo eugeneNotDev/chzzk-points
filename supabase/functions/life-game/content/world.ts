@@ -1,7 +1,7 @@
 // 우진 키우기 기본 데이터 — 방송 컨텐츠·태어난 집·투자·올해의 초점·직업·상점·이름·병.
 import type { Ctx, Disease, Focus, Fx, House, Item, Job, Show } from "../engine.ts";
 import { josa } from "../josa.ts";
-import { anyParent, fx, homePrice, kidName, kidsAt } from "./util.ts";
+import { anyParent, fx, homePrice, kidName, kidsAt, neru, parentOld, parentsWord } from "./util.ts";
 
 export const SHOWS: Show[] = [
   {
@@ -18,7 +18,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "song", name: "노래 방송", hint: "끼 주사위 −1 · 망해도 웃기면 그만", stat: "talent", bonus: -1,
-    great: "노래 방송 도중 기적처럼 음정이 맞았다. 네루들이 녹음 버튼을 눌렀다.",
+    great: (c) => `노래 방송 도중 기적처럼 음정이 맞았다. ${neru(c)}들이 녹음 버튼을 눌렀다.`,
     bad: "노래 방송에서 음이탈이 났다. 그 클립이 역대 조회수 1위를 찍었다.", badFx: { s: { happy: -1 } },
     dF: { great: 15, good: 3, normal: 0, bad: -2, terrible: 7 },
   },
@@ -41,7 +41,7 @@ export const HOUSES: House[] = [
 export const FUNDS = [
   { id: "deposit", name: "예금", mean: 0.02, vol: 0, hint: "연 2% · 안전" },
   { id: "bond", name: "채권형 펀드", mean: 0.03, vol: 0.02, hint: "연 3% 안팎 · 조금 출렁" },
-  { id: "stock", name: "주식형 펀드", mean: 0.055, vol: 0.06, hint: "연 5% 안팎 · 해마다 크게 출렁" },
+  { id: "stock", name: "주식형 펀드", mean: 0.04, vol: 0.09, hint: "연 4% 안팎 · 해마다 크게 출렁" }, // 전엔 5.5%라 오래 굴리면 재산이 너무 불었음
   { id: "coin", name: "코인", mean: 0.06, vol: 0.25, hint: "대박 아니면 쪽박" },
 ] as const;
 
@@ -86,7 +86,7 @@ export const JOBS: Job[] = [
   { id: "athlete", name: "운동선수", cat: "전문직", hint: "운동을 잘하고 튼튼하면…", req: (c) => c.has("sporty") && c.st("health") >= 65 && c.age <= 26, roll: "health", dc: 10, pay: 5000, growth: 0.08, cap: 20000, retire: 35 , ranks: ["2군 선수", "1군 선수", "주전 선수", "국가대표", "레전드 선수"] },
   { id: "illustrator", name: "일러스트레이터", cat: "방송·예술", hint: "공책에 낙서를 많이 하면…", req: (c) => c.has("artsy"), roll: "talent", dc: 8, pay: 2400, growth: 0.05, cap: 8000 , ranks: ["습작 일러스트레이터", "프리랜서 일러스트레이터", "인기 일러스트레이터", "스타 일러스트레이터"] },
   { id: "voice", name: "성우", cat: "방송·예술", hint: "끼와 매력이 둘 다 있으면…", req: (c) => c.st("talent") >= 55 && c.st("charm") >= 45, roll: "talent", dc: 10, pay: 3000, growth: 0.05, cap: 9000 , ranks: ["신인 성우", "조연 성우", "주연 성우", "국민 성우"] },
-  { id: "vtuber", name: "버튜버", cat: "방송·예술", hint: "방송을 꿈꾸게 되면…", req: (c) => c.has("broadcast"), roll: "talent", dc: 6, pay: 0, creator: 1 , ranks: ["갓 데뷔한 버튜버", "하꼬 버튜버", "중소 버튜버", "중견 버튜버", "대형 버튜버", "레전드 버튜버"], rankAt: [0, 8, 22, 40, 62, 85] },
+  { id: "vtuber", name: "버튜버", cat: "방송·예술", hint: "방송을 꿈꾸게 되면…", req: (c) => c.has("broadcast") && !c.has("vt_graduated"), roll: "talent", dc: 6, pay: 0, creator: 1 , ranks: ["갓 데뷔한 버튜버", "하꼬 버튜버", "중소 버튜버", "중견 버튜버", "대형 버튜버", "레전드 버튜버"], rankAt: [0, 8, 22, 40, 62, 85] },
   { id: "streamer", name: "게임 스트리머", cat: "방송·예술", hint: "게임을 너무 좋아하면…", req: (c) => c.has("game") && c.has("broadcast"), roll: "charm", dc: 7, pay: 0, creator: 0.85 , ranks: ["하꼬 스트리머", "중소 스트리머", "중견 스트리머", "대형 스트리머", "탑 스트리머"], rankAt: [0, 15, 35, 60, 85] },
   { id: "singer", name: "가수", cat: "방송·예술", hint: "음악을 놓지 않으면…", req: (c) => c.has("music") && c.st("talent") >= 55, roll: "talent", dc: 10, pay: 0, creator: 1.1 , ranks: ["무명 가수", "인디 가수", "라이징 가수", "인기 가수", "국민 가수"], rankAt: [0, 15, 35, 60, 85] },
   { id: "idol", name: "아이돌", cat: "방송·예술", hint: "연습생이 되면…", req: (c) => c.has("trainee") && c.age <= 25, roll: "charm", dc: 10, pay: 0, creator: 1.5, retire: 34 , ranks: ["데뷔조 아이돌", "신인 아이돌", "라이징 아이돌", "인기 아이돌", "월드스타"], rankAt: [0, 10, 30, 55, 80] },
@@ -193,15 +193,15 @@ export const ITEMS: Item[] = [
   { id: "cert", cool: 2, name: "자격증 학원", cat: "공부", a: [18, 65], price: 300, t: "자격증 학원에 등록했다.", fx: fx({ intel: 4 }, 0, { add: ["cert"] }), hint: "지능 ↑ · 취업 주사위 +1" },
   { id: "gym", name: "헬스장 1년", cat: "건강", a: [16, 95], price: 80, t: "헬스장을 1년 끊었다. 이번엔 진짜 간다.", fx: fx({ health: 4 }), hint: "건강 ↑" },
   { id: "checkup", name: "종합 건강검진", cat: "건강", a: [25, 100], price: 50, t: "종합 건강검진을 받았다.", fx: fx({ health: 1 }, 0, { add: ["checkup"] }), hint: "올해 병을 일찍 발견" },
-  { id: "insurance", name: "건강보험 가입", cat: "건강", a: [20, 70], price: 150, t: "건강보험에 가입했다. 해마다 보험료가 나간다.", fx: fx({}, 0, { add: ["insurance"] }), hint: "치료비 70% 보장", once: true },
+  { id: "insurance", name: "건강보험 가입", cat: "건강", a: [20, 70], price: 150, t: "건강보험에 가입했다. 해마다 보험료가 나간다.", fx: fx({}, 0, { add: ["insurance"] }), hint: "치료비 70% 보장", once: true, if: (c) => !c.has("insurance") }, // 동창 설계사 이벤트로 이미 가입했으면 안 팖
   { id: "hospital", name: "큰 병원 진료", cat: "건강", a: [15, 100], price: 300, t: "큰 병원에서 제대로 진료를 받았다.", fx: fx({ health: 8 }, 0, { fn: (c) => { if (c.s.sick) c.s.sick.sev = Math.max(0, c.s.sick.sev - 1); if (c.s.sick && c.s.sick.sev === 0) c.s.sick = null; } }), hint: "건강 ↑ · 병 완화" },
   { id: "skin", cool: 2, name: "피부과 관리", cat: "건강", a: [18, 90], price: 200, t: "피부과 관리를 받았다. 거울 보는 시간이 늘었다.", fx: fx({ charm: 3 }), hint: "매력 ↑" },
   { id: "trip_kr", name: "국내 여행", cat: "경험", a: [15, 100], price: 50, t: "훌쩍 국내 여행을 다녀왔다.", fx: fx({ happy: 4 }), hint: "행복 ↑" },
   { id: "trip_world", cool: 2, name: "해외여행", cat: "경험", a: [18, 95], price: 400, t: "해외여행을 다녀왔다. 시차 적응에 사흘이 걸렸다.", fx: fx({ happy: 8, charm: 1 }, 0, { add: ["travel"] }), hint: "행복 ↑↑" },
   { id: "concert", name: "콘서트 티켓", cat: "경험", a: [12, 95], price: 15, t: "좋아하는 가수 콘서트에 다녀왔다. 목이 쉬었다.", fx: fx({ happy: 3 }), hint: "행복 ↑" },
   { id: "pet", name: "반려견 입양", cat: "가족", a: [10, 85], price: 50, t: "{pet}를 입양했다. 집에 온 첫날부터 소파를 차지했다.", fx: fx({ happy: 6 }, 0, { fn: (c) => { c.meet("pet", 80); } }), hint: "행복 ↑", if: (c) => !c.person("pet") },
-  { id: "gift_parents", name: "부모님 용돈", cat: "가족", a: [20, 80], price: 300, t: "부모님께 두둑하게 용돈을 드렸다.", fx: giveParents, hint: "부모님 사이 ↑", if: anyParent },
-  { id: "parents_trip", name: "부모님 효도 여행", cat: "가족", a: [25, 80], price: 600, t: "부모님을 해외여행 보내드렸다. 사진이 백 장 넘게 왔다.", fx: { ...giveParents, s: { happy: 4 } }, hint: "부모님 사이 ↑↑", if: anyParent },
+  { id: "gift_parents", name: "부모님 용돈", cat: "가족", a: [20, 80], price: 300, t: (c) => `${parentsWord(c)}께 두둑하게 용돈을 드렸다.`, fx: giveParents, hint: "부모님 사이 ↑", if: anyParent },
+  { id: "parents_trip", name: "부모님 효도 여행", cat: "가족", a: [25, 80], price: 600, t: (c) => (c.person("mom") && c.person("dad") ? "부모님을 해외여행 보내드렸다. 사진이 백 장 넘게 왔다." : `${parentsWord(c)}를 해외여행 보내드렸다. 사진이 백 장 넘게 왔다.`), fx: { ...giveParents, s: { happy: 4 } }, hint: "부모님 사이 ↑↑", if: (c) => anyParent(c) && !parentOld(c, 95) },
   { id: "date", name: "데이트 코스", cat: "연애", a: [15, 95], price: 30, t: "{p}와 근사한 데이트를 했다.", fx: fx({ happy: 2 }, 0, { fn: (c) => c.bond(c.partner(), 6) }), hint: "연인 사이 ↑", if: (c) => !!c.partner() },
   { id: "gift_partner", name: "연인 선물", cat: "연애", a: [15, 95], price: 120, t: "{p}에게 선물을 했다. 한참 웃었다.", fx: fx({ happy: 2 }, 0, { fn: (c) => c.bond(c.partner(), 12) }), hint: "연인 사이 ↑↑", if: (c) => !!c.partner() },
   { id: "kid_academy", name: "아이 학원비 1년", cat: "가족", a: [25, 75], price: 600, t: (c) => `${josa(kidName(c, 7, 18), "를")} 학원에 보냈다.`, fx: fx({}, 0, { fn: (c) => { const k = kidsAt(c, 7, 18).slice(-1)[0]; c.bond(k, 3); c.add("kid_edu"); } }), hint: "아이 공부 ↑", if: (c) => kidsAt(c, 7, 18).length > 0 },
@@ -211,7 +211,7 @@ export const ITEMS: Item[] = [
 // ── 이름 ──
 export const NAMES = {
   partner: ["서연", "지우", "하은", "민지", "수아", "예린", "채원", "다인", "윤서", "소희", "지안", "나연", "혜원", "유나", "가은", "세아", "주하", "아린", "보람", "은솔"],
-  friend: ["민준", "도윤", "현우", "지호", "태민", "준서", "건우", "시우", "동현", "재원", "승민", "우진"],
+  friend: ["민준", "도윤", "현우", "지호", "태민", "준서", "건우", "시우", "동현", "재원", "승민", "하준"],
   child: ["하준", "서아", "도하", "이안", "로아", "은우", "시아", "유찬", "하린", "다온", "율", "봄"],
   pet: ["콩이", "보리", "두부", "구름이", "라떼", "몽이"],
 };

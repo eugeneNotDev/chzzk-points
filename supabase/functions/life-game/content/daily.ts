@@ -1,7 +1,7 @@
 // 우진 키우기 일상 이벤트(주사위 없이 그냥 일어나는 일).
 import type { Daily, Fx, Text } from "../engine.ts";
 import { josa } from "../josa.ts";
-import { anyParent, bizJob, creatorJob, employee, fameUp, farewell, gone, fx, inCollege, isBirthday, kidName, kidsAt, neru, parentsWord, salaried, single, streamJob, student, topRank, vtJob } from "./util.ts";
+import { anyParent, bizJob, creatorJob, employee, fameUp, farewell, gone, fx, inCollege, isBirthday, kidName, kidsAt, neru, parentsWord, parentsTitle, grandkidOld, salaried, single, streamJob, student, topRank, vtJob } from "./util.ts";
 
 // ── 일상 이벤트(주사위 없이 그냥 일어나는 일) tone: 1 좋은 일 / -1 나쁜 일 ──
 const D = (id: string, a: [number, number], t: Text, f?: Fx, more: Partial<Daily> = {}): Daily => ({ id, a, t, fx: f, ...more });
@@ -46,8 +46,8 @@ export const DAILY: Daily[] = [
   D("mt", [19, 24], "대학 MT에서 장기자랑을 했다. 반응이 뜨거웠다.", fx({ charm: 2, happy: 3 }), { if: inCollege }),
   D("all_nighter_uni", [19, 26], "과제 때문에 밤을 새웠다.", fx({ intel: 2, health: -2 }), { if: inCollege, rep: 2 }),
   D("scholarship", [19, 26], "장학금을 받았다.", fx({ intel: 1, happy: 3 }, 200), { if: (c) => inCollege(c) && c.st("intel") >= 60, tone: 1 }),
-  D("first_salary", [18, 35], (c) => `첫 ${salaried(c) ? "월급" : "수입"}으로 부모님 내복을 샀다.`, fx({ happy: 3 }, -20, { fn: (c) => { c.bond(c.person("mom"), 5); c.bond(c.person("dad"), 5); } }), { if: (c) => !!c.s.job && anyParent(c) && c.age - (c.s.jobs[0]?.age ?? -99) <= 1 }),
-  D("indep", [20, 32], "부모님 집에서 나와 첫 자취를 시작했다.", fx({ happy: 2, intel: 1 }), { if: (c) => !!c.s.job && !c.person("spouse") && c.s.edu !== "local" }),
+  D("first_salary", [18, 35], (c) => `첫 ${salaried(c) ? "월급" : "수입"}으로 ${parentsTitle(c)} 내복을 샀다.`, fx({ happy: 3 }, -20, { fn: (c) => { c.bond(c.person("mom"), 5); c.bond(c.person("dad"), 5); } }), { if: (c) => !!c.s.job && anyParent(c) && c.age - (c.s.jobs[0]?.age ?? -99) <= 1 }),
+  D("indep", [20, 32], (c) => `${parentsTitle(c)} 집에서 나와 첫 자취를 시작했다.`, fx({ happy: 2, intel: 1 }), { if: (c) => !!c.s.job && anyParent(c) && !c.person("spouse") && c.s.edu !== "local" }),
   D("convenience_meal", [19, 35], "편의점 도시락으로 일주일을 버텼다.", fx({ health: -1 }), { rep: 5 }),
   // 직장
   D("overtime", [22, 64], "야근이 이어졌다.", fx({ health: -2, happy: -2 }), { if: employee, rep: 3, w: 5, tone: -1 }),
@@ -97,10 +97,10 @@ export const DAILY: Daily[] = [
   D("blind_luck", [20, 45], "친구 결혼식에서 {p}를 처음 만났다.", fx({ happy: 5 }, 0, { fn: (c) => { c.meet("partner", 50); } }), { if: (c) => single(c) && c.s.focus === "people", w: 12, rep: 6, tone: 1 }),
   // 노년
   D("reading_glasses", [55, 80], "돋보기 안경을 맞췄다.", fx({ intel: 1 })),
-  D("smartphone_lesson", [65, 92], "손주에게 스마트폰 쓰는 법을 배웠다.", fx({ intel: 2, happy: 2 }), { if: (c) => c.has("grandkid") }),
+  D("smartphone_lesson", [65, 92], "손주에게 스마트폰 쓰는 법을 배웠다.", fx({ intel: 2, happy: 2 }), { if: (c) => grandkidOld(c, 7) }),
   D("long_cold", [70, 100], "감기가 한 달이나 갔다.", fx({ health: -3 }), { rep: 5, w: 4, tone: -1 }),
   D("memoir", [68, 100], "자서전을 쓰기 시작했다.", fx({ intel: 2, happy: 2 })),
-  D("old_stream", [65, 100], (c) => `은퇴했지만 가끔 방송을 켠다. ${neru(c)}들은 아직 남아 있다.`, fx({ happy: 5 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && !creatorJob(c), w: 15 }),
+  D("old_stream", [65, 100], (c) => `은퇴했지만 가끔 방송을 켠다. ${neru(c)}들은 아직 남아 있다.`, fx({ happy: 5 }), { if: (c) => c.s.jobs.some((j) => j.id === "vtuber") && !c.s.job, w: 15 }),
   // 버튜버 루트 — 방송 단골 밈
   D("vt_7pm", [14, 100], (c) => `오늘도 저녁 7시, 방송 켜짐 알림이 울렸다. ${neru(c)}들이 하나둘 모였다.`, fx({ happy: 2 }), { if: vtJob, rep: 3, tone: 1 }),
   D("vt_sight", [14, 100], "눈앞에 있는 열쇠를 10분 동안 못 찾았다. 클립 제목은 '시야 이슈'.", fx({ happy: -1 }, 0, { fn: fameUp(2) }), { if: (c) => vtJob(c) && c.s.show === "game", rep: 5, w: 16 }),
@@ -123,7 +123,7 @@ export const DAILY: Daily[] = [
   D("grandkid_visit", [58, 100], "{c1}가 손주를 데리고 놀러 왔다. 집이 하루 종일 시끌벅적했다.", fx({ happy: 5 }), { if: (c) => c.has("grandkid") && c.folks("child").length > 0, rep: 3, w: 18, tone: 1 }),
   D("kid_call", [55, 100], (c) => `${kidName(c, 25, 80)}에게서 '밥은 챙겨 먹냐'는 전화가 왔다. 언제 이렇게 컸나 싶다.`, fx({ happy: 3 }), { if: (c) => kidsAt(c, 25, 80).length > 0, rep: 3, w: 15, tone: 1 }),
   D("kid_massage", [65, 100], (c) => `${josa(kidName(c, 30, 80), "가")} 안마의자를 사 왔다. 매일 저녁 그 위에서 존다.`, fx({ happy: 4, health: 1 }), { if: (c) => kidsAt(c, 30, 80).length > 0, w: 12, tone: 1 }),
-  D("grandkid_drawing", [62, 100], "손주가 할아버지 얼굴을 그려줬다. 어째선지 늑대처럼 생겼다.", fx({ happy: 5 }), { if: (c) => c.has("grandkid"), w: 12, tone: 1 }),
+  D("grandkid_drawing", [62, 100], "손주가 할아버지 얼굴을 그려줬다. 어째선지 늑대처럼 생겼다.", fx({ happy: 5 }), { if: (c) => grandkidOld(c, 5), w: 12, tone: 1 }),
   D("spouse_walk", [62, 100], "{p}와 손을 잡고 공원을 걸었다. 말이 없어도 편했다.", fx({ happy: 3 }), { if: (c) => !!c.person("spouse"), rep: 3, w: 15, tone: 1 }),
   D("gold_wedding", [70, 100], "{p}와 금혼식을 올렸다. 50년 전 사진을 꺼내 보며 한참 웃었다.", fx({ happy: 8 }), { if: (c) => { const sp = c.person("spouse"); return !!sp && c.age - sp.since >= 50; }, w: 60, tone: 1 }),
   D("old_friend_talk", [62, 95], "{f}와 옛날 이야기를 하다 보니 해가 졌다.", fx({ happy: 3 }), { if: (c) => !!c.person("friend"), rep: 4, w: 12 }),
@@ -135,7 +135,7 @@ export const DAILY: Daily[] = [
   // 늑대
   D("wolf1", [12, 25], "늑대 탈을 쓴 꿈을 꿨다. 이상하게 익숙했다.", fx({}, 0, { add: ["wolf_dream1"] }), { w: 1 }),
   D("wolf1_vt", [14, 60], "늑대 아바타로 방송한 날 밤, 늑대 탈을 쓴 꿈을 꿨다. 이상하게 익숙했다.", fx({}, 0, { add: ["wolf_dream1"] }), { w: 10, if: (c) => c.has("vt_wolf") && !c.has("wolf_dream1") }),
-  D("wolf2", [16, 35], "또 늑대 꿈을 꿨다. 이번엔 누군가 '네루'라고 불렀다.", fx({}, 0, { add: ["wolf_dream2"] }), { w: 2, if: (c) => c.has("wolf_dream1") }),
+  D("wolf2", [16, 35], "또 늑대 꿈을 꿨다. 이번엔 누군가 '네루'라고 불렀다.", fx({}, 0, { add: ["wolf_dream2"] }), { w: 2, if: (c) => c.has("wolf_dream1") && !c.has("wolf_dream2") }),
   D("wolf2_vt", [14, 65], "또 늑대 꿈을 꿨다. 이번엔 누군가 '네루'라고 불렀다.", fx({}, 0, { add: ["wolf_dream2"] }), { w: 12, if: (c) => c.has("vt_wolf") && c.has("wolf_dream1") && !c.has("wolf_dream2") }),
 
   // 희귀(도감) — w 기본 10. 조건 없이 누구나 볼 수 있는 건 w를 낮춰서 한 판에 5% 안팎으로(전엔 20%대라 희귀 느낌이 없었음)

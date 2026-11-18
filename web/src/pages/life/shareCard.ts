@@ -136,9 +136,12 @@ export async function drawShareCard(run: Run): Promise<Blob> {
 
   // 인생 그래프(행복·순자산)
   const gy = boxY + 190;
-  const gh = 170;
+  // 그래프 높이는 남은 공간에 맞춤(특수 엔딩 제목·설명이 길면 그래프가 꼬리말·방송 줄과 겹쳤음)
+  const bottom = H - 80 - 50 - (run.broadcast ? 60 : 0) - 48;
+  const gh = Math.min(170, bottom - gy);
+  const showGraph = gh >= 80; // 자리가 너무 모자라면 그래프는 생략
   const rows = run.hist ?? [];
-  if (rows.length > 1) {
+  if (rows.length > 1 && showGraph) {
     const maxAge = Math.max(1, rows[rows.length - 1][0]);
     const nets = rows.map((r) => r[6] ?? 0);
     const nMin = Math.min(0, ...nets);
@@ -172,7 +175,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
     ctx.fillStyle = C.gold;
     ctx.fillText("● 재산", X + 140, gy + gh + 48);
   }
-  let by = gy + gh + 130;
+  const by = showGraph ? gy + gh + 48 + 60 : gy + 40;
 
   // 방송 이력 한 줄(버튜버 루트)
   const b = run.broadcast;
@@ -180,8 +183,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
     const bits = [b.title, b.concept, b.nick[0], b.donated ? `후원 ${b.donated.toLocaleString("ko-KR")}P` : null].filter(Boolean).join(" · ");
     ctx.fillStyle = C.pink;
     ctx.font = font(30, 800);
-    ctx.fillText(wrap(ctx, `방송 · ${bits}`, W - X * 2, 1)[0], X, Math.min(by, H - 150));
-    by += 60;
+    ctx.fillText(wrap(ctx, `방송 · ${bits}`, W - X * 2, 1)[0], X, by);
   }
 
   // 꼬리말

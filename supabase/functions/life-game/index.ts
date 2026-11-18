@@ -336,6 +336,8 @@ Deno.serve(async (req: Request) => {
         return json(await voteState(admin, { ...st, vote_open: true, vote_round: round }, me, r), 200);
       }
       // 마감: 1등 선택지로 진행(동점이면 그중 무작위, 아무도 안 했으면 전체 중 무작위)
+      // 지금 열린 회차일 때만(마감을 두 번 누르면 이어진 새 결정에 지난 표가 적용되던 문제)
+      if (!st.vote_open || st.vote_round !== roundOf(r)) return fail("vote_closed");
       const opts = voteOpts(r.state.pending);
       if (!opts.length) return fail("no_vote_opts");
       const vs = await voteState(admin, st, me, r);

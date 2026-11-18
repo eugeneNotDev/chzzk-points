@@ -33,7 +33,7 @@ export const friendsForks: Fork[] = [
         good: R("무사히 불렀다. {f}가 고마워했다.", fx({ happy: 3 }, 0, { fn: (c) => c.bond(c.person("friend"), 8) })),
         bad: R("고음에서 삑사리가 났다. 영상이 박제됐다.", fx({ happy: -3 }, 0, { fn: (c) => c.bond(c.person("friend"), 3) })),
       }),
-      pick("축의금만 두둑이", R("축의금을 두둑이 냈다.", fx({}, -50, { fn: (c) => c.bond(c.person("friend"), 3) }))),
+      pick("축의금만 두둑이", R("축의금을 두둑이 냈다.", fx({}, 0, { fn: (c) => c.bond(c.person("friend"), 3) })), { cost: 50 }),
     ],
   },
 ];

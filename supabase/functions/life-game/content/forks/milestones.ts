@@ -1,9 +1,31 @@
 // 우진 키우기 갈림길 — 인생 마디(조건이 맞으면 반드시).
-import type { Fork } from "../../engine.ts";
+import type { Ctx, Fork } from "../../engine.ts";
 import { badDebt } from "../../types.ts";
 import { focusOpts, jobOpts, think, tuitionFx, tuitionOf } from "../forkUtil.ts";
 import { R, dice, fx, inCollege, pick, retireFn, wed } from "../util.ts";
 import { JOBS } from "../world.ts";
+
+// 입대 — 일하던 중이면 알바·배달은 그만두고, 다른 일은 휴직(휴방·가게 맡기기)한 채 다녀옴.
+// 복무 기간만큼 입사·승진 기준 나이를 뒤로 미뤄서 군대에 있는 동안 경력이 쌓인 것처럼 되지 않게 함
+let enlistNote = "";
+const enlist = (school: string) => (c: Ctx) => {
+  enlistNote = "";
+  const j = JOBS.find((x) => x.id === c.s.job);
+  if (j) {
+    if (j.id === "alba" || j.id === "delivery") {
+      enlistNote = `${j.id === "alba" ? "알바를" : "배달 일을"} 그만둔 뒤 `;
+      c.quit(school);
+    } else {
+      enlistNote = j.creator ? `${["vtuber", "streamer", "youtuber"].includes(j.id) ? "방송을" : "활동을"} 잠시 쉰다고 공지한 뒤 ` : j.biz ? "가게를 가족에게 맡긴 뒤 " : "휴직계를 낸 뒤 ";
+      c.s.jobSince += 2;
+      c.s.rankSince = (c.s.rankSince ?? c.s.jobSince - 2) + 2;
+    }
+  }
+  c.s.army = 2;
+  c.s.school = school;
+  if (inCollege(c)) c.s.until += 2;
+};
+const enlisted = (t: string) => () => enlistNote + t;
 
 export const milestonesForks: Fork[] = [
   {
@@ -34,7 +56,7 @@ export const milestonesForks: Fork[] = [
       dice("예술고 입시", "talent", {
         good: R("예술고에 합격했다!", fx({ talent: 6, happy: 3 }, 0, { add: ["art_school"], fn: (c) => (c.s.school = "예고생") }), true),
         bad: R("예고 입시에 떨어졌다. 인문계로 갔다.", fx({ happy: -4 }, 0, { fn: (c) => (c.s.school = "고등학생") })),
-      }, { hint: "끼 주사위 · 9 이상이면 좋음", if: (c) => c.st("talent") >= 45 }),
+      }, { hint: "끼 주사위 · 7 이상이면 합격", if: (c) => c.st("talent") >= 45 }),
       pick("특성화고에 간다", R("특성화고에 들어갔다. 자격증부터 땄다.", fx({ intel: 1 }, 0, { add: ["vocational", "cert"], fn: (c) => { c.s.school = "특성화고생"; c.s.edu = "high"; c.s.until = 19; } })), { hint: "수능 없이 졸업하고 바로 취업" }),
       pick("자퇴하고 방송에 올인", R("학교를 그만두고 방송에 모든 걸 걸었다.", fx({ talent: 4, happy: 2 }, 0, { add: ["dropout", "broadcast", "no_uni"], fn: (c) => { c.s.school = "자퇴생"; c.s.edu = "none"; c.s.until = c.age; } })), {
         hint: "끼 ↑ · 위험한 길", if: (c) => c.has("mic") || c.has("broadcast"),
@@ -43,7 +65,7 @@ export const milestonesForks: Fork[] = [
   },
   {
     id: "suneung", a: [18, 21], mile: true, tag: "인생 마디", t: (c) => (c.has("retry") ? "재수 끝에 두 번째 수능 날이 왔다." : "수능 날이 왔다."),
-    if: (c) => !c.has("no_uni") && !c.has("vocational") && !c.s.score && !inCollege(c),
+    if: (c) => !c.has("no_uni") && !c.has("vocational") && !c.s.score && !inCollege(c) && !c.s.job, // 이미 일하는 중(아이돌 데뷔 등)이면 수능 X
     opts: [
       dice("최선을 다한다", "intel", {
         great: R("수능 만점에 가까운 점수가 나왔다!", fx({ happy: 8 }, 0, { fn: (c) => (c.s.score = "top") }), true),
@@ -56,7 +78,7 @@ export const milestonesForks: Fork[] = [
   },
   {
     id: "uni", a: [18, 21], mile: true, now: true, tag: "인생 마디", t: "수능 성적표를 받았다. 어떻게 할까?",
-    if: (c) => !!c.s.score && !inCollege(c) && c.s.edu !== "top" && c.s.edu !== "inseoul" && c.s.edu !== "local",
+    if: (c) => !!c.s.score && !inCollege(c) && !c.s.job && c.s.edu !== "top" && c.s.edu !== "inseoul" && c.s.edu !== "local",
     opts: [
       pick("의대에 간다", R("의대에 입학했다. 6년짜리 여정이 시작됐다.", tuitionFx("top", 6, true), true), { if: (c) => c.s.score === "top", hint: "6년 · 등록금 큼" }),
       pick("명문대에 간다", R("명문대에 입학했다.", { ...tuitionFx("top"), s: { happy: 5, intel: 3 } }, true), { if: (c) => c.s.score === "top" }),
@@ -70,10 +92,10 @@ export const milestonesForks: Fork[] = [
     id: "army", a: [20, 28], mile: true, rep: 2, tag: "인생 마디", t: "입영 통지서가 날아왔다.",
     if: (c) => !c.has("army_done") && c.s.army === 0 && c.st("health") >= 25,
     opts: [
-      pick("지금 간다", R("머리를 짧게 자르고 입대했다.", fx({ health: 2 }, 0, { fn: (c) => { c.s.army = 2; c.s.school = "군인"; if (inCollege(c)) c.s.until += 2; } }))),
+      pick("지금 간다", R(enlisted("머리를 짧게 자르고 입대했다."), fx({ health: 2 }, 0, { fn: enlist("군인") }))),
       dice("공군에 지원한다", "intel", {
-        good: R("공군에 합격했다. 입대했다.", fx({ intel: 1 }, 0, { fn: (c) => { c.s.army = 2; c.s.school = "공군"; if (inCollege(c)) c.s.until += 2; } })),
-        bad: R("공군에 떨어져서 육군으로 입대했다.", fx({ happy: -2 }, 0, { fn: (c) => { c.s.army = 2; c.s.school = "군인"; if (inCollege(c)) c.s.until += 2; } })),
+        good: R(() => (enlistNote ? `공군에 합격했다. ${enlistNote}입대했다.` : "공군에 합격했다. 입대했다."), fx({ intel: 1 }, 0, { fn: enlist("공군") })),
+        bad: R(() => (enlistNote ? `공군에 떨어졌다. ${enlistNote}육군으로 입대했다.` : "공군에 떨어져서 육군으로 입대했다."), fx({ happy: -2 }, 0, { fn: enlist("군인") })),
       }),
       pick("조금 미룬다", R("입대를 미뤘다.", fx({ happy: 1 })), { if: (c) => c.age <= 26 }),
     ],
@@ -82,10 +104,10 @@ export const milestonesForks: Fork[] = [
     id: "grad", a: [22, 45], mile: true, rep: 1, tag: "인생 마디", t: (c) => (c.has("med") ? "의대를 졸업하고 국가고시까지 붙었다." : c.has("lawschool") ? "로스쿨을 마치고 변호사 시험에 붙었다." : "대학을 졸업했다. 학사모를 던졌다."),
     if: (c) => inCollege(c) && c.age >= c.s.until && c.s.army === 0,
     opts: [
-      pick("바로 취업 준비", R("졸업장을 들고 사회로 나섰다.", fx({ happy: 3 }, 0, { del: ["in_college"], fn: (c) => (c.s.school = "취준생") }))),
+      pick("바로 취업 준비", R("졸업장을 들고 사회로 나섰다.", fx({ happy: 3 }, 0, { del: ["in_college"], fn: (c) => { if (!c.s.job) c.s.school = "취준생"; } }))),
       dice("대학원에 간다", "intel", {
         good: R("대학원에 들어갔다. 2년만 더…", fx({ intel: 4 }, 0, { del: ["in_college"], fn: (c) => { c.s.edu = "grad"; c.s.until = c.age + 2; c.s.school = "대학원생"; c.s.debt += Math.round(1500 * (1 - tuitionOf(c))); } })),
-        bad: R("대학원 입시에 떨어졌다. 취업 준비를 하기로 했다.", fx({ happy: -3 }, 0, { del: ["in_college"], fn: (c) => (c.s.school = "취준생") })),
+        bad: R("대학원 입시에 떨어졌다. 취업 준비를 하기로 했다.", fx({ happy: -3 }, 0, { del: ["in_college"], fn: (c) => { if (!c.s.job) c.s.school = "취준생"; } })),
       }, { hint: "지능 주사위 · 등록금은 학자금 대출", if: (c) => !c.has("med") && !c.has("lawschool") && c.s.edu !== "grad" }),
     ],
   },
@@ -105,7 +127,7 @@ export const milestonesForks: Fork[] = [
       pick("어떻게든 갚아본다", R("투잡을 뛰기 시작했다.", fx({ health: -4, happy: -3 }, 0, { fn: (c) => (c.s.debt -= Math.round(badDebt(c.s) * 0.1)) }))),
     ],
   },
-  { id: "adult_focus", a: [19, 23], mile: true, kind: "focus", tag: "인생 마디", t: "어엿한 어른이 됐다. 앞으로 어디에 힘을 쏟을까?", opts: focusOpts(2) },
+  { id: "adult_focus", a: [19, 27], mile: true, kind: "focus", tag: "인생 마디", t: "어엿한 어른이 됐다. 앞으로 어디에 힘을 쏟을까?", opts: focusOpts(2) },
   think("think30", 30, "서른 살 우진이 혼잣말을 했다. 지금 내 인생은…", ["생각보다 괜찮다", "아직 시작도 안 했다", "어디서부터 잘못된 걸까"]),
   {
     id: "wedding", a: [18, 90], mile: true, now: true, tag: "결혼", t: "{p}와 결혼식을 어떻게 할까?",

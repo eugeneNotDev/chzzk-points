@@ -1,7 +1,8 @@
 // 우진 키우기 갈림길 — 어린 시절.
 import type { Fork } from "../../engine.ts";
 import { meetPartner } from "../forkUtil.ts";
-import { R, anyParent, dice, fx, inCollege, pick, single, statModOf, student } from "../util.ts";
+import { josa } from "../../josa.ts";
+import { R, anyParent, dice, fx, inCollege, parentsTitle, pick, single, statModOf, student } from "../util.ts";
 
 export const childhoodForks: Fork[] = [
   {
@@ -105,7 +106,7 @@ export const childhoodForks: Fork[] = [
     opts: [
       dice("본다", null, {
         good: R("시험을 잘 봤다. 그런데 마음 한구석이 찜찜하다.", fx({ intel: -1, happy: 1 })),
-        bad: R("걸렸다. 부모님이 학교에 불려 오셨다.", fx({ happy: -6, charm: -2 }, 0, { fn: (c) => c.bond(c.person("mom"), -8) })),
+        bad: R((c) => `걸렸다. ${josa(parentsTitle(c), "이")} 학교에 불려 오셨다.`, fx({ happy: -6, charm: -2 }, 0, { fn: (c) => c.bond(c.person("mom"), -8) })),
       }),
       pick("안 본다", R("정직하게 시험을 봤다.", fx({ intel: 1, charm: 1 }))),
     ],
@@ -123,7 +124,7 @@ export const childhoodForks: Fork[] = [
     ],
   },
   {
-    id: "audition", a: [13, 19], rep: 3, w: 14, tag: "꿈", t: "길에서 연예기획사 명함을 받았다. 오디션을 보러 오라고 한다.",
+    id: "audition", a: [13, 19], rep: 3, w: 14, tag: "꿈", t: "길에서 연예기획사 명함을 받았다. 오디션을 보러 오라고 한다.", if: (c) => !c.has("trainee") && c.s.seen["idol_debut"] === undefined,
     opts: [
       dice("오디션을 본다", "charm", {
         great: R("그 자리에서 연습생 계약을 했다!", fx({ charm: 3, talent: 3, happy: 5 }, 0, { add: ["trainee"] }), true),
@@ -153,9 +154,9 @@ export const childhoodForks: Fork[] = [
     ],
   },
   {
-    id: "runaway", a: [14, 18], tag: "가족", t: "부모님과 크게 싸운 우진이 가출하겠다고 한다.", if: anyParent,
+    id: "runaway", a: [14, 18], tag: "가족", t: (c) => `${josa(parentsTitle(c), "과")} 크게 싸운 우진이 가출하겠다고 한다.`, if: anyParent,
     opts: [
-      pick("먼저 사과한다", R("부모님이 먼저 안아주셨다.", fx({ happy: 3 }, 0, { fn: (c) => { c.bond(c.person("mom"), 8); c.bond(c.person("dad"), 8); } }))),
+      pick("먼저 사과한다", R((c) => `${josa(parentsTitle(c), "이")} 먼저 안아주셨다.`, fx({ happy: 3 }, 0, { fn: (c) => { c.bond(c.person("mom"), 8); c.bond(c.person("dad"), 8); } }))),
       dice("진짜 나간다", null, {
         good: R("{f}네 집에서 하룻밤 자고 들어왔다. 밥이 맛있었다.", fx({ happy: 2 }, 0, { fn: (c) => c.bond(c.person("friend"), 5) })),
         bad: R("밤새 PC방을 전전했다. 다음 날 크게 혼났다.", fx({ happy: -4, health: -2 }, 0, { fn: (c) => { c.bond(c.person("mom"), -6); c.bond(c.person("dad"), -6); } })),

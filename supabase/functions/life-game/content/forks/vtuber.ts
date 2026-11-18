@@ -5,12 +5,13 @@ import { SHOWS } from "../world.ts";
 
 export const vtuberForks: Fork[] = [
   {
-    id: "vt_concept", a: [14, 100], mile: true, now: true, tag: "데뷔", t: "버튜버 데뷔를 앞두고 있다. 어떤 모습으로 첫인사를 할까?",
+    id: "vt_concept", a: [14, 100], mile: true, now: true, tag: "데뷔", // 데뷔 결과("데뷔했다")가 먼저 나온 뒤에도 뜨므로 "데뷔를 앞두고"가 아니라 방송 컨셉을 정하는 질문으로
+    t: "버튜버로서 어떤 모습을 보여줄지 정할 때다. 어떤 컨셉으로 갈까?",
     if: vtJob,
     opts: [
-      pick("늑대 컨셉으로 간다", R("늑대 귀와 꼬리를 단 아바타로 첫인사를 했다. '아우~' 소리가 생각보다 잘 나왔다.", fx({ talent: 2, happy: 3 }, 0, { add: ["vt_wolf"] }), true), { hint: "늑대 전용 이벤트" }),
-      pick("팀에 들어가서 데뷔한다", R("팀 합동 데뷔 방송. 잔뜩 긴장한 채 '팀의 바지 사장, 바지 알파입니다!'라고 인사해버렸다. 그날부터 별명은 바지 알파.", fx({ charm: 2, happy: 2 }, 0, { add: ["vt_team", "baji"], fn: fameUp(4) }), true), { hint: "인지도 조금 ↑ · 별명이 생겨요" }),
-      pick("나답게 간다", R("특별한 컨셉 없이 평소 말투 그대로 첫 방송을 켰다.", fx({ happy: 4, charm: 1 }, 0, { add: ["vt_plain"] })), { hint: "행복 ↑" }),
+      pick("늑대 컨셉으로 간다", R("늑대 귀와 꼬리를 단 아바타로 인사했다. '아우~' 소리가 생각보다 잘 나왔다.", fx({ talent: 2, happy: 3 }, 0, { add: ["vt_wolf"] }), true), { hint: "늑대 전용 이벤트" }),
+      pick("팀에 들어가서 활동한다", R("팀 합동 방송 첫날. 잔뜩 긴장한 채 '팀의 바지 사장, 바지 알파입니다!'라고 인사해버렸다. 그날부터 별명은 바지 알파.", fx({ charm: 2, happy: 2 }, 0, { add: ["vt_team", "baji"], fn: fameUp(4) }), true), { hint: "인지도 조금 ↑ · 별명이 생겨요" }),
+      pick("나답게 간다", R("특별한 컨셉 없이 평소 말투 그대로 방송하기로 했다.", fx({ happy: 4, charm: 1 }, 0, { add: ["vt_plain"] })), { hint: "행복 ↑" }),
     ],
   },
   {
@@ -77,8 +78,8 @@ export const vtuberForks: Fork[] = [
     if: (c) => vtJob(c),
     opts: [
       pick("졸업 방송을 한다", R((c) => `마지막 방송. ${neru(c)}들의 채팅이 끝도 없이 올라왔다. '그동안 고마웠어요.'`, fx({ happy: 6 }, 0, { add: ["vt_farewell", "vt_graduated"], fn: (c) => c.quit("졸업한 버튜버") }), true), { hint: "버튜버 은퇴" }),
-      pick("종합 게임 스트리머로 전향한다", R((c) => `${c.has("vt_wolf") ? "늑대 아바타를 내려놓고" : "아바타를 내려놓고"} 종합 게임 스트리머로 새 출발했다. ${neru(c)}들 대부분이 따라왔다.`, fx({ happy: 4 }, 0, { add: ["vt_farewell", "vt_graduated", "vt_convert", "game"], fn: (c) => { const f = c.s.fame; c.hire("streamer"); c.s.fame = Math.round(f * 0.75); } }), true), { hint: "인지도 일부를 들고 감 · 나이 부담 없음" }),
-      pick("얼굴 공개 유튜버로 전향한다", R((c) => `얼굴을 공개하고 유튜버로 새 출발했다. 첫 영상 댓글창이 '목소리랑 똑같다'로 가득했다.`, fx({ happy: 4, charm: 2 }, 0, { add: ["vt_farewell", "vt_graduated", "vt_convert"], fn: (c) => { const f = c.s.fame; c.hire("youtuber"); c.s.fame = Math.round(f * 0.7); } }), true), { hint: "인지도 일부를 들고 감 · 나이 부담 없음" }),
+      pick("종합 게임 스트리머로 전향한다", R((c) => `${c.has("vt_wolf") ? "늑대 아바타를 내려놓고" : "아바타를 내려놓고"} 종합 게임 스트리머로 새 출발했다. ${neru(c)}들 대부분이 따라왔다.`, fx({ happy: 4 }, 0, { add: ["vt_farewell", "vt_graduated", "vt_convert", "game"], fn: (c) => { const f = Math.round(c.s.fame * 0.75); c.s.fame = f; c.hire("streamer"); c.s.fame = f; } }), true), { hint: "인지도 일부를 들고 감 · 나이 부담 없음" }),
+      pick("얼굴 공개 유튜버로 전향한다", R((c) => `얼굴을 공개하고 유튜버로 새 출발했다. 첫 영상 댓글창이 '목소리랑 똑같다'로 가득했다.`, fx({ happy: 4, charm: 2 }, 0, { add: ["vt_farewell", "vt_graduated", "vt_convert"], fn: (c) => { const f = Math.round(c.s.fame * 0.7); c.s.fame = f; c.hire("youtuber"); c.s.fame = f; } }), true), { hint: "인지도 일부를 들고 감 · 나이 부담 없음" }),
       pick("아직은 더 한다", R("마이크 앞에 다시 앉았다. 아직 할 말이 많다.", fx({ health: -1 })), { hint: "나이가 들수록 인지도가 조금씩 빠져요" }),
     ],
   },

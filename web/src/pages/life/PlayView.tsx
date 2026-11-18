@@ -9,7 +9,7 @@ import { useAuth } from "../../lib/auth";
 import { confirmDialog } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import {
-  STAGES, advanceLife, buyLife, chooseLife, closeVote, focusLife, fundLife, histStats, lifeErrorText, lifeStage, josa, openVote, setLive,
+  STAGES, advanceLife, buyLife, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage, josa, openVote, setLive,
   useLifeVote, type Lobby, type LogEntry, type PendingOpt, type Run,
 } from "../../lib/life";
 import styles from "./Life.module.css";
@@ -18,7 +18,8 @@ import { DecisionSheet, DicePanel } from "./PlaySheets";
 import { Die, StatGrid, worldLabel } from "./parts";
 import { DeltaChips, EntryIcon, RollChip, type Rolling, SPEEDS, YEAR_MS } from "./playParts";
 
-export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; initial: Run; onReport: (r: Run) => void; onExit: () => void }) {
+// startBalance: 막 태어난 판이면 집 값을 뺀 잔액(로비 데이터는 아직 갱신 전이라)
+export function PlayView({ lobby, initial, startBalance, onReport, onExit }: { lobby: Lobby; initial: Run; startBalance?: number; onReport: (r: Run) => void; onExit: () => void }) {
   const qc = useQueryClient();
   const [run, setRun] = useState<Run>(initial);
   const [log, setLog] = useState<LogEntry[]>(initial.log);
@@ -35,8 +36,16 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
   const [fetching, setFetching] = useState(false);
   const [rolling, setRolling] = useState<Rolling | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [shopErr, setShopErr] = useState<string | null>(null); // 상점 창 안에 보여줄 에러(진행은 안 멈춤)
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const [wantFocus, setWantFocus] = useState<string | null>(null);
-  const [balance, setBalance] = useState(lobby.balance); // 포인트 잔액(후원·포인트 구매 뒤 서버가 준 값으로 갱신)
+  const [balance, setBalance] = useState(startBalance ?? lobby.balance); // 포인트 잔액(후원·포인트 구매 뒤 서버가 준 값으로 갱신)
   // 방송 모드(주인만): 이 판의 갈림길을 시청자 투표로
   const { isAdmin } = useAuth();
   const [liveOn, setLiveOn] = useState(lobby.liveId === initial.id);
@@ -59,6 +68,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
   const yearMs = YEAR_MS / k;
   const ended = run.status === "ended";
   const pending = drained && !ended && !rolling ? run.pending : null;
+  const done = ended && drained; // 서버는 끝났어도 미리 받은 해를 다 보여주기 전까진 진행 중처럼
 
   // 따라잡으면 상태 스냅샷 갱신
   useEffect(() => {
@@ -100,11 +110,28 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     setLog((c) => c.slice(0, next.logFrom).concat(next.log));
     setRun(next);
   }
+  // 서버와 어긋났을 때(응답을 놓쳐 이미 반영됨·다른 창에서 진행) 판을 통째로 다시 받아서 맞춤
+  async function onFail(e: unknown, show: (m: string | null) => void) {
+    const code = (e as { body?: { error?: string } })?.body?.error;
+    if (code === "no_pending" || code === "busy") {
+      try {
+        const full = await fetchRun(runRef.current.id);
+        if (!mounted.current) return;
+        setLog(full.log);
+        setRun(full);
+        setRolling(null);
+        show(null);
+        return;
+      } catch {
+        // 다시 받기도 실패하면 아래 에러 표시
+      }
+    }
+    show(lifeErrorText(e));
+  }
 
   // 다 보여줬고 결정도 없으면 다음 해 받아오기
   useEffect(() => {
     if (!drained || halt || rolling || ended || run.pending || fetching || busy || err) return;
-    let alive = true;
     setFetching(true);
     const years = skip ? 3 : speed >= 8 ? 3 : speed >= 4 ? 2 : 1;
     const go = async () => {
@@ -114,23 +141,29 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
         if (wantFocus && wantFocus !== r.focus) {
           const ok = r.focuses.some((f) => f.id === wantFocus);
           setWantFocus(null);
-          if (ok) await focusLife(r.id, wantFocus, log.length).then((res) => alive && merge(res.run)).catch(() => {});
+          if (ok) await focusLife(r.id, wantFocus, log.length).then((res) => mounted.current && merge(res.run)).catch(() => {});
         }
         const res = await advanceLife(r.id, log.length, years);
-        if (alive) merge(res.run);
+        if (mounted.current) merge(res.run);
       } catch (e) {
-        if (alive) setErr(lifeErrorText(e));
+        if (mounted.current) await onFail(e, setErr);
       } finally {
-        if (alive) setFetching(false);
+        if (mounted.current) setFetching(false);
       }
     };
+    // 멈추거나 상점을 열어도 받아오던 해는 버리지 않음(서버는 이미 그 해를 굴려 저장했으니 버리면 화면과 어긋남)
     go();
-    return () => {
-      alive = false;
-      setFetching(false);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drained, halt, rolling, ended, run.pending, busy, err]);
+
+  // 다른 탭으로 가면 자동 일시정지(돌아왔을 때 여러 해가 훌쩍 지나 있지 않게)
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) setPaused(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   // 결정이 나오면 빨리 감기 끝
   useEffect(() => {
@@ -162,7 +195,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       const result = res.run.log.find((e) => e.k !== "pick") ?? null;
       setRolling({ opt: o, text, phase: "done", roll: null, result, plain: true });
     } catch (e) {
-      setErr(lifeErrorText(e));
+      await onFail(e, setErr);
     } finally {
       setBusy(false);
     }
@@ -183,8 +216,8 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
         setBusy(false);
       }, wait);
     } catch (e) {
-      setErr(lifeErrorText(e));
       setRolling(null);
+      await onFail(e, setErr);
       setBusy(false);
     }
   }
@@ -193,7 +226,9 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     // 결과 줄은 결과 창에서 이미 봤으니 바로 펼침
     setShown(999);
     yearStart.current = Date.now() - yearMs * 0.6;
-  }, [yearMs]);
+    // 결과 창이 떠 있던 시간을 또 밀지 않게(안 그러면 결정마다 몇 초씩 멈춤). 일시정지 중이면 지금부터 멈춘 걸로
+    stoppedAt.current = halt ? Date.now() : null;
+  }, [yearMs, halt]);
 
   async function onFocus(id: string) {
     if (fetching || busy) {
@@ -201,12 +236,14 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       return;
     }
     setWantFocus(null);
+    setBusy(true); // 초점 요청 중엔 다음 해 받아오기를 멈춤(두 요청이 겹치면 한쪽이 busy로 실패)
     try {
       const res = await focusLife(run.id, id, log.length);
       merge(res.run);
-      setSnap(res.run);
     } catch {
       // 초점 바꾸기 실패는 조용히 넘김(진행은 계속)
+    } finally {
+      setBusy(false);
     }
   }
   async function onFund(id: string) {
@@ -215,7 +252,6 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     try {
       const res = await fundLife(run.id, id, log.length);
       merge(res.run);
-      setSnap(res.run);
     } catch (e) {
       setErr(lifeErrorText(e));
     } finally {
@@ -226,7 +262,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     if (busy || fetching) return;
     if (pay === "points" && !run.isTest && !(await confirmDialog(`${josa(name, "을")} ${fmt(price)}P로 사줄까요?`))) return;
     setBusy(true);
-    setErr(null);
+    setShopErr(null);
     try {
       const res = await buyLife(run.id, itemId, pay, log.length);
       merge(res.run);
@@ -234,7 +270,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       if (typeof res.balance === "number") setBalance(res.balance);
       if (pay === "points") qc.invalidateQueries({ queryKey: ["me"] });
     } catch (e) {
-      setErr(lifeErrorText(e));
+      await onFail(e, setShopErr);
     } finally {
       setBusy(false);
     }
@@ -286,7 +322,8 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
   const timeline = useMemo(() => log.filter((e) => e.age < age && e.k !== "pick").slice(-80).reverse(), [log, age]);
   const visibleNow = yearEntries.slice(0, nShown);
   const luck = row[7] ?? 3;
-  const canShop = ci >= last && !rolling && !ended && !fetching;
+  // 생각 남기기·인생 마디 결정이 떠 있으면 서버가 구매를 거절하니 막음
+  const canShop = ci >= last && !rolling && !ended && !fetching && !(run.pending && !["fork", "mile"].includes(run.pending.kind));
   function openShop() {
     // 상점을 열면 그 자리에서 멈춤(게이지·줄 그대로). 다만 서버가 이미 다음 해를 굴려 둔 상태(지난 해 줄은 다 보여준 뒤)면
     // 산 물건이 맞는 나이에 들어가도록 그 해로 넘어가되, 새 해는 처음부터(줄 0개·게이지 0) — 닫으면 평소 속도로 이어감
@@ -335,10 +372,10 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
               </button>
             ))}
           </div>
-          <button type="button" className={styles.iconBtn} onClick={() => setPaused((p) => !p)} aria-label={paused ? "계속" : "일시정지"} disabled={ended}>
+          <button type="button" className={styles.iconBtn} onClick={() => setPaused((p) => !p)} aria-label={paused ? "계속" : "일시정지"} disabled={done}>
             {paused ? <Play size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
           </button>
-          <button type="button" className={`${styles.skipBtn} ${skip ? styles.skipOn : ""}`} onClick={() => { setSkip((v) => !v); setPaused(false); }} disabled={ended || !!pending}>
+          <button type="button" className={`${styles.skipBtn} ${skip ? styles.skipOn : ""}`} onClick={() => { setSkip((v) => !v); setPaused(false); }} disabled={done || !!pending}>
             <SkipForward size={15} aria-hidden="true" />
             다음 결정까지
           </button>
@@ -394,7 +431,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       {/* 가운데: 올해 이야기·선택·지난 기록 */}
       <main className={styles.center2}>
         <section className={`${styles.year} ${skip ? styles.yearSkip : ""}`} aria-live="polite">
-          {!pending && !ended && (
+          {!pending && !done && (
             <span
               key={`${age}-${k}`}
               className={styles.yearBar}
@@ -481,7 +518,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
             {view.focuses.map((f) => {
               const on = (wantFocus ?? view.focus) === f.id;
               return (
-                <button key={f.id} type="button" className={`${styles.focusBtn} ${on ? styles.focusOn : ""}`} onClick={() => onFocus(f.id)} disabled={ended} aria-pressed={on}>
+                <button key={f.id} type="button" className={`${styles.focusBtn} ${on ? styles.focusOn : ""}`} onClick={() => onFocus(f.id)} disabled={done} aria-pressed={on}>
                   <b>{f.name}</b>
                   <span>{f.hint}</span>
                 </button>
@@ -500,7 +537,15 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
         </button>
       </aside>
       <Feed items={timeline} className={styles.feedArea} />
-      {shopOpen && <ShopModal run={run} balance={balance} canShop={canShop} busy={busy || fetching} onBuy={onBuy} onClose={() => setShopOpen(false)} />}
+      {shopOpen && (
+        <ShopModal
+          run={run} balance={balance} canShop={canShop} busy={busy || fetching} err={shopErr} onBuy={onBuy}
+          onClose={() => {
+            setShopOpen(false);
+            setShopErr(null);
+          }}
+        />
+      )}
     </div>
   );
 }

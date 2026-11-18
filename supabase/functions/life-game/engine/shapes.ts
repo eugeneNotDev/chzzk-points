@@ -123,5 +123,5 @@ export type Disease = { id: string; name: string; sev: number; cost: number; a: 
 // 버튜버 주력 컨텐츠 — 해마다 인지도 주사위를 어떤 능력치로 굴리고, 대성공·대실패 때 무슨 일이 생기는지
 export type Show = {
   id: string; name: string; hint: string; stat: StatKey; bonus?: number; dF?: Record<Tier, number>;
-  great?: string; greatFx?: Fx; bad?: string; badFx?: Fx;
+  great?: Text; greatFx?: Fx; bad?: string; badFx?: Fx;
 };

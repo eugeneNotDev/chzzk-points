@@ -1,6 +1,7 @@
 // 우진 키우기 갈림길 — 부모님.
 import type { Ctx, Fork } from "../../engine.ts";
-import { R, anyParent, dice, fx, parentOld, pick } from "../util.ts";
+import { josa } from "../../josa.ts";
+import { R, anyParent, dice, fx, parentOld, parentsTitle, pick } from "../util.ts";
 import { HOUSES } from "../world.ts";
 
 // 쓰러지실 부모님 — 68세 이상이고 아직 쓰러진 적 없는 분(엄마 먼저)
@@ -19,11 +20,11 @@ function markParentSick(c: Ctx) {
 
 export const parentsForks: Fork[] = [
   {
-    id: "par_support", a: [24, 36], tag: "가족", t: "부모님이 결혼·집 자금을 보태주겠다고 하신다.",
+    id: "par_support", a: [24, 36], tag: "가족", t: (c) => `${josa(parentsTitle(c), "이")} 결혼·집 자금을 보태주겠다고 하신다.`,
     if: (c) => anyParent(c) && (c.s.house === "normal" || c.s.house === "comfy" || c.s.house === "rich"),
     opts: [
-      pick("감사히 받는다", R((c) => `부모님께 ${Math.round((HOUSES.find((h) => h.id === c.s.house)!.support) / 100) * 100}만원을 받았다.`, fx({ happy: 2 }, 0, { fn: (c) => c.money(HOUSES.find((h) => h.id === c.s.house)!.support) }))),
-      pick("스스로 하겠다며 사양한다", R("부모님이 서운해하시면서도 뿌듯해하셨다.", fx({ charm: 2, happy: 1 }, 0, { fn: (c) => { c.bond(c.person("mom"), 6); c.bond(c.person("dad"), 6); } }))),
+      pick("감사히 받는다", R((c) => `${parentsTitle(c)}께 ${Math.round((HOUSES.find((h) => h.id === c.s.house)!.support) / 100) * 100}만원을 받았다.`, fx({ happy: 2 }, 0, { fn: (c) => c.money(HOUSES.find((h) => h.id === c.s.house)!.support) }))),
+      pick("스스로 하겠다며 사양한다", R((c) => `${josa(parentsTitle(c), "이")} 서운해하시면서도 뿌듯해하셨다.`, fx({ charm: 2, happy: 1 }, 0, { fn: (c) => { c.bond(c.person("mom"), 6); c.bond(c.person("dad"), 6); } }))),
     ],
   },
   {
@@ -44,17 +45,17 @@ export const parentsForks: Fork[] = [
     ],
   },
   {
-    id: "par_live", a: [38, 62], tag: "가족", t: "부모님을 모시고 살지 고민 중이다.", if: (c) => parentOld(c, 70),
+    id: "par_live", a: [38, 62], tag: "가족", t: (c) => `${josa(parentsTitle(c), "을")} 모시고 살지 고민 중이다.`, if: (c) => parentOld(c, 70),
     opts: [
       pick("모시고 산다", R("집이 다시 북적거렸다.", fx({ happy: 3 }, -500, { add: ["filial"], fn: (c) => { c.bond(c.person("mom"), 10); c.bond(c.person("dad"), 10); } }))),
       pick("근처로 이사한다", R("주말마다 반찬을 들고 찾아갔다.", fx({ happy: 2 }, -200, { fn: (c) => { c.bond(c.person("mom"), 5); c.bond(c.person("dad"), 5); } }))),
     ],
   },
   {
-    id: "chaebol_heir", a: [30, 55], tag: "가족", t: "회장님인 아빠가 회사를 물려받을 생각이 있냐고 물으셨다.", if: (c) => c.s.house === "rich" && !!c.person("dad") && c.s.job !== "ceo",
+    id: "chaebol_heir", a: [30, 55], tag: "가족", t: "회장님인 아빠가 회사를 물려받을 생각이 있냐고 물으셨다.", if: (c) => c.s.house === "rich" && !!c.person("dad") && c.s.job !== "ceo" && !c.has("in_college"),
     opts: [
       dice("물려받겠다고 한다", "intel", {
-        good: R("후계자로 인정받았다. 회장 자리에 올랐다.", fx({ happy: 3 }, 0, { fn: (c) => c.hire("ceo") }), true),
+        good: R("후계자로 인정받았다. 아빠 밑에서 경영 수업이 시작됐다.", fx({ happy: 3 }, 0, { fn: (c) => c.hire("ceo") }), true),
         bad: R("이사회가 반대했다. 형제들 눈빛이 차가웠다.", fx({ happy: -5 }, 0, { fn: (c) => c.bond(c.person("dad"), -10) })),
       }),
       pick("내 길을 가겠다고 한다", R("아빠가 한참 말이 없으셨다.", fx({ happy: 2, charm: 1 }, 0, { add: ["disinherit"], fn: (c) => c.bond(c.person("dad"), -10) })), { hint: "유산 ↓" }),

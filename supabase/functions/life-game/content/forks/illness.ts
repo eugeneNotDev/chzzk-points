@@ -18,7 +18,7 @@ export const illnessForks: Fork[] = [
         terrible: R("치료 중 합병증이 왔다.", fx({ health: -8, happy: -5 }, 0, { fn: (c) => c.s.sick && (c.s.sick.sev += 1) })),
       }, {
         cost: (c) => { const d = DISEASES.find((x) => x.id === c.s.sick?.id); return Math.round((d?.cost ?? 1000) * (c.has("insurance") ? 0.3 : 1)); },
-        bonus: (c) => (c.has("checkup") ? 2 : 0) + (c.s.sick && c.s.sick.since === c.age ? 1 : 0),
+        bonus: (c) => (c.has("checkup") || c.s.seen["sick_early"] === c.age ? 2 : 0) + (c.s.sick && c.s.sick.since === c.age ? 1 : 0),
         hint: "건강 주사위 · 일찍 발견하면 +",
       }),
       dice("버티면서 지낸다", null, {

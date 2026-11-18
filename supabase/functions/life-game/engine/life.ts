@@ -1,6 +1,6 @@
 // 우진 키우기 엔진 — 새 인생 만들기, 해마다 기록 쌓기, 마무리(엔딩).
 import { STAT_KEYS, type Entry, type HouseId, type State, type Stats } from "../types.ts";
-import { MODS, SPECIALS } from "../content.ts";
+import { DISEASES, MODS, SPECIALS } from "../content.ts";
 import { josa } from "../josa.ts";
 import { Ctx, houseOf, netWorth } from "./ctx.ts";
 import { jobTitle } from "./shapes.ts";
@@ -36,10 +36,12 @@ export function finish(c: Ctx) {
   if (!s.dead) return;
   s.pending = null;
   const a = s.dead.age;
+  // 허리 디스크·위궤양처럼 가벼운 병(원래 심각도 1)은 사인으로 쓰지 않음 — 그런 땐 그냥 건강 악화·오랜 병
+  const sickName = s.sick && (DISEASES.find((d) => d.id === s.sick!.id)?.sev ?? 2) >= 2 ? s.sick.name : null;
   const causeText = s.dead.why ? s.dead.why : s.dead.cause === "accident"
     ? "갑작스러운 사고"
     : s.dead.cause === "sick"
-    ? (s.sick ? s.sick.name : a < 60 ? "건강 악화" : "오랜 병")
+    ? (sickName ?? (a < 60 ? "건강 악화" : "오랜 병"))
     : a >= 95 ? "천수를 누리고" : "노환";
   const mod = MODS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;
   const sp = SPECIALS.filter((m) => m.if(c)).sort((x, y) => y.pr - x.pr)[0] ?? null;
@@ -62,5 +64,7 @@ export function finish(c: Ctx) {
   c.log("end", how, { hl: true });
   // 건강하던 사람이 갑자기 떠났으면 한 줄 더(뜬금없게 느껴지지 않게)
   if (s.dead.why && s.stats.health >= 60) c.log("end", "누구보다 건강했던 사람이라, 다들 한동안 믿기 힘들어했다.");
-  c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${fans > 50 ? " 네루들이 보낸 꽃이 복도를 가득 채웠다." : ""}`);
+  // 팬 이름(네루)이 생긴 판에서만 '네루' — 이름 없이 알려지기만 했으면 그냥 시청자·팬
+  const flowers = fans <= 50 ? "" : s.flags.includes("yangs") ? " 네루들이 보낸 꽃이 복도를 가득 채웠다." : " 오래전 팬들이 보낸 꽃도 놓여 있었다.";
+  c.log("end", `장례식에 ${mourners.toLocaleString("ko-KR")}명이 찾아왔다.${flowers}`);
 }

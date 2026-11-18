@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LogIn } from "lucide-react";
 import { startLogin, useAuth } from "../../lib/auth";
 import { LoadError } from "../../components/LoadError";
-import { useLifeLobby, useLifeVote, type Run } from "../../lib/life";
+import { fetchRun, useLifeLobby, useLifeVote, type Run } from "../../lib/life";
 import styles from "./Life.module.css";
 import { LifeVoteCard } from "./LifeVoteCard";
 import { BirthView } from "./BirthView";
@@ -17,7 +17,7 @@ import { PlayView } from "./PlayView";
 import { ReportView } from "./ReportView";
 const LiveScreen = lazy(() => import("./LiveScreen"));
 
-type Screen = { name: "lobby" } | { name: "birth" } | { name: "play"; run: Run } | { name: "report"; run: Run } | { name: "dex" };
+type Screen = { name: "lobby" } | { name: "birth" } | { name: "play"; run: Run; balance?: number } | { name: "report"; run: Run } | { name: "dex" };
 
 export default function Life() {
   const { isLoggedIn, isAdmin } = useAuth();
@@ -35,6 +35,20 @@ export default function Life() {
     qc.invalidateQueries({ queryKey: ["life-dex"] });
     qc.invalidateQueries({ queryKey: ["me"] });
     go({ name: "lobby" });
+  };
+
+  // 이어하기 — 로비 데이터가 방금 전 것일 수 있어서 판을 새로 받아서 들어감(이미 본 해·이미 고른 결정이 다시 뜨지 않게)
+  const [resuming, setResuming] = useState(false);
+  const resume = async (run: Run) => {
+    if (resuming) return;
+    setResuming(true);
+    try {
+      go({ name: "play", run: await fetchRun(run.id) });
+    } catch {
+      go({ name: "play", run });
+    } finally {
+      setResuming(false);
+    }
   };
 
   // 방송 화면(OBS) — 진행 화면의 "방송 화면 열기"로 뜨는 창. 주인만.
@@ -75,9 +89,9 @@ export default function Life() {
     <div className={styles.page}>
       {lobby?.isTest && <div className={styles.testBar}>테스트 모드 · 본인만 보여요 · 포인트가 차감되지 않아요</div>}
       {voteCard}
-      {screen.name === "lobby" && <LobbyView lobby={lobby} onStart={() => go({ name: "birth" })} onResume={(run) => go({ name: "play", run })} onReport={(run) => go({ name: "report", run })} onDex={() => go({ name: "dex" })} />}
-      {screen.name === "birth" && lobby && <BirthView lobby={lobby} onBack={() => go({ name: "lobby" })} onStarted={(run) => go({ name: "play", run })} />}
-      {screen.name === "play" && lobby && <PlayView key={screen.run.id} lobby={lobby} initial={screen.run} onReport={(run) => go({ name: "report", run })} onExit={backToLobby} />}
+      {screen.name === "lobby" && <LobbyView lobby={lobby} onStart={() => go({ name: "birth" })} onResume={resume} onReport={(run) => go({ name: "report", run })} onDex={() => go({ name: "dex" })} />}
+      {screen.name === "birth" && lobby && <BirthView lobby={lobby} onBack={() => go({ name: "lobby" })} onStarted={(run, balance) => go({ name: "play", run, balance })} />}
+      {screen.name === "play" && lobby && <PlayView key={screen.run.id} lobby={lobby} initial={screen.run} startBalance={screen.balance} onReport={(run) => go({ name: "report", run })} onExit={backToLobby} />}
       {screen.name === "report" && <ReportView run={screen.run} onAgain={backToLobby} onDex={() => go({ name: "dex" })} />}
       {screen.name === "dex" && <DexView onBack={backToLobby} />}
     </div>

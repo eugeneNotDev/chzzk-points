@@ -1,6 +1,6 @@
 // 우진 키우기 갈림길 — 일·돈.
 import type { Fork } from "../../engine.ts";
-import { R, creatorJob, dice, employee, fx, pick, streamJob } from "../util.ts";
+import { R, creatorJob, dice, employee, fx, inCollege, pick, streamJob } from "../util.ts";
 import { JOBS } from "../world.ts";
 
 export const workForks: Fork[] = [
@@ -47,7 +47,7 @@ export const workForks: Fork[] = [
     ],
   },
   {
-    id: "vtuber_offer", a: [19, 40], tag: "꿈", t: "버추얼 소속사에서 데뷔 제안이 들어왔다.", if: (c) => c.has("broadcast") && c.s.job !== "vtuber",
+    id: "vtuber_offer", a: [19, 40], tag: "꿈", t: "버추얼 소속사에서 데뷔 제안이 들어왔다.", if: (c) => c.has("broadcast") && !c.s.jobs.some((j) => j.id === "vtuber") && !inCollege(c), // 한 번이라도 버튜버였으면 또 "데뷔"하지 않음
     opts: [
       dice("데뷔한다", "talent", {
         great: R("버추얼 아바타로 데뷔했다. 데뷔 방송부터 동접 천 명!", fx({ happy: 6 }, 0, { add: ["debut"], fn: (c) => { c.hire("vtuber"); c.s.fame = Math.max(c.s.fame, 25); } }), true),

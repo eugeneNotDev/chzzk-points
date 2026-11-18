@@ -40,7 +40,7 @@ export const lateCareerForks: Fork[] = [
   },
   {
     id: "idol_debut", a: [16, 24], mile: true, tag: "꿈", t: "연습생 생활 끝에 데뷔 평가 날이 왔다.",
-    if: (c) => c.has("trainee") && !c.s.job,
+    if: (c) => c.has("trainee") && !c.s.job && !inCollege(c), // 대학 다니는 중엔 X(졸업·의대·로스쿨 진행이 꼬였음)
     opts: [
       dice("무대에 오른다", "charm", {
         great: R("데뷔조 센터로 확정됐다! 데뷔 무대부터 화제가 됐다.", fx({ happy: 8 }, 0, { fn: (c) => { c.hire("idol"); c.s.fame = Math.max(c.s.fame, 20); } }), true),

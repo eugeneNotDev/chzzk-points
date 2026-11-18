@@ -11,6 +11,13 @@ export function LifeVoteCard() {
   const onVoted = () => q.refetch();
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 새 투표가 열리면 지난 투표의 에러 문구("마감됐어요" 등)는 지움
+  const round = v?.round ?? null;
+  const [errRound, setErrRound] = useState(round);
+  if (errRound !== round) {
+    setErrRound(round);
+    setErr(null);
+  }
   if (!v?.open) return null;
   async function pick(key: string) {
     setBusy(key);

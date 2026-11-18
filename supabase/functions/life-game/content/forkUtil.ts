@@ -35,7 +35,8 @@ export const tuitionFx = (edu: "local" | "inseoul" | "top", years = 4, med = fal
 export const meetPartner = (bond = 50): Fx => ({ fn: (c) => { if (!c.partner()) c.meet("partner", bond); } });
 // 같은 상태면 늘 같은 값이 나오는 난수(결정을 띄울 때와 고를 때 선택지가 똑같아야 해서 Math.random을 못 씀)
 const stateSeed = (c: Ctx) => {
-  let h = (c.age * 2654435761 + c.s.pid * 40503 + c.s.jobs.length * 9176 + c.s.house.length * 131) >>> 0;
+  // (사람 수 pid는 안 넣음 — 결정 중에 상점에서 반려동물을 들이면 pid가 바뀌어 선택지가 다시 섞였음)
+  let h = (c.age * 2654435761 + c.s.jobs.length * 9176 + c.s.house.length * 131) >>> 0;
   return () => {
     h = (h + 0x6d2b79f5) >>> 0;
     let t = h;

@@ -7,7 +7,7 @@ import { Ctx, netWorth } from "./ctx.ts";
 import { finish, newLife, pushHist } from "./life.ts";
 import { type Fork, type Out, buyBlock, gearOf, jobTitle } from "./shapes.ts";
 import { stageOf, statMod } from "./tools.ts";
-import { armyYear, dailyEvents, deathCheck, drift, economy, eligible, focusYear, parents, pickWeighted, schoolLabel, sickness, syncRank } from "./year.ts";
+import { armyYear, dailyEvents, deathCheck, drift, economy, eligible, focusYear, forcedRetire, parents, pickWeighted, schoolLabel, sickness, syncRank } from "./year.ts";
 
 // ── 결정(갈림길) ──
 function optsOf(c: Ctx, f: Fork) {
@@ -63,6 +63,7 @@ export function stepYear(c: Ctx) {
   const inArmy = armyYear(c);
   if (!inArmy) focusYear(c);
   drift(c);
+  forcedRetire(c);
   economy(c);
   parents(c);
   if (!inArmy) dailyEvents(c);
@@ -213,9 +214,21 @@ export function buy(s: State, log: Entry[], id: string, pay: "cash" | "points"):
   }
   syncRank(c);
   // 상점에서 산 것 때문에 지금 결정의 선택지 상태(돈 부족 등)가 바뀔 수 있음
+  // 선택지 자체(문구·순서·키)는 그대로 두고 막힘(off)·비용만 다시 계산 — 통째로 다시 만들면 선택지가 바뀌어서
+  // 방송 투표 중이면 시청자가 고른 키가 다른 선택지로 이어질 수 있었음
   if (s.pending) {
-    const f = FORKS.find((x) => x.id === s.pending!.id);
-    if (f) s.pending = { ...makePending(c, f), kind: s.pending.kind };
+    const old = s.pending;
+    const f = FORKS.find((x) => x.id === old.id);
+    if (f) {
+      const fresh = makePending(c, f);
+      s.pending = {
+        ...old,
+        opts: old.opts.map((o) => {
+          const n = fresh.opts.find((x) => x.key === o.key && x.text === o.text);
+          return n ? { ...o, off: n.off, cost: n.cost, mod: n.mod } : o;
+        }),
+      };
+    }
   }
   const last = s.hist[s.hist.length - 1];
   if (last && last[0] === s.age) s.hist[s.hist.length - 1] = [s.age, s.stats.health, s.stats.intel, s.stats.charm, s.stats.happy, s.stats.talent, netWorth(s), s.luck];

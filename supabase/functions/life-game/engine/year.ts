@@ -1,9 +1,10 @@
 // 우진 키우기 엔진 — 한 해 굴리기(초점·능력치 변화·수입·생활비·경제·부모님·학교·군대·일상·병·죽음).
 import { badDebt, type StatKey } from "../types.ts";
 import { DAILY, DISEASES, FOCUSES, JOBS, FUNDS, SHOWS } from "../content.ts";
+import { retireFn } from "../content/util.ts";
 import { josa } from "../josa.ts";
 import { Ctx, houseOf, netWorth } from "./ctx.ts";
-import type { Job } from "./shapes.ts";
+import { type Job, jobTitle } from "./shapes.ts";
 import { clamp, fmtMoney, stageOf, statMod } from "./tools.ts";
 
 // ── 한 해 ──
@@ -63,7 +64,6 @@ function jobIncome(c: Ctx): number {
     const show = j.id === "vtuber" ? SHOWS.find((x) => x.id === s.show) : undefined;
     const r = c.roll(show ? show.stat : "talent", (s.focus === "create" ? 1 : 0) + (show?.bonus ?? 0));
     const dF = (show?.dF ?? { great: 12, good: 5, normal: 1, bad: -3, terrible: -9 })[r.tier];
-    const before = s.fame;
     const live = ["vtuber", "streamer", "youtuber"].includes(j.id); // 방송하는 직업(작가·가수·일러스트 등은 방송 문구 대신 일반 문구)
     s.fame = clamp(Math.round(s.fame + (dF > 0 ? dF * (1 - s.fame / 115) : dF)), 0, 100);
     if (r.tier === "great") c.apply(show?.greatFx, "job", show?.great ?? (live ? (s.fame >= 60 ? "클립 하나가 터져서 팔로워가 확 늘었다." : "방송이 입소문을 타기 시작했다.") : s.fame >= 60 ? "작업 하나가 크게 화제가 돼서 팬이 확 늘었다." : "이름이 조금씩 알려지기 시작했다."), { roll: r, hl: true });
@@ -71,8 +71,7 @@ function jobIncome(c: Ctx): number {
     // 버튜버는 나이가 들수록 인지도가 빠짐(40세 1, 45세 2, 50세 3, 60세 5 …)
     if (j.id === "vtuber" && s.age >= 40) s.fame = clamp(s.fame - Math.ceil((s.age - 38) / 5), 0, 100);
     if (s.fame >= 55) c.add("fame55"); // 엔딩은 죽을 때가 아니라 가장 유명했던 때 기준
-    if (before < 30 && s.fame >= 30 && !c.has("yangs")) c.log("job", live ? "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다." : "고정 팬이 생겼다. 팬들이 스스로를 '네루'라고 부르기 시작했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
-    if (before < 70 && s.fame >= 70 && !c.has("gold_button")) c.log("job", live ? "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다." : "팬이 100만을 넘었다. 네루들의 축하 메시지가 쏟아졌다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
+    fanMarks(c, j);
     rankByValue(c, j, s.fame, "fame");
     // 아직 작은 방송인은 알바를 병행해서 최소한은 범
     return Math.max(s.fame < 30 ? 1300 : 0, Math.round((150 + s.fame * s.fame * 2.6) * j.creator * (0.6 + c.rnd() * 0.8)));
@@ -86,11 +85,45 @@ function jobIncome(c: Ctx): number {
     return Math.round((s.biz - 28) * 75);
   }
   // 월급쟁이: 해마다 오르고, 일 집중이면 더. 한 등급에 4년 넘게 있으면 가끔 승진
-  if (j.ranks && s.age - (s.rankSince ?? s.jobSince) >= 4 && c.chance(0.14 + (s.focus === "work" ? 0.12 : 0) + statMod(s.stats.intel) * 0.02)) c.promote(1);
+  if (j.ranks && s.age < 70 && s.age - (s.rankSince ?? s.jobSince) >= 4 && c.chance(0.14 + (s.focus === "work" ? 0.12 : 0) + statMod(s.stats.intel) * 0.02)) c.promote(1);
   const g = (j.growth ?? 0.03) + (s.focus === "work" ? 0.02 : 0);
   const cap = (j.cap ?? 99999) * (1 + 0.15 * (s.rank ?? 0));
   s.salary = Math.min(Math.round(cap), Math.round(s.salary * (1 + g)));
   return s.salary;
+}
+
+// 은퇴를 계속 미뤄도 끝은 있게 — 운동선수·아이돌은 45세, 그 밖의 일은 85세가 되면 저절로 내려놓음
+// (은퇴 갈림길에서 "조금 더 일한다"를 고르면 다시 묻지 않아 아흔 넘어서도 출근하는 일이 있었음)
+const FORCE_RETIRE_EARLY: Record<string, string> = {
+  athlete: "몸이 더는 따라주지 않았다. 은퇴 경기를 끝으로 선수 생활을 마무리했다.",
+  idol: "마지막 무대에 섰다. 팬들이 끝까지 이름을 불러줬다.",
+};
+export function forcedRetire(c: Ctx) {
+  const s = c.s;
+  if (!s.job || s.army > 0) return;
+  const j = JOBS.find((x) => x.id === s.job);
+  if (!j) return;
+  let t: string | null = null;
+  if (FORCE_RETIRE_EARLY[j.id] && s.age >= 45) t = FORCE_RETIRE_EARLY[j.id];
+  else if (s.age >= 85) {
+    t = ["vtuber", "streamer", "youtuber"].includes(j.id)
+      ? "여든다섯, 마지막으로 방송을 껐다. 이제는 쉬어도 된다."
+      : j.biz
+      ? "여든다섯, 가게를 정리했다. 단골들이 아쉬워했다."
+      : "여든다섯, 이제 정말 일을 내려놓았다. 이만하면 충분히 일했다.";
+  }
+  if (!t) return;
+  retireFn(c);
+  c.log("job", t, { hl: true, d: c.stat({ happy: 3 }) });
+}
+
+// 팬 이름(네루)·100만 — 인지도가 넘은 그 자리에서(해마다 인지도 주사위 뒤 + 이벤트·갈림길로 인지도가 오른 직후).
+// 전엔 "올해 주사위로 30을 넘을 때"만 봐서, 이벤트로 한 번에 넘기면 팬 이름 없이 '네루'가 나왔음
+function fanMarks(c: Ctx, j: Job) {
+  const s = c.s;
+  const live = ["vtuber", "streamer", "youtuber"].includes(j.id);
+  if (s.fame >= 30 && !c.has("yangs")) c.log("job", live ? "고정 시청자가 생겼다. 팬 이름을 '네루'로 정했다." : "고정 팬이 생겼다. 팬들이 스스로를 '네루'라고 부르기 시작했다.", { hl: true, d: c.stat({ happy: 5 }) }), c.add("yangs");
+  if (s.fame >= 70 && !c.has("gold_button")) c.log("job", live ? "팔로워 100만을 넘었다. 축하 방송에 네루들이 몰려왔다." : "팬이 100만을 넘었다. 네루들의 축하 메시지가 쏟아졌다.", { hl: true, d: c.stat({ happy: 6, charm: 3 }) }), c.add("gold_button");
 }
 
 // 인지도·경기 값으로 오르는 직업의 등급(내려가진 않음)
@@ -107,7 +140,10 @@ function rankByValue(c: Ctx, j: Job, v: number, why: "fame" | "biz") {
 // 이벤트·갈림길·물건으로 인지도가 오른 그 자리에서 등급도 맞춤(연말까지 안 기다리게)
 export function syncRank(c: Ctx) {
   const j = JOBS.find((x) => x.id === c.s.job);
-  if (j?.creator) rankByValue(c, j, c.s.fame, "fame");
+  if (j?.creator) {
+    fanMarks(c, j);
+    rankByValue(c, j, c.s.fame, "fame");
+  }
 }
 
 function livingCost(c: Ctx) {
@@ -115,7 +151,7 @@ function livingCost(c: Ctx) {
   const indep = s.age >= 20 && (s.job !== null || s.age >= 25 || !!c.person("spouse")) && s.army === 0;
   let e = 0;
   if (indep) {
-    e += 1700 + Math.min(5000, Math.max(0, netWorth(s)) * 0.025);
+    e += 1700 + Math.min(30000, Math.max(0, netWorth(s)) * 0.025); // 재산이 많을수록 씀씀이도 커짐(전엔 연 5천만원에서 멈춰서 부자는 끝없이 불었음)
     if (!s.assets.some((x) => x.kind === "home")) e += 900; // 월세
     if (c.person("spouse")) e += 1000;
     if (s.age >= 65) e *= 0.7;
@@ -171,7 +207,12 @@ export function economy(c: Ctx) {
     if (a.kind === "home") a.value = Math.round(a.value * (1 + 0.03 + (c.rnd() - 0.5) * 0.12));
     if (a.kind === "car") a.value = Math.round(a.value * 0.85);
   }
-  s.assets = s.assets.filter((a) => a.kind !== "car" || a.value > 100);
+  if (s.assets.some((a) => a.kind === "car" && a.value <= 100)) {
+    // 다 낡은 차는 폐차 — 상점에서 다시 살 수 있게 차 등급도 처음으로(전엔 '최고 등급이에요'로 막혔음)
+    s.assets = s.assets.filter((a) => a.kind !== "car" || a.value > 100);
+    delete s.seen["lv:car"];
+    c.log("day", "오래 탄 차를 폐차했다. 마지막으로 한 바퀴 돌고 보냈다.");
+  }
   // 빚 이자
   if (s.debt > 0) s.cash -= Math.round(s.debt * 0.05);
   // 돈 정리: 모자라면 투자금 → 빚, 남으면 빚 갚고 → 여유자금 투자
@@ -205,7 +246,8 @@ export function parents(c: Ctx) {
   const s = c.s;
   for (const p of c.folks("mom").concat(c.folks("dad"))) {
     const pa = s.age - p.born;
-    const pr = pa < 60 ? 0.002 : pa < 70 ? 0.01 : pa < 80 ? 0.03 : pa < 90 ? 0.09 : 0.22;
+    // 100세를 넘기면 크게 오름(전엔 0.22로 고정이라 105세 넘게 사시는 일이 있었음)
+    const pr = pa < 60 ? 0.002 : pa < 70 ? 0.01 : pa < 80 ? 0.03 : pa < 90 ? 0.09 : pa < 100 ? 0.22 : pa < 104 ? 0.55 : 1;
     if (c.chance(pr)) {
       p.alive = false;
       const who = p.role === "mom" ? "엄마" : "아빠";
@@ -218,6 +260,18 @@ export function parents(c: Ctx) {
           c.log("money", `부모님이 남기신 재산 ${fmtMoney(amt)}을 물려받았다.`, { m: amt });
         }
       }
+    }
+  }
+  // 배우자도 나이가 들면 먼저 떠날 수 있음(전엔 배우자는 절대 안 죽어서 100세 넘게 함께 사는 일이 흔했음)
+  const sp = c.person("spouse");
+  if (sp) {
+    const sa = s.age - sp.born;
+    const pr = sa < 70 ? 0 : sa < 80 ? 0.012 : sa < 90 ? 0.045 : sa < 100 ? 0.15 : 0.45;
+    if (c.chance(pr)) {
+      sp.alive = false;
+      c.add("widowed");
+      const years = s.age - sp.since;
+      c.log("people", `${years >= 10 ? `${years}년을 함께한 ` : ""}${josa(sp.name, "를")} 먼저 떠나보냈다. 한동안 밥을 넘기지 못했다.`, { d: c.stat({ happy: -(8 + Math.round(sp.bond / 10)) }), hl: true });
     }
   }
   // 아이 나이 마디
@@ -257,7 +311,12 @@ export function armyYear(c: Ctx) {
   if (s.army === 0) {
     c.log("school", "전역했다. 하늘이 유난히 파랬다.", { d: c.stat({ happy: 6 }), hl: true });
     c.add("army_done");
-    s.school = s.edu === "none" || s.edu === "high" ? "사회 초년생" : "복학생";
+    // 직업을 둔 채 입대했으면 그 직업으로 돌아감(전엔 직업이 있어도 '사회 초년생'으로 덮었음)
+    s.school = s.job ? (jobTitle(s) ?? JOBS.find((j) => j.id === s.job)?.name ?? "사회 초년생") : s.edu === "none" || s.edu === "high" ? "사회 초년생" : "복학생";
+    if (s.job) {
+      const j = JOBS.find((x) => x.id === s.job);
+      c.log("job", j?.creator ? "기다려 준 사람들 앞에서 다시 활동을 시작했다." : j?.biz ? "맡겨 뒀던 가게로 돌아갔다." : "원래 하던 일로 복직했다.");
+    }
   } else {
     const t = c.pick(["새벽 불침번을 서며 별을 셌다.", "PX 냉동식품이 세상에서 제일 맛있었다.", "행군 중에 발에 물집이 잡혔다.", "편지 한 통에 하루 종일 웃었다."]);
     c.log("day", t);
@@ -298,7 +357,9 @@ export function dailyEvents(c: Ctx) {
   const s = c.s;
   const n = c.chance(0.3) ? 2 : c.chance(0.8) ? 1 : 0;
   for (let i = 0; i < n; i++) {
-    const pool = DAILY.filter((e) => !e.rare && eligible(c, e) && (s.seen["n:" + e.id] ?? 0) < (e.max ?? DAILY_MAX));
+    // 스스로 돈 쓰는 일(여행·학원 등)은 돈이 없으면 안 일어남 — 사고처럼 어쩔 수 없이 나가는 돈(tone -1)은 그대로
+    const affordable = (e: (typeof DAILY)[number]) => !(e.fx?.m && e.fx.m < 0 && e.tone !== -1 && s.cash + s.invest < -e.fx.m);
+    const pool = DAILY.filter((e) => !e.rare && eligible(c, e) && (s.seen["n:" + e.id] ?? 0) < (e.max ?? DAILY_MAX) && affordable(e));
     const e = pickWeighted(c, pool, (x) => (x.w ?? 10) * (x.tone === 1 ? [0, 0.5, 0.8, 1, 1, 1.3, 2][s.luck] : x.tone === -1 ? [0, 2, 1.3, 1, 1, 0.8, 0.5][s.luck] : 1));
     if (!e) break;
     s.seen[e.id] = s.age;
@@ -324,6 +385,7 @@ export function sickness(c: Ctx) {
   const list = DISEASES.filter((d) => s.age >= d.a);
   const d = c.pick(list);
   const early = c.has("checkup");
+  if (early) s.seen["sick_early"] = s.age; // 그해 치료 주사위 보정용(checkup 표시는 해 끝에 지워짐)
   s.sick = { id: d.id, name: d.name, sev: Math.max(1, d.sev - (early ? 1 : 0)), since: s.age };
   c.log("sick", early ? `건강검진 덕분에 ${josa(d.name, "을")} 일찍 발견했다.` : `몸이 이상해서 병원에 갔더니 ${josa(d.name, "이라고")} 한다.`, {
     d: c.stat({ happy: -4 }),

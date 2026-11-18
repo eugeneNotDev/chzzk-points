@@ -159,7 +159,7 @@ export function ReportView({ run, onAgain, onDex }: { run: Run; onAgain: () => v
         )}
         <div className={styles.letter}>
           <span className={styles.letterAvatar} aria-hidden="true">
-            유
+            우
           </span>
           <div>
             <span>우진이 보호자님께</span>

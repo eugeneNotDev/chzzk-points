@@ -51,6 +51,12 @@ export const farewell = (c: Ctx, p: Person | undefined, die = false) => { if (!p
 export const gone = (j: string) => josa(goneName, j);
 // 살아 계신 부모님 부르는 말
 export const parentsWord = (c: Ctx) => (c.person("mom") && c.person("dad") ? "엄마 아빠" : c.person("mom") ? "엄마" : "아빠");
+// 살아 계신 부모님을 높여 부르는 말 — 두 분 다 계시면 "부모님", 한 분만 계시면 "엄마"/"아빠"
+export const parentsTitle = (c: Ctx) => (c.person("mom") && c.person("dad") ? "부모님" : c.person("mom") ? "엄마" : "아빠");
+// 손주가 태어난 지 n년이 넘었는지(말하고 그림 그리는 손주 장면용) — 손주 탄생 일상 이벤트가 seen["grandkid"]에 그 나이를 남김
+export const grandkidOld = (c: Ctx, n = 6) => c.has("grandkid") && c.age - (c.s.seen["grandkid"] ?? c.age) >= n;
+// 방송(버튜버·스트리머·유튜버)을 한 번이라도 해본 적 있는지
+export const everStreamed = (c: Ctx) => c.s.jobs.some((j) => ["vtuber", "streamer", "youtuber"].includes(j.id));
 
 // 주사위 두 개 합이 n 이상일 확률
 export function passP(n: number) {

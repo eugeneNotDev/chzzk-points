@@ -1,7 +1,7 @@
 // 우진 키우기 갈림길 — 노년 갈림길.
 import type { Ctx, Fork } from "../../engine.ts";
 import { wasJob } from "../forkUtil.ts";
-import { R, bizJob, creatorJob, dice, employee, fx, homePrice, pick, retireFn, statModOf } from "../util.ts";
+import { R, bizJob, creatorJob, dice, employee, everStreamed, fx, grandkidOld, homePrice, inCollege, pick, retireFn, statModOf } from "../util.ts";
 import { JOBS } from "../world.ts";
 
 // 일을 내려놓을 때 마지막 장면(방송·가게가 아닌 직업)
@@ -16,7 +16,7 @@ export const oldAgeForks: Fork[] = [
   {
     id: "old_trip", a: [65, 88], rep: 10, tag: "노년", t: "기운이 남아 있을 때 여행을 가볼까?",
     opts: [
-      pick("가족이랑 다 같이 간다", R((c) => (c.folks("child").length ? `온 가족이 함께 바닷가 여행을 갔다.${c.has("grandkid") ? " 손주가 모래성을 쌓았다." : ""}` : "{p}와 단둘이 바닷가 여행을 갔다."), fx({ happy: 7 }, 0, { fn: (c) => { for (const k of c.folks("child")) c.bond(k, 4); c.bond(c.person("spouse"), 4); } }), true), { cost: 500, if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
+      pick("가족이랑 다 같이 간다", R((c) => (c.folks("child").length ? `온 가족이 함께 바닷가 여행을 갔다.${grandkidOld(c, 5) ? " 손주가 모래성을 쌓았다." : ""}` : "{p}와 단둘이 바닷가 여행을 갔다."), fx({ happy: 7 }, 0, { fn: (c) => { for (const k of c.folks("child")) c.bond(k, 4); c.bond(c.person("spouse"), 4); } }), true), { cost: 500, if: (c) => !!c.person("spouse") || c.folks("child").length > 0 }),
       dice("혼자 배낭을 멘다", "health", {
         good: R("혼자 기차를 타고 전국을 돌았다. 젊어진 기분이었다.", fx({ happy: 7, health: 1 })),
         bad: R("여행 사흘째에 몸살이 나서 돌아왔다.", fx({ health: -3, happy: 1 })),
@@ -35,7 +35,7 @@ export const oldAgeForks: Fork[] = [
   },
   {
     id: "grandkid_dream", a: [65, 95], kind: "think", tag: "생각 남기기", t: "손주가 묻는다. 할아버지는 어릴 때 꿈이 뭐였어?",
-    if: (c) => c.has("grandkid"),
+    if: (c) => grandkidOld(c, 6),
     opts: [
       pick("늑대였지", R("손주가 깔깔 웃었다. 진짜인데.", fx({ happy: 3 }))),
       pick("지금 너 같은 아이였지", R("손주가 무슨 뜻이냐며 고개를 갸웃했다.", fx({ happy: 3 }))),
@@ -56,7 +56,7 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "startup", a: [28, 58], tag: "일", t: "가게를 차려볼까?", if: (c) => !bizJob(c) && (c.has("cook") || c.has("dream") || !c.s.job || c.age >= 45),
+    id: "startup", a: [28, 58], tag: "일", t: "가게를 차려볼까?", if: (c) => !bizJob(c) && !inCollege(c) && (c.has("cook") || c.has("dream") || !c.s.job || c.age >= 45),
     opts: [
       pick("국밥집", R("작은 국밥집을 열었다.", fx({ happy: 3 }, 0, { fn: (c) => { c.hire("gukbap"); c.s.biz = 30 + statModOf(c, "intel") * 3 + (c.has("cook") ? 10 : 0); } })), { cost: 7000, if: (c) => c.has("cook") }),
       pick("카페", R("예쁜 카페를 열었다.", fx({ happy: 4 }, 0, { fn: (c) => { c.hire("cafe"); c.s.biz = 25 + statModOf(c, "charm") * 3; } })), { cost: 9000 }),
@@ -196,7 +196,7 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "retire_life", a: [60, 80], tag: "인생", t: "은퇴 후 뭘 하면서 지낼까?", if: (c) => c.has("retired"),
+    id: "retire_life", a: [60, 80], tag: "인생", t: "은퇴 후 뭘 하면서 지낼까?", if: (c) => c.has("retired") && !c.s.job,
     opts: [
       pick("노래 교실에 다닌다", R("노래 교실에 등록했다. 선생님이 한숨을 쉬었다.", fx({ happy: 5, talent: 2 }))),
       pick("세계 일주를 떠난다", R("배낭 하나 메고 떠났다.", fx({ happy: 8 }, 0, { add: ["travel"] })), { cost: 2000 }),
@@ -205,14 +205,15 @@ export const oldAgeForks: Fork[] = [
     ],
   },
   {
-    id: "silver_stream", a: [63, 90], tag: "꿈", t: (c) => (c.has("grandkid") ? "손주가 할아버지도 방송 한번 해보라고 한다." : "주변에서 방송 한번 해보라고 한다."), if: (c) => !creatorJob(c),
+    // 방송을 해본 적 있는 사람(버튜버·스트리머·유튜버 출신)에겐 안 뜸 — 수십 년 방송한 사람에게 "한번 해보라"는 어색함
+    id: "silver_stream", a: [63, 90], tag: "꿈", t: (c) => (grandkidOld(c, 6) ? "손주가 할아버지도 방송 한번 해보라고 한다." : "주변에서 방송 한번 해보라고 한다."), if: (c) => !creatorJob(c) && !everStreamed(c),
     opts: [
       dice("해본다", "talent", {
         great: R("'늑대 할아버지' 채널이 대박이 났다!", fx({ happy: 8 }, 0, { add: ["broadcast"], fn: (c) => { c.hire("vtuber"); c.s.fame = 35; } }), true),
         good: R("소소하게 구독자가 생겼다. 매일이 즐겁다.", fx({ happy: 5 }, 0, { add: ["broadcast"] })),
         bad: R("마이크를 거꾸로 들고 30분을 떠들었다.", fx({ happy: 2 })),
       }),
-      pick("이 나이에 무슨…", R((c) => (c.has("grandkid") ? "손주가 실망한 눈치였다." : "다들 아쉬워했다."), fx({}))),
+      pick("이 나이에 무슨…", R((c) => (grandkidOld(c, 6) ? "손주가 실망한 눈치였다." : "다들 아쉬워했다."), fx({}))),
     ],
   },
   {

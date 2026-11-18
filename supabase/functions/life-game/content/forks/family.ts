@@ -138,7 +138,7 @@ export const familyForks: Fork[] = [
     id: "grandkid_care", a: [56, 80], tag: "가족", t: "자식이 손주를 봐달라고 한다.", if: (c) => c.has("grandkid") && c.folks("child").length > 0,
     opts: [
       pick("봐준다", R("손주 덕에 하루가 짧아졌다.", fx({ happy: 5, health: -2 }))),
-      pick("내 인생도 있다고 한다", R("대신 용돈을 두둑이 보냈다.", fx({ health: 2 }, -300))),
+      pick("내 인생도 있다고 한다", R("대신 용돈을 두둑이 보냈다.", fx({ health: 2 })), { cost: 300 }),
     ],
   },
 ];

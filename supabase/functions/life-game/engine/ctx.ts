@@ -74,13 +74,19 @@ export class Ctx {
     return this.person("spouse") ?? this.person("partner");
   }
   meet(role: Role, bond = 50, name?: string): Person {
-    const used = new Set(this.s.people.map((p) => p.name));
+    // 지금 곁에 있는 사람뿐 아니라 헤어지거나 떠난 사람 이름도 피함(s.usedNames — 옛 저장에는 없을 수 있음)
+    const now = new Set(this.s.people.map((p) => p.name));
+    const ever = new Set([...now, ...(this.s.usedNames ?? [])]);
     const pool = role === "partner" || role === "spouse" ? NAMES.partner : role === "child" ? NAMES.child : role === "pet" ? NAMES.pet : NAMES.friend;
-    const free = pool.filter((n) => !used.has(n));
+    const fresh = pool.filter((n) => !ever.has(n));
+    const free = fresh.length ? fresh : pool.filter((n) => !now.has(n)); // 이름이 다 떨어지면 지금 곁에 없는 이름이라도
+    const nm = name ?? (free.length ? this.pick(free) : this.pick(pool));
+    const usedList = (this.s.usedNames ??= []);
+    if (!usedList.includes(nm)) usedList.push(nm);
     const p: Person = {
       id: ++this.s.pid,
       role,
-      name: name ?? (free.length ? this.pick(free) : this.pick(pool)),
+      name: nm,
       born: role === "child" || role === "pet" ? this.s.age : this.int(-3, 3), // 친구·연인은 우진과 비슷한 나이
       bond: clamp(bond, 0, 100),
       alive: true,
