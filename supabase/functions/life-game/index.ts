@@ -193,7 +193,8 @@ async function dex(admin: Admin, channelId: string, test: boolean) {
 // ── 방송 모드 투표 ──
 // 시청자가 고를 수 있는 선택지: 포인트 후원·돈 부족으로 막힌 건 빼고
 const voteOpts = (p: Pending | null) => (p?.opts ?? []).filter((o) => !o.pts && !o.off);
-const roundOf = (r: Row) => `${r.id}:${r.state.age}:${r.state.pending?.id ?? "-"}:${r.ver}`;
+// 투표 회차 = 판·나이·결정. (ver는 안 넣음 — 투표 중에 주인이 초점·투자·상점을 건드려도 투표가 닫히지 않게)
+const roundOf = (r: Row) => `${r.id}:${r.state.age}:${r.state.pending?.id ?? "-"}`;
 
 async function loadLive(admin: Admin, st: Settings): Promise<Row | null> {
   if (!st.live_life_id) return null;
@@ -366,6 +367,8 @@ Deno.serve(async (req: Request) => {
       return json({ run: view(r, from, st.item_limit) }, 200);
     }
     if (body.action === "choose") {
+      // 화면에 떠 있던 결정과 지금 결정이 다르면 거절(응답을 놓쳐 재시도·탭 두 개 → 이어진 결정에 같은 키가 들어가는 일 방지)
+      if (typeof body.pendingId === "string" && body.pendingId !== (s.pending?.id ?? "")) return fail("no_pending");
       const ver = r.ver;
       const res = choose(s, r.log, String(body.key ?? ""));
       if (res.error) return fail(res.error);

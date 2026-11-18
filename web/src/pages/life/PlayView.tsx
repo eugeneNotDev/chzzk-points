@@ -151,7 +151,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     setErr(null);
     const text = run.pending?.text ?? "";
     try {
-      const res = await chooseLife(run.id, o.key, log.length);
+      const res = await chooseLife(run.id, o.key, log.length, run.pending?.id);
       merge(res.run);
       if (typeof res.balance === "number") setBalance(res.balance);
       if (o.pts) {
@@ -174,7 +174,7 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
     setBusy(true);
     setErr(null);
     try {
-      const res = await chooseLife(run.id, rolling.opt.key, log.length);
+      const res = await chooseLife(run.id, rolling.opt.key, log.length, run.pending?.id);
       const wait = Math.max(0, 1100 - (Date.now() - t0));
       setTimeout(() => {
         merge(res.run);
@@ -231,7 +231,6 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
       const res = await buyLife(run.id, itemId, pay, log.length);
       merge(res.run);
       setSnap(res.run);
-      setShown(999);
       if (typeof res.balance === "number") setBalance(res.balance);
       if (pay === "points") qc.invalidateQueries({ queryKey: ["me"] });
     } catch (e) {
@@ -289,10 +288,13 @@ export function PlayView({ lobby, initial, onReport, onExit }: { lobby: Lobby; i
   const luck = row[7] ?? 3;
   const canShop = ci >= last && !rolling && !ended && !fetching;
   function openShop() {
-    // 상점을 열면 그 해를 다 보여주고 멈춤
-    setCur(last);
-    setShown(999);
-    yearStart.current = Date.now() - yearMs * 0.6;
+    // 상점을 열면 그 자리에서 멈춤(게이지·줄 그대로). 다만 서버가 이미 다음 해를 굴려 둔 상태(지난 해 줄은 다 보여준 뒤)면
+    // 산 물건이 맞는 나이에 들어가도록 그 해로 넘어가되, 새 해는 처음부터(줄 0개·게이지 0) — 닫으면 평소 속도로 이어감
+    if (ci < last) {
+      setCur(last);
+      setShown(0);
+      yearStart.current = Date.now();
+    }
     setShopOpen(true);
   }
 

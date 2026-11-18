@@ -5,9 +5,8 @@ import { API } from "./config";
 import { apiFetch, useAuth } from "./auth";
 import { lastJong } from "./format";
 
-// 베타(/beta/) 빌드에서만 메뉴·주소에 들어감. 실제 사이트에 열 때 true로 바꾸고(유진고사와 같은 방식),
-// DB의 life_settings.is_open도 true로 바꾸면 시청자 누구나 플레이(그 전엔 서버가 주인 계정만 허용).
-export const LIFE_ENABLED: boolean = import.meta.env.MODE !== "live";
+// 정식 공개됨(실제 사이트에도 메뉴·주소가 있음). DB의 life_settings.is_open이 false면 서버가 주인 계정만 허용(테스트 모드).
+export const LIFE_ENABLED: boolean = true;
 
 export type StatKey = "health" | "intel" | "charm" | "happy" | "talent";
 export type Stats = Record<StatKey, number>;
@@ -138,7 +137,9 @@ const post = <T,>(body: Record<string, unknown>) => apiFetch<T>(API.life, { body
 export const fetchRun = (id: number) => apiFetch<Run>(`${API.life}?view=run&id=${id}`);
 export const startLife = (house: string) => post<{ run: Run; balance: number }>({ action: "start", house });
 export const advanceLife = (runId: number, from: number, years: number) => post<{ run: Run }>({ action: "advance", runId, from, years });
-export const chooseLife = (runId: number, key: string, from: number) => post<{ run: Run; roll: Roll | null; balance?: number }>({ action: "choose", runId, key, from });
+// pendingId: 지금 화면에 떠 있는 결정 — 서버의 결정과 다르면(재시도·탭 두 개) 거절해서 엉뚱한 결정에 같은 키가 들어가지 않게
+export const chooseLife = (runId: number, key: string, from: number, pendingId?: string) =>
+  post<{ run: Run; roll: Roll | null; balance?: number }>({ action: "choose", runId, key, from, pendingId });
 export const focusLife = (runId: number, focus: string, from: number) => post<{ run: Run }>({ action: "focus", runId, focus, from });
 export const fundLife = (runId: number, fund: string, from: number) => post<{ run: Run }>({ action: "fund", runId, fund, from });
 export const buyLife = (runId: number, item: string, pay: "cash" | "points", from: number) =>
