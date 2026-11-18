@@ -138,7 +138,7 @@ export async function drawShareCard(run: Run): Promise<Blob> {
   const gy = boxY + 190;
   // 그래프 높이는 남은 공간에 맞춤(특수 엔딩 제목·설명이 길면 그래프가 꼬리말·방송 줄과 겹쳤음)
   const bottom = H - 80 - 50 - (run.broadcast ? 60 : 0) - 48;
-  const gh = Math.min(170, bottom - gy);
+  const gh = Math.min(300, bottom - gy); // 남는 공간만큼 그래프를 키워서 아래가 휑하지 않게(최대 300)
   const showGraph = gh >= 80; // 자리가 너무 모자라면 그래프는 생략
   const rows = run.hist ?? [];
   if (rows.length > 1 && showGraph) {
