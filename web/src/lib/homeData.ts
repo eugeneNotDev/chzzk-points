@@ -11,20 +11,20 @@ import type { SpecialTitle } from "../components/TitleBadge";
 
 export type NoticeRow = { id: number; title: string | null; pinned_at: string | null; created_at: string };
 
-// 홈 공지 카드 — 고정 공지는 전부 + 고정 아닌 최근 공지 limit개
-export function useNoticePreview(limit = 5) {
+// 홈 공지 미리보기 — 고정 공지를 맨 위에, 나머지는 최신순으로 채워서 고정 포함 total개만
+export function useNoticePreview(total = 6) {
   return useQuery({
-    queryKey: ["notices", "preview", limit],
+    queryKey: ["notices", "preview", total],
     staleTime: 60_000,
     queryFn: async () => {
       const cols = "id, title, pinned_at, created_at";
       const [pinned, recent] = await Promise.all([
-        supabase.from("notices").select(cols).not("pinned_at", "is", null).order("pinned_at", { ascending: true }),
-        supabase.from("notices").select(cols).is("pinned_at", null).order("created_at", { ascending: false }).limit(limit),
+        supabase.from("notices").select(cols).not("pinned_at", "is", null).order("pinned_at", { ascending: true }).limit(total),
+        supabase.from("notices").select(cols).is("pinned_at", null).order("created_at", { ascending: false }).limit(total),
       ]);
       if (pinned.error) throw pinned.error;
       if (recent.error) throw recent.error;
-      return [...(pinned.data ?? []), ...(recent.data ?? [])] as NoticeRow[];
+      return [...(pinned.data ?? []), ...(recent.data ?? [])].slice(0, total) as NoticeRow[];
     },
   });
 }
