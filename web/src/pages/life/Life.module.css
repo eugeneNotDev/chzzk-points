@@ -796,6 +796,12 @@
   border-color: color-mix(in srgb, var(--c-danger) 30%, transparent);
   color: var(--c-red-text);
 }
+.sickLv {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.85;
+}
 .statGrid {
   display: flex;
   flex-direction: column;

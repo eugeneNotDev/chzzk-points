@@ -3,6 +3,21 @@ import type { Ctx, Disease, Focus, Fx, House, Item, Job, Show } from "../engine.
 import { josa } from "../josa.ts";
 import { anyParent, fx, homePrice, kidName, kidsAt, neru, parentOld, parentsWord } from "./util.ts";
 
+// 큰 병원 진료 — 병의 심각도를 2단계 낮추고 결과를 한 줄로 알려줌(전엔 1단계씩이라 폐암은 4번을 다녀야 해서
+// "두 번 했는데 안 낫는다"는 말이 나왔고, 얼마나 나아졌는지도 안 보였음)
+function hospitalCare(c: Ctx) {
+  const k = c.s.sick;
+  if (!k) return;
+  const left = k.sev - 2;
+  if (left <= 0) {
+    c.s.sick = null;
+    c.log("sick", `${k.name} 치료가 끝났다. 완전히 나았다!`);
+  } else {
+    c.s.sick = { ...k, sev: left };
+    c.log("sick", left >= 3 ? `${josa(k.name, "은")} 아직 위중하다. 치료를 더 받아야 한다.` : `${josa(k.name, "이")} 많이 나아졌다. 한 번만 더 치료받으면 될 것 같다.`);
+  }
+}
+
 export const SHOWS: Show[] = [
   {
     id: "game", name: "게임 방송", hint: "끼 주사위 · 무난하게", stat: "talent",
@@ -194,7 +209,7 @@ export const ITEMS: Item[] = [
   { id: "gym", name: "헬스장 1년", cat: "건강", a: [16, 95], price: 80, t: "헬스장을 1년 끊었다. 이번엔 진짜 간다.", fx: fx({ health: 4 }), hint: "건강 ↑" },
   { id: "checkup", name: "종합 건강검진", cat: "건강", a: [25, 100], price: 50, t: "종합 건강검진을 받았다.", fx: fx({ health: 1 }, 0, { add: ["checkup"] }), hint: "올해 병을 일찍 발견" },
   { id: "insurance", name: "건강보험 가입", cat: "건강", a: [20, 70], price: 150, t: "건강보험에 가입했다. 해마다 보험료가 나간다.", fx: fx({}, 0, { add: ["insurance"] }), hint: "치료비 70% 보장", once: true, if: (c) => !c.has("insurance") }, // 동창 설계사 이벤트로 이미 가입했으면 안 팖
-  { id: "hospital", name: "큰 병원 진료", cat: "건강", a: [15, 100], price: 300, t: "큰 병원에서 제대로 진료를 받았다.", fx: fx({ health: 8 }, 0, { fn: (c) => { if (c.s.sick) c.s.sick.sev = Math.max(0, c.s.sick.sev - 1); if (c.s.sick && c.s.sick.sev === 0) c.s.sick = null; } }), hint: "건강 ↑ · 병 완화" },
+  { id: "hospital", name: "큰 병원 진료", cat: "건강", a: [15, 100], price: 300, t: "큰 병원에서 제대로 진료를 받았다.", fx: fx({ health: 8 }, 0, { fn: hospitalCare }), hint: "건강 ↑ · 병 치료(큰 병은 여러 번)" },
   { id: "skin", cool: 2, name: "피부과 관리", cat: "건강", a: [18, 90], price: 200, t: "피부과 관리를 받았다. 거울 보는 시간이 늘었다.", fx: fx({ charm: 3 }), hint: "매력 ↑" },
   { id: "trip_kr", name: "국내 여행", cat: "경험", a: [15, 100], price: 50, t: "훌쩍 국내 여행을 다녀왔다.", fx: fx({ happy: 4 }), hint: "행복 ↑" },
   { id: "trip_world", cool: 2, name: "해외여행", cat: "경험", a: [18, 95], price: 400, t: "해외여행을 다녀왔다. 시차 적응에 사흘이 걸렸다.", fx: fx({ happy: 8, charm: 1 }, 0, { add: ["travel"] }), hint: "행복 ↑↑" },

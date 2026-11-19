@@ -413,6 +413,8 @@ export function PlayView({ lobby, initial, startBalance, onReport, onExit }: { l
               <span className={`${styles.statusChip} ${styles.statusSick}`}>
                 <HeartPulse size={13} aria-hidden="true" />
                 {view.sick.name}
+                {/* 얼마나 심한지(큰 병원 진료로 낮아지는 게 보이게) */}
+                <span className={styles.sickLv}>{view.sick.sev >= 3 ? "위중" : view.sick.sev === 2 ? "치료 중" : "가벼움"}</span>
               </span>
             )}
             {view.fame > 0 && !view.broadcast?.active && (
