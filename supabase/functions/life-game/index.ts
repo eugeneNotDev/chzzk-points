@@ -39,7 +39,7 @@ type Row = {
   id: number; channel_id: string; world_no: number | null; is_test: boolean; house: string; spent: number; points_used: number;
   status: "playing" | "ended"; state: State; log: Entry[]; ver: number; title: string | null;
 };
-type Settings = { is_open: boolean; daily_limit: number; item_limit: number; live_life_id: number | null; vote_round: string | null; vote_open: boolean };
+type Settings = { is_open: boolean; daily_limit: number; item_limit: number; live_life_id: number | null; vote_round: string | null; vote_open: boolean; live_cursor: number | null };
 
 const houseName = (id: string) => HOUSES.find((h) => h.id === id)?.name ?? id;
 const DEX_TOTAL = JOBS.length + MODS.length + DAILY.filter((d) => d.rare).length + SPECIALS.length;
@@ -242,9 +242,9 @@ Deno.serve(async (req: Request) => {
 
   try {
     const admin = getAdminClient();
-    const { data: settings, error: sErr } = await admin.from("life_settings").select("is_open, daily_limit, item_limit, live_life_id, vote_round, vote_open").maybeSingle();
+    const { data: settings, error: sErr } = await admin.from("life_settings").select("is_open, daily_limit, item_limit, live_life_id, vote_round, vote_open, live_cursor").maybeSingle();
     if (sErr) throw new Error(`life_settings 조회 실패: ${sErr.message}`);
-    const st = (settings ?? { is_open: false, daily_limit: 3, item_limit: 3, live_life_id: null, vote_round: null, vote_open: false }) as Settings;
+    const st = (settings ?? { is_open: false, daily_limit: 3, item_limit: 3, live_life_id: null, vote_round: null, vote_open: false, live_cursor: null }) as Settings;
     const isOwner = session.channelId === OWNER_CHANNEL_ID;
 
     // 방송 투표는 테스트 모드여도 시청자 누구나(로그인만 하면)
@@ -280,7 +280,8 @@ Deno.serve(async (req: Request) => {
         if (!isOwner) return json({ error: "forbidden" }, 403);
         const r = await loadLive(admin, st);
         const from = Math.max(0, Math.floor(Number(url.searchParams.get("from")) || 0));
-        return json({ run: r ? view(r, from, st.item_limit) : null, vote: await voteState(admin, st, me, r) }, 200);
+        // cursor: 진행 화면이 지금 보여주고 있는 기록 수(방송 화면은 여기까지만 보여줌, null이면 전부)
+        return json({ run: r ? view(r, from, st.item_limit) : null, vote: await voteState(admin, st, me, r), cursor: st.live_cursor }, 200);
       }
       if (v === "run") {
         const id = Number(url.searchParams.get("id"));
@@ -294,6 +295,13 @@ Deno.serve(async (req: Request) => {
 
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
     const body = voteBody ?? {};
+    // 방송 화면 맞추기(주인만) — 진행 화면이 해마다 보내서 횟수 제한에선 뺌
+    if (body.action === "live_cursor") {
+      if (!isOwner) return json({ error: "forbidden" }, 403);
+      const n = Math.max(0, Math.floor(Number(body.n) || 0));
+      if (st.live_life_id && st.live_life_id === Math.floor(Number(body.runId) || 0)) await setSettings(admin, { live_cursor: n });
+      return json({ ok: true }, 200);
+    }
     const { data: allowed } = await admin.rpc("rate_limit_hit", { p_key: `life:${me}`, p_window_sec: 10, p_max: 40 });
     if (allowed === false) return fail("too_fast");
 
@@ -323,7 +331,7 @@ Deno.serve(async (req: Request) => {
           const r = await loadPlaying(admin, me, id);
           if (!r || r.status !== "playing") return fail("not_playing");
         }
-        await setSettings(admin, { live_life_id: id, vote_open: false, vote_round: null });
+        await setSettings(admin, { live_life_id: id, vote_open: false, vote_round: null, live_cursor: null });
         return json({ liveId: id }, 200);
       }
       const r = await loadLive(admin, st);

@@ -19,7 +19,11 @@ export default function LiveScreen() {
   const q = useQuery({ queryKey: ["life-live"], refetchInterval: 1500, queryFn: () => fetchLive(0) });
   const run = q.data?.run ?? null;
   const v = q.data?.vote ?? null;
-  const total = run?.log.length ?? 0;
+  // 진행 화면(리모컨)이 보여준 데까지만 따라감 — 서버는 몇 해씩 앞서 있어서 그대로 보여주면 방송 화면이 먼저 나갔음
+  const fullLen = run?.log.length ?? 0;
+  const cursor = q.data?.cursor ?? null;
+  const total = cursor == null ? fullLen : Math.min(fullLen, cursor);
+  const hostAtEnd = cursor == null || cursor >= fullLen; // 진행 화면이 마지막 기록까지 보여줬는지(갈림길·엔딩은 그 뒤에)
 
   // 화면이 따라잡은 기록 수 — 처음 열었을 땐 지금까지를 다 본 걸로, 판이 바뀌면 다시
   const [seen, setSeen] = useState<{ id: number; n: number } | null>(null);
@@ -38,13 +42,13 @@ export default function LiveScreen() {
   const [endReady, setEndReady] = useState(false);
   const isEnded = run?.status === "ended";
   useEffect(() => {
-    if (!isEnded || !caught) {
+    if (!isEnded || !caught || !hostAtEnd) {
       setEndReady(false);
       return;
     }
     const t = window.setTimeout(() => setEndReady(true), END_HOLD_MS);
     return () => window.clearTimeout(t);
-  }, [isEnded, caught]);
+  }, [isEnded, caught, hostAtEnd]);
 
   // 마지막 투표 결과 — 마감한 뒤에도 "몇 표로 정해졌는지" 보여주려고 열려 있던 동안의 선택지·표를 기억해 둠
   const [lastVote, setLastVote] = useState<{ round: string; text: string; opts: { key: string; text: string }[]; counts: Record<string, number>; total: number } | null>(null);
@@ -76,7 +80,7 @@ export default function LiveScreen() {
   const now = visible.filter((e) => e.age === age && e.k !== "pick").slice(-4);
   const lastPick = [...visible].reverse().find((e) => e.k === "pick" && e.age === age);
   const lastRoll = lastPick ? visible.slice(visible.indexOf(lastPick) + 1).find((e) => e.roll) : undefined;
-  const p = caught && run.status === "playing" ? run.pending : null;
+  const p = caught && hostAtEnd && run.status === "playing" ? run.pending : null;
   const b = run.broadcast;
   const stats = histStats(run.hist.find((r) => r[0] === age), run.stats);
   const ending = endReady && run.ending ? run.ending : null;
@@ -98,7 +102,7 @@ export default function LiveScreen() {
 
       <div className={styles.liveGrid}>
         <aside className={styles.livePanel}>
-          <p className={styles.liveJob}>{caught ? run.jobName ?? run.school : b?.title ?? run.jobName ?? run.school}</p>
+          <p className={styles.liveJob}>{caught && hostAtEnd ? run.jobName ?? run.school : b?.title ?? run.jobName ?? run.school}</p>
           {STATS.map((st) => (
             <div key={st.key} className={styles.liveStat}>
               <span>{st.label}</span>

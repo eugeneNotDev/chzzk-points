@@ -9,7 +9,7 @@ import { useAuth } from "../../lib/auth";
 import { confirmDialog } from "../../lib/dialog";
 import { fmt } from "../../lib/format";
 import {
-  STAGES, advanceLife, buyLife, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage, josa, openVote, setLive,
+  STAGES, advanceLife, buyLife, chooseLife, closeVote, fetchRun, focusLife, fundLife, histStats, lifeErrorText, lifeStage, josa, openVote, sendLiveCursor, setLive,
   useLifeVote, type Lobby, type LogEntry, type PendingOpt, type Run,
 } from "../../lib/life";
 import styles from "./Life.module.css";
@@ -69,6 +69,39 @@ export function PlayView({ lobby, initial, startBalance, onReport, onExit }: { l
   const ended = run.status === "ended";
   const pending = drained && !ended && !rolling ? run.pending : null;
   const done = ended && drained; // 서버는 끝났어도 미리 받은 해를 다 보여주기 전까진 진행 중처럼
+
+  // 방송 모드: 이 화면이 지금 몇 번째 기록까지 보여줬는지 방송 화면(OBS)에 알림 — 서버는 몇 해씩 앞서 있어서
+  // 서버 기준으로 보여주면 방송 화면이 진행 화면보다 앞서갔음. 바뀔 때마다 보내되 1.2초에 한 번까지만.
+  const shownCount = useMemo(() => log.filter((e) => e.age < age).length + nShown, [log, age, nShown]);
+  const cursorSent = useRef<{ n: number; at: number } | null>(null);
+  useEffect(() => {
+    if (!liveOn) {
+      cursorSent.current = null;
+      return;
+    }
+    const sent = cursorSent.current;
+    if (sent && sent.n === shownCount) return;
+    const wait = sent ? Math.max(0, 1200 - (Date.now() - sent.at)) : 0;
+    const t = setTimeout(() => {
+      cursorSent.current = { n: shownCount, at: Date.now() };
+      sendLiveCursor(run.id, shownCount).catch(() => {});
+    }, wait);
+    return () => clearTimeout(t);
+  }, [liveOn, shownCount, run.id]);
+
+  // 방송 모드: 갈림길이 화면에 뜨면 시청자 투표를 자동으로 염(마감은 직접)
+  const autoVoted = useRef<string | null>(null);
+  useEffect(() => {
+    if (!liveOn || !pending || pending.opts.length < 2 || voteBusy || rolling || liveVote.data?.open) return;
+    const key = `${run.id}:${age}:${pending.id}`;
+    if (autoVoted.current === key) return;
+    autoVoted.current = key;
+    setVoteBusy(true);
+    openVote()
+      .then(() => liveVote.refetch())
+      .catch(() => {}) // 투표로 못 정하는 결정이면 조용히 넘어감(직접 고르면 됨)
+      .finally(() => setVoteBusy(false));
+  }, [liveOn, pending, voteBusy, rolling, liveVote, run.id, age]);
 
   // 따라잡으면 상태 스냅샷 갱신
   useEffect(() => {

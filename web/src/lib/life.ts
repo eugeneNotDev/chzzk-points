@@ -167,7 +167,9 @@ export const setLive = (runId: number | null) => post<{ liveId: number | null }>
 export const openVote = () => post<VoteState>({ action: "vote_open" });
 export const closeVote = (from: number) =>
   post<{ run: Run; roll: Roll | null; winner: string; counts: Record<string, number>; total: number }>({ action: "vote_close", from });
-export const fetchLive = (from: number) => apiFetch<{ run: Run | null; vote: VoteState }>(`${API.life}?view=live&from=${from}`);
+export const fetchLive = (from: number) => apiFetch<{ run: Run | null; vote: VoteState; cursor: number | null }>(`${API.life}?view=live&from=${from}`);
+// 진행 화면이 지금 몇 번째 기록까지 보여주는지 방송 화면에 알림(주인만)
+export const sendLiveCursor = (runId: number, n: number) => post<{ ok: boolean }>({ action: "live_cursor", runId, n });
 
 export const LIFE_ERRORS: Record<string, string> = {
   not_open: "아직 준비 중이에요.",
