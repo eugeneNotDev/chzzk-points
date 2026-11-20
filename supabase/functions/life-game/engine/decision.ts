@@ -132,6 +132,9 @@ export function choose(s: State, log: Entry[], key: string, rng: () => number = 
     roll = c.roll(o.roll ?? null, o.bonus ? o.bonus(c) : 0);
     const t = roll.tier;
     out = o.out[t] ?? (t === "great" ? o.out.good : t === "terrible" ? o.out.bad : undefined) ?? (t === "normal" ? (roll.total >= 7 ? o.out.good : o.out.bad) : undefined) ?? o.out.normal ?? o.out.good;
+    // '보통' 결과가 따로 없는 선택지는 보통을 성공/실패로 나눠 처리하니 화면 라벨도 실제 결과에 맞춤
+    // (전엔 '보통'이라고 뜨고 승진 누락이 돼서 "실패도 아닌데 왜 떨어지냐"는 말이 나왔음)
+    if (t === "normal" && !o.out.normal) roll = { ...roll, tier: out === o.out.bad ? "bad" : "good" };
   }
   if (out) {
     const e = c.apply(out.fx, out.k ?? "fork", out.t, { roll, hl: out.hl || roll?.tier === "great" || roll?.tier === "terrible" });

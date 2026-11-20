@@ -92,6 +92,8 @@ export function DicePanel({ rolling, onThrow, onClose }: { rolling: Rolling; onT
   const r = rolling.phase === "done" ? rolling.roll : null;
   const show: [number, number] = r ? r.dice : faces;
   const mod = rolling.opt.mod ?? 0;
+  const passMatch = /(\d+) 이상 합격/.exec(rolling.opt.hint ?? "");
+  const passAt = passMatch ? Number(passMatch[1]) : null;
   if (rolling.plain) {
     return (
       <section className={styles.dicePanel}>
@@ -122,7 +124,16 @@ export function DicePanel({ rolling, onThrow, onClose }: { rolling: Rolling; onT
       {rolling.phase === "ready" && (
         <>
           <p className={styles.diceHint}>
-            주사위 두 개의 합 + 보정 · <b>9 이상 성공</b> · 12 이상 대성공 · 5 이하 실패
+            {/* 취업 도전처럼 합격 기준이 따로 있으면 그 기준을 보여줌 */}
+            {passAt != null ? (
+              <>
+                주사위 두 개의 합 + 보정 · <b>{passAt} 이상 합격</b>
+              </>
+            ) : (
+              <>
+                주사위 두 개의 합 + 보정 · 13 이상 대성공 · <b>9 이상 성공</b> · 6~8 보통 · 5 이하 실패
+              </>
+            )}
           </p>
           <button type="button" className="btn btn-primary btn-lg" onClick={onThrow}>
             주사위 던지기

@@ -67,9 +67,14 @@ export const jobOpts = (c: Ctx): Opt[] => {
     roll: j.roll,
     bonus,
     hint: `${tag} · ${STAT_LABEL[j.roll]} 주사위 · ${j.dc} 이상 합격`,
-    judge: (cc: Ctx, r) => r.total >= j.dc
-      ? R(`${josa(j.name, "로")} 일하게 됐다!`, { s: { happy: 4 }, fn: (x) => { x.hire(j.id, r.tier === "great" ? 1.15 : 1); if (j.creator) x.s.fame = Math.max(x.s.fame, 3); } }, true)
-      : R(`${j.name} 도전은 실패했다. 다음 기회를 노리기로 했다.`, { s: { happy: -3 }, fn: (x) => { x.quit("취준생"); x.add("jobless"); } }),
+    // 합격 기준이 직업마다 달라서(예: 변호사 12) 화면 라벨도 합격/불합격에 맞춤 — 전엔 9점이면 '성공'이라 뜨고 불합격이었음
+    judge: (cc: Ctx, r) => {
+      const ok = r.total >= j.dc;
+      r.tier = ok ? (r.tier === "great" ? "great" : "good") : r.tier === "terrible" ? "terrible" : "bad";
+      return ok
+        ? R(`${josa(j.name, "로")} 일하게 됐다!`, { s: { happy: 4 }, fn: (x) => { x.hire(j.id, r.tier === "great" ? 1.15 : 1); if (j.creator) x.s.fame = Math.max(x.s.fame, 3); } }, true)
+        : R(`${j.name} 도전은 실패했다. 다음 기회를 노리기로 했다.`, { s: { happy: -3 }, fn: (x) => { x.quit("취준생"); x.add("jobless"); } });
+    },
   }));
   opts.push(pick("일단 알바부터 한다", R("편의점 야간 알바를 시작했다.", { fn: (x) => x.hire("alba") }), { arg: "alba", hint: "확실하지만 월급이 적어요" }));
   opts.push(pick("올해는 쉰다", R("올해는 숨 좀 돌리기로 했다.", { s: { happy: 2 }, fn: (x) => x.quit("백수") }), { arg: "rest", hint: "행복 ↑" }));
