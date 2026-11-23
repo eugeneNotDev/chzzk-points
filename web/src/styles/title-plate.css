@@ -481,6 +481,370 @@
   display: none;
 }
 
+/* ── 생체 모니터(vital, X-17) ──
+   검은 모니터 화면. 심전도는 그리는 지점(--tp-h)이 왼→오로 지나가며 이전 선 위에 덮어 그림:
+   지나간 지 오래된 곳일수록 흐리고, 그리는 지점 바로 앞만 살짝 지워서 끊김 없이 이어짐. */
+@property --tp-h {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+.tp-bg-vital,
+.tp-bg-counsel {
+  --c-text: #f1f4f6;
+  --c-text-2: #aeb6be;
+  --c-text-3: #8a939c;
+  --c-text-4: #6e7781;
+  color: var(--c-text);
+  color-scheme: dark;
+}
+.tp.tp-bg-vital,
+.tp.tp-card.tp-bg-vital,
+.tp.tp-card.tp-bg-vital.tp-two {
+  background: radial-gradient(90% 140% at 100% 50%, rgba(255, 40, 55, 0.07), transparent 60%), linear-gradient(90deg, #0c0d0f, #060607);
+}
+.tp.tp-basic.tp-bg-vital {
+  --bd: linear-gradient(180deg, rgba(200, 205, 212, 0.32), rgba(120, 125, 132, 0.18));
+}
+.tp-bg-vital .tp-tag .tp-tx {
+  font-family: "Tektur", ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--tc) 50%, transparent));
+}
+/* 칭호 앞 빨간 점 — 맥박에 맞춰 뜀 */
+.tp-bg-vital .tp-tag .tp-tx::before {
+  content: "";
+  display: inline-block;
+  width: 0.36em;
+  height: 0.36em;
+  margin-right: 0.36em;
+  border-radius: 50%;
+  vertical-align: 0.16em;
+  background: #ff3b47;
+  box-shadow: 0 0 6px #ff3b47;
+  animation: tp-dot-beat 1.1s ease-out infinite;
+  animation-delay: -0.68s;
+}
+.tp-vital .tp-beat {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: tp-mon-beat 1.1s ease-out infinite;
+  animation-delay: -0.68s;
+}
+.tp-vital .tp-wave {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 46%;
+  overflow: hidden;
+  --tp-h: 0%;
+  animation: tp-sweep-h 2.2s linear infinite;
+}
+.tp:not(.tp-card) .tp-vital .tp-wave {
+  right: 70px;
+  width: 36%;
+}
+.tp-card .tp-vital .tp-wave {
+  top: 18%;
+  bottom: 18%;
+}
+.tp-vital .tp-grid {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(255, 59, 71, 0.06) 0 1px, transparent 1px 10px), repeating-linear-gradient(0deg, rgba(255, 59, 71, 0.06) 0 1px, transparent 1px 10px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+}
+.tp-vital .tp-trace {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) calc(var(--tp-h) - 96%), rgba(0, 0, 0, 0.45) calc(var(--tp-h) - 50%), #000 var(--tp-h), transparent var(--tp-h), transparent calc(var(--tp-h) + 4%), rgba(0, 0, 0, 0.1) calc(var(--tp-h) + 4%), rgba(0, 0, 0, 0.45) calc(var(--tp-h) + 50%), #000 calc(var(--tp-h) + 100%)),
+    linear-gradient(90deg, transparent 0%, #000 28%);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.1) calc(var(--tp-h) - 96%), rgba(0, 0, 0, 0.45) calc(var(--tp-h) - 50%), #000 var(--tp-h), transparent var(--tp-h), transparent calc(var(--tp-h) + 4%), rgba(0, 0, 0, 0.1) calc(var(--tp-h) + 4%), rgba(0, 0, 0, 0.45) calc(var(--tp-h) + 50%), #000 calc(var(--tp-h) + 100%)),
+    linear-gradient(90deg, transparent 0%, #000 28%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.tp-vital .tp-trace svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.tp-vital .tp-trace path {
+  fill: none;
+  stroke: #ff3b47;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2.5px rgba(255, 59, 71, 0.9));
+}
+/* 그리는 지점의 빛 */
+.tp-vital .tp-pen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--tp-h);
+  width: 14px;
+  margin-left: -7px;
+  background: radial-gradient(50% 45% at 50% 50%, rgba(255, 90, 100, 0.5), transparent 70%);
+}
+/* 화면 질감: 가는 주사선 + 위쪽 반사광 + 가장자리 어둡게 */
+.tp-vital .tp-crt {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px), linear-gradient(170deg, rgba(255, 255, 255, 0.06), transparent 35%),
+    radial-gradient(130% 160% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+.tp-vital .tp-lab,
+.tp-counsel .tp-lab,
+.tp-counsel .tp-sess {
+  position: absolute;
+  top: 11px;
+  font: 600 9px/1 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+}
+.tp-vital .tp-lab,
+.tp-counsel .tp-lab {
+  left: 14px;
+}
+.tp-vital .tp-lab {
+  color: rgba(220, 224, 230, 0.38);
+}
+.tp-vital .tp-bpm {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  font: 600 8.5px/1 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.08em;
+  color: rgba(220, 224, 230, 0.55);
+  white-space: nowrap;
+}
+.tp-card .tp-vital .tp-bpm {
+  right: 14px;
+  top: 11px;
+  font-size: 10px;
+}
+.tp-vital .tp-bpm i {
+  font-style: normal;
+  color: #ff3b47;
+  animation: tp-blink 1.1s steps(1) infinite;
+}
+.tp-vital .tp-bpm b::after {
+  content: "62";
+  animation: tp-bpm 9s steps(1) infinite;
+}
+.tp:not(.tp-card) :is(.tp-vital .tp-lab, .tp-counsel .tp-lab, .tp-counsel .tp-sess) {
+  display: none;
+}
+
+/* ── 상담실(counsel, 상담사) ── */
+.tp.tp-bg-counsel,
+.tp.tp-card.tp-bg-counsel,
+.tp.tp-card.tp-bg-counsel.tp-two {
+  background: linear-gradient(90deg, #15110e, #0b0a09);
+}
+.tp.tp-basic.tp-bg-counsel {
+  --bd: linear-gradient(160deg, rgba(240, 200, 150, 0.42), rgba(150, 140, 130, 0.2) 40%, rgba(110, 105, 100, 0.16));
+}
+.tp-bg-counsel .tp-tag .tp-tx {
+  font-family: "Noto Serif KR", "Nanum Myeongjo", serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 10px rgba(255, 190, 120, 0.35);
+}
+.tp-bg-counsel .tp-tag .tp-icon {
+  filter: drop-shadow(0 0 4px rgba(255, 180, 100, 0.55));
+}
+/* 스탠드 불빛 — 7초에 한 번 숨 쉬듯 */
+.tp-counsel .tp-lamp {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(42% 190% at 4% -60%, rgba(255, 190, 115, 0.42), rgba(255, 160, 85, 0.12) 50%, transparent 75%);
+  animation: tp-lamp 7s ease-in-out infinite;
+}
+.tp-card .tp-counsel .tp-lamp {
+  background: radial-gradient(60% 95% at 16% -18%, rgba(255, 190, 115, 0.36), rgba(255, 160, 85, 0.1) 48%, transparent 74%);
+}
+/* 블라인드 틈 푸른 빛 — 오른쪽에만 옅게 */
+.tp-counsel .tp-blind {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(-62deg, transparent 0 7px, rgba(170, 190, 225, 0.055) 7px 11px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 38%, #000 80%);
+  mask-image: linear-gradient(90deg, transparent 38%, #000 80%);
+}
+/* 불빛 안에서만 떠오르는 먼지 */
+.tp-counsel .tp-motes {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(38% 120% at 8% 0%, #000 20%, transparent 80%);
+  mask-image: radial-gradient(38% 120% at 8% 0%, #000 20%, transparent 80%);
+}
+.tp-counsel .tp-motes::before,
+.tp-counsel .tp-motes::after {
+  content: "";
+  position: absolute;
+  inset: -60px 0 0 0;
+  background-image: radial-gradient(1.2px 1.2px at 12% 20%, rgba(255, 225, 180, 0.9) 99%, transparent), radial-gradient(1px 1px at 30% 55%, rgba(255, 225, 180, 0.7) 99%, transparent),
+    radial-gradient(1px 1px at 22% 80%, rgba(255, 225, 180, 0.8) 99%, transparent), radial-gradient(1.4px 1.4px at 40% 35%, rgba(255, 225, 180, 0.6) 99%, transparent);
+  background-size: 260px 70px;
+  animation: tp-motes 14s linear infinite;
+}
+.tp-counsel .tp-motes::after {
+  background-size: 330px 90px;
+  animation-duration: 21s;
+  opacity: 0.6;
+  transform: translateX(37px);
+}
+/* 김이 오르는 찻잔 */
+.tp-counsel .tp-cup {
+  position: absolute;
+  color: rgba(225, 205, 180, 0.6);
+  filter: drop-shadow(0 0 4px rgba(255, 190, 120, 0.25));
+}
+.tp:not(.tp-card) .tp-counsel .tp-cup {
+  right: 92px;
+  bottom: 9px;
+  width: 16px;
+  height: 28px;
+}
+.tp-card .tp-counsel .tp-cup {
+  right: 26px;
+  bottom: 22px;
+  width: 24px;
+  height: 44px;
+}
+.tp-counsel .tp-cup svg {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.tp-counsel .tp-mug {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 0.8;
+}
+.tp-counsel .tp-steam {
+  fill: none;
+  stroke: rgba(245, 230, 210, 0.75);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  filter: blur(0.4px);
+  stroke-dasharray: 14 26;
+  animation: tp-steam 3.2s linear infinite;
+}
+.tp-counsel .tp-steam2 {
+  animation-delay: -1.6s;
+}
+.tp-counsel .tp-lab,
+.tp-counsel .tp-sess {
+  color: rgba(230, 215, 195, 0.42);
+}
+.tp-counsel .tp-sess {
+  right: 14px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+@keyframes tp-sweep-h {
+  from {
+    --tp-h: 0%;
+  }
+  to {
+    --tp-h: 100%;
+  }
+}
+@keyframes tp-mon-beat {
+  0% {
+    box-shadow: inset 0 0 0 0 rgba(255, 59, 71, 0);
+  }
+  8% {
+    box-shadow: inset 0 0 16px -5px rgba(255, 59, 71, 0.45);
+  }
+  40%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(255, 59, 71, 0);
+  }
+}
+@keyframes tp-dot-beat {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  8% {
+    transform: scale(1.6);
+    opacity: 1;
+  }
+  40%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+@keyframes tp-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes tp-bpm {
+  0% {
+    content: "62";
+  }
+  22% {
+    content: "63";
+  }
+  41% {
+    content: "61";
+  }
+  63% {
+    content: "64";
+  }
+  80% {
+    content: "62";
+  }
+}
+@keyframes tp-lamp {
+  0%,
+  100% {
+    opacity: 0.86;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes tp-motes {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 24px -60px;
+  }
+}
+@keyframes tp-steam {
+  0% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -40;
+    opacity: 0;
+  }
+}
+
 @keyframes tp-sweep {
   0%,
   40% {
@@ -564,6 +928,36 @@
   .tp-dstar,
   .tp-cloud {
     animation-duration: var(--d) !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-vital .tp-wave {
+    animation-duration: 2.2s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-vital .tp-beat,
+  .tp-vital .tp-bpm i,
+  .tp-bg-vital .tp-tag .tp-tx::before {
+    animation-duration: 1.1s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-vital .tp-bpm b::after {
+    animation-duration: 9s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-counsel .tp-lamp {
+    animation-duration: 7s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-counsel .tp-motes::before {
+    animation-duration: 14s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-counsel .tp-motes::after {
+    animation-duration: 21s !important;
+    animation-iteration-count: infinite !important;
+  }
+  .tp-counsel .tp-steam {
+    animation-duration: 3.2s !important;
     animation-iteration-count: infinite !important;
   }
 }

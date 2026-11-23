@@ -4,6 +4,7 @@
 //   "basic-ff6bb5-5dc8ff"(그라데이션) / "glass-1b1e24-t-f2c230"(배경+글자)
 //   배경: "night"(밤하늘) / "sky"(무지개 하늘) 토큰 — 디자인·테두리·별과 따로 고름. 예: "shine-sheep-star-sky-rainbow"
 //   예전 꿈나라 디자인 값("dream-...")은 기본 디자인 + 밤하늘 배경으로 읽음
+//   "vital"(생체 모니터, X-17) / "counsel"(상담실, 상담사) — 레벨리오 칭호용. 글꼴·장식까지 배경에 딸려 옴
 import type { CSSProperties } from "react";
 import { TITLE_ICON_MAP } from "./titleIcons";
 
@@ -16,11 +17,11 @@ export type TitleStyle = {
   star: boolean;
   bg: TitleBg | null;
 };
-export type TitleBg = "night" | "sky";
+export type TitleBg = "night" | "sky" | "vital" | "counsel";
 
 const DEFAULT_TITLE_COLOR = "#00e5a0";
 const DESIGNS = new Set(["basic", "shine", "glow", "glass"]);
-const BGS = new Set(["night", "sky"]);
+const BGS = new Set(["night", "sky", "vital", "counsel"]);
 
 export function parseTitleStyle(value: unknown): TitleStyle {
   const fallback: TitleStyle = { color: DEFAULT_TITLE_COLOR, color2: null, mix: "grad", design: "basic", icon: null, star: false, bg: null };
@@ -170,4 +171,6 @@ export const TITLE_BACKGROUNDS = [
   { id: null, name: "없음" },
   { id: "night", name: "밤하늘" },
   { id: "sky", name: "무지개 하늘" },
+  { id: "vital", name: "생체 모니터" },
+  { id: "counsel", name: "상담실" },
 ] as const;

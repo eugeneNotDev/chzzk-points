@@ -107,6 +107,8 @@ export function PlateStars() {
 export function PlateBg({ bg }: { bg: TitlePlateT["bg"] | undefined }) {
   if (bg === "night") return <PlateDream />;
   if (bg === "sky") return <PlateSky />;
+  if (bg === "vital") return <PlateVital />;
+  if (bg === "counsel") return <PlateCounsel />;
   return null;
 }
 
@@ -184,6 +186,53 @@ export function PlateSky() {
       {SKY_CARD.map((c, i) => (
         <SkyCloud key={`c${i}`} c={c} where="card" />
       ))}
+    </span>
+  );
+}
+
+// 생체 모니터 배경(X-17) — 실제 심전도 모니터처럼 그리는 지점이 왼→오로 지나가며 덮어 그림(끊김 없음).
+// 맥박(1.1초)에 맞춰 칸 안쪽이 살짝 붉어지고, 칭호 앞 빨간 점이 뜀. 시상대·상점 칸에만 "VITAL · SUBJECT" 라벨.
+const ECG_PATH =
+  "M0 24 H12 Q17 18 22 24 H38 L42 27 L46 6 L50 38 L54 24 H62 Q70 16 78 24 H100 M100 24 H112 Q117 18 122 24 H138 L142 27 L146 6 L150 38 L154 24 H162 Q170 16 178 24 H200";
+export function PlateVital() {
+  return (
+    <span className="tp-sky tp-vital" aria-hidden="true">
+      <span className="tp-beat" />
+      <span className="tp-wave">
+        <span className="tp-grid" />
+        <span className="tp-trace">
+          <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+            <path d={ECG_PATH} />
+          </svg>
+        </span>
+        <span className="tp-pen" />
+      </span>
+      <span className="tp-crt" />
+      <span className="tp-lab">VITAL · SUBJECT</span>
+      <span className="tp-bpm">
+        <i>♥</i> <b /> BPM
+      </span>
+    </span>
+  );
+}
+
+// 상담실 배경(상담사) — 왼쪽 위 스탠드 불빛이 숨 쉬듯 밝아졌다 어두워지고, 그 불빛 안에서만 먼지가 떠오름.
+// 오른쪽엔 블라인드 틈 푸른 빛 + 김이 오르는 찻잔. 시상대·상점 칸에만 "COUNSEL · ROOM 03 / SESSION 17" 라벨.
+export function PlateCounsel() {
+  return (
+    <span className="tp-sky tp-counsel" aria-hidden="true">
+      <span className="tp-lamp" />
+      <span className="tp-blind" />
+      <span className="tp-motes" />
+      <span className="tp-cup">
+        <svg viewBox="0 0 24 44">
+          <path className="tp-steam" d="M9 26 C6 21 12 18 9 13 C6 8 12 5 9 0" />
+          <path className="tp-steam tp-steam2" d="M15 26 C12 21 18 18 15 13 C12 8 18 5 15 0" />
+          <path className="tp-mug" fillRule="evenodd" d="M3 30 H19 V37 A6 6 0 0 1 13 43 H9 A6 6 0 0 1 3 37 Z M19 32 H21 A2.6 2.6 0 0 1 21 37.5 H19" />
+        </svg>
+      </span>
+      <span className="tp-lab">COUNSEL · ROOM 03</span>
+      <span className="tp-sess">SESSION 17</span>
     </span>
   );
 }
