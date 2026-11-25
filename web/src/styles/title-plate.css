@@ -671,13 +671,14 @@
 .tp-card .tp-counsel .tp-lamp {
   background: radial-gradient(60% 95% at 16% -18%, rgba(255, 190, 115, 0.36), rgba(255, 160, 85, 0.1) 48%, transparent 74%);
 }
-/* 블라인드 틈 푸른 빛 — 오른쪽에만 옅게 */
+/* 블라인드 틈 푸른 빛 — 오른쪽 위 한 곳에만 흐릿하게 비치고 가장자리로 갈수록 사라짐 */
 .tp-counsel .tp-blind {
   position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(-62deg, transparent 0 7px, rgba(170, 190, 225, 0.055) 7px 11px);
-  -webkit-mask-image: linear-gradient(90deg, transparent 38%, #000 80%);
-  mask-image: linear-gradient(90deg, transparent 38%, #000 80%);
+  inset: -20%;
+  background: repeating-linear-gradient(-62deg, transparent 0 9px, rgba(175, 195, 230, 0.05) 12px 16px, transparent 19px 26px);
+  filter: blur(1.2px);
+  -webkit-mask-image: radial-gradient(55% 90% at 88% 30%, #000 10%, transparent 75%);
+  mask-image: radial-gradient(55% 90% at 88% 30%, #000 10%, transparent 75%);
 }
 /* 불빛 안에서만 떠오르는 먼지 */
 .tp-counsel .tp-motes {
@@ -714,6 +715,13 @@
   bottom: 9px;
   width: 16px;
   height: 28px;
+}
+/* 좁은 화면 랭킹 줄에선 칭호 글자와 안 겹치게 포인트 뒤로 */
+@media (max-width: 480px) {
+  .tp:not(.tp-card) .tp-counsel .tp-cup {
+    right: 22px;
+    opacity: 0.55;
+  }
 }
 .tp-card .tp-counsel .tp-cup {
   right: 26px;
