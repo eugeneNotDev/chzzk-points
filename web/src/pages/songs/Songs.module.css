@@ -585,3 +585,22 @@
   flex-direction: column;
   justify-content: center;
 }
+
+/* 관리자: 신청 받기/막기 전환 줄 */
+.openRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--c-border);
+  font-size: 13px;
+}
+.openOn {
+  color: var(--c-accent);
+}
+.openOff {
+  color: var(--c-danger);
+}

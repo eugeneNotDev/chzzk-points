@@ -4,14 +4,15 @@
 // 신청은 무료(포인트 없음). 한 사람당 하루 1곡(한국시간 날짜) — 취소·삭제돼도 그날 기회는 다시 안 생김.
 // 대기 중인 곡과 제목+가수가 같으면(대소문자·공백·기호 무시) 중복이라 막음. 틀고 나면 다시 신청 가능.
 //
-// list            {}                     → { items: [{id,title,artist,reason,requester,anonymous,createdAt,mine}], canRequest, requestedToday, isAdmin }
+// list            {}                     → { items: [{id,title,artist,reason,requester,anonymous,createdAt,mine}], canRequest, requestedToday, isAdmin, isOpen }
+// admin-open      { open }               → { ok, isOpen }  (관리자: 신청 받기/안 받기. 꺼져 있으면 request는 409 closed)
 // request         { title, artist, reason? } → { ok }  (로그인 필수, 차단 유저 불가. reason = 신청 사유, 선택·80자)
 // cancel          { id }                 → { ok }      (본인 대기 곡만)
 // admin-played    { id }                 → { ok }      (관리자: 틀었음 → 리스트에서 빠지고 기록으로)
 // admin-delete    { id }                 → { ok }      (관리자: 장난/중복 신청 삭제)
 // admin-history   { q?, page? }          → { items: [{id,title,artist,reason,requester,playedAt}], hasMore }
 // admin-restore   { id }                 → { ok }      (관리자: 잘못 누른 "틀었음" 되돌리기 → 다시 대기)
-// 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 409 duplicate|already_today
+// 오류: 400 invalid_* / 401 unauthorized / 403 forbidden|banned / 404 not_found / 409 duplicate|already_today|closed
 
 import { getAdminClient, type Admin } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
@@ -57,8 +58,14 @@ Deno.serve(async (req: Request) => {
 
     if (!session || !me) return json({ error: "unauthorized" }, 401);
 
-    if (action === "admin-played" || action === "admin-delete" || action === "admin-history" || action === "admin-restore") {
+    if (action === "admin-played" || action === "admin-delete" || action === "admin-history" || action === "admin-restore" || action === "admin-open") {
       if (!isAdmin) return json({ error: "forbidden" }, 403);
+      if (action === "admin-open") {
+        const open = body.open === true;
+        const { error } = await admin.from("song_settings").update({ is_open: open, updated_at: new Date().toISOString() }).eq("id", true);
+        if (error) throw new Error(`song_settings 저장 실패: ${error.message}`);
+        return json({ ok: true, isOpen: open });
+      }
       if (action === "admin-history") return await history(admin, body);
       if (action === "admin-restore") return await restore(admin, body);
       return await close(admin, body, action === "admin-played" ? "played" : "deleted");
@@ -77,7 +84,14 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+// 신청 받는 중인지(설정 줄이 없으면 받는 걸로)
+async function isOpen(admin: Admin) {
+  const { data } = await admin.from("song_settings").select("is_open").eq("id", true).maybeSingle();
+  return data?.is_open ?? true;
+}
+
 async function list(admin: Admin, me: string | null, isAdmin: boolean) {
+  const open = await isOpen(admin);
   const { data, error } = await admin
     .from("song_requests")
     .select("id, channel_id, title, artist, reason, requester_name, created_at")
@@ -119,7 +133,7 @@ async function list(admin: Admin, me: string | null, isAdmin: boolean) {
       mine,
     };
   });
-  return json({ items, canRequest: me !== null && !requestedToday, requestedToday, isAdmin, loggedIn: me !== null });
+  return json({ items, canRequest: open && me !== null && !requestedToday, requestedToday, isAdmin, loggedIn: me !== null, isOpen: open });
 }
 
 async function requestSong(admin: Admin, body: Record<string, unknown>, user: { channel_id: string; channel_name: string | null }) {
@@ -133,6 +147,7 @@ async function requestSong(admin: Admin, body: Record<string, unknown>, user: { 
     reason = cleanText(body.reason, MAX_REASON);
     if (!reason) return json({ error: "invalid_reason" }, 400);
   }
+  if (!(await isOpen(admin))) return json({ error: "closed" }, 409);
   const key = normKey(title, artist);
   if (key === "|" || key.startsWith("|") || key.endsWith("|")) return json({ error: "invalid_title" }, 400);
 

@@ -1,6 +1,6 @@
 // 방종곡 신청 — songs 함수. 신청은 무료, 하루 1곡(한국시간 0시 초기화), 대기 중인 곡과 중복 불가.
 // 신청 사유(선택, 80자)를 같이 적을 수 있고, 리스트에선 한 줄로 보이다가 누르면 말풍선으로 펼쳐짐.
-// 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기.
+// 관리자는 "틀었음"(기록으로 이동)·삭제, 아래에서 틀었던 곡 기록 검색·되돌리기, 신청 받기/안 받기 전환.
 import { SkelInline } from "../../components/Skeleton";
 import { LoadError } from "../../components/LoadError";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -14,7 +14,7 @@ import styles from "./Songs.module.css";
 import { SkeletonList } from "../../components/Skeleton";
 
 type Song = { id: number; title: string; artist: string; reason: string | null; requester: string | null; anonymous?: boolean; createdAt: string; mine: boolean };
-type SongList = { items: Song[]; canRequest: boolean; requestedToday: boolean; isAdmin: boolean; loggedIn: boolean };
+type SongList = { items: Song[]; canRequest: boolean; requestedToday: boolean; isAdmin: boolean; loggedIn: boolean; isOpen?: boolean };
 type HistItem = { id: number; title: string; artist: string; reason: string | null; requester: string | null; playedAt: string };
 
 const ERR: Record<string, string> = {
@@ -26,6 +26,7 @@ const ERR: Record<string, string> = {
   banned: "이용이 제한된 계정이에요.",
   unauthorized: "로그인이 필요해요.",
   not_found: "이미 처리된 곡이에요. 새로고침해 주세요.",
+  closed: "지금은 방종곡 신청을 받지 않아요.",
 };
 function errText(e: unknown) {
   if (!(e instanceof ApiError)) return "처리하지 못했어요. 잠시 후 다시 시도해주세요.";
@@ -109,6 +110,7 @@ export default function Songs() {
     });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok?: boolean } | null>(null);
+  const [toggling, setToggling] = useState(false);
 
   const reload = () => qc.invalidateQueries({ queryKey: ["songs"] });
   const act = async (payload: Record<string, unknown>, okText?: string) => {
@@ -145,9 +147,11 @@ export default function Songs() {
     reload();
   };
 
+  const closed = s?.isOpen === false;
   const canType = isLoggedIn && !!s?.canRequest;
   let btnLabel = "불러오는 중";
-  if (!isLoggedIn) btnLabel = "로그인하고 신청하기";
+  if (closed) btnLabel = "지금은 신청을 받지 않아요";
+  else if (!isLoggedIn) btnLabel = "로그인하고 신청하기";
   else if (s && !s.canRequest) btnLabel = "오늘 신청 완료";
   else if (s) btnLabel = busy ? "신청 중..." : "신청하기";
 
@@ -168,7 +172,8 @@ export default function Songs() {
               <span className={styles.chip}>
                 대기 <b className="num">{s ? `${s.items.length}곡` : <SkelInline w={28} h={11} />}</b>
               </span>
-              {isLoggedIn && s && (
+              {closed && <span className={`${styles.chip} ${styles.chipDone}`}>지금은 신청 <b>마감</b></span>}
+              {isLoggedIn && s && !closed && (
                 <span className={`${styles.chip} ${s.canRequest ? styles.chipOn : styles.chipDone}`}>
                   {s.canRequest ? (
                     <>
@@ -184,6 +189,30 @@ export default function Songs() {
             </div>
           </div>
         </div>
+        {s?.isAdmin && (
+          <div className={styles.openRow}>
+            <span>
+              방종곡 신청 <b className={closed ? styles.openOff : styles.openOn}>{closed ? "막아둔 상태" : "받는 중"}</b>
+            </span>
+            <button
+              type="button"
+              className={`btn btn-sm ${closed ? "btn-primary" : "btn-ghost"}`}
+              disabled={toggling}
+              onClick={async () => {
+                setToggling(true);
+                try {
+                  await act({ action: "admin-open", open: closed }, closed ? "이제 방종곡 신청을 받아요." : "방종곡 신청을 막았어요.");
+                } catch {
+                  // act가 메시지를 띄움
+                } finally {
+                  setToggling(false);
+                }
+              }}
+            >
+              {closed ? "신청 받기" : "신청 막기"}
+            </button>
+          </div>
+        )}
         <form className={styles.form} onSubmit={submit} autoComplete="off">
           <input className="input" maxLength={60} placeholder="곡 제목" aria-label="곡 제목" disabled={!canType} value={title} onChange={(e) => setTitle(e.target.value)} />
           <input className="input" maxLength={40} placeholder="가수" aria-label="가수" disabled={!canType} value={artist} onChange={(e) => setArtist(e.target.value)} />
@@ -200,7 +229,7 @@ export default function Songs() {
             />
             <span className={`num ${styles.count}`}>{reason.length}/80</span>
           </div>
-          <button type="submit" className="btn btn-primary" disabled={isLoggedIn && (!canType || busy)}>
+          <button type="submit" className="btn btn-primary" disabled={closed || (isLoggedIn && (!canType || busy))}>
             {btnLabel}
           </button>
         </form>
