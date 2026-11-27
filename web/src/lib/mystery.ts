@@ -23,6 +23,7 @@ export type MysterySet = {
   status: "open" | "revealed" | "paid";
   isTest: boolean;
   betOpen: boolean;
+  betMax: number; // 이야기 한 편당 한 사람이 걸 수 있는 최대 합계
   rewards: number[]; // 맞힌 개수(0개부터)별 기본 보상
   multipliers: number[]; // 맞힌 개수별 베팅 배수
   questions: MysteryQuestion[];
@@ -66,5 +67,6 @@ export const MYSTERY_ERRORS: Record<string, string> = {
   bet_closed: "베팅은 첫 번째 투표가 마감되기 전까지만 할 수 있어요.",
   insufficient_balance: "포인트가 부족해요.",
   amount_too_small: "100P 이상 입력해주세요.",
+  bet_limit: "이야기 한 편에 걸 수 있는 포인트를 넘었어요.",
   too_many_requests: "잠시 후 다시 눌러주세요.",
 };

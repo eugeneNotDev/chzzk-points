@@ -123,9 +123,12 @@ function BetBox({ s }: { s: MysterySet }) {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const max = s.betMax ?? 3000;
+  const left = Math.max(max - (s.myBet?.amount ?? 0), 0);
   async function bet() {
     const a = Math.trunc(Number(amount));
     if (!Number.isFinite(a) || a < 100) return setMsg({ text: "100P 이상 입력해주세요.", error: true });
+    if (a > left) return setMsg({ text: left >= 100 ? `이 이야기엔 ${fmt(left)}P까지만 더 걸 수 있어요. (한 편당 최대 ${fmt(max)}P)` : `이 이야기엔 이미 최대 ${fmt(max)}P를 걸었어요.`, error: true });
     setBusy(true);
     setMsg(null);
     try {
@@ -144,20 +147,20 @@ function BetBox({ s }: { s: MysterySet }) {
     <div className={styles.bet}>
       <div className={styles.betHead}>
         <b>포인트 걸기 (선택)</b>
-        <span>{s.betOpen ? "첫 번째 투표가 마감되기 전까지" : "베팅 마감"}</span>
+        <span>{s.betOpen ? `한 편당 최대 ${fmt(max)}P · 첫 투표 마감 전까지` : "베팅 마감"}</span>
       </div>
       {s.myBet && (
         <p className={styles.betMine}>
           이 이야기에 <b className="num">{fmt(s.myBet.amount)}P</b> 걸었어요. 맞힌 개수에 따라 돌려받아요.
         </p>
       )}
-      {s.betOpen && (
+      {s.betOpen && left >= 100 && (
         <>
           <div className={styles.betForm}>
             <input
               className="input num"
               inputMode="numeric"
-              placeholder={s.myBet ? "추가로 걸 포인트 (최소 100P)" : "걸 포인트 (최소 100P)"}
+              placeholder={s.myBet ? `추가로 걸 포인트 (${fmt(left)}P까지)` : `걸 포인트 (100 ~ ${fmt(max)}P)`}
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
               aria-label="걸 포인트"
@@ -168,13 +171,14 @@ function BetBox({ s }: { s: MysterySet }) {
           </div>
           <div className={styles.quick}>
             {[100, 500, 1000].map((v) => (
-              <button key={v} type="button" className="btn btn-sm" onClick={() => setAmount(String((Number(amount) || 0) + v))}>
+              <button key={v} type="button" className="btn btn-sm" onClick={() => setAmount(String(Math.min((Number(amount) || 0) + v, left)))}>
                 +{fmt(v)}
               </button>
             ))}
           </div>
         </>
       )}
+      {s.betOpen && s.myBet && left < 100 && <p className={styles.fine}>이 이야기엔 최대 금액({fmt(max)}P)을 다 걸었어요.</p>}
       {msg && <p className={`status ${msg.error ? "error" : "ok"}`} role="status">{msg.text}</p>}
     </div>
   );

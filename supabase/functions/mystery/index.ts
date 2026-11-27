@@ -2,13 +2,13 @@
 // 0096_mystery_votes.sql 참고.
 //
 // GET (로그인 필요) → 지금 보여줄 이야기 1건(진행 중이거나 방금 끝난 것, 리모컨에서 내린 건 제외) — 없으면 { set: null }
-//   { set: { id, title, status: "open"|"revealed"|"paid", isTest, betOpen, rewards, multipliers,
+//   { set: { id, title, status: "open"|"revealed"|"paid", isTest, betOpen, betMax, rewards, multipliers,
 //            questions: [{ id, position, prompt, options, status, counts, total, myChoice, answer(공개 후에만) }],
 //              (아직 안 연 투표는 prompt=null, options=[] — 스포일러 방지)
 //            myBet: { amount, payout } | null,
 //            myResult: { correct, base, betPayout } | null  (정답 공개 후) } }
 // POST { action: "vote", questionId, choice }  → 투표(마감 전까진 바꿀 수 있음)
-// POST { action: "bet", setId, amount }        → 베팅(첫 투표 마감 전까지, 같은 이야기에 더 걸 수 있음)
+// POST { action: "bet", setId, amount }        → 베팅(첫 투표 마감 전까지, 같은 이야기에 더 걸 수 있음 — 합계 betMax까지)
 
 import { getAdminClient } from "../_shared/db.ts";
 import { json } from "../_shared/http.ts";
@@ -23,14 +23,14 @@ const REVEALED_SHOW_MS = 3 * 60 * 60_000;
 
 type SetRow = {
   id: number; title: string; status: string; is_test: boolean; bet_closed: boolean;
-  base_rewards: number[]; bet_multipliers: number[]; pay_log: Array<Record<string, unknown>> | null;
+  bet_max: number; base_rewards: number[]; bet_multipliers: number[]; pay_log: Array<Record<string, unknown>> | null;
   revealed_at: string | null; paid_at: string | null;
 };
 
 async function activeSet(admin: Admin): Promise<SetRow | null> {
   const { data, error } = await admin
     .from("mystery_sets")
-    .select("id, title, status, is_test, bet_closed, base_rewards, bet_multipliers, pay_log, revealed_at, paid_at")
+    .select("id, title, status, is_test, bet_closed, bet_max, base_rewards, bet_multipliers, pay_log, revealed_at, paid_at")
     .in("status", ["open", "revealed", "paid"])
     .not("opened_at", "is", null)
     .eq("site_hidden", false)
@@ -101,6 +101,7 @@ async function buildView(admin: Admin, s: SetRow, me: string) {
     status: s.status,
     isTest: s.is_test,
     betOpen: s.status === "open" && !s.bet_closed,
+    betMax: s.bet_max,
     rewards: s.base_rewards,
     multipliers: s.bet_multipliers.map(Number),
     questions,
@@ -109,7 +110,7 @@ async function buildView(admin: Admin, s: SetRow, me: string) {
   };
 }
 
-const KNOWN = ["question_not_found", "vote_closed", "invalid_choice", "amount_too_small", "set_not_found", "bet_closed", "insufficient_balance"];
+const KNOWN = ["question_not_found", "vote_closed", "invalid_choice", "amount_too_small", "set_not_found", "bet_closed", "insufficient_balance", "bet_limit"];
 
 Deno.serve(async (req: Request) => {
   const preflight = handleCors(req);
